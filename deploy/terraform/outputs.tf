@@ -23,6 +23,11 @@ output "github_actions_role_arn" {
   value       = aws_iam_role.github_actions.arn
 }
 
+output "ecr_repository_url" {
+  description = "URL do repositório ECR (sem tag). Defina no GitHub como ECR_REPOSITORY."
+  value       = aws_ecr_repository.app.repository_url
+}
+
 output "ssh_command_hint" {
   description = "Comando de exemplo para acessar a instância via SSH (operador autorizado)."
   value       = "ssh -i <sua-chave> deploy@${aws_eip.app.public_ip}"

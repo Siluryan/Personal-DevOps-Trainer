@@ -20,11 +20,10 @@ terraform {
   # antes do primeiro `terraform init`, ou comente este bloco para usar
   # state local até criar o bucket.
   backend "s3" {
-    bucket         = "REPLACE-ME-tfstate-bucket"
-    key            = "pdt/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "REPLACE-ME-tfstate-lock"
-    encrypt        = true
+    bucket  = "personal-devops-trainer"
+    key     = "pdt/terraform.tfstate"
+    region  = "us-east-1"
+    encrypt = true
   }
 }
 

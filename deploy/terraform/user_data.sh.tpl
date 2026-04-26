@@ -44,9 +44,26 @@ apt-get install -y --no-install-recommends \
   libpq-dev pkg-config libffi-dev libssl-dev \
   postgresql postgresql-contrib redis-server \
   nginx certbot python3-certbot-nginx \
-  awscli logrotate cron rsync sqlite3
+  docker.io docker-compose-v2 \
+  logrotate cron rsync sqlite3
+
+# Ubuntu 24.04: pacote apt "awscli" costuma nao existir; instala AWS CLI v2 se faltar.
+if ! command -v aws &>/dev/null; then
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    x86_64)  Z=awscli-exe-linux-x86_64.zip ;;
+    aarch64) Z=awscli-exe-linux-aarch64.zip ;;
+    *)       Z=awscli-exe-linux-x86_64.zip ;;
+  esac
+  curl -sS "https://awscli.amazonaws.com/$${Z}" -o /tmp/awscliv2.zip
+  unzip -q -o /tmp/awscliv2.zip -d /tmp
+  /tmp/aws/install -i /usr/local/aws-cli -b /usr/local/bin
+  rm -rf /tmp/aws /tmp/awscliv2.zip
+fi
 
 systemctl enable --now ssm-agent || systemctl enable --now amazon-ssm-agent || true
+systemctl enable --now docker || true
+usermod -aG docker $APP_USER 2>/dev/null || true
 
 # ─── 2. Swap de 2GB (t3.micro = 1GB RAM) ────────────────────────────────────
 if [ ! -f /swapfile ]; then
@@ -311,6 +328,8 @@ install -m 0755 /opt/pdt/app/deploy/server/scripts/backup.sh /opt/pdt/scripts/ba
   || { mkdir -p /opt/pdt/scripts; cp /opt/pdt/app/deploy/server/scripts/backup.sh /opt/pdt/scripts/backup.sh; chmod 0755 /opt/pdt/scripts/backup.sh; }
 install -m 0755 /opt/pdt/app/deploy/server/scripts/deploy.sh /opt/pdt/scripts/deploy.sh 2>/dev/null \
   || { cp /opt/pdt/app/deploy/server/scripts/deploy.sh /opt/pdt/scripts/deploy.sh; chmod 0755 /opt/pdt/scripts/deploy.sh; }
+install -m 0755 /opt/pdt/app/deploy/server/scripts/deploy-from-ecr.sh /opt/pdt/scripts/deploy-from-ecr.sh 2>/dev/null \
+  || { cp /opt/pdt/app/deploy/server/scripts/deploy-from-ecr.sh /opt/pdt/scripts/deploy-from-ecr.sh; chmod 0755 /opt/pdt/scripts/deploy-from-ecr.sh; }
 chown -R $APP_USER:$APP_USER /opt/pdt/scripts
 
 # ─── 18. logrotate da app ────────────────────────────────────────────────

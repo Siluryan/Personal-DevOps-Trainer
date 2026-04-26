@@ -7,11 +7,14 @@ aws_region        = "us-east-1"
 
 # Domínio público que vai apontar para o EIP.
 domain_name       = "pdt.exemplo.com"
-letsencrypt_email = "ops@exemplo.com"
+# letsencrypt_email tem default em variables.tf; sobrescreva apenas se necessario.
+# letsencrypt_email = "guilhermerrdias@gmail.com"
 
-# Repositório no formato owner/repo, usado pelo OIDC.
-github_repo             = "exemplo/personal-devops-trainer"
-github_default_branches = ["refs/heads/main"]
+# Repositório no formato owner/repo, usado pelo OIDC e clone no user_data.
+github_repo = "Siluryan/Personal-DevOps-Trainer"
+# Sem `environment:` no job → `sub` usa ref. Com `environment: prod` → `sub` usa environment: (ver default em variables.tf).
+github_default_branches          = ["refs/heads/main"]
+github_deployment_environments = ["prod"]
 
 # IPs autorizados a abrir SSH (em produção, deixe vazio e use SSM Session Manager).
 operator_cidrs = []

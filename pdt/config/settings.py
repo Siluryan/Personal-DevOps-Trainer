@@ -178,7 +178,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 ADMISSION_PASS_SCORE = env("ADMISSION_PASS_SCORE")
-DONATION_URL = env("DONATION_URL", default="")
+DONATION_URL = env("DONATION_URL", default="https://buymeacoffee.com/siluryan")
 DONATION_LABEL = env("DONATION_LABEL", default="Pague um café para o criador")
 
 # WebRTC: lista de servidores STUN/TURN usada na sala de ajuda. Por padrão

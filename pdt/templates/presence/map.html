@@ -372,11 +372,21 @@
   // ── Geolocalização com fallback IP ─────────────────────────────────────
   async function geoByIP() {
     try {
-      const r = await fetch('http://ip-api.com/json/?fields=lat,lon,status');
+      // Em produção (HTTPS), fallback HTTP é bloqueado por mixed content.
+      // Usamos um provedor com HTTPS para manter o check-in funcional.
+      const r = await fetch('https://ipapi.co/json/');
       const d = await r.json();
-      if (d.status==='success') { leafMap.setView([d.lat,d.lon],11); await checkin(d.lat,d.lon); }
-      else await fetchOnline();
-    } catch { await fetchOnline(); }
+      const lat = Number(d.latitude);
+      const lon = Number(d.longitude);
+      if (Number.isFinite(lat) && Number.isFinite(lon)) {
+        leafMap.setView([lat, lon], 11);
+        await checkin(lat, lon);
+      } else {
+        await fetchOnline();
+      }
+    } catch {
+      await fetchOnline();
+    }
   }
 
   function geo() {
