@@ -34,7 +34,10 @@
 {% if user.is_authenticated and user.admission_passed %}
 <script>
 (function () {
+  var _presenceOfflineSent = false;
   window.pdtBeaconPresenceOffline = function () {
+    if (_presenceOfflineSent) return;
+    _presenceOfflineSent = true;
     try {
       var m = document.cookie.match(/csrftoken=([^;]+)/);
       var csrf = m ? decodeURIComponent(m[1]) : "";
@@ -45,6 +48,14 @@
       );
     } catch (e) {}
   };
+
+  // Garante tentativa de marcar OFFLINE ao fechar/descartar aba ou navegador.
+  window.addEventListener("pagehide", function () {
+    window.pdtBeaconPresenceOffline();
+  });
+  window.addEventListener("beforeunload", function () {
+    window.pdtBeaconPresenceOffline();
+  });
 
   (function () {
     var pingUrl = "{% url 'presence:api_presence_ping' %}";
