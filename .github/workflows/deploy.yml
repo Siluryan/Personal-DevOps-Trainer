@@ -209,7 +209,7 @@ jobs:
                   + "set -e; "
                   + "git rev-parse -q --verify " + $g + "^{commit} || { echo ::error::commit_inacessivel_apos_fetch; echo remote=; git remote -v; echo head=; git log -1 --oneline 2>&1; exit 128; }; "
                   + "git reset --hard " + $g + "\"") ),
-                "test -f /opt/pdt/scripts/deploy-from-ecr.sh || { echo '::error::Falta /opt/pdt/scripts/deploy-from-ecr.sh. Rodou o passo Sincronizar scripts?'; ls -la /opt/pdt/scripts 2>&1 || true; exit 1; }",
+                "test -f /opt/pdt/scripts/deploy-from-ecr.sh || { echo ::error::Falta_deploy_from_ecr_rode_sincronizar_scripts; ls -la /opt/pdt/scripts 2>&1 || true; exit 1; }",
                 "sudo /opt/pdt/scripts/deploy-from-ecr.sh " + $u + " " + $g + " " + $r
               ]
             }')
