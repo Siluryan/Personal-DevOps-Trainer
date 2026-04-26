@@ -52,9 +52,8 @@ ensure_pdt_env() {
     echo "::error::SSM /$PN/$PE/postgres/password vazio; abortando" >&2
     exit 1
   fi
-  if [ -f "$ENV_FILE" ]; then
-    return 0
-  fi
+  # Reconciliamos o pdt.env em todo deploy para corrigir drift (ex.: faltou www
+  # em ALLOWED_HOSTS numa execucao antiga) e manter paridade com o SSM.
   local SK DOM ROOT_DOM WWW_DOM ALLOWED_HOSTS CSRF_EXTRA BUCK
   SK=$(ssm_get "/$PN/$PE/django/secret_key" yes)
   DOM=$(ssm_get "/$PN/$PE/domain_name")
