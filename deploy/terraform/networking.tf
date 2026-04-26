@@ -80,7 +80,7 @@ resource "aws_security_group" "app" {
   }
 
   egress {
-    description = "Saída irrestrita (apt/git/AWS APIs)"
+    description = "Unrestricted egress (apt/git/AWS APIs)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
