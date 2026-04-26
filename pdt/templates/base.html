@@ -37,27 +37,22 @@
 <script>
 (function () {
   var _presenceOfflineSent = false;
-  window.pdtBeaconPresenceOffline = function () {
+
+  window.pdtBeaconPresenceOffline = function (reason) {
     if (_presenceOfflineSent) return;
     _presenceOfflineSent = true;
     try {
       var m = document.cookie.match(/csrftoken=([^;]+)/);
       var csrf = m ? decodeURIComponent(m[1]) : "";
-      var body = "csrfmiddlewaretoken=" + encodeURIComponent(csrf);
+      var why = reason || "";
+      var body = "csrfmiddlewaretoken=" + encodeURIComponent(csrf) +
+                 "&reason=" + encodeURIComponent(why);
       navigator.sendBeacon(
         "{% url 'presence:api_presence_offline' %}",
         new Blob([body], { type: "application/x-www-form-urlencoded" })
       );
     } catch (e) {}
   };
-
-  // Garante tentativa de marcar OFFLINE ao fechar/descartar aba ou navegador.
-  window.addEventListener("pagehide", function () {
-    window.pdtBeaconPresenceOffline();
-  });
-  window.addEventListener("beforeunload", function () {
-    window.pdtBeaconPresenceOffline();
-  });
 
   (function () {
     var pingUrl = "{% url 'presence:api_presence_ping' %}";
@@ -142,7 +137,7 @@
             </span>
           </a>
           <form method="post" action="{% url 'account_logout' %}" class="hidden sm:inline"
-                onsubmit="if (window.pdtBeaconPresenceOffline) window.pdtBeaconPresenceOffline();">
+                onsubmit="if (window.pdtBeaconPresenceOffline) window.pdtBeaconPresenceOffline('logout');">
             {% csrf_token %}
             <button style="font-size:.875rem;color:#5a7a9a"
                     class="hover:text-sky-300 transition-colors">Sair</button>
@@ -207,7 +202,7 @@
             </span>
           </a>
           <form method="post" action="{% url 'account_logout' %}"
-                onsubmit="if (window.pdtBeaconPresenceOffline) window.pdtBeaconPresenceOffline();">
+                onsubmit="if (window.pdtBeaconPresenceOffline) window.pdtBeaconPresenceOffline('logout');">
             {% csrf_token %}
             <button style="font-size:.875rem;color:#5a7a9a" class="hover:text-sky-300">Sair</button>
           </form>

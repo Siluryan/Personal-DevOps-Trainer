@@ -55,11 +55,25 @@ class TestPresenceAPIs:
             status=PresenceState.AVAILABLE,
         )
         client.force_login(admitted_user)
-        resp = client.post(reverse("presence:api_presence_offline"))
+        resp = client.post(reverse("presence:api_presence_offline"), {"reason": "logout"})
         assert resp.status_code == 200
         assert resp.json()["ok"] is True
         state = PresenceState.objects.get(user=admitted_user)
         assert state.status == PresenceState.OFFLINE
+
+    def test_presence_offline_sem_reason_logout_e_ignorado(self, client, admitted_user):
+        PresenceState.objects.create(
+            user=admitted_user,
+            latitude=-23.0,
+            longitude=-46.0,
+            status=PresenceState.AVAILABLE,
+        )
+        client.force_login(admitted_user)
+        resp = client.post(reverse("presence:api_presence_offline"))
+        assert resp.status_code == 200
+        assert resp.json()["ignored"] is True
+        state = PresenceState.objects.get(user=admitted_user)
+        assert state.status == PresenceState.AVAILABLE
 
     def test_presence_ping_atualiza_last_seen(self, client, admitted_user):
         PresenceState.objects.create(
@@ -76,6 +90,39 @@ class TestPresenceAPIs:
         assert resp.status_code == 200
         state = PresenceState.objects.get(user=admitted_user)
         assert (timezone.now() - state.last_seen).total_seconds() < 10
+
+    def test_presence_ping_reativa_offline_para_available(self, client, admitted_user):
+        PresenceState.objects.create(
+            user=admitted_user,
+            latitude=-23.0,
+            longitude=-46.0,
+            status=PresenceState.OFFLINE,
+        )
+        client.force_login(admitted_user)
+        resp = client.post(reverse("presence:api_presence_ping"))
+        assert resp.status_code == 200
+        state = PresenceState.objects.get(user=admitted_user)
+        assert state.status == PresenceState.AVAILABLE
+
+    def test_presence_ping_reativa_offline_para_help_com_pedido_aberto(
+        self, client, admitted_user, topic
+    ):
+        PresenceState.objects.create(
+            user=admitted_user,
+            latitude=-23.0,
+            longitude=-46.0,
+            status=PresenceState.OFFLINE,
+        )
+        HelpRequest.objects.create(
+            requester=admitted_user,
+            topic=topic,
+            status=HelpRequest.OPEN,
+        )
+        client.force_login(admitted_user)
+        resp = client.post(reverse("presence:api_presence_ping"))
+        assert resp.status_code == 200
+        state = PresenceState.objects.get(user=admitted_user)
+        assert state.status == PresenceState.HELP
 
     def test_online_users_respeita_ttl_last_seen(self, client, admitted_user, make_user):
         stale = make_user(email="stale-map@example.com", show_on_map=True)
