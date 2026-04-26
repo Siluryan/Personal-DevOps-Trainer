@@ -92,13 +92,6 @@
            class="hover:bg-sky-500">
           Entrar na sala →
         </a>
-        <button type="button" @click="pdtNotifyPermission()"
-                style="background:transparent;border:1px solid #1a2f50;color:#8bacc8;
-                       padding:6px 12px;border-radius:7px;font-size:.75rem"
-                class="hover:text-sky-300 hover:border-sky-400/40"
-                title="Aviso quando alguém entrar na sala ou mandar mensagem enquanto você está no mapa">
-          🔔 Avisos
-        </button>
         <button @click="resolve()" :disabled="busy"
                 style="background:#34d399;color:#04091c;font-weight:700;
                        padding:6px 14px;border-radius:7px;font-size:.8125rem;transition:background .15s"
@@ -172,6 +165,7 @@
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
   const CSRF = document.cookie.split('; ').find(c=>c.startsWith('csrftoken='))?.split('=')[1]||'';
+  const CURRENT_USER_ID = {{ request.user.id }};
   const URLS = {
     online:   '{% url "presence:api_online" %}',
     checkin:  '{% url "presence:api_checkin" %}',
@@ -260,6 +254,7 @@
 
   function pinPopup(u) {
     const isHelp = u.status === 'help';
+    const isOwnHelp = Number(u.user_id) === Number(CURRENT_USER_ID);
     const badge  = isHelp
       ? `<span style="display:inline-block;background:#f43f5e22;color:#fca5a5;
                       border:1px solid #f43f5e55;padding:2px 10px;border-radius:99px;
@@ -283,7 +278,14 @@
           ${u.help_topic || '-'}
         </div>`;
       let action = '';
-      if (st === 'open') {
+      if (isOwnHelp) {
+        action = `<a href="/mapa/ajuda/${u.help_request_id}/"
+          style="display:block;width:100%;text-align:center;background:#0891b2;color:#f0f9ff;font-weight:700;
+                 padding:10px 0;border-radius:8px;font-size:13px;letter-spacing:.2px;
+                 text-decoration:none;box-sizing:border-box">
+          Entrar na sala →
+        </a>`;
+      } else if (st === 'open') {
         action = `<button type="button" onclick="window.joinHelp(${u.help_request_id})"
           style="width:100%;background:#0891b2;color:#f0f9ff;font-weight:700;
                  padding:10px 0;border-radius:8px;border:0;cursor:pointer;

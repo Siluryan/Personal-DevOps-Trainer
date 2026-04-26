@@ -19,6 +19,7 @@ from apps.courses.models import Topic
 from apps.gamification.models import TopicScore
 
 from .consumers import PRESENCE_GROUP
+from .help_consumer import help_group_name
 from .models import HelpChatMessage, HelpRequest, PresenceState
 from .online_payload import build_online_users_payload
 
@@ -151,6 +152,18 @@ def resolve_help_request(request, pk):
     help_request.resolved_at = timezone.now()
     help_request.save(update_fields=["status", "resolved_at"])
     HelpChatMessage.objects.filter(help_request=help_request).delete()
+    layer = get_channel_layer()
+    if layer:
+        async_to_sync(layer.group_send)(
+            help_group_name(help_request.id),
+            {
+                "type": "help.system",
+                "kind": "resolved",
+                "user_id": request.user.id,
+                "name": request.user.display_name,
+                "ts": timezone.now().isoformat(),
+            },
+        )
 
     if help_request.helper:
         TopicScore.add_help_bonus(

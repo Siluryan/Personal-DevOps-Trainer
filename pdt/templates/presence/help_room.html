@@ -40,13 +40,6 @@
         <span x-text="statusLine"></span>
         <span style="color:#1a2f50">·</span>
         <span x-text="(peerName || 'Aguardando o outro participante')"></span>
-        <button type="button" @click="pdtNotifyPermission()"
-                style="margin-left:4px;background:transparent;border:1px solid #1a2f50;color:#8bacc8;
-                       padding:4px 10px;border-radius:6px;font-size:.7rem;cursor:pointer"
-                class="hover:text-sky-300 hover:border-sky-400/40"
-                title="Aviso do sistema quando chegar mensagem ou o outro participante entrar (aba em segundo plano)">
-          🔔 Avisos do navegador
-        </button>
       </div>
     </header>
 
@@ -148,7 +141,11 @@
 
     <!-- resolver pedido -->
     {% if help_request.requester == request.user and help_request.status != 'resolved' %}
-      <form method="post" action="{% url 'presence:api_help_resolve' help_request.id %}" class="mt-6">
+      <form method="post"
+            action="{% url 'presence:api_help_resolve' help_request.id %}"
+            class="mt-6"
+            x-ref="resolveForm"
+            @submit.prevent="resolveRequest()">
         {% csrf_token %}
         <button style="background:#34d399;color:#04091c;font-weight:700;
                        padding:10px 22px;border-radius:8px;font-size:.9375rem;transition:background .15s"
@@ -162,6 +159,7 @@
     {% if help_request.status == 'resolved' %}
       <p class="mt-6" style="color:#34d399;font-weight:600">Pedido resolvido. Bom estudo!</p>
     {% endif %}
+    <p class="mt-6" x-show="resolvedNotice" x-cloak style="color:#34d399;font-weight:600" x-text="resolvedNotice"></p>
 
   {% endif %}
 
@@ -191,6 +189,7 @@ function helpRoom(opts) {
     localStream: null,
     peerName: "",
     error: "",
+    resolvedNotice: "",
     nextId: 1,
 
     get statusLine() {
@@ -297,6 +296,23 @@ function helpRoom(opts) {
           }
           return;
         }
+        if (msg.kind === "resolved") {
+          this.roomClosed = true;
+          this.reconnectDisabled = true;
+          this.connected = false;
+          this.error = "";
+          this.cleanupPeer();
+          this.stopMic();
+          const who = msg.name || "O solicitante";
+          this.resolvedNotice = `${who} marcou este pedido como resolvido.`;
+          if (!msg.self && window.pdtNotify) {
+            window.pdtNotify("Sala de ajuda", this.resolvedNotice, {
+              tag: "pdt-resolved-" + String(this.helpId),
+            });
+          }
+          try { this.ws?.close(1000, "resolved"); } catch (e) {}
+          return;
+        }
       } else if (msg.type === "signal") {
         this.peerName = msg.from_name || this.peerName;
         this.handleSignal(msg.payload);
@@ -322,6 +338,27 @@ function helpRoom(opts) {
     sendSignal(payload) {
       if (!this.connected) return;
       this.ws.send(JSON.stringify({ action:"signal", payload }));
+    },
+
+    async resolveRequest() {
+      const form = this.$refs.resolveForm;
+      if (!form) return;
+      this.error = "";
+      try {
+        const r = await fetch(form.action, {
+          method: "POST",
+          body: new FormData(form),
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+        });
+        if (!r.ok) {
+          const data = await r.json().catch(() => ({}));
+          this.error = data.error || "Não foi possível marcar como resolvido.";
+          return;
+        }
+        window.location.reload();
+      } catch (e) {
+        this.error = "Erro de rede ao marcar como resolvido.";
+      }
     },
 
     async toggleMic() {
