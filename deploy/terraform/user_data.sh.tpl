@@ -55,7 +55,7 @@ if ! command -v aws &>/dev/null; then
     aarch64) Z=awscli-exe-linux-aarch64.zip ;;
     *)       Z=awscli-exe-linux-x86_64.zip ;;
   esac
-  curl -sS "https://awscli.amazonaws.com/${Z}" -o /tmp/awscliv2.zip
+  curl -sS "https://awscli.amazonaws.com/$${Z}" -o /tmp/awscliv2.zip
   unzip -q -o /tmp/awscliv2.zip -d /tmp
   /tmp/aws/install -i /usr/local/aws-cli -b /usr/local/bin
   rm -rf /tmp/aws /tmp/awscliv2.zip
