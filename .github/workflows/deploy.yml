@@ -117,6 +117,7 @@ jobs:
           URI: ${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
           REF: ${{ github.sha }}
         run: |
+          # SSM AWS-RunShellScript executa em /bin/sh (dash): sem pipefail.
           set -euo pipefail
           PJSON=$(jq -n \
             --arg u "$URI" \
@@ -124,7 +125,7 @@ jobs:
             --arg r "${{ env.AWS_REGION }}" \
             '{
               "commands": [
-                "set -euo pipefail",
+                "set -eu",
                 "export AWS_DEFAULT_REGION=\($r) AWS_REGION=\($r)",
                 "command -v docker >/dev/null 2>&1 || { echo ::error::Docker nao esta instalado na EC2. Rode em SSM: bash /opt/pdt/app/deploy/server/scripts/install-docker-on-ec2.sh; exit 1; }",
                 "sudo -u deploy -H git -C /opt/pdt/app config --global --add safe.directory /opt/pdt/app || true",
