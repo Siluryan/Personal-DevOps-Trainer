@@ -174,8 +174,9 @@ class TestInterviewModels:
         attempt = InterviewAttempt.objects.create(
             user=u, level=LEVEL_JUNIOR, question_ids=ids
         )
-        # Só responde 1..9; índice 0 em aberto. Cursor parou na última questão.
-        attempt.answers = {str(ids[i]): 0 for i in range(1, 10)}
+        # Responde 1..8; índices 0 e 9 em aberto. Primeira lacuna é 0, mas o
+        # cursor ficou na tela 9 (ainda sem resposta) — retomar deve voltar na 9.
+        attempt.answers = {str(ids[i]): 0 for i in range(1, 9)}
         attempt.last_question_index = 9
         attempt.save()
         assert attempt.next_unanswered_index() == 0
