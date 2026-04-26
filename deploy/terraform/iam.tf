@@ -35,7 +35,7 @@ resource "aws_iam_role_policy_attachment" "cw_agent" {
 
 data "aws_iam_policy_document" "backup_rw" {
   statement {
-    actions = ["s3:ListBucket", "s3:GetBucketLocation"]
+    actions   = ["s3:ListBucket", "s3:GetBucketLocation"]
     resources = [aws_s3_bucket.backups.arn]
   }
   statement {

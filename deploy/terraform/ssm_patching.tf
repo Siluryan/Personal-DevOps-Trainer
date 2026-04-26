@@ -31,12 +31,12 @@ resource "aws_ssm_patch_group" "this" {
 }
 
 resource "aws_ssm_maintenance_window" "patch" {
-  name              = "${var.project_name}-${var.environment}-patch-window"
-  description       = "Janela semanal de aplicação de patches."
-  schedule          = var.patch_window_cron
-  duration          = 2
-  cutoff            = 1
-  schedule_timezone = "UTC"
+  name                       = "${var.project_name}-${var.environment}-patch-window"
+  description                = "Janela semanal de aplicação de patches."
+  schedule                   = var.patch_window_cron
+  duration                   = 2
+  cutoff                     = 1
+  schedule_timezone          = "UTC"
   allow_unassociated_targets = false
 }
 
@@ -85,8 +85,8 @@ resource "aws_ssm_maintenance_window_task" "patch_install" {
 # Compliance/scan diário, fora da janela: avisa se a instância ficou
 # defasada antes do próximo install agendado.
 resource "aws_ssm_association" "scan_daily" {
-  name             = "AWS-RunPatchBaseline"
-  association_name = "${var.project_name}-${var.environment}-scan"
+  name                = "AWS-RunPatchBaseline"
+  association_name    = "${var.project_name}-${var.environment}-scan"
   schedule_expression = "cron(0 6 * * ? *)"
 
   targets {

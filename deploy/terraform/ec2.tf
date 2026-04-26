@@ -47,7 +47,7 @@ resource "aws_ssm_parameter" "domain_name" {
 # A EC2 precisa poder ler esses parâmetros (chave KMS aws/ssm é gerenciada).
 data "aws_iam_policy_document" "ssm_params_read" {
   statement {
-    actions   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
+    actions = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
     resources = [
       aws_ssm_parameter.django_secret.arn,
       aws_ssm_parameter.postgres_password.arn,
