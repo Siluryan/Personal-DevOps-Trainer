@@ -129,18 +129,19 @@ jobs:
                 "export AWS_DEFAULT_REGION=\($r) AWS_REGION=\($r)",
                 "command -v docker >/dev/null 2>&1 || { echo ::error::Docker nao esta instalado na EC2. Rode em SSM: bash /opt/pdt/app/deploy/server/scripts/install-docker-on-ec2.sh; exit 1; }",
                 "sudo -u deploy -H git -C /opt/pdt/app config --global --add safe.directory /opt/pdt/app || true",
-                ("sudo -u deploy -H /bin/bash -lc " + ( "\"set -e; cd /opt/pdt/app; "
-                  + "git fetch --unshallow 2>/dev/null || true; "
+                ("sudo -u deploy -H /bin/bash -lc " + ( "\"set +e; cd /opt/pdt/app; "
+                  + "git fetch --unshallow 2>/dev/null; "
                   + "git fetch origin; "
-                  + "git fetch origin refs/heads/main:refs/remotes/origin/main 2>/dev/null || true; "
+                  + "git fetch origin refs/heads/main:refs/remotes/origin/main 2>/dev/null; "
                   + "if ! git rev-parse -q --verify " + $g + "^{commit} >/dev/null 2>&1; then git fetch --depth=200 origin; fi; "
                   + "if ! git rev-parse -q --verify " + $g + "^{commit} >/dev/null 2>&1; then git fetch --depth=2000 origin; fi; "
                   + "if ! git rev-parse -q --verify " + $g + "^{commit} >/dev/null 2>&1; then git fetch --depth=20000 origin; fi; "
                   + "if ! git rev-parse -q --verify " + $g + "^{commit} >/dev/null 2>&1; then git fetch --depth=100000 origin; fi; "
-                  + "if ! git rev-parse -q --verify " + $g + "^{commit} >/dev/null 2>&1; then git fetch --unshallow 2>/dev/null || true; git fetch origin; fi; "
-                  + "git rev-parse -q --verify " + $g + "^{commit}; "
+                  + "if ! git rev-parse -q --verify " + $g + "^{commit} >/dev/null 2>&1; then git fetch --unshallow 2>/dev/null; git fetch origin; fi; "
+                  + "set -e; "
+                  + "git rev-parse -q --verify " + $g + "^{commit} || { echo ::error::commit_inacessivel_apos_fetch; exit 128; }; "
                   + "git reset --hard " + $g + "\"") ),
-                "test -f /opt/pdt/app/deploy/server/scripts/deploy-from-ecr.sh",
+                "test -f /opt/pdt/app/deploy/server/scripts/deploy-from-ecr.sh || { echo ::error::falta_deploy_from_ecr; ls -la /opt/pdt/app/deploy/server/scripts 2>&1 || true; exit 1; }",
                 "sudo /opt/pdt/app/deploy/server/scripts/deploy-from-ecr.sh " + $u + " " + $g + " " + $r
               ]
             }')
@@ -171,7 +172,12 @@ jobs:
               --command-id "$CMD_ID" \
               --instance-id "$INSTANCE_ID" \
               --query 'StandardErrorContent' --output text 2>/dev/null || true
-            echo "Status detalhado: $(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'Status' --output text 2>/dev/null || true)"
+            echo "--- StatusDetails (SSM) ---"
+            aws ssm get-command-invocation \
+              --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'StatusDetails' --output text 2>/dev/null || true
+            echo "Status: $(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'Status' --output text 2>/dev/null || true)"
             echo "ResponseCode: $(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'ResponseCode' --output text 2>/dev/null || true)"
           }
           for i in $(seq 1 80); do
