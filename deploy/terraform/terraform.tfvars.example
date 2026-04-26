@@ -10,8 +10,10 @@ domain_name       = "pdt.exemplo.com"
 letsencrypt_email = "ops@exemplo.com"
 
 # Repositório no formato owner/repo, usado pelo OIDC e clone no user_data.
-github_repo             = "Siluryan/Personal-DevOps-Trainer"
-github_default_branches = ["refs/heads/main"]
+github_repo = "Siluryan/Personal-DevOps-Trainer"
+# Sem `environment:` no job → `sub` usa ref. Com `environment: prod` → `sub` usa environment: (ver default em variables.tf).
+github_default_branches          = ["refs/heads/main"]
+github_deployment_environments = ["prod"]
 
 # IPs autorizados a abrir SSH (em produção, deixe vazio e use SSM Session Manager).
 operator_cidrs = []

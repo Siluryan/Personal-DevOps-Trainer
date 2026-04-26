@@ -74,9 +74,19 @@ variable "github_repo" {
 }
 
 variable "github_default_branches" {
-  description = "Branches/refs autorizadas a usar a role de CI via OIDC."
+  description = "Branches/refs cujo `sub` OIDC é `repo:...:ref:...` (workflows sem GitHub Environment)."
   type        = list(string)
   default     = ["refs/heads/main"]
+}
+
+variable "github_deployment_environments" {
+  description = <<-EOT
+    Nomes de GitHub Environments (bloco `environment: X` no workflow). O claim
+    `sub` nesses casos é `repo:owner/repo:environment:nome` — não o mesmo que
+    `ref:refs/heads/...`, por isso a role deve listar estes nomes.
+  EOT
+  type        = list(string)
+  default     = ["prod"]
 }
 
 variable "patch_window_cron" {

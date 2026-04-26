@@ -7,6 +7,18 @@ data "aws_iam_openid_connect_provider" "github" {
   arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
 }
 
+# O `sub` do GitHub OIDC varia consoante o job use ou não `environment:`
+#   - com environment:  repo:org/repo:environment:prod
+#   - sem environment:  repo:org/repo:ref:refs/heads/main
+# Os dois têm de estar na trust policy se usares os dois padrões.
+# Ver: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services#configuring-the-role-and-trust-policy
+locals {
+  github_actions_oidc_subjects = concat(
+    [for ref in var.github_default_branches : "repo:${var.github_repo}:ref:${ref}"],
+    [for env in var.github_deployment_environments : "repo:${var.github_repo}:environment:${env}"],
+  )
+}
+
 data "aws_iam_policy_document" "gha_assume" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
@@ -22,7 +34,7 @@ data "aws_iam_policy_document" "gha_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [for ref in var.github_default_branches : "repo:${var.github_repo}:ref:${ref}"]
+      values   = local.github_actions_oidc_subjects
     }
   }
 }
