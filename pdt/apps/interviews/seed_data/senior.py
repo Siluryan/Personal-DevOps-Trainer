@@ -761,13 +761,13 @@ SENIOR_QUESTIONS: list[dict] = [
         "category": "Migração",
         "statement": "O que cobrem os '6 Rs' de migração para cloud?",
         "choices": [
-            "Na visão reducionista só `Replatform` importaria na prática moderna e os demais Rs seriam degraus burocráticos rumo a um único destino — ignora que cada R cobre trade-offs diferentes.",
-            "Os 6 Rs da AWS catalogam estratégias: `Rehost` (lift-and-shift) — `Replatform` (lift-tweak-and-shift) — `Repurchase` (SaaS) — `Refactor`/`Re-architect` — `Retain` (permanecer on-prem) — `Retire` (descontinuar); materiais e fornecedores às vezes acrescentam `Relocate` como sétimo eixo.",
-            "Defende que só `Rebuild` faria sentido para legado e que manter qualquer traço on-prem seria anti cloud-native — caro, lento e fora da realidade de programas de migração.",
-            "Nega categorias formais e trata taxonomia como exercício acadêmico sem uso em transformação; na prática o framework ajuda a escolher estratégia por workload, não substitui decisão de arquitetura.",
+            "Na taxonomia dos 6 Rs costuma-se listar `Rehost` (lift-and-shift) — `Replatform` (lift-tweak-and-shift) — `Repurchase` (SaaS) — `Refactor`/`Re-architect` — `Retain` (permanecer on-prem) — `Rebuild` (reescrever o sistema de ponta a ponta).",
+            "Na taxonomia dos 6 Rs costuma-se listar `Rehost` (lift-and-shift) — `Replatform` (lift-tweak-and-shift) — `Repurchase` (SaaS) — `Refactor`/`Re-architect` — `Retain` (permanecer on-prem) — `Retire` (descontinuar); materiais de mercado acrescentam `Relocate` como sétimo eixo em vários programas.",
+            "Na taxonomia dos 6 Rs costuma-se listar `Rehost` (lift-and-shift) — `Replatform` (lift-tweak-and-shift) — `Replace` (trocar por produto equivalente) — `Refactor`/`Re-architect` — `Retain` (permanecer on-prem) — `Retire` (descontinuar).",
+            "Na taxonomia dos 6 Rs costuma-se listar `Rehost` (lift-and-shift) — `Replatform` (lift-tweak-and-shift) — `Repurchase` (SaaS) — `Rewrite` (reescrever do zero sem reuso) — `Retain` (permanecer on-prem) — `Retire` (descontinuar).",
         ],
         "correct_index": 1,
-        "explanation": "Os 6 Rs (AWS) categorizam estratégias por trade-off custo/risco/benefício. A primeira reduz o framework a um único R. A terceira é cargo-cult (Rebuild para tudo é caro/lento). A quarta nega o framework, categorização ajuda a decidir por workload, não substituir o pensamento.",
+        "explanation": "O núcleo AWS é `Rehost`, `Replatform`, `Repurchase`, `Refactor`/`Re-architect`, `Retain` e `Retire`. A primeira troca `Retire` por `Rebuild` (não é um dos 6 Rs desse framework). A terceira troca `Repurchase` por `Replace` (termo inexistente na lista). A quarta troca o eixo de modernização por `Rewrite`, que não substitui `Refactor`/`Re-architect`. `Relocate` aparece como extensão em vários materiais, mas não ocupa a vaga de `Retire` nos 6 clássicos.",
     },
     {
         "category": "Migração",

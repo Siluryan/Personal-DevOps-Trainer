@@ -213,6 +213,22 @@ class TestSeedInterviewsCommand:
                 f"choices={len(q.choices)}"
             )
 
+    def test_seed_embaralha_sem_vies_de_posicao_da_alternativa_correta(self):
+        """O fonte tem viés de correct_index; o seed deve espalhar A/B/C/D."""
+        from collections import Counter
+
+        from django.core.management import call_command
+
+        call_command("seed_interviews", verbosity=0)
+        for level in (LEVEL_JUNIOR, LEVEL_PLENO, LEVEL_SENIOR):
+            ctr = Counter(
+                q.correct_index
+                for q in InterviewQuestion.objects.filter(level=level)
+            )
+            assert len(ctr) == 4, f"{level}: falta posição em {dict(ctr)}"
+            assert max(ctr.values()) <= 35, f"{level}: viés alto {dict(ctr)}"
+            assert min(ctr.values()) >= 15, f"{level}: posição rara demais {dict(ctr)}"
+
 
 # ─── Fluxo HTTP ──────────────────────────────────────────────────────────────
 
