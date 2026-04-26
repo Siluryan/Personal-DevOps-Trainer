@@ -9,8 +9,8 @@ aws_region        = "us-east-1"
 domain_name       = "pdt.exemplo.com"
 letsencrypt_email = "ops@exemplo.com"
 
-# Repositório no formato owner/repo, usado pelo OIDC.
-github_repo             = "exemplo/personal-devops-trainer"
+# Repositório no formato owner/repo, usado pelo OIDC e clone no user_data.
+github_repo             = "Siluryan/Personal-DevOps-Trainer"
 github_default_branches = ["refs/heads/main"]
 
 # IPs autorizados a abrir SSH (em produção, deixe vazio e use SSM Session Manager).

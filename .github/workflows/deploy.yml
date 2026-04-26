@@ -146,20 +146,42 @@ jobs:
 
       - name: Aguardar SSM
         if: success()
+        env:
+          CMD_ID: ${{ steps.send.outputs.command_id }}
+          INSTANCE_ID: ${{ steps.target.outputs.instance_id }}
         run: |
           set -euo pipefail
+          dump_ssm_log() {
+            echo "--- stdout (SSM) ---"
+            aws ssm get-command-invocation \
+              --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'StandardOutputContent' --output text 2>/dev/null || true
+            echo "--- stderr (SSM) ---"
+            aws ssm get-command-invocation \
+              --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'StandardErrorContent' --output text 2>/dev/null || true
+            echo "Status detalhado: $(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'Status' --output text 2>/dev/null || true)"
+            echo "ResponseCode: $(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'ResponseCode' --output text 2>/dev/null || true)"
+          }
           for i in $(seq 1 80); do
             STATUS=$(aws ssm list-command-invocations \
-              --command-id "${{ steps.send.outputs.command_id }}" \
+              --command-id "$CMD_ID" \
               --details --query 'CommandInvocations[0].Status' --output text 2>/dev/null || echo Pending)
             echo "tentativa $i: $STATUS"
             case "$STATUS" in
               Success) exit 0;;
-              Failed|Cancelled|TimedOut) exit 1;;
+              Failed|Cancelled|TimedOut)
+                echo "::error::O comando SSM na EC2 terminou com $STATUS. Causa comum: /opt/pdt/app inexistente, git sem o commit, Docker ausente, ou deploy-from-ecr (ECR) com erro. Saída abaixo."
+                dump_ssm_log
+                exit 1
+                ;;
             esac
             sleep 15
           done
           echo "::error::Timeout aguardando SSM."
+          dump_ssm_log
           exit 1
 
       - name: Smoke test público
