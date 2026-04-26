@@ -52,6 +52,7 @@ data "aws_iam_policy_document" "ssm_params_read" {
       aws_ssm_parameter.django_secret.arn,
       aws_ssm_parameter.postgres_password.arn,
       aws_ssm_parameter.domain_name.arn,
+      aws_ssm_parameter.backup_bucket.arn,
     ]
   }
 }

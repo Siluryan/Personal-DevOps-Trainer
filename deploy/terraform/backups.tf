@@ -63,3 +63,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
     }
   }
 }
+
+# Nome do bucket lido no runtime (p.ex. `deploy-from-ecr.sh` reconstrui /opt/pdt/pdt.env).
+resource "aws_ssm_parameter" "backup_bucket" {
+  name  = "/${var.project_name}/${var.environment}/backup_bucket"
+  type  = "String"
+  value = aws_s3_bucket.backups.bucket
+}
