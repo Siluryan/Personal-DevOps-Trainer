@@ -45,6 +45,29 @@
       );
     } catch (e) {}
   };
+
+  (function () {
+    var pingUrl = "{% url 'presence:api_presence_ping' %}";
+    function pdtPresencePing() {
+      try {
+        var m = document.cookie.match(/csrftoken=([^;]+)/);
+        var csrf = m ? decodeURIComponent(m[1]) : "";
+        fetch(pingUrl, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-CSRFToken": csrf,
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        }).catch(function () {});
+      } catch (e) {}
+    }
+    setInterval(pdtPresencePing, 90000);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") pdtPresencePing();
+    });
+    setTimeout(pdtPresencePing, 8000);
+  })();
 })();
 </script>
 {% endif %}

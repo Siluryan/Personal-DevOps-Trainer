@@ -19,22 +19,14 @@ from django.views.generic import TemplateView
 from apps.courses.models import Topic
 from apps.gamification.models import TopicScore
 
-from .consumers import PRESENCE_GROUP
 from .help_consumer import help_group_name
 from .models import HelpChatMessage, HelpRequest, PresenceState
 from .online_payload import build_online_users_payload
-
-
-def _broadcast_refresh():
-    layer = get_channel_layer()
-    if not layer:
-        return
-    async_to_sync(layer.group_send)(PRESENCE_GROUP, {"type": "presence.refresh"})
-
-
-def _broadcast_refresh_after_commit() -> None:
-    """Agenda broadcast para depois do commit (evita WS com payload stale em outros workers)."""
-    transaction.on_commit(_broadcast_refresh)
+from .services import (
+    broadcast_presence_refresh,
+    broadcast_presence_refresh_after_commit,
+    user_presence_mark_offline,
+)
 
 
 def _schedule_resolve_notifications_after_commit(
@@ -59,7 +51,7 @@ def _schedule_resolve_notifications_after_commit(
                     "ts": ts_iso,
                 },
             )
-        _broadcast_refresh()
+        broadcast_presence_refresh()
 
     transaction.on_commit(_run)
 
@@ -120,13 +112,18 @@ def active_help_room(request):
 @login_required
 @require_POST
 def presence_offline(request):
-    """Marca presença como offline (ex.: logout). Não chamar ao só trocar de página."""
-    with transaction.atomic():
-        state, _ = PresenceState.objects.get_or_create(user=request.user)
-        if state.status != PresenceState.OFFLINE:
-            state.status = PresenceState.OFFLINE
-            state.save(update_fields=["status", "last_seen"])
-            _broadcast_refresh_after_commit()
+    """Marca presença como offline (ex.: beacon ao fechar aba). Logout também aciona signal."""
+    user_presence_mark_offline(request.user)
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_POST
+def presence_ping(request):
+    """Mantém last_seen enquanto a aba/navegador segue aberto (evita pin fantasma)."""
+    PresenceState.objects.filter(user=request.user).exclude(
+        status=PresenceState.OFFLINE
+    ).update(last_seen=timezone.now())
     return JsonResponse({"ok": True})
 
 
@@ -152,7 +149,7 @@ def checkin(request):
         elif state.status == PresenceState.OFFLINE:
             state.status = PresenceState.AVAILABLE
         state.save()
-        _broadcast_refresh_after_commit()
+        broadcast_presence_refresh_after_commit()
     return JsonResponse({"ok": True, "status": state.status})
 
 
@@ -189,7 +186,7 @@ def create_help_request(request):
         state, _ = PresenceState.objects.get_or_create(user=request.user)
         state.status = PresenceState.HELP
         state.save(update_fields=["status", "last_seen"])
-        _broadcast_refresh_after_commit()
+        broadcast_presence_refresh_after_commit()
     return JsonResponse(
         {
             "ok": True,
@@ -214,7 +211,7 @@ def join_help_request(request, pk):
         help_request.helper = request.user
         help_request.status = HelpRequest.JOINED
         help_request.save(update_fields=["helper", "status"])
-        _broadcast_refresh_after_commit()
+        broadcast_presence_refresh_after_commit()
     return JsonResponse({"ok": True, "redirect": f"/mapa/ajuda/{help_request.id}/"})
 
 
@@ -270,7 +267,7 @@ def cancel_help_request(request, pk):
         state, _ = PresenceState.objects.get_or_create(user=request.user)
         state.status = PresenceState.AVAILABLE
         state.save(update_fields=["status", "last_seen"])
-        _broadcast_refresh_after_commit()
+        broadcast_presence_refresh_after_commit()
     return JsonResponse({"ok": True})
 
 

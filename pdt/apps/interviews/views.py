@@ -157,7 +157,16 @@ class StartView(LoginRequiredMixin, View):
             .first()
         )
         if in_progress:
-            return redirect("interviews:take", pk=in_progress.pk)
+            in_progress.refresh_from_db()
+            n = len(in_progress.question_ids)
+            if n == 0:
+                return redirect("interviews:take", pk=in_progress.pk)
+            ri = in_progress.resume_index()
+            if ri >= n:
+                return redirect("interviews:finish", pk=in_progress.pk)
+            return redirect(
+                reverse("interviews:take", args=[in_progress.pk]) + f"?i={ri}"
+            )
 
         ids = list(
             InterviewQuestion.objects.filter(level=level, is_active=True).values_list(
@@ -178,7 +187,9 @@ class StartView(LoginRequiredMixin, View):
         attempt = InterviewAttempt.objects.create(
             user=user, level=level, question_ids=ids
         )
-        return redirect("interviews:take", pk=attempt.pk)
+        return redirect(
+            reverse("interviews:take", args=[attempt.pk]) + "?i=0"
+        )
 
 
 class TakeView(LoginRequiredMixin, View):
@@ -200,13 +211,16 @@ class TakeView(LoginRequiredMixin, View):
             question = InterviewQuestion.objects.get(pk=qid)
         except InterviewQuestion.DoesNotExist:
             return None
+        total = len(attempt.question_ids)
         return {
             "attempt": attempt,
             "question": question,
             "index": idx,
             "human_index": idx + 1,
-            "total": len(attempt.question_ids),
-            "progress_percent": int(round(100 * (idx) / max(len(attempt.question_ids), 1))),
+            "total": total,
+            "progress_percent": int(
+                round(100 * attempt.answered_count / max(total, 1))
+            ),
             "answered_count": attempt.answered_count,
             "previous_choice": (attempt.answers or {}).get(str(qid)),
             "level_label": attempt.get_level_display(),
@@ -223,12 +237,15 @@ class TakeView(LoginRequiredMixin, View):
             except ValueError:
                 return HttpResponseBadRequest("índice inválido")
         else:
-            idx = attempt.next_unanswered_index()
+            idx = attempt.resume_index()
             if idx >= len(attempt.question_ids):
                 return redirect("interviews:finish", pk=attempt.pk)
         ctx = self._build_context(attempt, idx)
         if not ctx:
             return redirect("interviews:finish", pk=attempt.pk)
+        if attempt.last_question_index != idx:
+            attempt.last_question_index = idx
+            attempt.save(update_fields=["last_question_index"])
         from django.shortcuts import render
 
         return render(request, self.template_name, ctx)
@@ -246,15 +263,19 @@ class TakeView(LoginRequiredMixin, View):
         choice_raw = request.POST.get("choice", "").strip()
 
         qid = attempt.question_ids[idx]
+        update_fields: list[str] = ["last_question_index"]
+        attempt.last_question_index = idx
         if choice_raw != "":
             try:
                 choice_idx = int(choice_raw)
             except ValueError:
                 return HttpResponseBadRequest("choice inválida")
-            answers = dict(attempt.answers or {})
+            answers = {str(k): v for k, v in (attempt.answers or {}).items()}
             answers[str(qid)] = choice_idx
             attempt.answers = answers
-            attempt.save(update_fields=["answers"])
+            update_fields.insert(0, "answers")
+
+        attempt.save(update_fields=update_fields)
 
         if action == "save_exit":
             messages.info(
@@ -288,11 +309,11 @@ class FinishView(LoginRequiredMixin, View):
         from django.shortcuts import render
 
         attempt = self._get_attempt(request, pk)
-        answers = attempt.answers or {}
+        answered_keys = {str(k) for k in (attempt.answers or {}).keys()}
         unanswered_items = [
             {"index": i, "human_index": i + 1}
             for i, qid in enumerate(attempt.question_ids)
-            if str(qid) not in answers
+            if str(qid) not in answered_keys
         ]
         return render(
             request,

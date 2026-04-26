@@ -141,6 +141,19 @@ class TestInterviewModels:
         attempt.save()
         assert attempt.next_unanswered_index() == 2
 
+    def test_answered_count_ignora_chaves_fora_da_prova(
+        self, make_user, seed_interview_bank
+    ):
+        u = make_user()
+        ids = [q.id for q in seed_interview_bank[LEVEL_JUNIOR][:3]]
+        attempt = InterviewAttempt.objects.create(
+            user=u, level=LEVEL_JUNIOR, question_ids=ids
+        )
+        attempt.answers = {str(ids[0]): 0, "999999999": 1, "lixo": 2}
+        attempt.save()
+        assert attempt.answered_count == 1
+        assert attempt.progress_percent == 33
+
     def test_next_unanswered_index_quando_tudo_respondido(
         self, make_user, seed_interview_bank
     ):
@@ -152,6 +165,21 @@ class TestInterviewModels:
         a.answers = {str(qid): 0 for qid in ids}
         a.save()
         assert a.next_unanswered_index() == 3  # == len(ids), sinaliza fim
+
+    def test_resume_index_prefere_ultima_tela_pendente(
+        self, make_user, seed_interview_bank
+    ):
+        u = make_user()
+        ids = [q.id for q in seed_interview_bank[LEVEL_JUNIOR][:10]]
+        attempt = InterviewAttempt.objects.create(
+            user=u, level=LEVEL_JUNIOR, question_ids=ids
+        )
+        # Só responde 1..9; índice 0 em aberto. Cursor parou na última questão.
+        attempt.answers = {str(ids[i]): 0 for i in range(1, 10)}
+        attempt.last_question_index = 9
+        attempt.save()
+        assert attempt.next_unanswered_index() == 0
+        assert attempt.resume_index() == 9
 
 
 # ─── Seed command ────────────────────────────────────────────────────────────
@@ -215,7 +243,9 @@ class TestStartView:
         assert resp.status_code == 302
         attempt = InterviewAttempt.objects.get(user=admitted_user, level=LEVEL_JUNIOR)
         assert len(attempt.question_ids) == QUESTIONS_PER_TEST
-        assert resp.url == reverse("interviews:take", args=[attempt.pk])
+        assert resp.url == (
+            f"{reverse('interviews:take', args=[attempt.pk])}?i=0"
+        )
 
     def test_estagiario_nao_inicia_pleno(
         self, client, admitted_user, seed_interview_bank
@@ -251,10 +281,14 @@ class TestStartView:
         client.post(reverse("interviews:start", args=[LEVEL_JUNIOR]))
         primeira = InterviewAttempt.objects.get(user=admitted_user)
 
-        client.post(reverse("interviews:start", args=[LEVEL_JUNIOR]))
+        resp2 = client.post(reverse("interviews:start", args=[LEVEL_JUNIOR]))
         # ainda só uma tentativa
         assert InterviewAttempt.objects.filter(user=admitted_user).count() == 1
         assert InterviewAttempt.objects.first().pk == primeira.pk
+        assert resp2.status_code == 302
+        assert resp2.url == (
+            f"{reverse('interviews:take', args=[primeira.pk])}?i=0"
+        )
 
     def test_nivel_invalido_404(self, client, admitted_user, seed_interview_bank):
         client.force_login(admitted_user)
@@ -425,7 +459,9 @@ class TestFinishAndPromotion:
         pleno_attempt = InterviewAttempt.objects.get(
             user=admitted_user, level=LEVEL_PLENO
         )
-        assert resp.url == reverse("interviews:take", args=[pleno_attempt.pk])
+        assert resp.url == (
+            f"{reverse('interviews:take', args=[pleno_attempt.pk])}?i=0"
+        )
 
     def test_promocao_completa_ate_senior(
         self, client, admitted_user, seed_interview_bank
@@ -565,6 +601,13 @@ class TestInterviewChoiceLeadFilter:
     def test_sujeito_com_argumentos(self):
         s = "`telnet host porta` apenas testa se uma porta TCP aceita conexão."
         assert interview_choice_lead(s) == "`telnet host porta`"
+
+    def test_sujeito_seguido_de_dois_pontos_nao_trunca(self):
+        s = (
+            "`try`: bloco a tentar; `except`: trata exceções levantadas no `try`; "
+            "`finally`: bloco que sempre executa."
+        )
+        assert interview_choice_lead(s) == s
 
     def test_sujeito_seguido_de_aposto_com_virgula(self):
         # "`systemctl`, frontend do systemd que controla units…" → só o comando.

@@ -92,7 +92,7 @@
         </button>
       </div>
 
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap gap-2 items-center">
         {% if human_index < total %}
           <button type="submit" name="action" value="next"
                   style="background:#0891b2;color:#f0f9ff;font-weight:600;
@@ -108,6 +108,12 @@
             Finalizar entrevista
           </button>
         {% endif %}
+        <a href="{% url 'interviews:finish' attempt.pk %}"
+           style="background:transparent;border:1px solid #1a2f50;color:#94a3b8;
+                  padding:8px 14px;border-radius:8px;font-size:.875rem;text-decoration:none"
+           class="hover:text-emerald-300 hover:border-emerald-400/40 transition-colors">
+          Revisar e finalizar
+        </a>
       </div>
     </div>
   </form>

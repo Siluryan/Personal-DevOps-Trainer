@@ -1,8 +1,11 @@
 """Testes do app presence: HTTP API de mapa/ajuda e ciclo de vida do HelpRequest."""
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.courses.models import Phase, Topic
 from apps.gamification.models import TopicScore
@@ -57,6 +60,61 @@ class TestPresenceAPIs:
         assert resp.json()["ok"] is True
         state = PresenceState.objects.get(user=admitted_user)
         assert state.status == PresenceState.OFFLINE
+
+    def test_presence_ping_atualiza_last_seen(self, client, admitted_user):
+        PresenceState.objects.create(
+            user=admitted_user,
+            latitude=-23.0,
+            longitude=-46.0,
+            status=PresenceState.AVAILABLE,
+        )
+        PresenceState.objects.filter(user=admitted_user).update(
+            last_seen=timezone.now() - timedelta(minutes=30)
+        )
+        client.force_login(admitted_user)
+        resp = client.post(reverse("presence:api_presence_ping"))
+        assert resp.status_code == 200
+        state = PresenceState.objects.get(user=admitted_user)
+        assert (timezone.now() - state.last_seen).total_seconds() < 10
+
+    def test_online_users_respeita_ttl_last_seen(self, client, admitted_user, make_user):
+        stale = make_user(email="stale-map@example.com", show_on_map=True)
+        fresh = make_user(email="fresh-map@example.com", show_on_map=True)
+        PresenceState.objects.create(
+            user=stale,
+            latitude=1.0,
+            longitude=1.0,
+            status=PresenceState.AVAILABLE,
+        )
+        PresenceState.objects.filter(user=stale).update(
+            last_seen=timezone.now() - timedelta(minutes=30)
+        )
+        PresenceState.objects.create(
+            user=fresh,
+            latitude=2.0,
+            longitude=2.0,
+            status=PresenceState.AVAILABLE,
+        )
+        client.force_login(admitted_user)
+        resp = client.get(reverse("presence:api_online"))
+        ids = {u["user_id"] for u in resp.json()["users"]}
+        assert fresh.id in ids
+        assert stale.id not in ids
+
+    def test_logout_marca_presenca_offline(self, client, admitted_user):
+        PresenceState.objects.create(
+            user=admitted_user,
+            latitude=-23.0,
+            longitude=-46.0,
+            status=PresenceState.AVAILABLE,
+        )
+        client.force_login(admitted_user)
+        resp = client.post(reverse("account_logout"))
+        assert resp.status_code in (200, 302)
+        assert (
+            PresenceState.objects.get(user=admitted_user).status
+            == PresenceState.OFFLINE
+        )
 
     def test_online_users_retorna_apenas_disponiveis_no_mapa(
         self, client, admitted_user, make_user

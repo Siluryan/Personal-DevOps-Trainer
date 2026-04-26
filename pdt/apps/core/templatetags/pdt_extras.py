@@ -37,6 +37,9 @@ def interview_choice_lead(text) -> str:
         subject = m.group("subject").strip().rstrip(",")
         rest = text[m.end():].lstrip()
         if rest:
+            # «`try`: bloco…» não deve virar só «`try`» na prova (parece opção quebrada).
+            if rest.lstrip().startswith(":"):
+                return text
             return subject
         # Sem cauda → a opção já é só o sujeito; devolve original.
         return text

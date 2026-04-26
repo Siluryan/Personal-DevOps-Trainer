@@ -1,14 +1,27 @@
 """Payload JSON único para o mapa: HTTP `/api/online/` e WebSocket `presence`."""
 from __future__ import annotations
 
+from datetime import timedelta
+
+from django.utils import timezone
+
 from .models import HelpRequest, PresenceState
+
+# Só mostra pin se o cliente manteve sessão ativa (ping HTTP ou ações no mapa) neste intervalo.
+PRESENCE_LAST_SEEN_TTL = timedelta(seconds=180)
 
 
 def build_online_users_payload() -> list[dict]:
+    cutoff = timezone.now() - PRESENCE_LAST_SEEN_TTL
     rows = (
         PresenceState.objects.select_related("user")
         .exclude(status=PresenceState.OFFLINE)
-        .filter(user__show_on_map=True, latitude__isnull=False, longitude__isnull=False)
+        .filter(
+            user__show_on_map=True,
+            latitude__isnull=False,
+            longitude__isnull=False,
+            last_seen__gte=cutoff,
+        )
     )
     active_help: dict[int, HelpRequest] = {}
     for h in (
