@@ -14,6 +14,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
+from apps.core.templatetags.pdt_extras import interview_choice_lead
 from apps.interviews.models import (
     LEVEL_JUNIOR,
     LEVEL_PLENO,
@@ -23,6 +24,7 @@ from apps.interviews.models import (
     InterviewAttempt,
     InterviewQuestion,
 )
+from apps.interviews.views import _failure_message
 
 User = get_user_model()
 
@@ -139,6 +141,19 @@ class TestInterviewModels:
         attempt.save()
         assert attempt.next_unanswered_index() == 2
 
+    def test_answered_count_ignora_chaves_fora_da_prova(
+        self, make_user, seed_interview_bank
+    ):
+        u = make_user()
+        ids = [q.id for q in seed_interview_bank[LEVEL_JUNIOR][:3]]
+        attempt = InterviewAttempt.objects.create(
+            user=u, level=LEVEL_JUNIOR, question_ids=ids
+        )
+        attempt.answers = {str(ids[0]): 0, "999999999": 1, "lixo": 2}
+        attempt.save()
+        assert attempt.answered_count == 1
+        assert attempt.progress_percent == 33
+
     def test_next_unanswered_index_quando_tudo_respondido(
         self, make_user, seed_interview_bank
     ):
@@ -150,6 +165,22 @@ class TestInterviewModels:
         a.answers = {str(qid): 0 for qid in ids}
         a.save()
         assert a.next_unanswered_index() == 3  # == len(ids), sinaliza fim
+
+    def test_resume_index_prefere_ultima_tela_pendente(
+        self, make_user, seed_interview_bank
+    ):
+        u = make_user()
+        ids = [q.id for q in seed_interview_bank[LEVEL_JUNIOR][:10]]
+        attempt = InterviewAttempt.objects.create(
+            user=u, level=LEVEL_JUNIOR, question_ids=ids
+        )
+        # Responde 1..8; índices 0 e 9 em aberto. Primeira lacuna é 0, mas o
+        # cursor ficou na tela 9 (ainda sem resposta) — retomar deve voltar na 9.
+        attempt.answers = {str(ids[i]): 0 for i in range(1, 9)}
+        attempt.last_question_index = 9
+        attempt.save()
+        assert attempt.next_unanswered_index() == 0
+        assert attempt.resume_index() == 9
 
 
 # ─── Seed command ────────────────────────────────────────────────────────────
@@ -183,6 +214,22 @@ class TestSeedInterviewsCommand:
                 f"choices={len(q.choices)}"
             )
 
+    def test_seed_embaralha_sem_vies_de_posicao_da_alternativa_correta(self):
+        """O fonte tem viés de correct_index; o seed deve espalhar A/B/C/D."""
+        from collections import Counter
+
+        from django.core.management import call_command
+
+        call_command("seed_interviews", verbosity=0)
+        for level in (LEVEL_JUNIOR, LEVEL_PLENO, LEVEL_SENIOR):
+            ctr = Counter(
+                q.correct_index
+                for q in InterviewQuestion.objects.filter(level=level)
+            )
+            assert len(ctr) == 4, f"{level}: falta posição em {dict(ctr)}"
+            assert max(ctr.values()) <= 35, f"{level}: viés alto {dict(ctr)}"
+            assert min(ctr.values()) >= 15, f"{level}: posição rara demais {dict(ctr)}"
+
 
 # ─── Fluxo HTTP ──────────────────────────────────────────────────────────────
 
@@ -213,7 +260,9 @@ class TestStartView:
         assert resp.status_code == 302
         attempt = InterviewAttempt.objects.get(user=admitted_user, level=LEVEL_JUNIOR)
         assert len(attempt.question_ids) == QUESTIONS_PER_TEST
-        assert resp.url == reverse("interviews:take", args=[attempt.pk])
+        assert resp.url == (
+            f"{reverse('interviews:take', args=[attempt.pk])}?i=0"
+        )
 
     def test_estagiario_nao_inicia_pleno(
         self, client, admitted_user, seed_interview_bank
@@ -249,10 +298,14 @@ class TestStartView:
         client.post(reverse("interviews:start", args=[LEVEL_JUNIOR]))
         primeira = InterviewAttempt.objects.get(user=admitted_user)
 
-        client.post(reverse("interviews:start", args=[LEVEL_JUNIOR]))
+        resp2 = client.post(reverse("interviews:start", args=[LEVEL_JUNIOR]))
         # ainda só uma tentativa
         assert InterviewAttempt.objects.filter(user=admitted_user).count() == 1
         assert InterviewAttempt.objects.first().pk == primeira.pk
+        assert resp2.status_code == 302
+        assert resp2.url == (
+            f"{reverse('interviews:take', args=[primeira.pk])}?i=0"
+        )
 
     def test_nivel_invalido_404(self, client, admitted_user, seed_interview_bank):
         client.force_login(admitted_user)
@@ -423,7 +476,9 @@ class TestFinishAndPromotion:
         pleno_attempt = InterviewAttempt.objects.get(
             user=admitted_user, level=LEVEL_PLENO
         )
-        assert resp.url == reverse("interviews:take", args=[pleno_attempt.pk])
+        assert resp.url == (
+            f"{reverse('interviews:take', args=[pleno_attempt.pk])}?i=0"
+        )
 
     def test_promocao_completa_ate_senior(
         self, client, admitted_user, seed_interview_bank
@@ -438,6 +493,55 @@ class TestFinishAndPromotion:
             client.post(reverse("interviews:finish", args=[attempt.pk]))
             admitted_user.refresh_from_db()
             assert admitted_user.career_level == target
+
+    def test_finalizar_lista_questoes_pendentes(
+        self, client, admitted_user, seed_interview_bank
+    ):
+        """A tela de finalizar deve apontar exatamente quais questões faltam,
+        para o usuário voltar e responder antes de submeter."""
+        attempt = self._start(client, admitted_user, LEVEL_JUNIOR)
+        # Responde só duas questões: a primeira e a quinta.
+        answers = {
+            str(attempt.question_ids[0]): 0,
+            str(attempt.question_ids[4]): 0,
+        }
+        attempt.answers = answers
+        attempt.save(update_fields=["answers"])
+
+        resp = client.get(reverse("interviews:finish", args=[attempt.pk]))
+        assert resp.status_code == 200
+
+        ctx = resp.context
+        assert ctx["unanswered"] == QUESTIONS_PER_TEST - 2
+        assert len(ctx["unanswered_items"]) == QUESTIONS_PER_TEST - 2
+
+        items = ctx["unanswered_items"]
+        # As respondidas (índices 0 e 4) NÃO devem aparecer.
+        indexes = {it["index"] for it in items}
+        assert 0 not in indexes
+        assert 4 not in indexes
+        # A 2ª (idx 1) deve aparecer e o `human_index` é 1-based.
+        first_pending = items[0]
+        assert first_pending["index"] == 1
+        assert first_pending["human_index"] == 2
+
+        # O HTML traz link para retomar a primeira pendente.
+        body = resp.content.decode()
+        retake_url = reverse("interviews:take", args=[attempt.pk]) + "?i=1"
+        assert retake_url in body
+
+    def test_finalizar_sem_pendentes_nao_lista(
+        self, client, admitted_user, seed_interview_bank
+    ):
+        attempt = self._start(client, admitted_user, LEVEL_JUNIOR)
+        attempt.answers = {str(qid): 0 for qid in attempt.question_ids}
+        attempt.save(update_fields=["answers"])
+
+        resp = client.get(reverse("interviews:finish", args=[attempt.pk]))
+        assert resp.status_code == 200
+        ctx = resp.context
+        assert ctx["unanswered"] == 0
+        assert ctx["unanswered_items"] == []
 
 
 @pytest.mark.django_db
@@ -500,3 +604,100 @@ class TestCancelView:
         resp = client.post(reverse("interviews:cancel", args=[attempt.pk]))
         assert resp.status_code == 404
         assert InterviewAttempt.objects.filter(pk=attempt.pk).exists()
+
+
+class TestInterviewChoiceLeadFilter:
+    def test_sujeito_simples_em_crase_some_a_descricao(self):
+        s = "`nslookup` consulta servidores DNS e retorna registros como A/AAAA/MX, mas não testa latência."
+        assert interview_choice_lead(s) == "`nslookup`"
+
+    def test_sujeito_com_sigla_em_parenteses(self):
+        s = "`mtr` (My TraceRoute) e `traceroute` exibem cada hop entre origem e destino."
+        assert interview_choice_lead(s) == "`mtr` (My TraceRoute) e `traceroute`"
+
+    def test_sujeito_com_argumentos(self):
+        s = "`telnet host porta` apenas testa se uma porta TCP aceita conexão."
+        assert interview_choice_lead(s) == "`telnet host porta`"
+
+    def test_sujeito_seguido_de_dois_pontos_nao_trunca(self):
+        s = (
+            "`try`: bloco a tentar; `except`: trata exceções levantadas no `try`; "
+            "`finally`: bloco que sempre executa."
+        )
+        assert interview_choice_lead(s) == s
+
+    def test_sujeito_seguido_de_aposto_com_virgula(self):
+        # "`systemctl`, frontend do systemd que controla units…" → só o comando.
+        s = "`systemctl`, frontend do systemd que controla units (`.service`, `.timer`)."
+        assert interview_choice_lead(s) == "`systemctl`"
+
+    def test_opcao_sem_crase_corta_em_ponto_e_virgula(self):
+        s = "Ambos exigem `sudo`; sem isso falham com `Permission denied`."
+        assert interview_choice_lead(s) == "Ambos exigem `sudo`"
+
+    def test_opcao_sem_crase_corta_em_mas(self):
+        s = "Procurar padrões em arquivos, mas sem suporte a regex."
+        assert interview_choice_lead(s) == "Procurar padrões em arquivos"
+
+    def test_frase_longa_sem_crase_corta_na_primeira_virgula(self):
+        s = (
+            "Quando o domínio ainda é pequeno, a equipe é enxuta e "
+            "os bounded contexts não estão claros, um monólito modular reduz custo."
+        )
+        assert interview_choice_lead(s) == "Quando o domínio ainda é pequeno"
+
+    def test_alternativa_que_eh_so_o_sujeito_fica_intacta(self):
+        s = "`/var`"
+        assert interview_choice_lead(s) == "`/var`"
+
+    def test_alternativa_vazia(self):
+        assert interview_choice_lead("") == ""
+        assert interview_choice_lead(None) == ""
+
+    def test_nao_corta_dentro_de_parenteses(self):
+        # A vírgula entre «Okta, Auth0» está dentro de parênteses; o filtro
+        # tem que ignorá-la para não deixar «(Okta» sem fechar.
+        s = (
+            "Federação SSO/IDP central (Okta, Auth0) decide quem entra e "
+            "centraliza o ciclo de vida de identidade dos colaboradores."
+        )
+        out = interview_choice_lead(s)
+        assert out.count("(") == out.count(")"), (
+            f"parênteses desbalanceados: {out!r}"
+        )
+
+    def test_corta_fora_de_parenteses_quando_existe(self):
+        # Mesmo texto longo, agora com vírgula externa: deve cortar nela.
+        s = (
+            "Federação SSO/IDP central (Okta, Auth0) decide quem entra, "
+            "centralizando o ciclo de vida de identidade dos colaboradores."
+        )
+        out = interview_choice_lead(s)
+        assert out == "Federação SSO/IDP central (Okta, Auth0) decide quem entra"
+
+
+class TestFailureMessage:
+    """A mensagem de reprovação precisa ser proporcional ao score."""
+
+    def test_score_baixo_nao_diz_faltou_pouco(self):
+        msg = _failure_message(30.0)
+        assert "Faltou pouco" not in msg
+        assert f"{PASS_PERCENT}%" in msg
+
+    def test_score_muito_baixo_sugere_estudo(self):
+        msg = _failure_message(10.0)
+        assert "Faltou pouco" not in msg
+        assert "estudar" in msg.lower() or "trilha" in msg.lower()
+
+    def test_score_intermediario_no_caminho(self):
+        msg = _failure_message(60.0)
+        assert "no caminho" in msg.lower()
+        assert "Faltou pouco" not in msg
+
+    def test_score_proximo_ao_corte_diz_faltou_pouco(self):
+        msg = _failure_message(75.0)
+        assert msg.startswith("Faltou pouco")
+
+    def test_score_no_corte_inferior_da_faixa_70(self):
+        # 70% exato deve cair na mensagem de "Faltou pouco" (limite inclusivo).
+        assert _failure_message(70.0).startswith("Faltou pouco")

@@ -70,19 +70,28 @@
       <p class="text-sm mt-1" style="color:#5a7a9a">
         Pins <span style="color:#0ea5e9;font-weight:600">azuis</span> = disponíveis ·
         pins <span style="color:#f43f5e;font-weight:600">vermelhos</span> = pedindo ajuda.
-        Clique em um pin <span style="color:#f43f5e;font-weight:600">vermelho</span> para entrar na sala de ajuda.
+        Clique em um pin <span style="color:#f43f5e;font-weight:600">vermelho</span> para oferecer ajuda e abrir a sala.
+        Se <strong style="color:#8bacc8">você pediu ajuda</strong>, use o botão
+        <strong style="color:#fde68a">«Entrar na sala»</strong> ao lado de «Pedido aberto» (chat e voz).
       </p>
     </div>
 
     {# Painel de ajuda, gerenciado via Alpine sem reload #}
     <div x-data="helpPanel()" x-init="init()" class="relative" style="z-index:1100">
 
-      {# estado: pedido aberto #}
-      <div x-show="hasOpen" x-cloak class="flex gap-2 items-center">
+      {# estado: pedido aberto — quem pediu entra na sala por aqui (URL /mapa/ajuda/&lt;id&gt;/) #}
+      <div x-show="hasOpen" x-cloak class="flex flex-wrap gap-2 items-center justify-end">
         <span style="border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);
                      color:#fca5a5;padding:6px 12px;border-radius:7px;font-size:.8125rem">
           Pedido aberto: <span x-text="openTopic"></span>
         </span>
+        <a :href="openRoomUrl"
+           style="background:#0891b2;color:#f0f9ff;font-weight:700;
+                  padding:6px 14px;border-radius:7px;font-size:.8125rem;text-decoration:none;
+                  display:inline-block;transition:background .15s"
+           class="hover:bg-sky-500">
+          Entrar na sala →
+        </a>
         <button @click="resolve()" :disabled="busy"
                 style="background:#34d399;color:#04091c;font-weight:700;
                        padding:6px 14px;border-radius:7px;font-size:.8125rem;transition:background .15s"
@@ -156,6 +165,7 @@
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
   const CSRF = document.cookie.split('; ').find(c=>c.startsWith('csrftoken='))?.split('=')[1]||'';
+  const CURRENT_USER_ID = {{ request.user.id }};
   const URLS = {
     online:   '{% url "presence:api_online" %}',
     checkin:  '{% url "presence:api_checkin" %}',
@@ -163,6 +173,36 @@
     resolve:  (id) => `/mapa/api/help/${id}/resolve/`,
     join:     (id) => `/mapa/api/help/${id}/join/`,
   };
+
+  let helpListenWs = null;
+  function disconnectHelpListen() {
+    if (helpListenWs) {
+      try { helpListenWs.close(); } catch (e) {}
+      helpListenWs = null;
+    }
+  }
+  function connectHelpListen(helpId) {
+    disconnectHelpListen();
+    if (!helpId) return;
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${proto}://${location.host}/ws/help/${helpId}/`);
+    helpListenWs = ws;
+    ws.onmessage = (ev) => {
+      let msg;
+      try { msg = JSON.parse(ev.data); } catch (e) { return; }
+      if (msg.type === "chat" && !msg.self) {
+        window.pdtNotify(
+          "Mensagem na sala de ajuda",
+          (msg.name || "Alguém") + ": " + (msg.text || "").slice(0, 160)
+        );
+      } else if (msg.type === "system" && msg.kind === "joined" && !msg.self && msg.name) {
+        window.pdtNotify("Sala de ajuda", msg.name + " entrou na sala.", {
+          tag: "pdt-join-" + String(helpId) + "-" + String(msg.user_id ?? ""),
+        });
+      }
+    };
+    ws.onclose = () => { if (helpListenWs === ws) helpListenWs = null; };
+  }
 
   // ── Mapa ──────────────────────────────────────────────────────────────
   const leafMap = L.map('map', { worldCopyJump:true }).setView([-15.78,-47.93], 4);
@@ -174,6 +214,8 @@
   // ── Cluster ────────────────────────────────────────────────────────────
   const clusterGroup = L.markerClusterGroup({
     maxClusterRadius: 60,
+    // Com zoom maior, pins deixam de agrupar — o primeiro clique abre o popup certo.
+    disableClusteringAtZoom: 16,
     iconCreateFunction(cluster) {
       const children = cluster.getAllChildMarkers();
       const hasHelp  = children.some(m => m.options._status === 'help');
@@ -212,6 +254,7 @@
 
   function pinPopup(u) {
     const isHelp = u.status === 'help';
+    const isOwnHelp = Number(u.user_id) === Number(CURRENT_USER_ID);
     const badge  = isHelp
       ? `<span style="display:inline-block;background:#f43f5e22;color:#fca5a5;
                       border:1px solid #f43f5e55;padding:2px 10px;border-radius:99px;
@@ -225,24 +268,41 @@
       <div style="margin-bottom:10px">${badge}</div>`;
 
     if (isHelp && u.help_request_id) {
-      return `<div style="min-width:205px">
-        ${header}
+      const st = u.help_request_status || 'open';
+      const topicBlock = `
         <div style="font-size:11px;color:#5a7a9a;text-transform:uppercase;letter-spacing:.5px;
                     margin-bottom:4px">Dúvida em</div>
         <div style="font-size:13px;font-weight:600;color:#ddeeff;margin-bottom:14px;
                     padding:7px 10px;background:#04091c;border-radius:7px;
                     border-left:3px solid #f43f5e">
           ${u.help_topic || '-'}
-        </div>
-        <button onclick="window.joinHelp(${u.help_request_id})"
+        </div>`;
+      let action = '';
+      if (isOwnHelp) {
+        action = `<a href="/mapa/ajuda/${u.help_request_id}/"
+          style="display:block;width:100%;text-align:center;background:#0891b2;color:#f0f9ff;font-weight:700;
+                 padding:10px 0;border-radius:8px;font-size:13px;letter-spacing:.2px;
+                 text-decoration:none;box-sizing:border-box">
+          Entrar na sala →
+        </a>`;
+      } else if (st === 'open') {
+        action = `<button type="button" onclick="window.joinHelp(${u.help_request_id})"
           style="width:100%;background:#0891b2;color:#f0f9ff;font-weight:700;
                  padding:10px 0;border-radius:8px;border:0;cursor:pointer;
                  font-size:13px;letter-spacing:.2px;transition:background .15s"
           onmouseover="this.style.background='#0ea5e9'"
           onmouseout="this.style.background='#0891b2'">
           Entrar para ajudar →
-        </button>
-      </div>`;
+        </button>`;
+      } else if (st === 'joined') {
+        action = `<a href="/mapa/ajuda/${u.help_request_id}/"
+          style="display:block;width:100%;text-align:center;background:#0891b2;color:#f0f9ff;font-weight:700;
+                 padding:10px 0;border-radius:8px;font-size:13px;letter-spacing:.2px;
+                 text-decoration:none;box-sizing:border-box">
+          Abrir sala de chat →
+        </a>`;
+      }
+      return `<div style="min-width:205px">${header}${topicBlock}${action}</div>`;
     }
     return `<div style="min-width:160px">${header}</div>`;
   }
@@ -259,6 +319,9 @@
         existing.setIcon(icon);
         existing.options._status = u.status;   // mantém dado para cluster
         existing.setPopupContent(popup);
+        if (existing.isPopupOpen && existing.isPopupOpen()) {
+          try { existing.getPopup().update(); } catch (e) {}
+        }
       } else {
         const m = L.marker([u.lat, u.lng], { icon, _status: u.status })
                     .bindPopup(popup, { maxWidth: 240 });
@@ -335,24 +398,32 @@
   // ── Alpine component ───────────────────────────────────────────────────
   function helpPanel() {
     return {
-      open:      false,
-      hasOpen:   {{ open_help|yesno:"true,false" }},
-      openId:    {{ open_help.id|default:"null" }},
-      openTopic: '{{ open_help.topic|default:"" }}',
-      topicId:   '{{ topics.first.id|default:"" }}',
-      desc:      '',
-      busy:      false,
-      errMsg:    '',
+      open:       false,
+      hasOpen:    {{ open_help|yesno:"true,false" }},
+      openId:     {{ open_help.id|default:"null" }},
+      openTopic:  '{% if open_help %}{{ open_help.topic.title|escapejs }}{% endif %}',
+      openRoomUrl:'{% if open_help %}{% url "presence:help_room" open_help.pk %}{% endif %}',
+      topicId:    '{{ topics.first.id|default:"" }}',
+      desc:       '',
+      busy:       false,
+      errMsg:     '',
 
       init() {
-        // expõe callback para o mapa atualizar o banner sem reload
-        window._setHelpOpen = (id, topic) => {
-          this.hasOpen   = true;
-          this.openId    = id;
-          this.openTopic = topic;
-          this.open      = false;
+        window._setHelpOpen = (id, topic, helpUrl) => {
+          this.hasOpen    = true;
+          this.openId     = id;
+          this.openTopic  = topic;
+          this.openRoomUrl = helpUrl || "";
+          this.open       = false;
+          connectHelpListen(id);
         };
-        window._clearHelpOpen = () => { this.hasOpen = false; this.openId = null; };
+        window._clearHelpOpen = () => {
+          this.hasOpen = false;
+          this.openId = null;
+          this.openRoomUrl = "";
+          disconnectHelpListen();
+        };
+        if (this.hasOpen && this.openId) connectHelpListen(this.openId);
       },
 
       async submit() {
@@ -364,8 +435,8 @@
           const r = await fetch(URLS.help, { method:'POST', headers:{'X-CSRFToken':CSRF}, body:fd });
           const d = await r.json();
           if (r.ok) {
-            window._setHelpOpen(d.id, d.topic);
-            await fetchOnline();   // atualiza pin do próprio usuário para vermelho
+            window._setHelpOpen(d.id, d.topic, d.help_url || "");
+            await fetchOnline();
           } else {
             this.errMsg = d.error || 'Erro ao criar pedido.';
           }

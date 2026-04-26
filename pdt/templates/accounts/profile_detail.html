@@ -10,24 +10,34 @@
                  font-weight:600;letter-spacing:.02em">
       {{ profile_user.career_label }}
     </span>
-    {% if profile_user.country %}
-      <span class="text-sm" style="color:#5a7a9a;margin-left:8px">· {{ profile_user.country }}</span>
+    {% if profile_user.show_contact_info %}
+      {% if profile_user.country %}
+        <span class="text-sm" style="color:#5a7a9a;margin-left:8px">· {{ profile_user.country }}</span>
+      {% endif %}
     {% endif %}
   </p>
-  {% if profile_user.bio %}
-    <p class="mt-3" style="color:#8bacc8;line-height:1.6">{{ profile_user.bio }}</p>
-  {% endif %}
+  {% if profile_user.show_contact_info %}
+    {% if profile_user.bio %}
+      <p class="mt-3" style="color:#8bacc8;line-height:1.6">{{ profile_user.bio }}</p>
+    {% endif %}
 
-  <div class="mt-3 flex gap-3 text-sm">
-    {% if profile_user.linkedin_url %}
-      <a style="color:#38bdf8" href="{{ profile_user.linkedin_url }}" target="_blank"
-         class="hover:text-sky-200">LinkedIn</a>
-    {% endif %}
-    {% if profile_user.github_url %}
-      <a style="color:#38bdf8" href="{{ profile_user.github_url }}" target="_blank"
-         class="hover:text-sky-200">GitHub</a>
-    {% endif %}
-  </div>
+    <div class="mt-3 flex gap-3 text-sm">
+      {% if profile_user.linkedin_url %}
+        <a style="color:#38bdf8" href="{{ profile_user.linkedin_url }}" target="_blank" rel="noopener"
+           class="hover:text-sky-200">LinkedIn</a>
+      {% endif %}
+      {% if profile_user.github_url %}
+        <a style="color:#38bdf8" href="{{ profile_user.github_url }}" target="_blank" rel="noopener"
+           class="hover:text-sky-200">GitHub</a>
+      {% endif %}
+    </div>
+  {% elif user.is_authenticated and user.pk == profile_user.pk %}
+    <p class="mt-3 text-sm" style="color:#5a7a9a;line-height:1.5">
+      Você marcou para não exibir país, bio e links neste perfil público.
+      <a href="{% url 'accounts:profile_edit' %}" style="color:#38bdf8;font-weight:600"
+         class="hover:text-sky-200">Editar perfil</a>
+    </p>
+  {% endif %}
 
   <div class="mt-8" style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:20px">
     <h2 class="font-semibold mb-3" style="color:#7dd3fc">Radar · {{ total_score }} pts</h2>

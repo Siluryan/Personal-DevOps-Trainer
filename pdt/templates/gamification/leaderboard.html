@@ -25,17 +25,17 @@
                        letter-spacing:.02em">
             {{ u.career_label }}
           </span>
-          {% if u.country %}
+          {% if u.show_contact_info and u.country %}
             <span style="font-size:.75rem;color:#5a7a9a">· {{ u.country }}</span>
           {% endif %}
         </div>
         <div style="display:flex;gap:12px;align-items:center">
-          {% if u.linkedin_url %}
-            <a href="{{ u.linkedin_url }}" target="_blank"
+          {% if u.show_contact_info and u.linkedin_url %}
+            <a href="{{ u.linkedin_url }}" target="_blank" rel="noopener"
                style="font-size:.75rem;color:#5a7a9a" class="hover:text-sky-300">LinkedIn</a>
           {% endif %}
-          {% if u.github_url %}
-            <a href="{{ u.github_url }}" target="_blank"
+          {% if u.show_contact_info and u.github_url %}
+            <a href="{{ u.github_url }}" target="_blank" rel="noopener"
                style="font-size:.75rem;color:#5a7a9a" class="hover:text-sky-300">GitHub</a>
           {% endif %}
           <span style="color:#34d399;font-weight:700;font-size:.9rem">{{ u.total }} pts</span>

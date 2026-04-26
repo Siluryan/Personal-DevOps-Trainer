@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load pdt_extras %}
 {% block title %}Entrevista {{ level_label }} · PDT{% endblock %}
 
 {% block content %}
@@ -30,6 +31,14 @@
     {% csrf_token %}
     <input type="hidden" name="index" value="{{ index }}" />
 
+    {# Default submit do Enter: avança (ou finaliza, na última questão). #}
+    {# Sem ele, o Enter dispara o primeiro <button type=submit> do form, que seria «Anterior». #}
+    <button type="submit" name="action"
+            value="{% if human_index < total %}next{% else %}finish{% endif %}"
+            tabindex="-1" aria-hidden="true"
+            style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+                   overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0"></button>
+
     {% if question.category %}
       <p style="color:#5a7a9a;font-size:.75rem;letter-spacing:.04em;
                 text-transform:uppercase;margin-bottom:8px">
@@ -38,9 +47,13 @@
     {% endif %}
 
     <p class="font-semibold mb-5" style="color:#ddeeff;line-height:1.55;font-size:1.0625rem">
-      {{ question.statement }}
+      {{ question.statement|bold_ticks }}
     </p>
 
+    <p style="font-size:.75rem;color:#5a7a9a;margin:-6px 0 10px;line-height:1.45">
+      Cada opção mostra só o enunciado da alternativa. O texto completo (com explicações)
+      aparece no gabarito depois que você finalizar.
+    </p>
     <div style="display:flex;flex-direction:column;gap:10px">
       {% for choice_text in question.choices %}
         <label x-bind:style="{
@@ -54,8 +67,9 @@
                       line-height:1.5;font-size:.9375rem;transition:all .12s">
           <input type="radio" name="choice" value="{{ forloop.counter0 }}"
                  x-model="choice"
+                 {% if previous_choice == forloop.counter0 %}checked{% endif %}
                  style="margin-top:3px;accent-color:#0ea5e9;flex-shrink:0" />
-          <span style="flex:1">{{ choice_text }}</span>
+          <span style="flex:1">{{ choice_text|interview_choice_lead|bold_ticks }}</span>
         </label>
       {% endfor %}
     </div>
@@ -78,7 +92,7 @@
         </button>
       </div>
 
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap gap-2 items-center">
         {% if human_index < total %}
           <button type="submit" name="action" value="next"
                   style="background:#0891b2;color:#f0f9ff;font-weight:600;
@@ -94,6 +108,12 @@
             Finalizar entrevista
           </button>
         {% endif %}
+        <a href="{% url 'interviews:finish' attempt.pk %}"
+           style="background:transparent;border:1px solid #1a2f50;color:#94a3b8;
+                  padding:8px 14px;border-radius:8px;font-size:.875rem;text-decoration:none"
+           class="hover:text-emerald-300 hover:border-emerald-400/40 transition-colors">
+          Revisar e finalizar
+        </a>
       </div>
     </div>
   </form>

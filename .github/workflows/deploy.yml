@@ -1,0 +1,101 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "deploy/terraform/**"
+      - ".github/workflows/terraform.yml"
+      - "**/*.md"
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch que será deployada na EC2"
+        default: main
+        required: true
+
+permissions:
+  id-token: write   # OIDC
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: ssm send-command
+    runs-on: ubuntu-24.04
+    environment: prod
+    needs: []
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.GHA_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Localizar EC2 alvo (tag Project=pdt + Environment=prod)
+        id: target
+        run: |
+          set -euo pipefail
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters \
+              "Name=tag:Project,Values=pdt" \
+              "Name=tag:Environment,Values=prod" \
+              "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].InstanceId' \
+            --output text)
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "::error::Nenhuma instância PDT em execução encontrada."
+            exit 1
+          fi
+          echo "instance_id=$INSTANCE_ID" >>"$GITHUB_OUTPUT"
+
+      - name: SSM send-command (deploy.sh)
+        id: send
+        env:
+          BRANCH: ${{ github.event.inputs.branch || 'main' }}
+        run: |
+          set -euo pipefail
+          CMD_ID=$(aws ssm send-command \
+            --document-name AWS-RunShellScript \
+            --instance-ids "${{ steps.target.outputs.instance_id }}" \
+            --comment "deploy via GHA #${{ github.run_id }}" \
+            --parameters "commands=['/opt/pdt/scripts/deploy.sh $BRANCH']" \
+            --timeout-seconds 1500 \
+            --query 'Command.CommandId' --output text)
+          echo "command_id=$CMD_ID" >>"$GITHUB_OUTPUT"
+
+      - name: Aguardar conclusão
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            STATUS=$(aws ssm list-command-invocations \
+              --command-id "${{ steps.send.outputs.command_id }}" \
+              --details --query 'CommandInvocations[0].Status' --output text)
+            echo "tentativa $i: $STATUS"
+            case "$STATUS" in
+              Success) exit 0;;
+              Failed|Cancelled|TimedOut) exit 1;;
+            esac
+            sleep 15
+          done
+          echo "::error::Timeout aguardando SSM."
+          exit 1
+
+      - name: Smoke test público
+        env:
+          DOMAIN: ${{ vars.PDT_DOMAIN_NAME }}
+        run: |
+          set -euo pipefail
+          for i in 1 2 3; do
+            CODE=$(curl -sk -o /dev/null -w '%{http_code}' "https://$DOMAIN/")
+            echo "tentativa $i: HTTP $CODE"
+            case "$CODE" in
+              200|301|302) exit 0;;
+            esac
+            sleep 5
+          done
+          echo "::error::Healthcheck público falhou."
+          exit 1

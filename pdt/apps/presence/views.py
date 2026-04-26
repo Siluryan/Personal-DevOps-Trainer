@@ -8,8 +8,10 @@ from channels.layers import get_channel_layer
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
@@ -17,15 +19,41 @@ from django.views.generic import TemplateView
 from apps.courses.models import Topic
 from apps.gamification.models import TopicScore
 
-from .consumers import PRESENCE_GROUP
-from .models import HelpRequest, PresenceState
+from .help_consumer import help_group_name
+from .models import HelpChatMessage, HelpRequest, PresenceState
+from .online_payload import build_online_users_payload
+from .services import (
+    broadcast_presence_refresh,
+    broadcast_presence_refresh_after_commit,
+    user_presence_mark_offline,
+)
 
 
-def _broadcast_refresh():
-    layer = get_channel_layer()
-    if not layer:
-        return
-    async_to_sync(layer.group_send)(PRESENCE_GROUP, {"type": "presence.refresh"})
+def _schedule_resolve_notifications_after_commit(
+    *,
+    layer,
+    hr_id: int,
+    uid: int,
+    name: str,
+    ts_iso: str,
+) -> None:
+    """Uma única callback: sala de ajuda + mapa, só após commit atómico do resolve."""
+
+    def _run() -> None:
+        if layer:
+            async_to_sync(layer.group_send)(
+                help_group_name(hr_id),
+                {
+                    "type": "help.system",
+                    "kind": "resolved",
+                    "user_id": uid,
+                    "name": name,
+                    "ts": ts_iso,
+                },
+            )
+        broadcast_presence_refresh()
+
+    transaction.on_commit(_run)
 
 
 class MapView(LoginRequiredMixin, TemplateView):
@@ -36,41 +64,67 @@ class MapView(LoginRequiredMixin, TemplateView):
         ctx["topics"] = Topic.objects.select_related("phase").order_by(
             "phase__order", "order"
         )
-        ctx["open_help"] = HelpRequest.objects.filter(
-            requester=self.request.user, status__in=[HelpRequest.OPEN, HelpRequest.JOINED]
-        ).first()
+        ctx["open_help"] = (
+            HelpRequest.objects.filter(
+                requester=self.request.user,
+                status__in=[HelpRequest.OPEN, HelpRequest.JOINED],
+            )
+            .select_related("topic")
+            .first()
+        )
         ctx["user_can_request_help"] = self.request.user.show_on_map
         return ctx
 
 
 @login_required
 def online_users(request):
-    rows = (
-        PresenceState.objects.select_related("user")
-        .exclude(status=PresenceState.OFFLINE)
-        .filter(user__show_on_map=True, latitude__isnull=False, longitude__isnull=False)
+    return JsonResponse({"users": build_online_users_payload()})
+
+
+@login_required
+def active_help_room(request):
+    # Notificação fora da sala:
+    # - só para quem pediu ajuda (requester)
+    # - respeitando preferência individual no perfil
+    # Se você está ajudando alguém, nunca recebe notificação global de ajuda.
+    help_request = (
+        HelpRequest.objects.filter(
+            status__in=[HelpRequest.OPEN, HelpRequest.JOINED]
+        )
+        .filter(requester=request.user)
+        .order_by("-id")
+        .first()
     )
-    open_help = {
-        h.requester_id: h
-        for h in HelpRequest.objects.filter(status=HelpRequest.OPEN).select_related(
-            "topic"
-        )
-    }
-    payload = []
-    for p in rows:
-        help_req = open_help.get(p.user_id)
-        payload.append(
-            {
-                "user_id": p.user_id,
-                "name": p.user.display_name,
-                "lat": p.latitude,
-                "lng": p.longitude,
-                "status": p.status,
-                "help_request_id": help_req.id if help_req else None,
-                "help_topic": help_req.topic.title if help_req else None,
-            }
-        )
-    return JsonResponse({"users": payload})
+    if not help_request:
+        return JsonResponse({"active": False, "help_id": None})
+    notify_enabled = bool(request.user.help_notifications_enabled)
+    return JsonResponse(
+        {
+            "active": True,
+            "help_id": help_request.id,
+            "help_url": reverse("presence:help_room", args=[help_request.id]),
+            "notify_enabled": notify_enabled,
+            "role": "requester",
+        }
+    )
+
+
+@login_required
+@require_POST
+def presence_offline(request):
+    """Marca presença como offline (ex.: beacon ao fechar aba). Logout também aciona signal."""
+    user_presence_mark_offline(request.user)
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_POST
+def presence_ping(request):
+    """Mantém last_seen enquanto a aba/navegador segue aberto (evita pin fantasma)."""
+    PresenceState.objects.filter(user=request.user).exclude(
+        status=PresenceState.OFFLINE
+    ).update(last_seen=timezone.now())
+    return JsonResponse({"ok": True})
 
 
 @login_required
@@ -82,19 +136,20 @@ def checkin(request):
     except (KeyError, ValueError, TypeError):
         return JsonResponse({"error": "lat/lng obrigatórios"}, status=400)
 
-    state, _ = PresenceState.objects.get_or_create(user=request.user)
-    state.latitude = lat
-    state.longitude = lng
-    has_open_help = HelpRequest.objects.filter(
-        requester=request.user,
-        status__in=[HelpRequest.OPEN, HelpRequest.JOINED],
-    ).exists()
-    if has_open_help:
-        state.status = PresenceState.HELP
-    elif state.status == PresenceState.OFFLINE:
-        state.status = PresenceState.AVAILABLE
-    state.save()
-    _broadcast_refresh()
+    with transaction.atomic():
+        state, _ = PresenceState.objects.get_or_create(user=request.user)
+        state.latitude = lat
+        state.longitude = lng
+        has_open_help = HelpRequest.objects.filter(
+            requester=request.user,
+            status__in=[HelpRequest.OPEN, HelpRequest.JOINED],
+        ).exists()
+        if has_open_help:
+            state.status = PresenceState.HELP
+        elif state.status == PresenceState.OFFLINE:
+            state.status = PresenceState.AVAILABLE
+        state.save()
+        broadcast_presence_refresh_after_commit()
     return JsonResponse({"ok": True, "status": state.status})
 
 
@@ -115,26 +170,30 @@ def create_help_request(request):
     description = (request.POST.get("description") or "").strip()
     topic = get_object_or_404(Topic, pk=topic_id)
 
-    HelpRequest.objects.filter(
-        requester=request.user, status__in=[HelpRequest.OPEN, HelpRequest.JOINED]
-    ).update(status=HelpRequest.CANCELLED)
+    with transaction.atomic():
+        open_qs = HelpRequest.objects.filter(
+            requester=request.user, status__in=[HelpRequest.OPEN, HelpRequest.JOINED]
+        )
+        HelpChatMessage.objects.filter(help_request__in=open_qs).delete()
+        open_qs.update(status=HelpRequest.CANCELLED)
 
-    help_request = HelpRequest.objects.create(
-        requester=request.user,
-        topic=topic,
-        description=description,
-        room_token=secrets.token_urlsafe(16),
-    )
-    state, _ = PresenceState.objects.get_or_create(user=request.user)
-    state.status = PresenceState.HELP
-    state.save(update_fields=["status", "last_seen"])
-    _broadcast_refresh()
+        help_request = HelpRequest.objects.create(
+            requester=request.user,
+            topic=topic,
+            description=description,
+            room_token=secrets.token_urlsafe(16),
+        )
+        state, _ = PresenceState.objects.get_or_create(user=request.user)
+        state.status = PresenceState.HELP
+        state.save(update_fields=["status", "last_seen"])
+        broadcast_presence_refresh_after_commit()
     return JsonResponse(
         {
             "ok": True,
             "id": help_request.id,
             "room_token": help_request.room_token,
             "topic": topic.title,
+            "help_url": reverse("presence:help_room", args=[help_request.id]),
         }
     )
 
@@ -148,10 +207,11 @@ def join_help_request(request, pk):
     if help_request.status != HelpRequest.OPEN:
         return JsonResponse({"error": "Solicitação não está aberta."}, status=400)
 
-    help_request.helper = request.user
-    help_request.status = HelpRequest.JOINED
-    help_request.save(update_fields=["helper", "status"])
-    _broadcast_refresh()
+    with transaction.atomic():
+        help_request.helper = request.user
+        help_request.status = HelpRequest.JOINED
+        help_request.save(update_fields=["helper", "status"])
+        broadcast_presence_refresh_after_commit()
     return JsonResponse({"ok": True, "redirect": f"/mapa/ajuda/{help_request.id}/"})
 
 
@@ -162,19 +222,35 @@ def resolve_help_request(request, pk):
     if help_request.status not in [HelpRequest.OPEN, HelpRequest.JOINED]:
         return JsonResponse({"error": "Solicitação já encerrada."}, status=400)
 
-    help_request.status = HelpRequest.RESOLVED
-    help_request.resolved_at = timezone.now()
-    help_request.save(update_fields=["status", "resolved_at"])
+    layer = get_channel_layer()
+    hr_id = help_request.id
+    uid = request.user.id
+    name = request.user.display_name
+    ts_iso = timezone.now().isoformat()
 
-    if help_request.helper:
-        TopicScore.add_help_bonus(
-            user=help_request.helper, topic=help_request.topic, amount=1
+    with transaction.atomic():
+        help_request.status = HelpRequest.RESOLVED
+        help_request.resolved_at = timezone.now()
+        help_request.save(update_fields=["status", "resolved_at"])
+        HelpChatMessage.objects.filter(help_request=help_request).delete()
+
+        if help_request.helper:
+            TopicScore.add_help_bonus(
+                user=help_request.helper, topic=help_request.topic, amount=1
+            )
+
+        state, _ = PresenceState.objects.get_or_create(user=request.user)
+        state.status = PresenceState.AVAILABLE
+        state.save(update_fields=["status", "last_seen"])
+
+        _schedule_resolve_notifications_after_commit(
+            layer=layer,
+            hr_id=hr_id,
+            uid=uid,
+            name=name,
+            ts_iso=ts_iso,
         )
 
-    state, _ = PresenceState.objects.get_or_create(user=request.user)
-    state.status = PresenceState.AVAILABLE
-    state.save(update_fields=["status", "last_seen"])
-    _broadcast_refresh()
     return JsonResponse({"ok": True})
 
 
@@ -184,12 +260,14 @@ def cancel_help_request(request, pk):
     help_request = get_object_or_404(HelpRequest, pk=pk, requester=request.user)
     if help_request.status not in [HelpRequest.OPEN, HelpRequest.JOINED]:
         return JsonResponse({"error": "Solicitação já encerrada."}, status=400)
-    help_request.status = HelpRequest.CANCELLED
-    help_request.save(update_fields=["status"])
-    state, _ = PresenceState.objects.get_or_create(user=request.user)
-    state.status = PresenceState.AVAILABLE
-    state.save(update_fields=["status", "last_seen"])
-    _broadcast_refresh()
+    with transaction.atomic():
+        help_request.status = HelpRequest.CANCELLED
+        help_request.save(update_fields=["status"])
+        HelpChatMessage.objects.filter(help_request=help_request).delete()
+        state, _ = PresenceState.objects.get_or_create(user=request.user)
+        state.status = PresenceState.AVAILABLE
+        state.save(update_fields=["status", "last_seen"])
+        broadcast_presence_refresh_after_commit()
     return JsonResponse({"ok": True})
 
 
@@ -215,4 +293,20 @@ class HelpRoomView(LoginRequiredMixin, TemplateView):
             ctx["forbidden"] = False
         ctx["help_request"] = help_request
         ctx["ice_servers"] = settings.WEBRTC_ICE_SERVERS
+        if not ctx["forbidden"]:
+            qs = (
+                HelpChatMessage.objects.filter(help_request=help_request)
+                .select_related("author")
+                .order_by("created_at")[:500]
+            )
+            ctx["help_chat_history"] = [
+                {
+                    "name": m.author.display_name,
+                    "text": m.body,
+                    "self": m.author_id == self.request.user.id,
+                }
+                for m in qs
+            ]
+        else:
+            ctx["help_chat_history"] = []
         return ctx

@@ -148,6 +148,27 @@ class TestGamificationViews:
         resp = client.get(reverse("gamification:leaderboard"))
         assert resp.status_code == 200
 
+    def test_ranking_nao_exibe_links_sem_show_contact_info(
+        self, client, make_user, two_topics
+    ):
+        _, t1, _ = two_topics
+        u = make_user(
+            email="sem-contato-ranking@example.com",
+            show_in_leaderboard=True,
+            show_contact_info=False,
+            full_name="Ranking Sem Contato",
+        )
+        u.linkedin_url = "https://linkedin.com/in/ranking-privado"
+        u.github_url = "https://github.com/ranking-privado"
+        u.save(update_fields=["linkedin_url", "github_url"])
+        TopicScore.objects.create(user=u, topic=t1, points=10)
+        resp = client.get(reverse("gamification:leaderboard"))
+        assert resp.status_code == 200
+        body = resp.content.decode()
+        assert u.display_name in body
+        assert "linkedin.com/in/ranking-privado" not in body.lower()
+        assert "github.com/ranking-privado" not in body.lower()
+
     def test_radar_requer_login(self, client):
         resp = client.get(reverse("gamification:radar"))
         assert resp.status_code == 302

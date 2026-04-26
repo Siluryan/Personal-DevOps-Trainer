@@ -68,6 +68,10 @@ class InterviewAttempt(models.Model):
     answers = models.JSONField(default=dict)
     score = models.PositiveSmallIntegerField(default=0)
     passed = models.BooleanField(default=False)
+    last_question_index = models.PositiveIntegerField(
+        default=0,
+        help_text="Última questão exibida (0-based); usada para retomar ao clicar Continuar.",
+    )
 
     class Meta:
         ordering = ["-started_at"]
@@ -85,7 +89,11 @@ class InterviewAttempt(models.Model):
 
     @property
     def answered_count(self) -> int:
-        return len(self.answers or {})
+        """Respostas válidas para esta prova (chaves que existem em question_ids)."""
+        ids = {str(q) for q in (self.question_ids or [])}
+        if not ids:
+            return 0
+        return sum(1 for k in (self.answers or {}) if str(k) in ids)
 
     @property
     def progress_percent(self) -> int:
@@ -98,9 +106,31 @@ class InterviewAttempt(models.Model):
         return int(round(100 * self.score / t))
 
     def next_unanswered_index(self) -> int:
-        """Retorna o índice (0-based) da próxima questão sem resposta."""
-        answered = set(str(qid) for qid in (self.answers or {}).keys())
+        """Retorna o índice (0-based) da primeira questão sem resposta na ordem do roteiro."""
+        answered = {str(k) for k in (self.answers or {}).keys()}
         for i, qid in enumerate(self.question_ids):
             if str(qid) not in answered:
                 return i
         return len(self.question_ids)
+
+    def resume_index(self) -> int:
+        """Índice para abrir a prova ao retomar (Continuar / GET sem ?i=).
+
+        Se a última tela visitada ainda não tem resposta, volta nela — evita
+        «pular» para a primeira lacuna do roteiro quando o candidato estava no
+        meio ou no fim (ex.: 81/100) após salvar ou reabrir a lista.
+        Caso contrário, usa a primeira pendência na ordem.
+        """
+        n = len(self.question_ids)
+        if n == 0:
+            return 0
+        nu = self.next_unanswered_index()
+        if nu >= n:
+            return n
+        lo = int(self.last_question_index or 0)
+        lo = max(0, min(lo, n - 1))
+        answered = {str(k) for k in (self.answers or {}).keys()}
+        q_lo = str(self.question_ids[lo])
+        if q_lo not in answered:
+            return lo
+        return nu

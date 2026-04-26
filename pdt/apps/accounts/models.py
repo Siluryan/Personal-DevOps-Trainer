@@ -82,11 +82,11 @@ class User(AbstractUser):
         help_text="Marque para liberar a exibição no ranking público.",
     )
     show_contact_info = models.BooleanField(
-        "exibir informações de contato no ranking",
+        "deixar informações de contato visíveis para outros usuários",
         default=False,
         help_text=(
-            "Quando marcado, quem clicar no seu nome no ranking verá "
-            "seu LinkedIn, GitHub, país e bio."
+            "Quando marcado, outros usuários podem ver seu LinkedIn, GitHub, país e bio "
+            "(no ranking, na página pública do perfil e onde o seu nome for exibido com detalhes)."
         ),
     )
     show_on_map = models.BooleanField(
@@ -95,6 +95,14 @@ class User(AbstractUser):
         help_text=(
             "Necessário para aparecer no mapa e para usar «Pedir ajuda»: sem esta opção "
             "outros não veem seu pin e a plataforma não aceita novos pedidos de ajuda."
+        ),
+    )
+    help_notifications_enabled = models.BooleanField(
+        "receber notificações de ajuda",
+        default=True,
+        help_text=(
+            "Quando marcado, você recebe avisos de novas mensagens/atualizações da sala "
+            "de ajuda enquanto navega em outras seções da plataforma."
         ),
     )
 

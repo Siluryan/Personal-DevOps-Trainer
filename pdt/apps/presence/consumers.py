@@ -33,9 +33,9 @@ class PresenceConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_discard(PRESENCE_GROUP, self.channel_name)
         except Exception:  # noqa: BLE001
             pass
-        if getattr(self, "user", None):
-            await self._mark_offline()
-            await self.broadcast_state()
+        # Não marcar OFFLINE ao fechar só o WS (troca de página fora do /mapa/).
+        # last_seen é renovado pelo ping HTTP em base.html; TTL remove o pin se
+        # o navegador fechou ou a sessão encerrou.
 
     async def receive_json(self, content, **kwargs):
         action = content.get("action")
@@ -60,22 +60,9 @@ class PresenceConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def _build_payload(self):
-        from .models import PresenceState
-        rows = (
-            PresenceState.objects.select_related("user")
-            .exclude(status=PresenceState.OFFLINE)
-            .filter(user__show_on_map=True, latitude__isnull=False, longitude__isnull=False)
-        )
-        return [
-            {
-                "user_id": p.user_id,
-                "name": p.user.display_name,
-                "lat": p.latitude,
-                "lng": p.longitude,
-                "status": p.status,
-            }
-            for p in rows
-        ]
+        from .online_payload import build_online_users_payload
+
+        return build_online_users_payload()
 
     @database_sync_to_async
     def _mark_online(self):
@@ -91,16 +78,6 @@ class PresenceConsumer(AsyncJsonWebsocketConsumer):
             state.status = PresenceState.AVAILABLE
         state.save()
         return state
-
-    @database_sync_to_async
-    def _mark_offline(self):
-        from .models import PresenceState
-        try:
-            state = PresenceState.objects.get(user=self.user)
-        except PresenceState.DoesNotExist:
-            return
-        state.status = PresenceState.OFFLINE
-        state.save(update_fields=["status", "last_seen"])
 
     @database_sync_to_async
     def _update_location(self, lat: float, lng: float):

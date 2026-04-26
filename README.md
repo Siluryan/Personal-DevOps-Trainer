@@ -101,7 +101,8 @@ Na primeira subida, o `entrypoint.sh`:
    - `python manage.py seed_admission_test` (banco de questões do teste
      de admissão);
    - `python manage.py seed_interviews` (300 questões do simulador de
-     entrevistas, 100 por nível).
+     entrevistas, 100 por nível; embaralha alternativas de forma
+     determinística, com mais mistura no pleno e ainda mais no sênior).
 5. Inicia o Daphne na porta `8000`.
 
 Acesse:
@@ -176,6 +177,40 @@ ao passar nos testes do simulador (`/entrevistas`).
   garante que distratores nunca caiam de novo em frases preguiçosas como
   *"Não há motivo."* ou alternativas drasticamente menores que a correta.
 
+### Viés de posição no arquivo fonte e embaralhamento das alternativas
+
+Nos arquivos `seed_data` (júnior, pleno, sênior), o campo `correct_index`
+indica qual alternativa é a correta **antes** de qualquer tratamento. Esse
+fonte histórico ficou **enviesado**: em vários níveis a resposta certa aparecia
+com frequência desproporcional na mesma letra (por exemplo, **~78%** das
+questões de júnior e **~96%** de sênior com gabarito na **segunda** opção, e
+**~49%** no pleno). Quem marcava sempre a mesma posição sem ler o enunciado
+podia obter nota alta sem refletir o conhecimento real.
+
+O comando `python manage.py seed_interviews` corrige isso ao persistir as
+questões no banco:
+
+- **Embaralha a ordem das quatro alternativas** de cada pergunta de modo
+  **determinístico** (mesmo repositório + mesmo índice da questão → mesma
+  permutação após cada seed), para a prova não depender da letra “padrão” do
+  YAML.
+- Usa **entropia em camadas por nível**: júnior mistura com base só no nível e
+  na ordem da questão; **pleno** incorpora hash do enunciado e do texto da
+  alternativa correta; **sênior** aplica uma rodada extra de mistura sobre esse
+  material, ficando **o mais sensível ao conteúdo** e menos previsível só pelo
+  número da questão.
+- Há testes que exigem que, após o seed, nenhuma posição (A/B/C/D) concentre a
+  maioria das respostas certas em um nível.
+
+Isso é **independente** do embaralhamento da **lista das 100 questões** de cada
+tentativa: ao iniciar um teste, o servidor sorteia quais 100 IDs entram e em que
+ordem (`random.shuffle` no fluxo de início). Ou seja: cada prova já traz ordem
+de questões aleatória; o seed cuida para que **dentro** de cada questão a letra
+correta não siga um padrão fixo vindo do arquivo.
+
+Para depuração pontual (não use em produção), é possível manter a ordem literal
+do arquivo com `python manage.py seed_interviews --no-shuffle`.
+
 ## Regenerando migrações localmente (opcional)
 
 Se você alterar modelos:
@@ -231,7 +266,8 @@ A suíte cobre, entre outros (160 testes, 0 falhas):
   pré-requisito, aprovação a 80%, persistência de respostas com
   retomada exata da próxima questão sem resposta, save & exit, ações
   `next/prev/finish/cancel`, isolamento entre usuários, comando
-  `seed_interviews` idempotente com 300 questões.
+  `seed_interviews` idempotente com 300 questões e embaralhamento
+  determinístico em camadas (júnior → pleno → sênior).
 - **qualidade das questões do simulador**: garantia anti-regressão de
   que distratores não voltem a ser preguiçosos, frases como
   *"Não há motivo."*, *"Festa."* ou *"Apenas marketing."* ficam

@@ -174,8 +174,8 @@ class TestInterviewTakeLayout:
                 ),
                 choices=[
                     "São equivalentes.",
-                    "`>` sobrescreve o arquivo; `>>` acrescenta ao final.",
-                    "`>` acrescenta; `>>` sobrescreve.",
+                    "Com `>`, o arquivo é sobrescrito (truncado); com `>>`, a saída acrescenta ao final.",
+                    "Com `>`, a saída só acrescenta; com `>>`, o arquivo é truncado — inverte o correto.",
                     "Ambos exigem permissão root.",
                 ],
                 correct_index=1,

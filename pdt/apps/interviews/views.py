@@ -45,6 +45,31 @@ LEVEL_TO_USER_TARGET = {
 }
 
 
+def _failure_message(score_percent: float) -> str:
+    """Mensagem de reprovação proporcional ao acerto.
+
+    «Faltou pouco» só aparece quando faz sentido (≥ 70%); resultados mais baixos
+    recebem um texto que reflete o trabalho real que ainda falta.
+    """
+    rule = f"São necessários {PASS_PERCENT}% para subir de nível."
+    if score_percent >= 70:
+        return f"Faltou pouco. {rule} Revise o gabarito e tente de novo."
+    if score_percent >= 50:
+        return (
+            f"Você está no caminho, mas ainda não passou. {rule} "
+            "Estude os pontos onde errou no gabarito antes de refazer."
+        )
+    if score_percent >= 30:
+        return (
+            f"Ainda há terreno a cobrir. {rule} "
+            "Use o gabarito como guia de estudos antes de tentar de novo."
+        )
+    return (
+        f"O resultado mostra que vale estudar o conteúdo antes de refazer. {rule} "
+        "Comece pelo gabarito e pelos tópicos relacionados na trilha."
+    )
+
+
 def _level_status(user, level: str) -> dict:
     """Resume o status de um nível para o usuário."""
     target = LEVEL_TO_USER_TARGET[level]
@@ -132,7 +157,16 @@ class StartView(LoginRequiredMixin, View):
             .first()
         )
         if in_progress:
-            return redirect("interviews:take", pk=in_progress.pk)
+            in_progress.refresh_from_db()
+            n = len(in_progress.question_ids)
+            if n == 0:
+                return redirect("interviews:take", pk=in_progress.pk)
+            ri = in_progress.resume_index()
+            if ri >= n:
+                return redirect("interviews:finish", pk=in_progress.pk)
+            return redirect(
+                reverse("interviews:take", args=[in_progress.pk]) + f"?i={ri}"
+            )
 
         ids = list(
             InterviewQuestion.objects.filter(level=level, is_active=True).values_list(
@@ -153,7 +187,9 @@ class StartView(LoginRequiredMixin, View):
         attempt = InterviewAttempt.objects.create(
             user=user, level=level, question_ids=ids
         )
-        return redirect("interviews:take", pk=attempt.pk)
+        return redirect(
+            reverse("interviews:take", args=[attempt.pk]) + "?i=0"
+        )
 
 
 class TakeView(LoginRequiredMixin, View):
@@ -175,13 +211,16 @@ class TakeView(LoginRequiredMixin, View):
             question = InterviewQuestion.objects.get(pk=qid)
         except InterviewQuestion.DoesNotExist:
             return None
+        total = len(attempt.question_ids)
         return {
             "attempt": attempt,
             "question": question,
             "index": idx,
             "human_index": idx + 1,
-            "total": len(attempt.question_ids),
-            "progress_percent": int(round(100 * (idx) / max(len(attempt.question_ids), 1))),
+            "total": total,
+            "progress_percent": int(
+                round(100 * attempt.answered_count / max(total, 1))
+            ),
             "answered_count": attempt.answered_count,
             "previous_choice": (attempt.answers or {}).get(str(qid)),
             "level_label": attempt.get_level_display(),
@@ -198,12 +237,15 @@ class TakeView(LoginRequiredMixin, View):
             except ValueError:
                 return HttpResponseBadRequest("índice inválido")
         else:
-            idx = attempt.next_unanswered_index()
+            idx = attempt.resume_index()
             if idx >= len(attempt.question_ids):
                 return redirect("interviews:finish", pk=attempt.pk)
         ctx = self._build_context(attempt, idx)
         if not ctx:
             return redirect("interviews:finish", pk=attempt.pk)
+        if attempt.last_question_index != idx:
+            attempt.last_question_index = idx
+            attempt.save(update_fields=["last_question_index"])
         from django.shortcuts import render
 
         return render(request, self.template_name, ctx)
@@ -221,15 +263,19 @@ class TakeView(LoginRequiredMixin, View):
         choice_raw = request.POST.get("choice", "").strip()
 
         qid = attempt.question_ids[idx]
+        update_fields: list[str] = ["last_question_index"]
+        attempt.last_question_index = idx
         if choice_raw != "":
             try:
                 choice_idx = int(choice_raw)
             except ValueError:
                 return HttpResponseBadRequest("choice inválida")
-            answers = dict(attempt.answers or {})
+            answers = {str(k): v for k, v in (attempt.answers or {}).items()}
             answers[str(qid)] = choice_idx
             attempt.answers = answers
-            attempt.save(update_fields=["answers"])
+            update_fields.insert(0, "answers")
+
+        attempt.save(update_fields=update_fields)
 
         if action == "save_exit":
             messages.info(
@@ -263,13 +309,19 @@ class FinishView(LoginRequiredMixin, View):
         from django.shortcuts import render
 
         attempt = self._get_attempt(request, pk)
-        unanswered = len(attempt.question_ids) - attempt.answered_count
+        answered_keys = {str(k) for k in (attempt.answers or {}).keys()}
+        unanswered_items = [
+            {"index": i, "human_index": i + 1}
+            for i, qid in enumerate(attempt.question_ids)
+            if str(qid) not in answered_keys
+        ]
         return render(
             request,
             self.template_name,
             {
                 "attempt": attempt,
-                "unanswered": unanswered,
+                "unanswered": len(unanswered_items),
+                "unanswered_items": unanswered_items,
                 "total": len(attempt.question_ids),
                 "level_label": attempt.get_level_display(),
             },
@@ -308,10 +360,8 @@ class FinishView(LoginRequiredMixin, View):
                     "Você passou no teste. Continue praticando ou avance para o próximo nível.",
                 )
         else:
-            messages.warning(
-                request,
-                f"Faltou pouco, você precisa de {PASS_PERCENT}% para subir de nível.",
-            )
+            score_percent = (score / max(len(attempt.question_ids), 1)) * 100
+            messages.warning(request, _failure_message(score_percent))
 
         return redirect("interviews:result", pk=attempt.pk)
 
@@ -351,6 +401,8 @@ class ResultView(LoginRequiredMixin, TemplateView):
         ctx["score_percent"] = attempt.score_percent
         ctx["pass_percent"] = PASS_PERCENT
         ctx["level_label"] = attempt.get_level_display()
+        if not attempt.passed:
+            ctx["failure_message"] = _failure_message(attempt.score_percent)
         return ctx
 
 

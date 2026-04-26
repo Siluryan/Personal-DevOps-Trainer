@@ -1,0 +1,42 @@
+[Unit]
+Description=PDT Daphne (ASGI) - Django + Channels
+After=network.target postgresql.service redis-server.service
+Requires=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/pdt/app/pdt
+EnvironmentFile=/opt/pdt/pdt.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/pdt/venv/bin/daphne \
+    -b 127.0.0.1 \
+    -p 8000 \
+    --proxy-headers \
+    --access-log /var/log/pdt/daphne-access.log \
+    config.asgi:application
+Restart=on-failure
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+# Hardening (systemd)
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+ReadWritePaths=/opt/pdt /var/log/pdt /tmp
+
+[Install]
+WantedBy=multi-user.target
