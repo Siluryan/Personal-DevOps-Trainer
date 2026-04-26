@@ -5,6 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="csrf-token" content="{{ csrf_token }}" />
   <title>{% block title %}Personal DevOps Trainer{% endblock %}</title>
 
   <script>
@@ -37,13 +38,48 @@
 <script>
 (function () {
   var _presenceOfflineSent = false;
-  window.pdtBeaconPresenceOffline = function () {
+  var _internalNavigationInProgress = false;
+
+  function getCsrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content && meta.content !== "NOTPROVIDED") return meta.content;
+    var m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : "";
+  }
+
+  function isSameOriginUrl(rawUrl) {
+    try {
+      var u = new URL(String(rawUrl || ""), window.location.href);
+      return u.origin === window.location.origin;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  document.addEventListener("click", function (ev) {
+    var el = ev.target && ev.target.closest ? ev.target.closest("a[href]") : null;
+    if (!el) return;
+    if (el.target && el.target !== "_self") return;
+    if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+    if (isSameOriginUrl(el.href)) _internalNavigationInProgress = true;
+  });
+
+  document.addEventListener("submit", function (ev) {
+    var form = ev.target;
+    if (!form || form.tagName !== "FORM") return;
+    var action = form.getAttribute("action") || window.location.href;
+    if (isSameOriginUrl(action)) _internalNavigationInProgress = true;
+  });
+
+  window.pdtBeaconPresenceOffline = function (reason) {
     if (_presenceOfflineSent) return;
+    var why = reason || "";
+    if (_internalNavigationInProgress && why !== "logout") return;
     _presenceOfflineSent = true;
     try {
-      var m = document.cookie.match(/csrftoken=([^;]+)/);
-      var csrf = m ? decodeURIComponent(m[1]) : "";
-      var body = "csrfmiddlewaretoken=" + encodeURIComponent(csrf);
+      var csrf = getCsrfToken();
+      var body = "csrfmiddlewaretoken=" + encodeURIComponent(csrf) +
+                 "&reason=" + encodeURIComponent(why);
       navigator.sendBeacon(
         "{% url 'presence:api_presence_offline' %}",
         new Blob([body], { type: "application/x-www-form-urlencoded" })
@@ -51,20 +87,19 @@
     } catch (e) {}
   };
 
-  // Garante tentativa de marcar OFFLINE ao fechar/descartar aba ou navegador.
+  // Fechou aba/navegador: marca OFFLINE imediatamente.
   window.addEventListener("pagehide", function () {
-    window.pdtBeaconPresenceOffline();
+    window.pdtBeaconPresenceOffline("close");
   });
   window.addEventListener("beforeunload", function () {
-    window.pdtBeaconPresenceOffline();
+    window.pdtBeaconPresenceOffline("close");
   });
 
   (function () {
     var pingUrl = "{% url 'presence:api_presence_ping' %}";
     function pdtPresencePing() {
       try {
-        var m = document.cookie.match(/csrftoken=([^;]+)/);
-        var csrf = m ? decodeURIComponent(m[1]) : "";
+        var csrf = getCsrfToken();
         fetch(pingUrl, {
           method: "POST",
           credentials: "same-origin",
@@ -142,7 +177,7 @@
             </span>
           </a>
           <form method="post" action="{% url 'account_logout' %}" class="hidden sm:inline"
-                onsubmit="if (window.pdtBeaconPresenceOffline) window.pdtBeaconPresenceOffline();">
+                onsubmit="if (window.pdtBeaconPresenceOffline) window.pdtBeaconPresenceOffline('logout');">
             {% csrf_token %}
             <button style="font-size:.875rem;color:#5a7a9a"
                     class="hover:text-sky-300 transition-colors">Sair</button>
@@ -207,7 +242,7 @@
             </span>
           </a>
           <form method="post" action="{% url 'account_logout' %}"
-                onsubmit="if (window.pdtBeaconPresenceOffline) window.pdtBeaconPresenceOffline();">
+                onsubmit="if (window.pdtBeaconPresenceOffline) window.pdtBeaconPresenceOffline('logout');">
             {% csrf_token %}
             <button style="font-size:.875rem;color:#5a7a9a" class="hover:text-sky-300">Sair</button>
           </form>

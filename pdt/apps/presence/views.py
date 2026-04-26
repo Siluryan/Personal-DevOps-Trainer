@@ -113,6 +113,10 @@ def active_help_room(request):
 @require_POST
 def presence_offline(request):
     """Marca presença como offline (ex.: beacon ao fechar aba). Logout também aciona signal."""
+    # Blindagem: só aceitamos OFFLINE explícito por logout/fechamento real.
+    # Evita sumiço de pin por chamadas acidentais durante navegação.
+    if request.POST.get("reason") not in {"logout", "close"}:
+        return JsonResponse({"ok": True, "ignored": True})
     user_presence_mark_offline(request.user)
     return JsonResponse({"ok": True})
 
@@ -121,10 +125,21 @@ def presence_offline(request):
 @require_POST
 def presence_ping(request):
     """Mantém last_seen enquanto a aba/navegador segue aberto (evita pin fantasma)."""
-    PresenceState.objects.filter(user=request.user).exclude(
-        status=PresenceState.OFFLINE
-    ).update(last_seen=timezone.now())
-    return JsonResponse({"ok": True})
+    with transaction.atomic():
+        state, _ = PresenceState.objects.get_or_create(user=request.user)
+        has_open_help = HelpRequest.objects.filter(
+            requester=request.user,
+            status__in=[HelpRequest.OPEN, HelpRequest.JOINED],
+        ).exists()
+        if state.status == PresenceState.OFFLINE:
+            # Se um beacon marcou offline durante navegação entre páginas, o ping
+            # reativa o usuário sem exigir novo checkin manual.
+            state.status = PresenceState.HELP if has_open_help else PresenceState.AVAILABLE
+            state.save(update_fields=["status", "last_seen"])
+            broadcast_presence_refresh_after_commit()
+        else:
+            PresenceState.objects.filter(pk=state.pk).update(last_seen=timezone.now())
+    return JsonResponse({"ok": True, "status": state.status})
 
 
 @login_required
