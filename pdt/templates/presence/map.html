@@ -175,6 +175,7 @@
   };
 
   let helpListenWs = null;
+  let locationCheckinOk = false;
   function disconnectHelpListen() {
     if (helpListenWs) {
       try { helpListenWs.close(); } catch (e) {}
@@ -340,14 +341,34 @@
   async function fetchOnline() {
     try {
       const r = await fetch(URLS.online);
-      if (r.ok) refreshMap((await r.json()).users || []);
+      if (r.ok) {
+        const users = (await r.json()).users || [];
+        refreshMap(users);
+      }
     } catch(e) { console.warn(e); }
+  }
+
+  function warnLocationIssue(msg) {
+    if (window.pdtToast) {
+      window.pdtToast(msg, { title: 'Localização no mapa' });
+    } else {
+      console.warn(msg);
+    }
   }
 
   async function checkin(lat, lng) {
     const fd = new FormData();
     fd.append('lat', lat); fd.append('lng', lng);
-    await fetch(URLS.checkin, { method:'POST', headers:{'X-CSRFToken':CSRF}, body:fd });
+    try {
+      const r = await fetch(URLS.checkin, { method:'POST', headers:{'X-CSRFToken':CSRF}, body:fd });
+      if (r.ok) {
+        locationCheckinOk = true;
+      } else {
+        warnLocationIssue('Não foi possível confirmar sua posição. Tente permitir geolocalização no navegador.');
+      }
+    } catch (e) {
+      warnLocationIssue('Falha de rede ao enviar sua posição para o mapa.');
+    }
     await fetchOnline();
   }
 
@@ -382,11 +403,22 @@
         leafMap.setView([lat, lon], 11);
         await checkin(lat, lon);
       } else {
-        await fetchOnline();
+        warnLocationIssue('Não foi possível obter sua localização por IP. Seu pin pode não aparecer.');
+        await fallbackToDefaultLocation();
       }
     } catch {
-      await fetchOnline();
+      warnLocationIssue('Não foi possível obter sua localização (GPS/IP). Seu pin pode não aparecer.');
+      await fallbackToDefaultLocation();
     }
+  }
+
+  async function fallbackToDefaultLocation() {
+    // Fallback final para garantir presença no mapa mesmo sem GPS/IP.
+    // Mantém o usuário visível com posição aproximada no Brasil (Brasília).
+    const defaultLat = -15.7801;
+    const defaultLng = -47.9292;
+    leafMap.setView([defaultLat, defaultLng], 4);
+    await checkin(defaultLat, defaultLng);
   }
 
   function geo() {
@@ -398,12 +430,21 @@
         await checkin(lat, lng);
         if (ws.readyState===1) ws.send(JSON.stringify({action:'update_location',lat,lng}));
       },
-      () => geoByIP(),
+      () => {
+        warnLocationIssue('Geolocalização bloqueada/indisponível. Tentando fallback por IP.');
+        geoByIP();
+      },
       { enableHighAccuracy:false, timeout:8000 }
     );
   }
   geo();
-  setInterval(fetchOnline, 30000);
+  setInterval(async () => {
+    if (!locationCheckinOk) {
+      await geo();
+      return;
+    }
+    await fetchOnline();
+  }, 30000);
 
   // ── Alpine component ───────────────────────────────────────────────────
   function helpPanel() {

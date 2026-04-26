@@ -1,4 +1,4 @@
-name: ci
+name: CI
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   test:
-    name: pytest
+    name: Pytest
     runs-on: ubuntu-24.04
 
     services:
@@ -64,7 +64,7 @@ jobs:
       - run: pytest -q
 
   lint-tf:
-    name: terraform fmt + validate
+    name: Terraform Fmt + Validate
     runs-on: ubuntu-24.04
     defaults:
       run:
