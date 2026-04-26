@@ -1,0 +1,20 @@
+# Stack de produção: imagem do ECR + Postgres/Redis no host.
+# A app usa a rede do host (127.0.0.1) para acessar PostgreSQL e Redis
+# nos serviços locais. Build local continua em docker-compose.yml.
+#
+# Uso na EC2 (após PDT_ECR_IMAGE e registro ECR):
+#   export PDT_ECR_IMAGE=123456.dkr.ecr.us-east-1.amazonaws.com/pdt/web:abc1234
+#   cd /opt/pdt/app/pdt
+#   docker compose -f docker-compose.prod.yml pull web
+#   docker compose -f docker-compose.prod.yml up -d web
+services:
+  web:
+    image: ${PDT_ECR_IMAGE}
+    container_name: pdt-web
+    network_mode: host
+    env_file:
+      - /opt/pdt/pdt.env
+    volumes:
+      - /opt/pdt/app/pdt/staticfiles:/app/staticfiles
+      - /opt/pdt/app/pdt/media:/app/media
+    restart: unless-stopped
