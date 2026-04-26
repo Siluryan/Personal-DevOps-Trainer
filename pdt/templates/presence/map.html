@@ -61,7 +61,7 @@
   .cluster-has-help div { background:rgba(244,63,94,.65) !important; }
 
   /* painel "Pedir ajuda" em telas menores */
-  @media (max-width: 639px) {
+  @media (max-width: 639px), (max-height: 760px) {
     .help-request-panel {
       position: fixed !important;
       left: 0.75rem;
@@ -124,7 +124,7 @@
           🆘 Pedir ajuda
         </button>
         <div x-show="open" x-cloak
-             class="help-request-panel absolute right-0 mt-2 w-80 max-w-[calc(100vw-1.5rem)] shadow-2xl"
+             class="help-request-panel absolute right-0 mt-2 w-80 max-w-[calc(100vw-1.5rem)] max-h-[calc(100dvh-7rem)] overflow-y-auto shadow-2xl"
              style="z-index:1200;background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:16px">
           <p style="font-size:.9rem;font-weight:700;color:#ddeeff;margin-bottom:12px">Pedir ajuda</p>
           <div class="space-y-3">
