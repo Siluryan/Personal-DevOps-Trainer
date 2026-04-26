@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+{% block title %}Mapa · PDT{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<style>
+  /* pin estilo Google Maps */
+  .pdt-pin-wrap { display:flex; flex-direction:column; align-items:center; }
+  .pdt-pin-head {
+    width:30px; height:30px;
+    border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 3px 8px rgba(0,0,0,.55);
+  }
+  .pdt-pin-head-inner {
+    width:13px; height:13px; border-radius:50%;
+    background:rgba(255,255,255,.85);
+    transform:rotate(45deg);
+  }
+  .pdt-pin-tail { width:4px; height:11px; margin-top:-1px; border-radius:0 0 4px 4px; }
+
+  /* ── Popup, tema navy PDT ─────────────────────────────────── */
+  .leaflet-popup-content-wrapper {
+    background: #07122a;
+    border: 1px solid #1a2f50;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.7);
+    padding: 0;
+  }
+  .leaflet-popup-content {
+    margin: 14px 16px;
+    font-family: system-ui, sans-serif;
+    color: #ddeeff;
+    line-height: 1.5;
+  }
+  .leaflet-popup-tip-container { margin-top: -1px; }
+  .leaflet-popup-tip { background: #07122a; }
+  .leaflet-popup-close-button {
+    color: #5a7a9a !important;
+    font-size: 18px !important;
+    top: 6px !important;
+    right: 10px !important;
+  }
+  .leaflet-popup-close-button:hover { color: #ddeeff !important; }
+
+  /* cluster customizado, teal para disponíveis */
+  .marker-cluster-small,
+  .marker-cluster-medium,
+  .marker-cluster-large { background:rgba(14,165,233,.18) !important; }
+  .marker-cluster-small div,
+  .marker-cluster-medium div,
+  .marker-cluster-large div {
+    background:rgba(14,165,233,.65) !important;
+    color:#04091c !important; font-weight:700;
+  }
+  /* cluster com pelo menos 1 pedindo ajuda */
+  .cluster-has-help { background:rgba(244,63,94,.18) !important; }
+  .cluster-has-help div { background:rgba(244,63,94,.65) !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="max-w-7xl mx-auto px-4 py-6">
+  <div class="flex items-start justify-between flex-wrap gap-4">
+    <div>
+      <h1 class="text-2xl font-bold" style="color:#ddeeff">Mapa de presença</h1>
+      <p class="text-sm mt-1" style="color:#5a7a9a">
+        Pins <span style="color:#0ea5e9;font-weight:600">azuis</span> = disponíveis ·
+        pins <span style="color:#f43f5e;font-weight:600">vermelhos</span> = pedindo ajuda.
+        Clique em um pin <span style="color:#f43f5e;font-weight:600">vermelho</span> para entrar na sala de ajuda.
+      </p>
+    </div>
+
+    {# Painel de ajuda, gerenciado via Alpine sem reload #}
+    <div x-data="helpPanel()" x-init="init()" class="relative" style="z-index:1100">
+
+      {# estado: pedido aberto #}
+      <div x-show="hasOpen" x-cloak class="flex gap-2 items-center">
+        <span style="border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);
+                     color:#fca5a5;padding:6px 12px;border-radius:7px;font-size:.8125rem">
+          Pedido aberto: <span x-text="openTopic"></span>
+        </span>
+        <button @click="resolve()" :disabled="busy"
+                style="background:#34d399;color:#04091c;font-weight:700;
+                       padding:6px 14px;border-radius:7px;font-size:.8125rem;transition:background .15s"
+                class="hover:bg-emerald-300 disabled:opacity-50">
+          Marcar como resolvido
+        </button>
+      </div>
+
+      {# estado: sem pedido aberto #}
+      <div x-show="!hasOpen" x-cloak>
+        {% if user_can_request_help %}
+        <button @click="open = !open"
+                style="background:#f43f5e;color:#fff;font-weight:700;
+                       padding:8px 18px;border-radius:8px;font-size:.875rem;transition:background .15s"
+                class="hover:bg-rose-400">
+          🆘 Pedir ajuda
+        </button>
+        <div x-show="open" x-cloak
+             class="absolute right-0 mt-2 w-80 shadow-2xl"
+             style="z-index:1200;background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:16px">
+          <p style="font-size:.9rem;font-weight:700;color:#ddeeff;margin-bottom:12px">Pedir ajuda</p>
+          <div class="space-y-3">
+            <div>
+              <label style="display:block;font-size:.75rem;color:#8bacc8;margin-bottom:4px">Tópico</label>
+              <select x-model="topicId"
+                      @change="topicId = $event.target.value"
+                      style="font-size:.875rem">
+                {% for t in topics %}<option value="{{ t.id }}">{{ t.title }}</option>{% endfor %}
+              </select>
+            </div>
+            <div>
+              <label style="display:block;font-size:.75rem;color:#8bacc8;margin-bottom:4px">
+                Descreva sua dúvida (opcional)
+              </label>
+              <textarea x-model="desc" rows="3" style="font-size:.875rem;resize:none"></textarea>
+            </div>
+            <button @click="submit()" :disabled="busy"
+                    style="width:100%;background:#f43f5e;color:#fff;font-weight:700;
+                           padding:9px 0;border-radius:7px;font-size:.875rem;transition:background .15s"
+                    class="hover:bg-rose-400 disabled:opacity-50">
+              <span x-text="busy ? 'Enviando…' : 'Pedir ajuda'"></span>
+            </button>
+            <p x-show="errMsg" x-text="errMsg" style="color:#f87171;font-size:.75rem"></p>
+          </div>
+        </div>
+        {% else %}
+        <div class="max-w-sm text-right"
+             style="border:1px solid rgba(14,165,233,.35);background:rgba(14,165,233,.08);
+                    padding:10px 14px;border-radius:10px;font-size:.8125rem;line-height:1.45;color:#8bacc8">
+          <p style="color:#ddeeff;font-weight:600;margin:0 0 6px">Pedir ajuda exige aparecer no mapa</p>
+          <p style="margin:0 0 8px">
+            Com «Aparecer no mapa de presença» desligado, a plataforma não aceita novos pedidos de ajuda
+            e você não aparece como pin para outras pessoas.
+          </p>
+          <a href="{% url 'accounts:profile_edit' %}"
+             style="color:#38bdf8;font-weight:600;text-decoration:underline">Ativar no perfil →</a>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>{# /x-data #}
+  </div>
+
+  <div id="map" class="mt-4 rounded-lg"
+       style="height:70vh;min-height:320px;max-height:80vh;background:#04091c;border:1px solid #1a2f50"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+  const CSRF = document.cookie.split('; ').find(c=>c.startsWith('csrftoken='))?.split('=')[1]||'';
+  const URLS = {
+    online:   '{% url "presence:api_online" %}',
+    checkin:  '{% url "presence:api_checkin" %}',
+    help:     '{% url "presence:api_help_request" %}',
+    resolve:  (id) => `/mapa/api/help/${id}/resolve/`,
+    join:     (id) => `/mapa/api/help/${id}/join/`,
+  };
+
+  // ── Mapa ──────────────────────────────────────────────────────────────
+  const leafMap = L.map('map', { worldCopyJump:true }).setView([-15.78,-47.93], 4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom:19, subdomains:'abcd',
+    attribution:'© <a href="https://carto.com/">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(leafMap);
+
+  // ── Cluster ────────────────────────────────────────────────────────────
+  const clusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 60,
+    iconCreateFunction(cluster) {
+      const children = cluster.getAllChildMarkers();
+      const hasHelp  = children.some(m => m.options._status === 'help');
+      const count    = children.length;
+      const cls      = hasHelp ? 'marker-cluster marker-cluster-small cluster-has-help'
+                               : 'marker-cluster marker-cluster-small';
+      return L.divIcon({
+        html:`<div><span>${count}</span></div>`,
+        className: cls,
+        iconSize: L.point(40, 40),
+      });
+    },
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+  });
+  leafMap.addLayer(clusterGroup);
+
+  // ── Pins ───────────────────────────────────────────────────────────────
+  const markerMap = new Map();   // user_id → L.Marker
+
+  function pinIcon(status) {
+    const color  = status === 'help' ? '#f43f5e' : '#0ea5e9';  /* teal-blue p/ disponível */
+    const shadow = status === 'help' ? '#f43f5e70':'#0ea5e970';
+    return L.divIcon({
+      className:'',
+      html:`<div class="pdt-pin-wrap">
+              <div class="pdt-pin-head" style="background:${color};box-shadow:0 3px 10px ${shadow}">
+                <div class="pdt-pin-head-inner"></div>
+              </div>
+              <div class="pdt-pin-tail" style="background:${color}"></div>
+            </div>`,
+      iconSize:[30,41], iconAnchor:[15,41], popupAnchor:[0,-43],
+    });
+  }
+
+  function pinPopup(u) {
+    const isHelp = u.status === 'help';
+    const badge  = isHelp
+      ? `<span style="display:inline-block;background:#f43f5e22;color:#fca5a5;
+                      border:1px solid #f43f5e55;padding:2px 10px;border-radius:99px;
+                      font-size:11px;font-weight:600">● pedindo ajuda</span>`
+      : `<span style="display:inline-block;background:#0ea5e922;color:#7dd3fc;
+                      border:1px solid #0ea5e955;padding:2px 10px;border-radius:99px;
+                      font-size:11px;font-weight:600">● disponível</span>`;
+
+    const header = `
+      <div style="font-size:15px;font-weight:700;color:#ddeeff;margin-bottom:6px">${u.name}</div>
+      <div style="margin-bottom:10px">${badge}</div>`;
+
+    if (isHelp && u.help_request_id) {
+      return `<div style="min-width:205px">
+        ${header}
+        <div style="font-size:11px;color:#5a7a9a;text-transform:uppercase;letter-spacing:.5px;
+                    margin-bottom:4px">Dúvida em</div>
+        <div style="font-size:13px;font-weight:600;color:#ddeeff;margin-bottom:14px;
+                    padding:7px 10px;background:#04091c;border-radius:7px;
+                    border-left:3px solid #f43f5e">
+          ${u.help_topic || '-'}
+        </div>
+        <button onclick="window.joinHelp(${u.help_request_id})"
+          style="width:100%;background:#0891b2;color:#f0f9ff;font-weight:700;
+                 padding:10px 0;border-radius:8px;border:0;cursor:pointer;
+                 font-size:13px;letter-spacing:.2px;transition:background .15s"
+          onmouseover="this.style.background='#0ea5e9'"
+          onmouseout="this.style.background='#0891b2'">
+          Entrar para ajudar →
+        </button>
+      </div>`;
+    }
+    return `<div style="min-width:160px">${header}</div>`;
+  }
+
+  function refreshMap(users) {
+    const seen = new Set();
+    users.forEach(u => {
+      seen.add(u.user_id);
+      const icon  = pinIcon(u.status);
+      const popup = pinPopup(u);
+      const existing = markerMap.get(u.user_id);
+      if (existing) {
+        existing.setLatLng([u.lat, u.lng]);
+        existing.setIcon(icon);
+        existing.options._status = u.status;   // mantém dado para cluster
+        existing.setPopupContent(popup);
+      } else {
+        const m = L.marker([u.lat, u.lng], { icon, _status: u.status })
+                    .bindPopup(popup, { maxWidth: 240 });
+        clusterGroup.addLayer(m);
+        markerMap.set(u.user_id, m);
+      }
+    });
+    for (const [id, m] of markerMap.entries()) {
+      if (!seen.has(id)) { clusterGroup.removeLayer(m); markerMap.delete(id); }
+    }
+    // atualiza cluster para recalcular cores
+    clusterGroup.refreshClusters();
+  }
+
+  // ── API helpers ────────────────────────────────────────────────────────
+  async function fetchOnline() {
+    try {
+      const r = await fetch(URLS.online);
+      if (r.ok) refreshMap((await r.json()).users || []);
+    } catch(e) { console.warn(e); }
+  }
+
+  async function checkin(lat, lng) {
+    const fd = new FormData();
+    fd.append('lat', lat); fd.append('lng', lng);
+    await fetch(URLS.checkin, { method:'POST', headers:{'X-CSRFToken':CSRF}, body:fd });
+    await fetchOnline();
+  }
+
+  // ── joinHelp global ────────────────────────────────────────────────────
+  window.joinHelp = async function(id) {
+    const r = await fetch(URLS.join(id), { method:'POST', headers:{'X-CSRFToken':CSRF} });
+    if (r.ok) { window.location = (await r.json()).redirect; }
+    else { alert((await r.json().catch(()=>({}))).error || 'Não foi possível entrar.'); }
+  };
+
+  // ── WebSocket ──────────────────────────────────────────────────────────
+  const wsScheme = location.protocol==='https:'?'wss':'ws';
+  const ws = new WebSocket(`${wsScheme}://${location.host}/ws/presence/`);
+  ws.onmessage = ev => {
+    try {
+      const msg = JSON.parse(ev.data);
+      if (msg.type==='presence' && Array.isArray(msg.users)) refreshMap(msg.users);
+    } catch {}
+  };
+  ws.onopen = () => fetchOnline();
+
+  // ── Geolocalização com fallback IP ─────────────────────────────────────
+  async function geoByIP() {
+    try {
+      const r = await fetch('http://ip-api.com/json/?fields=lat,lon,status');
+      const d = await r.json();
+      if (d.status==='success') { leafMap.setView([d.lat,d.lon],11); await checkin(d.lat,d.lon); }
+      else await fetchOnline();
+    } catch { await fetchOnline(); }
+  }
+
+  function geo() {
+    if (!navigator.geolocation) { geoByIP(); return; }
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        const {latitude:lat, longitude:lng} = pos.coords;
+        leafMap.setView([lat,lng], 13);
+        await checkin(lat, lng);
+        if (ws.readyState===1) ws.send(JSON.stringify({action:'update_location',lat,lng}));
+      },
+      () => geoByIP(),
+      { enableHighAccuracy:false, timeout:8000 }
+    );
+  }
+  geo();
+  setInterval(fetchOnline, 30000);
+
+  // ── Alpine component ───────────────────────────────────────────────────
+  function helpPanel() {
+    return {
+      open:      false,
+      hasOpen:   {{ open_help|yesno:"true,false" }},
+      openId:    {{ open_help.id|default:"null" }},
+      openTopic: '{{ open_help.topic|default:"" }}',
+      topicId:   '{{ topics.first.id|default:"" }}',
+      desc:      '',
+      busy:      false,
+      errMsg:    '',
+
+      init() {
+        // expõe callback para o mapa atualizar o banner sem reload
+        window._setHelpOpen = (id, topic) => {
+          this.hasOpen   = true;
+          this.openId    = id;
+          this.openTopic = topic;
+          this.open      = false;
+        };
+        window._clearHelpOpen = () => { this.hasOpen = false; this.openId = null; };
+      },
+
+      async submit() {
+        this.busy = true; this.errMsg = '';
+        const fd = new FormData();
+        fd.append('topic_id', this.topicId);
+        fd.append('description', this.desc);
+        try {
+          const r = await fetch(URLS.help, { method:'POST', headers:{'X-CSRFToken':CSRF}, body:fd });
+          const d = await r.json();
+          if (r.ok) {
+            window._setHelpOpen(d.id, d.topic);
+            await fetchOnline();   // atualiza pin do próprio usuário para vermelho
+          } else {
+            this.errMsg = d.error || 'Erro ao criar pedido.';
+          }
+        } catch { this.errMsg = 'Erro de rede.'; }
+        this.busy = false;
+      },
+
+      async resolve() {
+        if (!this.openId) return;
+        this.busy = true;
+        try {
+          const r = await fetch(URLS.resolve(this.openId),
+                                { method:'POST', headers:{'X-CSRFToken':CSRF} });
+          if (r.ok) { window._clearHelpOpen(); await fetchOnline(); }
+          else { alert('Não foi possível resolver.'); }
+        } catch { alert('Erro de rede.'); }
+        this.busy = false;
+      },
+    };
+  }
+</script>
+{% endblock %}

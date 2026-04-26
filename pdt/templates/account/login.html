@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Entrar · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-md mx-auto px-4 py-12">
+  <h1 class="text-2xl font-bold mb-1" style="color:#ddeeff">Entrar</h1>
+  <p class="text-sm mb-5" style="color:#5a7a9a">Acesse sua trilha DevSecOps.</p>
+
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+    {% for field in form %}
+      <div>
+        <label style="display:block;font-size:.875rem;color:#8bacc8;margin-bottom:4px">
+          {{ field.label }}
+        </label>
+        {{ field }}
+        {% if field.errors %}
+          <p style="color:#f87171;font-size:.75rem;margin-top:4px">{{ field.errors|join:" " }}</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+    {% if form.non_field_errors %}
+      <p style="color:#f87171;font-size:.75rem">{{ form.non_field_errors|join:" " }}</p>
+    {% endif %}
+    {% if redirect_field_value %}
+      <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+    {% endif %}
+    <button style="width:100%;background:#0891b2;color:#f0f9ff;font-weight:700;
+                   padding:10px 0;border-radius:8px;font-size:.9375rem;transition:background .15s"
+            class="hover:bg-sky-500">
+      Entrar
+    </button>
+  </form>
+  <p class="text-sm mt-4" style="color:#5a7a9a">
+    Não tem conta?
+    <a style="color:#38bdf8" href="{% url 'account_signup' %}" class="hover:text-sky-200">Cadastre-se</a>.
+  </p>
+</section>
+{% endblock %}

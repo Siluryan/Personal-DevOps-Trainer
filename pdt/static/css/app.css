@@ -1,0 +1,332 @@
+/*
+ * PDT, Sistema de Cores Baseado em Evidências
+ *
+ * Fontes científicas:
+ *  · Frontiers Psych 2024: alto contraste em conteúdo relevante reduz carga cognitiva,
+ *    aumenta retenção e transferência (p<0.001).
+ *  · Classroom Color Study (RC Research Archive 2024): ambientes cool (azul/teal/verde)
+ *    obtiveram AAS 81.15 vs 72.40 em ambientes warm, diferença estatisticamente significativa.
+ *  · Frontiers Psych 2025 (Beihang/PMC): fundo verde-claro reduz fadiga visual e emoção
+ *    negativa em leitura; pupila maior = menos fadiga.
+ *  · Shift eLearning / Psychology Town: azul melhora atenção sustentada; verde/teal
+ *    reduz strain ocular em longas sessões; color-coding congruente eleva recall.
+ *
+ * Decisões de design:
+ *  · Base navy (não cinza puro): #060e1e, azul escuro reduz stress vs preto absoluto.
+ *  · Accent primário: teal/cyan (#0ea5e9), combina benefício do azul (foco) + verde (leitura).
+ *  · Área de leitura de aulas: fundo levemente diferenciado + legibilidade otimizada.
+ *  · Cabeçalhos em sky-blue: cor de estrutura favorece navegação cognitiva no texto.
+ *  · Blocos de código: máximo contraste + borda esquerda como âncora visual.
+ *  · Color-coding semântico: teal=conceito, verde=exemplo/sucesso, âmbar=atenção, roxo=definição.
+ */
+
+/* ── Variáveis globais ──────────────────────────────────────────────────── */
+:root {
+  --pdt-bg:         #04091c;   /* navy profundo, base principal */
+  --pdt-surface:    #07122a;   /* superfície card */
+  --pdt-surface2:   #0c1d3a;   /* card elevado */
+  --pdt-border:     #1a2f50;   /* borda padrão */
+  --pdt-border2:    #253d5e;   /* borda hover */
+
+  --pdt-text:       #ddeeff;   /* texto primário, branco levemente azulado (menos harsh) */
+  --pdt-text2:      #8bacc8;   /* texto secundário, slate azulado */
+  --pdt-text3:      #5a7a9a;   /* placeholder / hint */
+
+  --pdt-accent:     #0ea5e9;   /* sky-500, teal-blue para foco */
+  --pdt-accent-h:   #38bdf8;   /* sky-400, hover */
+  --pdt-green:      #34d399;   /* emerald-400, sucesso / gamificação */
+  --pdt-amber:      #fbbf24;   /* amber-400, atenção / nota */
+  --pdt-purple:     #c084fc;   /* purple-400, definições */
+  --pdt-red:        #f87171;   /* red-400, erro / crítico */
+
+  --pdt-code-bg:    #030810;   /* fundo de bloco de código */
+  --pdt-code-inline:#0e1e3a;   /* fundo de código inline */
+  --pdt-lesson-bg:  #05102a;   /* fundo da área de leitura de aulas */
+}
+
+/* ── Override do fundo raiz ──────────────────────────────────────────────── */
+html, body { background-color: var(--pdt-bg) !important; }
+
+/* ── Âncora de scroll suave ──────────────────────────────────────────────── */
+html { scroll-behavior: smooth; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ÁREA DE LEITURA DE AULAS  (classe .lesson-body)
+   Otimizada para leitura prolongada de conteúdo técnico.
+   ══════════════════════════════════════════════════════════════════════════ */
+.lesson-body {
+  background: var(--pdt-lesson-bg);
+  border: 1px solid var(--pdt-border);
+  border-radius: 12px;
+  padding: 2rem 2.25rem;
+  /* largura de coluna ótima para leitura: ~70 chars */
+  max-width: 72ch;
+  color: var(--pdt-text);
+  font-size: 1.0625rem;  /* ligeiramente maior que 1rem, reduz strain */
+  line-height: 1.75;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.lesson-body h2 {
+  color: #7dd3fc;          /* sky-300, âncoras de seção em azul */
+  font-size: 1.45rem;
+  font-weight: 700;
+  margin-top: 2.25rem;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--pdt-border);
+  letter-spacing: -.01em;
+}
+
+.lesson-body h3 {
+  color: #93c5fd;          /* blue-300, sub-seções */
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.lesson-body h4 {
+  color: #bae6fd;          /* sky-200 */
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.lesson-body p {
+  margin: 0.875rem 0;
+  color: var(--pdt-text);
+}
+
+.lesson-body ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.875rem 0;
+}
+.lesson-body ul li {
+  padding-left: 1.25rem;
+  position: relative;
+  margin-bottom: 0.375rem;
+}
+.lesson-body ul li::before {
+  content: '▹';
+  position: absolute;
+  left: 0;
+  color: var(--pdt-accent);
+  font-size: 0.9em;
+}
+
+.lesson-body ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+  margin: 0.875rem 0;
+}
+.lesson-body ol li { margin-bottom: 0.375rem; }
+
+.lesson-body strong {
+  color: #bfdbfe;          /* blue-200, destaque em azul melhora recall */
+  font-weight: 700;
+}
+
+.lesson-body em {
+  color: #a5f3fc;          /* cyan-200 */
+  font-style: italic;
+}
+
+/* código inline */
+.lesson-body code {
+  background: var(--pdt-code-inline);
+  color: #67e8f9;          /* cyan-300, máximo contraste p/ código */
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 0.875em;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  border: 1px solid #1a3550;
+}
+
+/* bloco de código */
+.lesson-body pre {
+  background: var(--pdt-code-bg);
+  border: 1px solid var(--pdt-border);
+  border-left: 4px solid var(--pdt-accent);  /* âncora visual, facilita scanning */
+  border-radius: 8px;
+  padding: 1.125rem 1.25rem;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #cce5ff;
+}
+.lesson-body pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #cce5ff;
+  font-size: 1em;
+}
+
+/* links */
+.lesson-body a {
+  color: var(--pdt-accent-h);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.lesson-body a:hover { color: #7dd3fc; }
+
+/* tabelas */
+.lesson-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9375rem;
+}
+.lesson-body th {
+  background: var(--pdt-surface2);
+  color: #7dd3fc;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--pdt-border);
+  text-align: left;
+  font-weight: 600;
+}
+.lesson-body td {
+  padding: 0.45rem 0.875rem;
+  border: 1px solid var(--pdt-border);
+  color: var(--pdt-text);
+}
+.lesson-body tr:nth-child(even) td { background: var(--pdt-surface); }
+
+/* callouts semânticos: .note, .warning, .tip, .definition */
+.lesson-body .note,
+.lesson-body blockquote {
+  background: rgba(14, 165, 233, .08);
+  border-left: 4px solid var(--pdt-accent);
+  border-radius: 0 6px 6px 0;
+  padding: .75rem 1rem;
+  margin: 1rem 0;
+  color: #bae6fd;
+  font-size: .9375rem;
+}
+.lesson-body .warning {
+  background: rgba(251, 191, 36, .08);
+  border-left: 4px solid var(--pdt-amber);
+  border-radius: 0 6px 6px 0;
+  padding: .75rem 1rem;
+  margin: 1rem 0;
+  color: #fde68a;
+}
+.lesson-body .definition {
+  background: rgba(192, 132, 252, .08);
+  border-left: 4px solid var(--pdt-purple);
+  border-radius: 0 6px 6px 0;
+  padding: .75rem 1rem;
+  margin: 1rem 0;
+  color: #e9d5ff;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SISTEMA LEGADO (prose-invert), mantido para compatibilidade
+   ══════════════════════════════════════════════════════════════════════════ */
+.prose-invert h1,
+.prose-invert h2,
+.prose-invert h3 {
+  color: #7dd3fc;
+  font-weight: 700;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+.prose-invert h1 { font-size: 1.6rem;  color: #bae6fd; }
+.prose-invert h2 { font-size: 1.3rem;  color: #7dd3fc; }
+.prose-invert h3 { font-size: 1.1rem;  color: #93c5fd; }
+.prose-invert p  { margin: 0.875rem 0; line-height: 1.75; color: var(--pdt-text); }
+.prose-invert ul { list-style: disc; padding-left: 1.25rem; margin: 0.75rem 0; }
+.prose-invert ol { list-style: decimal; padding-left: 1.25rem; margin: 0.75rem 0; }
+
+.prose-invert code {
+  background: var(--pdt-code-inline);
+  color: #67e8f9;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 0.875em;
+  border: 1px solid #1a3550;
+}
+.prose-invert pre {
+  background: var(--pdt-code-bg);
+  border-left: 4px solid var(--pdt-accent);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  color: #cce5ff;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.prose-invert pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+}
+.prose-invert a    { color: var(--pdt-accent-h); text-decoration: underline; }
+.prose-invert strong { color: #bfdbfe; }
+
+/* ── Animações ──────────────────────────────────────────────────────────── */
+.help-pulse { animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.55; transform: scale(1.25); }
+}
+
+/* ── Responsividade Mobile ──────────────────────────────────────────────── */
+@media (max-width: 639px) {
+  /* Aula: menos padding e fonte ligeiramente menor */
+  .lesson-body {
+    padding: 1.125rem 1rem;
+    font-size: 1rem;
+    border-radius: 8px;
+    max-width: 100%;
+  }
+  .lesson-body h2 { font-size: 1.2rem; }
+  .lesson-body h3 { font-size: 1.05rem; }
+  .lesson-body pre {
+    font-size: .8125rem;
+    padding: .75rem .875rem;
+    border-left-width: 3px;
+  }
+  /* prose-invert (legado) */
+  .prose-invert h1 { font-size: 1.3rem; }
+  .prose-invert h2 { font-size: 1.1rem; }
+  .prose-invert h3 { font-size: 1rem; }
+}
+
+/* ── Inputs / formulários ───────────────────────────────────────────────── */
+input[type="text"],
+input[type="email"],
+input[type="url"],
+input[type="password"],
+textarea,
+select {
+  width: 100%;
+  background: var(--pdt-code-inline);  /* #0e1e3a */
+  border: 1px solid var(--pdt-border); /* #1a2f50 */
+  color: var(--pdt-text);
+  padding: .5rem .75rem;
+  border-radius: 6px;
+  font-size: .9375rem;
+  transition: border-color .15s, box-shadow .15s;
+  outline: none;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--pdt-accent);
+  box-shadow: 0 0 0 3px rgba(14,165,233,.18);
+}
+input::placeholder, textarea::placeholder { color: var(--pdt-text3); }
+
+/* ── Scrollbar sutil (Webkit) ───────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: var(--pdt-surface); }
+::-webkit-scrollbar-thumb { background: var(--pdt-border2); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--pdt-accent); }
+
+/* ── Seleção de texto ───────────────────────────────────────────────────── */
+::selection { background: rgba(14, 165, 233, .35); color: #fff; }

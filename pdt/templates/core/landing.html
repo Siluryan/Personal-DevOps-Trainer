@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Personal DevOps Trainer · Trilha DevSecOps{% endblock %}
+
+{% block content %}
+<!-- hero -->
+<section class="max-w-5xl mx-auto px-4 pt-16 pb-12">
+  <p class="font-mono text-sm" style="color:#38bdf8">// trilha DevSecOps voltada para o mercado</p>
+  <h1 class="text-4xl sm:text-5xl font-bold mt-3" style="color:#ddeeff;line-height:1.15">
+    Personal DevOps Trainer
+  </h1>
+  <p class="text-lg mt-4 max-w-3xl" style="color:#8bacc8;line-height:1.7">
+    Plataforma de estudo gamificada com 6 fases e 60 tópicos, do Linux ao hardening de Kubernetes,
+    passando por automação e Python aplicado a operações.
+    Ranking público opcional e mapa em tempo real para pedir ou oferecer ajuda.
+    DevSecOps é, antes de tudo, cultura colaborativa.
+  </p>
+
+  <div class="mt-8 flex flex-wrap gap-3">
+    {% if user.is_authenticated %}
+      <a href="{% url 'assessments:start' %}"
+         style="background:#0891b2;color:#f0f9ff;font-weight:700;
+                padding:10px 22px;border-radius:8px;font-size:.9375rem;transition:background .15s"
+         class="hover:bg-sky-500">
+        Continuar / Fazer teste de admissão
+      </a>
+    {% else %}
+      <a href="{% url 'account_signup' %}"
+         style="background:#0891b2;color:#f0f9ff;font-weight:700;
+                padding:10px 22px;border-radius:8px;font-size:.9375rem;transition:background .15s"
+         class="hover:bg-sky-500">
+        Começar agora
+      </a>
+      <a href="{% url 'account_login' %}"
+         style="border:1px solid #1a2f50;color:#8bacc8;
+                padding:10px 22px;border-radius:8px;font-size:.9375rem;transition:border-color .15s"
+         class="hover:border-sky-500/50">
+        Já tenho conta
+      </a>
+    {% endif %}
+  </div>
+</section>
+
+<!-- feature cards -->
+<section class="max-w-5xl mx-auto px-4 pb-20 grid sm:grid-cols-3 gap-4">
+
+  <div style="background:#07122a;border:1px solid #1a2f50;border-radius:10px;padding:20px">
+    <div class="mb-2" style="color:#38bdf8" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7" width="28" height="28">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+      </svg>
+    </div>
+    <h3 class="font-bold" style="color:#7dd3fc">Teste de admissão</h3>
+    <p class="text-sm mt-2" style="color:#8bacc8;line-height:1.6">
+      10 questões básicas de Linux e redes. Menos de 5 pontos: sem acesso.
+      A barra mínima é proposital; o objetivo é você acompanhar a trilha com seriedade.
+    </p>
+  </div>
+
+  <div style="background:#07122a;border:1px solid #1a2f50;border-radius:10px;padding:20px">
+    <div class="mb-2" style="color:#38bdf8" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7" width="28" height="28">
+        <circle cx="12" cy="12" r="2.25" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="9.75" />
+        <path stroke-linecap="round" d="M12 2.25v19.5M2.25 12h19.5" />
+      </svg>
+    </div>
+    <h3 class="font-bold" style="color:#7dd3fc">Radar com 60 eixos</h3>
+    <p class="text-sm mt-2" style="color:#8bacc8;line-height:1.6">
+      Cada tópico é um eixo no radar de competências. Acertou no quiz,
+      ajudou alguém no mapa: sua área cresce.
+    </p>
+  </div>
+
+  <div style="background:#07122a;border:1px solid #1a2f50;border-radius:10px;padding:20px">
+    <div class="mb-2" style="color:#38bdf8" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7" width="28" height="28">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+      </svg>
+    </div>
+    <h3 class="font-bold" style="color:#7dd3fc">Mapa colaborativo</h3>
+    <p class="text-sm mt-2" style="color:#8bacc8;line-height:1.6">
+      Travou? Aperte o botão de ajuda e seu pino fica vermelho. Quem
+      passar pode entrar, te ajudar e ainda ganha pontos por isso.
+    </p>
+  </div>
+
+</section>
+{% endblock %}

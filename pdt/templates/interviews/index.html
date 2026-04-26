@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Simulador de entrevistas · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-5xl mx-auto px-4 py-8 sm:py-10">
+
+  <div class="mb-8">
+    <h1 class="text-2xl sm:text-3xl font-bold mb-2" style="color:#ddeeff">
+      Simulador de entrevistas
+    </h1>
+    <p style="color:#8bacc8;line-height:1.6;max-width:62ch">
+      Cada nível tem <strong style="color:#bae6fd">{{ questions_total }} questões</strong>
+      cobrando o que aparece de fato em entrevistas de mercado. Você precisa de
+      <strong style="color:#bae6fd">{{ pass_percent }}%</strong> de acerto para subir
+      de nível e desbloquear o próximo. As respostas são salvas automaticamente , 
+      pode pausar e retomar quando quiser.
+    </p>
+    <p class="mt-3" style="color:#8bacc8;font-size:.9rem">
+      Seu nível atual:
+      <span style="background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.4);
+                   color:#bae6fd;padding:3px 10px;border-radius:999px;font-weight:600">
+        {{ career_label }}
+      </span>
+    </p>
+  </div>
+
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for lvl in levels %}
+      {% with status=lvl.status %}
+      <article style="background:#07122a;border:1px solid
+                      {% if status.achieved %}rgba(52,211,153,.45){% elif status.unlocked %}#1a2f50{% else %}#0c1d3a{% endif %};
+                      border-radius:14px;padding:18px;
+                      {% if not status.unlocked %}opacity:.65{% endif %};
+                      display:flex;flex-direction:column;gap:14px;min-height:230px">
+
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <h2 class="text-xl font-bold" style="color:#ddeeff">{{ lvl.label }}</h2>
+            {% if status.achieved %}
+              <span style="background:rgba(52,211,153,.18);border:1px solid rgba(52,211,153,.4);
+                           color:#6ee7b7;font-size:.7rem;padding:2px 8px;border-radius:999px;font-weight:600">
+                conquistado
+              </span>
+            {% elif not status.unlocked %}
+              <span style="background:rgba(148,163,184,.15);border:1px solid rgba(148,163,184,.35);
+                           color:#94a3b8;font-size:.7rem;padding:2px 8px;border-radius:999px;font-weight:600">
+                bloqueado
+              </span>
+            {% endif %}
+          </div>
+          <p style="color:#8bacc8;font-size:.875rem;line-height:1.55">{{ lvl.description }}</p>
+        </div>
+
+        {% if status.in_progress %}
+          <div style="background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.25);
+                      border-radius:10px;padding:10px 12px;font-size:.8rem;color:#bae6fd">
+            Em andamento: {{ status.in_progress.answered_count }}/{{ status.in_progress.total }}
+            ({{ status.in_progress.progress_percent }}%)
+          </div>
+        {% elif status.last and status.last.finished_at %}
+          <div style="background:#04091c;border:1px solid #1a2f50;
+                      border-radius:10px;padding:10px 12px;font-size:.8rem;color:#8bacc8">
+            Última tentativa:
+            <strong style="color:#ddeeff">{{ status.last.score }}/{{ status.last.total }}</strong>
+            ({{ status.last.score_percent }}%)
+            {% if status.last.passed %}
+              · <span style="color:#6ee7b7">aprovado</span>
+            {% else %}
+              · <span style="color:#fca5a5">não atingiu {{ pass_percent }}%</span>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <div class="mt-auto flex flex-wrap gap-2">
+          {% if status.unlocked %}
+            <form method="post" action="{% url 'interviews:start' lvl.key %}">
+              {% csrf_token %}
+              <button style="background:#0891b2;color:#f0f9ff;font-weight:600;
+                             padding:8px 18px;border-radius:8px;font-size:.875rem"
+                      class="hover:bg-sky-500 transition-colors">
+                {% if status.in_progress %}Continuar{% else %}Começar{% endif %}
+              </button>
+            </form>
+            {% if status.in_progress %}
+              <form method="post" action="{% url 'interviews:cancel' status.in_progress.pk %}"
+                    onsubmit="return confirm('Descartar a tentativa em andamento?')">
+                {% csrf_token %}
+                <button type="submit"
+                        style="background:transparent;border:1px solid #1a2f50;
+                               color:#94a3b8;padding:8px 14px;border-radius:8px;font-size:.8rem"
+                        class="hover:text-rose-300 hover:border-rose-400/40 transition-colors">
+                  Descartar
+                </button>
+              </form>
+            {% endif %}
+          {% else %}
+            <span style="color:#5a7a9a;font-size:.8rem;font-style:italic">
+              Conclua o nível anterior com {{ pass_percent }}% para liberar.
+            </span>
+          {% endif %}
+        </div>
+      </article>
+      {% endwith %}
+    {% endfor %}
+  </div>
+
+  <div class="mt-10" style="background:#07122a;border:1px solid #1a2f50;
+                            border-radius:12px;padding:18px;color:#8bacc8">
+    <h3 class="font-semibold mb-2" style="color:#bae6fd">Como funciona</h3>
+    <ul style="line-height:1.7;font-size:.9rem;list-style:disc;padding-left:20px">
+      <li>Você responde uma questão por vez. Cada resposta é salva automaticamente.</li>
+      <li>Pode sair, fechar o navegador e retomar depois, o progresso fica guardado.</li>
+      <li>Ao final, o sistema calcula o percentual e, se ≥ {{ pass_percent }}%, sua promoção é registrada.</li>
+      <li>O teste de Sênior é fortemente focado em arquitetura e decisões técnicas.</li>
+    </ul>
+  </div>
+
+</section>
+{% endblock %}

@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+{% block title %}Sala de ajuda · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-4xl mx-auto px-4 py-6"
+         x-data="helpRoom({
+           helpId: {{ help_request.id }},
+           selfUserId: {{ request.user.id }},
+           selfName: '{{ request.user.display_name|escapejs }}',
+           iceServers: JSON.parse(document.getElementById('ice-servers').textContent || '[]')
+         })"
+         @beforeunload.window="leave()">
+
+  {% if forbidden %}
+    <p style="color:#f87171">Você não faz parte desta sala.</p>
+  {% else %}
+
+    <!-- cabeçalho da sala -->
+    <header class="flex flex-wrap items-start justify-between gap-3 mb-5">
+      <div>
+        <h1 class="text-2xl font-bold" style="color:#ddeeff">
+          Sala de ajuda · {{ help_request.topic.title }}
+        </h1>
+        <p class="text-sm mt-1" style="color:#8bacc8">
+          Quem pediu: <strong style="color:#ddeeff">{{ help_request.requester.display_name }}</strong>
+          {% if help_request.helper %}
+            · ajudando: <strong style="color:#ddeeff">{{ help_request.helper.display_name }}</strong>
+          {% endif %}
+        </p>
+      </div>
+      <div style="font-size:.75rem;color:#5a7a9a;display:flex;gap:8px;align-items:center" x-cloak>
+        <span style="width:8px;height:8px;border-radius:50%;display:inline-block"
+              :style="{ background: connected ? '#34d399' : '#f87171' }"></span>
+        <span x-text="connected ? 'Conectado à sala' : 'Reconectando...'"></span>
+        <span style="color:#1a2f50">·</span>
+        <span x-text="(peerName || 'Aguardando o outro participante')"></span>
+      </div>
+    </header>
+
+    {% if help_request.description %}
+      <div style="background:#07122a;border:1px solid #1a2f50;border-radius:10px;padding:16px;margin-bottom:20px">
+        <p style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#5a7a9a;margin-bottom:6px">
+          Descrição do pedido
+        </p>
+        <p style="font-size:.9rem;color:#8bacc8;white-space:pre-line">{{ help_request.description }}</p>
+      </div>
+    {% endif %}
+
+    <!-- voz + chat, coluna única em mobile, lado-a-lado em md+ -->
+    <div class="grid md:grid-cols-2 gap-4">
+
+      <!-- painel de voz -->
+      <div style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:16px;
+                  display:flex;flex-direction:column;gap:12px">
+        <p style="font-size:.9rem;font-weight:700;color:#7dd3fc">Voz (WebRTC)</p>
+        <p style="font-size:.75rem;color:#5a7a9a;line-height:1.5">
+          A voz roda direto entre os dois navegadores. O servidor apenas faz a sinalização
+          inicial, nenhum áudio é gravado.
+        </p>
+
+        <div class="flex flex-wrap gap-2">
+          <button type="button"
+                  :style="{
+                    background: micActive ? '#f43f5e' : '#0891b2',
+                    color: micActive ? '#fff' : '#f0f9ff'
+                  }"
+                  style="padding:6px 14px;border-radius:7px;font-size:.8125rem;font-weight:700;transition:background .15s"
+                  @click="toggleMic()"
+                  x-text="micActive ? 'Desligar mic' : 'Ligar mic'"></button>
+
+          <button type="button"
+                  style="padding:6px 14px;border-radius:7px;font-size:.8125rem;font-weight:700;
+                         background:#1a2f50;color:#8bacc8;transition:background .15s"
+                  class="hover:bg-navy-700 disabled:opacity-50"
+                  :disabled="!micActive || inCall"
+                  @click="startCall()">
+            Chamar peer
+          </button>
+
+          <button type="button"
+                  style="padding:6px 14px;border-radius:7px;font-size:.8125rem;font-weight:700;
+                         background:#1a2f50;color:#8bacc8;transition:background .15s"
+                  class="hover:bg-navy-700 disabled:opacity-50"
+                  :disabled="!inCall"
+                  @click="hangUp()">
+            Encerrar
+          </button>
+
+          <span style="font-size:.75rem;color:#5a7a9a;display:flex;align-items:center;gap:6px;margin-left:auto">
+            <span style="width:8px;height:8px;border-radius:50%;display:inline-block"
+                  :style="{ background: inCall ? '#34d399' : '#1a2f50' }"></span>
+            <span x-text="inCall ? 'Em chamada' : 'Sem chamada'"></span>
+          </span>
+        </div>
+
+        <audio x-ref="remoteAudio" autoplay playsinline style="width:100%;margin-top:4px"></audio>
+        <p x-show="error" x-cloak x-text="error" style="color:#f87171;font-size:.75rem"></p>
+      </div>
+
+      <!-- painel de chat -->
+      <div style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:16px;
+                  display:flex;flex-direction:column">
+        <p style="font-size:.9rem;font-weight:700;color:#7dd3fc;margin-bottom:8px">Chat</p>
+        <div x-ref="messages"
+             style="flex:1;min-height:220px;max-height:360px;overflow-y:auto;padding-right:4px"
+             class="space-y-2">
+          <template x-for="msg in messages" :key="msg.id">
+            <div :style="msg.kind === 'system'
+                          ? 'color:#5a7a9a;font-size:.75rem;font-style:italic'
+                          : msg.self
+                            ? 'color:#7dd3fc;font-size:.875rem'
+                            : 'color:#ddeeff;font-size:.875rem'">
+              <template x-if="msg.kind !== 'system'">
+                <div>
+                  <span style="font-weight:700" x-text="msg.name + ':'"></span>
+                  <span style="margin-left:4px" x-text="msg.text"></span>
+                </div>
+              </template>
+              <template x-if="msg.kind === 'system'">
+                <div x-text="msg.text"></div>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <form class="mt-3 flex gap-2" @submit.prevent="sendChat()">
+          <input type="text"
+                 x-model="draft"
+                 maxlength="2000"
+                 placeholder="Escreva uma mensagem..."
+                 style="flex:1;font-size:.875rem" />
+          <button type="submit"
+                  style="background:#0891b2;color:#f0f9ff;font-weight:700;
+                         padding:8px 16px;border-radius:7px;font-size:.875rem;transition:background .15s"
+                  class="hover:bg-sky-500 disabled:opacity-50"
+                  :disabled="!draft.trim() || !connected">
+            Enviar
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- resolver pedido -->
+    {% if help_request.requester == request.user and help_request.status != 'resolved' %}
+      <form method="post" action="{% url 'presence:api_help_resolve' help_request.id %}" class="mt-6">
+        {% csrf_token %}
+        <button style="background:#34d399;color:#04091c;font-weight:700;
+                       padding:10px 22px;border-radius:8px;font-size:.9375rem;transition:background .15s"
+                class="hover:bg-emerald-300">
+          Marcar como resolvido
+          (concede +1 ponto a {{ help_request.helper.display_name|default:"quem ajudou" }})
+        </button>
+      </form>
+    {% endif %}
+
+    {% if help_request.status == 'resolved' %}
+      <p class="mt-6" style="color:#34d399;font-weight:600">Pedido resolvido. Bom estudo!</p>
+    {% endif %}
+
+  {% endif %}
+
+  {{ ice_servers|json_script:"ice-servers" }}
+</section>
+
+<script>
+function helpRoom(opts) {
+  return {
+    helpId: opts.helpId,
+    selfUserId: opts.selfUserId,
+    selfName: opts.selfName,
+    iceServers: opts.iceServers || [],
+    ws: null,
+    connected: false,
+    draft: "",
+    messages: [],
+    micActive: false,
+    inCall: false,
+    pendingOffer: null,
+    peerConnection: null,
+    localStream: null,
+    peerName: "",
+    error: "",
+    nextId: 1,
+
+    init() { this.connect(); },
+
+    connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const url = `${proto}://${location.host}/ws/help/${this.helpId}/`;
+      this.ws = new WebSocket(url);
+      this.ws.onopen  = () => { this.connected = true; this.error = ""; };
+      this.ws.onclose = () => { this.connected = false; setTimeout(() => this.connect(), 2000); };
+      this.ws.onerror = () => { this.error = "Falha no WebSocket."; };
+      this.ws.onmessage = (ev) => this.handleMessage(JSON.parse(ev.data));
+    },
+
+    handleMessage(msg) {
+      if (msg.type === "chat") {
+        this.pushMessage({ kind:"chat", name:msg.name, text:msg.text, self:msg.self });
+      } else if (msg.type === "system") {
+        const verb = msg.kind === "joined" ? "entrou" : "saiu";
+        if (!msg.self && msg.name) this.peerName = msg.kind === "joined" ? msg.name : "";
+        this.pushMessage({ kind:"system", text:`${msg.name || "alguém"} ${verb} na sala` });
+      } else if (msg.type === "signal") {
+        this.peerName = msg.from_name || this.peerName;
+        this.handleSignal(msg.payload);
+      }
+    },
+
+    pushMessage(m) {
+      m.id = this.nextId++;
+      this.messages.push(m);
+      this.$nextTick(() => {
+        const el = this.$refs.messages;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+    },
+
+    sendChat() {
+      const text = this.draft.trim();
+      if (!text || !this.connected) return;
+      this.ws.send(JSON.stringify({ action:"chat", text }));
+      this.draft = "";
+    },
+
+    sendSignal(payload) {
+      if (!this.connected) return;
+      this.ws.send(JSON.stringify({ action:"signal", payload }));
+    },
+
+    async toggleMic() {
+      if (this.micActive) { this.stopMic(); return; }
+      try {
+        this.localStream = await navigator.mediaDevices.getUserMedia({ audio:true, video:false });
+        this.micActive = true;
+        this.error = "";
+        await this.maybeAcceptPending();
+      } catch (err) {
+        this.error = "Não foi possível acessar o microfone: " + err.message;
+      }
+    },
+
+    stopMic() {
+      if (this.localStream) this.localStream.getTracks().forEach(t => t.stop());
+      this.localStream = null;
+      this.micActive = false;
+      this.hangUp();
+    },
+
+    ensurePeer() {
+      if (this.peerConnection) return this.peerConnection;
+      const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+      pc.onicecandidate = (e) => { if (e.candidate) this.sendSignal({ kind:"ice", candidate:e.candidate }); };
+      pc.ontrack = (e) => {
+        const audio = this.$refs.remoteAudio;
+        if (audio && e.streams?.[0]) audio.srcObject = e.streams[0];
+      };
+      pc.onconnectionstatechange = () => {
+        const s = pc.connectionState;
+        this.inCall = s === "connected" || s === "connecting";
+        if (s === "failed" || s === "closed" || s === "disconnected") this.cleanupPeer();
+      };
+      if (this.localStream) this.localStream.getTracks().forEach(t => pc.addTrack(t, this.localStream));
+      this.peerConnection = pc;
+      return pc;
+    },
+
+    async startCall() {
+      if (!this.localStream) { this.error = "Ative o microfone primeiro."; return; }
+      const pc = this.ensurePeer();
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      this.sendSignal({ kind:"offer", sdp:pc.localDescription });
+      this.inCall = true;
+    },
+
+    async handleSignal(payload) {
+      if (!payload?.kind) return;
+      if (payload.kind === "offer") {
+        if (!this.localStream) {
+          this.pushMessage({ kind:"system", text:"O outro participante está chamando, ative o microfone para atender." });
+          this.pendingOffer = payload.sdp;
+          return;
+        }
+        await this.acceptOffer(payload.sdp);
+      } else if (payload.kind === "answer") {
+        if (this.peerConnection) await this.peerConnection.setRemoteDescription(payload.sdp);
+      } else if (payload.kind === "ice") {
+        if (this.peerConnection && payload.candidate) {
+          try { await this.peerConnection.addIceCandidate(payload.candidate); } catch (e) {}
+        }
+      } else if (payload.kind === "bye") {
+        this.cleanupPeer();
+      }
+    },
+
+    async acceptOffer(sdp) {
+      const pc = this.ensurePeer();
+      await pc.setRemoteDescription(sdp);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      this.sendSignal({ kind:"answer", sdp:pc.localDescription });
+      this.inCall = true;
+    },
+
+    async maybeAcceptPending() {
+      if (this.pendingOffer && this.localStream) {
+        const sdp = this.pendingOffer;
+        this.pendingOffer = null;
+        await this.acceptOffer(sdp);
+      }
+    },
+
+    hangUp() {
+      if (this.peerConnection) this.sendSignal({ kind:"bye" });
+      this.cleanupPeer();
+    },
+
+    cleanupPeer() {
+      try { this.peerConnection?.close(); } catch (e) {}
+      this.peerConnection = null;
+      this.inCall = false;
+      const audio = this.$refs.remoteAudio;
+      if (audio) audio.srcObject = null;
+    },
+
+    leave() {
+      this.cleanupPeer();
+      this.stopMic();
+      try { this.ws?.close(); } catch (e) {}
+    },
+  };
+}
+</script>
+{% endblock %}

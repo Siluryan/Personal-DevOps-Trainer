@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-7xl mx-auto px-4 py-8">
+
+  <!-- header -->
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div>
+      <h1 class="text-2xl font-bold" style="color:#ddeeff">
+        Bem-vindo(a), {{ user.display_name }}
+      </h1>
+      <p class="text-sm mt-1" style="color:#5a7a9a">
+        <span style="background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.4);
+                     color:#bae6fd;font-size:.7rem;padding:1px 9px;border-radius:999px;
+                     font-weight:600;letter-spacing:.02em;margin-right:6px">
+          {{ user.career_label }}
+        </span>
+        Sua trilha DevSecOps em um só lugar.
+      </p>
+    </div>
+    <div class="flex gap-2 text-sm">
+      <a href="{% url 'accounts:profile_edit' %}"
+         style="border:1px solid #1a2f50;color:#8bacc8;padding:6px 14px;border-radius:7px;transition:border-color .15s"
+         class="hover:border-sky-500/40 hover:text-sky-300">
+        Editar perfil
+      </a>
+      <a href="{% url 'interviews:index' %}"
+         style="border:1px solid #1a2f50;color:#8bacc8;padding:6px 14px;border-radius:7px;transition:border-color .15s"
+         class="hover:border-sky-500/40 hover:text-sky-300">
+        Simulador
+      </a>
+      <a href="{% url 'gamification:radar' %}"
+         style="background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.3);
+                color:#bae6fd;padding:6px 14px;border-radius:7px;transition:background .15s"
+         class="hover:bg-sky-500/20">
+        Ver radar
+      </a>
+    </div>
+  </div>
+
+  <div class="grid lg:grid-cols-3 gap-6">
+
+    <!-- radar -->
+    <div style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:20px"
+         class="lg:col-span-2">
+      <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">
+        Radar de competências (60 tópicos)
+      </h2>
+      <!-- altura adapta ao viewport: menor em telas pequenas -->
+      <div style="position:relative" id="radar-wrap"></div>
+    </div>
+
+    <div class="space-y-5">
+      <!-- top 10 com painel de detalhes -->
+      {{ leaderboard_contacts_json|json_script:"lb-contacts" }}
+      <div style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:20px"
+           x-data="leaderboardPanel()"
+           x-init="init()">
+        <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">Top 10</h2>
+        <ol class="space-y-1 text-sm">
+          {% for u in leaderboard %}
+            <li style="display:flex;justify-content:space-between;align-items:center;
+                       padding:5px 6px;border-radius:7px;cursor:pointer;transition:background .12s"
+                class="hover:bg-sky-500/10"
+                @click="select('{{ u.pk }}')"
+                :style="{ background: selected && selected.id === '{{ u.pk }}' ? 'rgba(14,165,233,.12)' : '' }">
+              <span style="color:#8bacc8">{{ forloop.counter }}. {{ u.display_name }}</span>
+              <span style="color:#34d399;font-weight:700">{{ u.total }} pts</span>
+            </li>
+          {% empty %}
+            <li style="color:#5a7a9a">Ninguém ainda. Seja o primeiro.</li>
+          {% endfor %}
+        </ol>
+        <a class="text-sm mt-3 inline-block" style="color:#38bdf8"
+           href="{% url 'gamification:leaderboard' %}">Ver ranking completo →</a>
+
+        <!-- painel de detalhes -->
+        <div x-show="selected" x-cloak x-transition
+             style="margin-top:16px;padding:14px;background:#04091c;
+                    border:1px solid #1a2f50;border-radius:10px;position:relative">
+
+          <!-- fechar -->
+          <button @click="selected = null"
+                  style="position:absolute;top:8px;right:10px;
+                         color:#5a7a9a;font-size:1.1rem;line-height:1;background:none;border:none;cursor:pointer"
+                  class="hover:text-sky-300">✕</button>
+
+          <!-- nome + pontos + título de carreira -->
+          <p style="font-weight:700;font-size:.9375rem;color:#ddeeff;padding-right:20px"
+             x-text="selected?.name"></p>
+          <p style="font-size:.7rem;color:#0ea5e9;font-weight:600;margin-top:2px;letter-spacing:.02em"
+             x-text="selected?.career"></p>
+          <p style="font-size:.75rem;color:#34d399;font-weight:600;margin-top:4px">
+            <span x-text="selected?.total"></span> pts
+          </p>
+
+          <!-- sem permissão para exibir contato -->
+          <template x-if="selected && !selected.show_contact">
+            <p style="margin-top:10px;font-size:.8125rem;color:#5a7a9a;font-style:italic">
+              Este usuário optou por não exibir informações de contato.
+            </p>
+          </template>
+
+          <!-- com permissão -->
+          <template x-if="selected && selected.show_contact">
+            <div style="margin-top:10px">
+              <template x-if="selected.country">
+                <p style="font-size:.8125rem;color:#8bacc8;margin-bottom:6px">
+                  📍 <span x-text="selected.country"></span>
+                </p>
+              </template>
+              <template x-if="selected.bio">
+                <p style="font-size:.8125rem;color:#8bacc8;line-height:1.55;margin-bottom:8px"
+                   x-text="selected.bio"></p>
+              </template>
+              <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <template x-if="selected.linkedin">
+                  <a :href="selected.linkedin" target="_blank" rel="noopener"
+                     style="font-size:.8125rem;font-weight:600;color:#38bdf8;
+                            display:inline-flex;align-items:center;gap:4px;text-decoration:none"
+                     class="hover:text-sky-200">
+                    <svg style="width:14px;height:14px;fill:currentColor" viewBox="0 0 24 24">
+                      <path d="M20.447 20.452H16.89v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a1.98 1.98 0 01-1.982-1.981A1.98 1.98 0 015.337 3.47a1.98 1.98 0 011.982 1.982 1.98 1.98 0 01-1.982 1.981zm1.706 13.019H3.627V9h3.416v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                    LinkedIn
+                  </a>
+                </template>
+                <template x-if="selected.github">
+                  <a :href="selected.github" target="_blank" rel="noopener"
+                     style="font-size:.8125rem;font-weight:600;color:#38bdf8;
+                            display:inline-flex;align-items:center;gap:4px;text-decoration:none"
+                     class="hover:text-sky-200">
+                    <svg style="width:14px;height:14px;fill:currentColor" viewBox="0 0 24 24">
+                      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    GitHub
+                  </a>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- atalhos -->
+      <div style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:20px">
+        <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">Atalhos</h2>
+        <div class="flex flex-wrap gap-2 text-sm">
+          <a href="{% url 'courses:track' %}"
+             style="border:1px solid #1a2f50;color:#8bacc8;padding:5px 12px;border-radius:6px;transition:border-color .15s"
+             class="hover:border-sky-500/40 hover:text-sky-300">
+            Trilha
+          </a>
+          <a href="{% url 'presence:map' %}"
+             style="border:1px solid #1a2f50;color:#8bacc8;padding:5px 12px;border-radius:6px;transition:border-color .15s"
+             class="hover:border-sky-500/40 hover:text-sky-300">
+            Mapa
+          </a>
+          <a href="{% url 'interviews:index' %}"
+             style="border:1px solid #1a2f50;color:#8bacc8;padding:5px 12px;border-radius:6px;transition:border-color .15s"
+             class="hover:border-sky-500/40 hover:text-sky-300">
+            Entrevistas
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- fases -->
+  <div class="mt-10">
+    <h2 class="text-xl font-semibold mb-4" style="color:#ddeeff">
+      Fases ({{ topics_total }} tópicos)
+    </h2>
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for phase in phases %}
+        <div style="background:#07122a;border:1px solid #1a2f50;border-radius:10px;padding:16px">
+          <h3 class="font-semibold mb-2" style="color:#93c5fd">{{ phase }}</h3>
+          <ul class="text-sm space-y-1">
+            {% for t in phase.topics.all %}
+              <li class="truncate">
+                <a href="{{ t.get_absolute_url }}"
+                   style="color:#8bacc8;text-decoration:none"
+                   class="hover:text-sky-300 transition-colors">
+                  · {{ t.title }}
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function leaderboardPanel() {
+  return {
+    contacts: {},
+    selected: null,
+    init() {
+      const el = document.getElementById('lb-contacts');
+      if (el) this.contacts = JSON.parse(el.textContent || '{}');
+    },
+    select(id) {
+      const data = this.contacts[id];
+      if (!data) return;
+      // toggle: clique no mesmo fecha o painel
+      if (this.selected && this.selected.id === id) {
+        this.selected = null;
+      } else {
+        this.selected = { id, ...data };
+      }
+    },
+  };
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{{ radar|json_script:"radar-data" }}
+<script>
+  const pdtLabelHover = {
+    id: 'pdtLabelHover',
+    afterEvent(chart, args) {
+      const { type, x, y } = args.event;
+      if (!['mousemove','mouseout','mouseleave'].includes(type)) return;
+      const scale = chart.scales.r;
+      if (!scale) return;
+      let next = -1;
+      if (type === 'mousemove') {
+        const labels = scale.getLabels();
+        for (let i = 0; i < labels.length; i++) {
+          const p = scale.getPointLabelPosition(i);
+          if (x >= p.left - 6 && x <= p.right + 6 && y >= p.top - 4 && y <= p.bottom + 4) {
+            next = i; break;
+          }
+        }
+      }
+      if ((chart._pdtHov ?? -1) !== next) {
+        chart._pdtHov = next;
+        args.changed = true;
+      }
+    },
+    afterDraw(chart) {
+      const idx = chart._pdtHov ?? -1;
+      if (idx < 0) return;
+      const scale  = chart.scales.r;
+      const ctx    = chart.ctx;
+      const labels = scale.getLabels();
+      if (idx >= labels.length) return;
+      const label = labels[idx];
+      const pos   = scale.getPointLabelPosition(idx);
+      const cx = (pos.left + pos.right)  / 2;
+      const cy = (pos.top  + pos.bottom) / 2;
+      const isMob = window.innerWidth < 640;
+      const sz  = (isMob ? 6 : 8) + 3;
+      ctx.save();
+      ctx.font = `600 ${sz}px system-ui,-apple-system,sans-serif`;
+      ctx.fillStyle = '#07122a';
+      ctx.fillRect(pos.left - 5, pos.top - 4, (pos.right - pos.left) + 10, (pos.bottom - pos.top) + 8);
+      ctx.fillStyle    = '#bae6fd';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, cx, cy);
+      ctx.restore();
+    }
+  };
+
+  const radar = JSON.parse(document.getElementById('radar-data').textContent || '{}');
+  const wrap  = document.getElementById('radar-wrap');
+  if (wrap && radar.labels && radar.labels.length) {
+    const isMobile = window.innerWidth < 640;
+    const labelSz  = isMobile ? 6 : 8;
+    wrap.style.height = isMobile ? '260px' : '380px';
+    const canvas = document.createElement('canvas');
+    wrap.appendChild(canvas);
+
+    new Chart(canvas, {
+      type: 'radar',
+      plugins: [pdtLabelHover],
+      data: {
+        labels: radar.labels,
+        datasets: [{
+          label: 'Pontos por tópico',
+          data: radar.points,
+          backgroundColor: 'rgba(14,165,233,.18)',
+          borderColor:     'rgba(56,189,248,.85)',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: 'rgba(56,189,248,.9)',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            suggestedMin: 0,
+            suggestedMax: radar.max_per_axis,
+            angleLines: { color: 'rgba(26,47,80,.8)' },
+            grid:        { color: 'rgba(26,47,80,.8)' },
+            pointLabels: {
+              color: '#7dd3fc',
+              font: { size: labelSz },
+            },
+            ticks: { color: '#5a7a9a', backdropColor: 'transparent' },
+          }
+        },
+        plugins: {
+          legend:  { labels: { color: '#8bacc8' } },
+          tooltip: { enabled: false },
+        },
+      }
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% load pdt_extras %}
+{% block title %}{{ topic.title }} · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-5xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
+
+  <!-- fase / breadcrumb -->
+  <p class="text-sm font-mono" style="color:#38bdf8">// {{ topic.phase }}</p>
+  <h1 class="text-3xl font-bold mt-1" style="color:#ddeeff">{{ topic.title }}</h1>
+  {% if topic.summary %}
+    <p class="mt-2" style="color:#8bacc8;font-size:1.0625rem">{{ topic.summary }}</p>
+  {% endif %}
+
+  <!-- ações -->
+  <div class="mt-6 flex flex-wrap gap-3 items-center">
+    <a href="{% url 'courses:quiz' topic.slug %}"
+       style="background:#0891b2;color:#f0f9ff;font-weight:600;
+              padding:8px 18px;border-radius:8px;font-size:.9rem;
+              transition:background .15s"
+       class="hover:bg-sky-500">
+      Fazer quiz (10 questões)
+    </a>
+    {% if score %}
+      <span style="border:1px solid #1a2f50;padding:6px 14px;border-radius:8px;
+                   font-size:.875rem;color:#7dd3fc;background:#07122a">
+        Melhor: {{ score.best_quiz_score }}/10 · {{ score.points }} pts radar
+      </span>
+    {% endif %}
+  </div>
+
+  <!-- ── AULA ───────────────────────────────────────────────────────────── -->
+  {% if topic.lesson %}
+    <div class="mt-8">
+
+      {% if topic.lesson.intro %}
+        <div class="lesson-body mb-2" style="border-bottom:none;border-radius:12px 12px 0 0">
+          <h2>Por que estudar este tópico</h2>
+          {{ topic.lesson.intro|render_lesson }}
+        </div>
+      {% endif %}
+
+      {% if topic.lesson.body %}
+        <div class="lesson-body mb-2"
+             style="{% if topic.lesson.intro %}border-top:none;border-radius:0;{% else %}border-radius:12px 12px 0 0;{% endif %}
+                    {% if not topic.lesson.practical %}border-radius:0 0 12px 12px;{% endif %}">
+          <h2>Aula</h2>
+          {{ topic.lesson.body|render_lesson }}
+        </div>
+      {% endif %}
+
+      {% if topic.lesson.practical %}
+        <div class="lesson-body"
+             style="border-top:none;border-radius:0 0 12px 12px;
+                    background:rgba(14,165,233,.04)">
+          <h2 style="color:#34d399">Exercício prático</h2>
+          {{ topic.lesson.practical|render_lesson }}
+        </div>
+      {% endif %}
+
+    </div>
+  {% endif %}
+
+  <!-- ── MATERIAIS ──────────────────────────────────────────────────────── -->
+  <div class="mt-8">
+    <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">
+      Materiais de apoio ({{ topic.materials.count }})
+    </h2>
+    <ul class="space-y-2">
+      {% for m in topic.materials.all %}
+        <li style="background:#07122a;border:1px solid #1a2f50;border-radius:8px;padding:12px 16px">
+          <a href="{{ m.url }}" target="_blank" rel="noopener"
+             style="color:#38bdf8;font-weight:600;text-decoration:underline;text-underline-offset:2px"
+             class="hover:text-sky-200">
+            {{ m.title }}
+          </a>
+          <span style="font-size:.75rem;color:#5a7a9a;margin-left:8px">[{{ m.get_kind_display }}]</span>
+          {% if m.description %}
+            <p style="font-size:.875rem;color:#8bacc8;margin-top:4px">{{ m.description }}</p>
+          {% endif %}
+        </li>
+      {% empty %}
+        <li style="color:#5a7a9a;font-size:.875rem">Nenhum material cadastrado ainda.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- ── HISTÓRICO DE TENTATIVAS ─────────────────────────────────────────── -->
+  {% if recent_attempts %}
+    <div class="mt-8">
+      <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">Suas últimas tentativas</h2>
+      <ul class="space-y-1" style="font-size:.875rem;color:#8bacc8">
+        {% for a in recent_attempts %}
+          <li style="display:flex;gap:12px;align-items:center">
+            <span style="color:#5a7a9a">{{ a.finished_at|date:"d/m H:i" }}</span>
+            <span style="font-weight:600;color:{% if a.score >= 7 %}#34d399{% elif a.score >= 5 %}#fbbf24{% else %}#f87171{% endif %}">
+              {{ a.score }}/{{ a.total_questions }}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+</section>
+{% endblock %}

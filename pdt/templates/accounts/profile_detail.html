@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}{{ profile_user.display_name }} · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-3xl mx-auto px-4 py-10">
+  <h1 class="text-2xl font-bold" style="color:#ddeeff">{{ profile_user.display_name }}</h1>
+  <p class="mt-1">
+    <span style="background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.4);
+                 color:#bae6fd;font-size:.78rem;padding:2px 10px;border-radius:999px;
+                 font-weight:600;letter-spacing:.02em">
+      {{ profile_user.career_label }}
+    </span>
+    {% if profile_user.country %}
+      <span class="text-sm" style="color:#5a7a9a;margin-left:8px">· {{ profile_user.country }}</span>
+    {% endif %}
+  </p>
+  {% if profile_user.bio %}
+    <p class="mt-3" style="color:#8bacc8;line-height:1.6">{{ profile_user.bio }}</p>
+  {% endif %}
+
+  <div class="mt-3 flex gap-3 text-sm">
+    {% if profile_user.linkedin_url %}
+      <a style="color:#38bdf8" href="{{ profile_user.linkedin_url }}" target="_blank"
+         class="hover:text-sky-200">LinkedIn</a>
+    {% endif %}
+    {% if profile_user.github_url %}
+      <a style="color:#38bdf8" href="{{ profile_user.github_url }}" target="_blank"
+         class="hover:text-sky-200">GitHub</a>
+    {% endif %}
+  </div>
+
+  <div class="mt-8" style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:20px">
+    <h2 class="font-semibold mb-3" style="color:#7dd3fc">Radar · {{ total_score }} pts</h2>
+    <div style="position:relative" id="radar-wrap"></div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{{ radar|json_script:"radar-data" }}
+<script>
+  const pdtLabelHover = {
+    id: 'pdtLabelHover',
+    afterEvent(chart, args) {
+      const { type, x, y } = args.event;
+      if (!['mousemove','mouseout','mouseleave'].includes(type)) return;
+      const scale = chart.scales.r;
+      if (!scale) return;
+      let next = -1;
+      if (type === 'mousemove') {
+        const labels = scale.getLabels();
+        for (let i = 0; i < labels.length; i++) {
+          const p = scale.getPointLabelPosition(i);
+          if (x >= p.left - 6 && x <= p.right + 6 && y >= p.top - 4 && y <= p.bottom + 4) {
+            next = i; break;
+          }
+        }
+      }
+      if ((chart._pdtHov ?? -1) !== next) {
+        chart._pdtHov = next;
+        args.changed = true;
+      }
+    },
+    afterDraw(chart) {
+      const idx = chart._pdtHov ?? -1;
+      if (idx < 0) return;
+      const scale  = chart.scales.r;
+      const ctx    = chart.ctx;
+      const labels = scale.getLabels();
+      if (idx >= labels.length) return;
+      const label = labels[idx];
+      const pos   = scale.getPointLabelPosition(idx);
+      const cx = (pos.left + pos.right)  / 2;
+      const cy = (pos.top  + pos.bottom) / 2;
+      const isMob = window.innerWidth < 640;
+      const sz  = (isMob ? 6 : 8) + 3;
+      ctx.save();
+      ctx.font = `600 ${sz}px system-ui,-apple-system,sans-serif`;
+      ctx.fillStyle = '#07122a';
+      ctx.fillRect(pos.left - 5, pos.top - 4, (pos.right - pos.left) + 10, (pos.bottom - pos.top) + 8);
+      ctx.fillStyle    = '#bae6fd';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, cx, cy);
+      ctx.restore();
+    }
+  };
+
+  const radar = JSON.parse(document.getElementById('radar-data').textContent || '{}');
+  const wrap  = document.getElementById('radar-wrap');
+  if (wrap && radar.labels && radar.labels.length) {
+    const isMobile = window.innerWidth < 640;
+    const labelSz  = isMobile ? 6 : 8;
+    wrap.style.height = isMobile ? '280px' : '380px';
+    const canvas = document.createElement('canvas');
+    wrap.appendChild(canvas);
+
+    new Chart(canvas, {
+      type: 'radar',
+      plugins: [pdtLabelHover],
+      data: {
+        labels: radar.labels,
+        datasets: [{
+          label: 'Pontos',
+          data: radar.points,
+          backgroundColor: 'rgba(14,165,233,.15)',
+          borderColor:     'rgba(56,189,248,.85)',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: 'rgba(56,189,248,.9)',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            suggestedMin: 0,
+            suggestedMax: radar.max_per_axis,
+            angleLines: { color: 'rgba(26,47,80,.8)' },
+            grid:        { color: 'rgba(26,47,80,.8)' },
+            pointLabels: {
+              color: '#7dd3fc',
+              font: { size: labelSz },
+            },
+            ticks: { color: '#5a7a9a', backdropColor: 'transparent' },
+          }
+        },
+        plugins: {
+          legend:  { labels: { color: '#8bacc8' } },
+          tooltip: { enabled: false },
+        },
+      }
+    });
+  }
+</script>
+{% endblock %}

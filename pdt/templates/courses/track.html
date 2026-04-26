@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load pdt_extras %}
+{% block title %}Trilha DevSecOps · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-6xl mx-auto px-4 py-8">
+  <h1 class="text-2xl font-bold" style="color:#ddeeff">Trilha DevSecOps</h1>
+  <p class="text-sm mt-1" style="color:#5a7a9a">6 fases · 60 tópicos · cada tópico é um eixo do seu radar.</p>
+
+  <div class="mt-6 space-y-8">
+    {% for phase in phases %}
+      <div>
+        <h2 class="text-lg font-semibold mb-1" style="color:#7dd3fc">{{ phase }}</h2>
+        {% if phase.description %}
+          <p class="text-sm mb-3" style="color:#5a7a9a">{{ phase.description }}</p>
+        {% endif %}
+        <div class="grid md:grid-cols-2 gap-3">
+          {% for topic in phase.topics.all %}
+            {% with score=scores|get_item:topic.id %}
+              <a href="{{ topic.get_absolute_url }}"
+                 style="display:block;background:#07122a;border:1px solid #1a2f50;
+                        border-radius:10px;padding:16px;text-decoration:none;
+                        transition:border-color .15s"
+                 class="hover:border-sky-500/40">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                  <h3 class="font-semibold" style="color:#ddeeff">{{ topic.title }}</h3>
+                  <span style="color:{% if score|points_of > 0 %}#34d399{% else %}#5a7a9a{% endif %};
+                               font-size:.8125rem;white-space:nowrap;font-weight:600">
+                    {{ score|points_of }} pts
+                  </span>
+                </div>
+                {% if topic.summary %}
+                  <p class="text-sm mt-1" style="color:#8bacc8">{{ topic.summary|truncatechars:140 }}</p>
+                {% endif %}
+                <div class="mt-3 flex flex-wrap gap-3" style="font-size:.75rem;color:#5a7a9a">
+                  <span>{{ topic.materials.count }} materiais</span>
+                  <span>{{ topic.questions.count }} questões</span>
+                </div>
+              </a>
+            {% endwith %}
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

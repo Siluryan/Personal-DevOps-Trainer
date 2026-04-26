@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Finalizar entrevista · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-2xl mx-auto px-4 py-12">
+
+  <h1 class="text-2xl font-bold mb-3" style="color:#ddeeff">
+    Finalizar entrevista {{ level_label }}?
+  </h1>
+
+  <p style="color:#8bacc8;line-height:1.6">
+    Você respondeu <strong style="color:#bae6fd">{{ attempt.answered_count }}</strong>
+    de <strong style="color:#bae6fd">{{ total }}</strong> questões.
+    {% if unanswered > 0 %}
+      Há <strong style="color:#fde68a">{{ unanswered }}</strong> sem resposta , 
+      essas serão contadas como erro.
+    {% else %}
+      Tudo respondido. Bom trabalho!
+    {% endif %}
+  </p>
+
+  <div class="mt-6 flex flex-wrap gap-2">
+    <a href="{% url 'interviews:take' attempt.pk %}"
+       style="background:transparent;border:1px solid #1a2f50;color:#94a3b8;
+              padding:8px 16px;border-radius:8px;font-size:.875rem;text-decoration:none"
+       class="hover:text-sky-300 hover:border-sky-400/40 transition-colors">
+      ← Continuar respondendo
+    </a>
+
+    <form method="post" action="{% url 'interviews:finish' attempt.pk %}">
+      {% csrf_token %}
+      <button type="submit"
+              style="background:#22c55e;color:#04091c;font-weight:700;
+                     padding:8px 18px;border-radius:8px;font-size:.875rem"
+              class="hover:bg-emerald-400 transition-colors">
+        Sim, finalizar e ver resultado
+      </button>
+    </form>
+  </div>
+</section>
+{% endblock %}

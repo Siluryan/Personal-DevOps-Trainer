@@ -1,0 +1,203 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br" class="h-full" style="background:#04091c;color:#ddeeff">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Personal DevOps Trainer{% endblock %}</title>
+
+  <script>
+    window.tailwind = {
+      config: {
+        theme: {
+          extend: {
+            colors: {
+              navy: {
+                950: '#04091c', 900: '#07122a', 800: '#0c1d3a',
+                700: '#122444', 600: '#1a2f50', 500: '#253d5e',
+              },
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="min-h-full flex flex-col" style="background:#04091c;color:#ddeeff">
+
+<!-- ── CABEÇALHO ──────────────────────────────────────────────────────────── -->
+<header style="background:#07122a;border-bottom:1px solid #1a2f50" class="sticky top-0 z-30">
+  <nav class="max-w-7xl mx-auto px-4 py-3"
+       x-data="{ open: false }">
+
+    <!-- linha superior: logo + botão hambúrguer (mobile) + ações de conta (desktop) -->
+    <div class="flex items-center gap-4">
+
+      <!-- logo -->
+      <a href="{% url 'core:landing' %}" class="font-bold text-lg shrink-0"
+         style="color:#38bdf8;letter-spacing:-.02em">PDT</a>
+
+      <!-- links de navegação, ocultos em mobile, visíveis em md+ -->
+      {% if user.is_authenticated and user.admission_passed %}
+        <div class="hidden md:flex items-center gap-5">
+          <a style="color:#8bacc8;font-size:.9rem" class="hover:text-sky-300 transition-colors"
+             href="{% url 'core:dashboard' %}">Dashboard</a>
+          <a style="color:#8bacc8;font-size:.9rem" class="hover:text-sky-300 transition-colors"
+             href="{% url 'courses:track' %}">Trilha</a>
+          <a style="color:#8bacc8;font-size:.9rem" class="hover:text-sky-300 transition-colors"
+             href="{% url 'gamification:radar' %}">Radar</a>
+          <a style="color:#8bacc8;font-size:.9rem" class="hover:text-sky-300 transition-colors"
+             href="{% url 'gamification:leaderboard' %}">Ranking</a>
+          <a style="color:#8bacc8;font-size:.9rem" class="hover:text-sky-300 transition-colors"
+             href="{% url 'presence:map' %}">Mapa</a>
+          <a style="color:#8bacc8;font-size:.9rem" class="hover:text-sky-300 transition-colors"
+             href="{% url 'interviews:index' %}">Entrevistas</a>
+        </div>
+      {% endif %}
+
+      <!-- espaçador -->
+      <div class="ml-auto flex items-center gap-3">
+
+        {% if DONATION_URL %}
+          <a href="{{ DONATION_URL }}" target="_blank" rel="noopener"
+             style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);
+                    color:#fde68a;padding:4px 10px;border-radius:6px;font-size:.8rem"
+             class="hidden sm:inline hover:bg-amber-400/20 transition-colors">
+            ☕ {{ DONATION_LABEL }}
+          </a>
+        {% endif %}
+
+        {% if user.is_authenticated %}
+          <a class="hidden sm:flex flex-col leading-tight items-end hover:text-sky-200 transition-colors"
+             style="text-align:right" href="{% url 'accounts:profile' user.pk %}">
+            <span style="font-size:.875rem;color:#8bacc8">{{ user.display_name }}</span>
+            <span style="font-size:.7rem;color:#0ea5e9;font-weight:600;letter-spacing:.02em">
+              {{ user.career_label }}
+            </span>
+          </a>
+          <form method="post" action="{% url 'account_logout' %}" class="hidden sm:inline">
+            {% csrf_token %}
+            <button style="font-size:.875rem;color:#5a7a9a"
+                    class="hover:text-sky-300 transition-colors">Sair</button>
+          </form>
+        {% else %}
+          <a style="font-size:.875rem;color:#8bacc8" class="hover:text-sky-200 transition-colors"
+             href="{% url 'account_login' %}">Entrar</a>
+          <a style="font-size:.875rem;background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.35);
+                    color:#bae6fd;padding:4px 12px;border-radius:6px"
+             class="hover:bg-sky-500/25 transition-colors"
+             href="{% url 'account_signup' %}">Criar conta</a>
+        {% endif %}
+
+        <!-- botão hambúrguer, só aparece em mobile para usuários logados -->
+        {% if user.is_authenticated and user.admission_passed %}
+          <button @click="open = !open" class="md:hidden p-1.5 rounded"
+                  style="color:#8bacc8" aria-label="Menu">
+            <svg x-show="!open" style="width:22px;height:22px;stroke:currentColor;fill:none"
+                 stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+            <svg x-show="open" x-cloak style="width:22px;height:22px;stroke:currentColor;fill:none"
+                 stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        {% endif %}
+
+      </div><!-- /ml-auto -->
+    </div><!-- /flex linha superior -->
+
+    <!-- menu mobile expandido -->
+    {% if user.is_authenticated and user.admission_passed %}
+      <div x-show="open" x-cloak x-transition
+           style="border-top:1px solid #1a2f50;margin-top:10px;padding-top:10px"
+           class="md:hidden flex flex-col gap-1">
+        <a @click="open=false" href="{% url 'core:dashboard' %}"
+           style="color:#8bacc8;padding:9px 6px;border-radius:7px;font-size:.9375rem"
+           class="hover:bg-sky-500/10 block transition-colors">Dashboard</a>
+        <a @click="open=false" href="{% url 'courses:track' %}"
+           style="color:#8bacc8;padding:9px 6px;border-radius:7px;font-size:.9375rem"
+           class="hover:bg-sky-500/10 block transition-colors">Trilha</a>
+        <a @click="open=false" href="{% url 'gamification:radar' %}"
+           style="color:#8bacc8;padding:9px 6px;border-radius:7px;font-size:.9375rem"
+           class="hover:bg-sky-500/10 block transition-colors">Meu radar</a>
+        <a @click="open=false" href="{% url 'gamification:leaderboard' %}"
+           style="color:#8bacc8;padding:9px 6px;border-radius:7px;font-size:.9375rem"
+           class="hover:bg-sky-500/10 block transition-colors">Ranking</a>
+        <a @click="open=false" href="{% url 'presence:map' %}"
+           style="color:#8bacc8;padding:9px 6px;border-radius:7px;font-size:.9375rem"
+           class="hover:bg-sky-500/10 block transition-colors">Mapa</a>
+        <a @click="open=false" href="{% url 'interviews:index' %}"
+           style="color:#8bacc8;padding:9px 6px;border-radius:7px;font-size:.9375rem"
+           class="hover:bg-sky-500/10 block transition-colors">Entrevistas</a>
+        <div style="border-top:1px solid #1a2f50;margin-top:6px;padding-top:6px;
+                    display:flex;justify-content:space-between;align-items:center">
+          <a href="{% url 'accounts:profile' user.pk %}"
+             style="font-size:.875rem;color:#8bacc8" class="hover:text-sky-200">
+            {{ user.display_name }}
+            <span style="font-size:.7rem;color:#0ea5e9;font-weight:600;margin-left:4px">
+              · {{ user.career_label }}
+            </span>
+          </a>
+          <form method="post" action="{% url 'account_logout' %}">
+            {% csrf_token %}
+            <button style="font-size:.875rem;color:#5a7a9a" class="hover:text-sky-300">Sair</button>
+          </form>
+        </div>
+        {% if DONATION_URL %}
+          <a href="{{ DONATION_URL }}" target="_blank" rel="noopener"
+             style="margin-top:4px;background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.3);
+                    color:#fde68a;padding:7px 10px;border-radius:7px;font-size:.875rem;text-align:center"
+             class="block">☕ {{ DONATION_LABEL }}</a>
+        {% endif %}
+      </div>
+    {% endif %}
+
+  </nav>
+</header>
+
+<!-- ── MENSAGENS FLASH ────────────────────────────────────────────────────── -->
+{% if messages %}
+  <div class="max-w-7xl mx-auto px-4 mt-4 w-full space-y-2">
+    {% for message in messages %}
+      <div class="px-4 py-2 rounded-md text-sm"
+           style="
+           {% if message.tags == 'error' %}
+             background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);color:#fca5a5
+           {% elif message.tags == 'warning' %}
+             background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.35);color:#fde68a
+           {% elif message.tags == 'success' %}
+             background:rgba(52,211,153,.10);border:1px solid rgba(52,211,153,.35);color:#6ee7b7
+           {% else %}
+             background:rgba(14,165,233,.10);border:1px solid rgba(14,165,233,.30);color:#bae6fd
+           {% endif %}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<main class="flex-1">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- ── RODAPÉ ─────────────────────────────────────────────────────────────── -->
+<footer style="border-top:1px solid #1a2f50;padding:1.5rem 0;text-align:center;
+               font-size:.875rem;color:#5a7a9a">
+  <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row gap-2 sm:gap-6 items-center justify-center">
+    <span>Personal DevOps Trainer, uso restrito, ver LICENSE.</span>
+    <a href="https://github.com/" style="color:#5a7a9a" class="hover:text-sky-300 transition-colors">Repositório</a>
+    {% if DONATION_URL %}
+      <a href="{{ DONATION_URL }}" style="color:#5a7a9a" class="hover:text-amber-300 transition-colors">☕ Pagar um café</a>
+    {% endif %}
+  </div>
+</footer>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

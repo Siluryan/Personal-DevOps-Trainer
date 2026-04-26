@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="max-w-md mx-auto px-4 py-12">
+  <h1 class="text-2xl font-bold mb-2" style="color:#ddeeff">Sair</h1>
+  <p class="text-sm mb-5" style="color:#5a7a9a">Confirme o logout.</p>
+  <form method="post">
+    {% csrf_token %}
+    <button style="width:100%;background:#f43f5e;color:#fff;font-weight:700;
+                   padding:10px 0;border-radius:8px;font-size:.9375rem;transition:background .15s"
+            class="hover:bg-rose-400">
+      Confirmar saída
+    </button>
+  </form>
+</section>
+{% endblock %}

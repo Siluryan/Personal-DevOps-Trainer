@@ -1,0 +1,63 @@
+Personal DevOps Trainer (PDT): Licença de Uso com Consentimento
+Copyright (c) 2026 Personal DevOps Trainer e seus contribuidores.
+
+Todos os direitos reservados.
+
+Este software, incluindo seu código-fonte, conteúdo educacional (textos de
+aulas, perguntas, materiais curados), templates, imagens, documentação,
+estilo visual e arquitetura ("o Projeto"), é disponibilizado para
+visualização e estudo individual sob os termos a seguir.
+
+1. Concessão limitada
+   É permitido a qualquer pessoa:
+   a) Visualizar e estudar o código e o conteúdo deste repositório.
+   b) Realizar fork no GitHub com o único propósito de propor contribuições
+      via Pull Request, dentro das regras descritas em CONTRIBUTING.md.
+
+2. Restrição de uso
+   QUALQUER outro uso, incluindo, mas não limitado a:
+   - executar o Projeto em produção, ambientes corporativos ou serviços
+     pagos/gratuitos abertos a terceiros;
+   - hospedar uma instância pública;
+   - redistribuir, sublicenciar, vender, alugar ou emprestar o Projeto
+     ou trabalhos derivados;
+   - utilizar partes substanciais do código ou do conteúdo educacional
+     em outros produtos, plataformas, cursos ou materiais comerciais;
+   - utilizar nome, marca, identidade visual ou conteúdo curado para
+     campanhas, treinamentos remunerados ou geração de leads;
+   exige CONSENTIMENTO PRÉVIO E POR ESCRITO do(s) detentor(es) dos
+   direitos autorais.
+
+3. Como solicitar autorização
+   Pedidos devem ser enviados por e-mail para o mantenedor responsável,
+   conforme indicado no arquivo README.md. A autorização poderá ser
+   concedida, negada ou revogada a qualquer tempo, e poderá envolver
+   condições adicionais (atribuição, divisão de receitas, limites de
+   alcance, etc.).
+
+4. Contribuições
+   Ao enviar uma contribuição (código, conteúdo, materiais, traduções,
+   correções, etc.), o(a) contribuidor(a) concorda em ceder, de forma
+   não-exclusiva, perpétua e irrevogável, os direitos necessários para
+   que o(s) mantenedor(es) do Projeto possam incorporar a contribuição
+   sob os termos desta licença, sem necessidade de remuneração.
+
+5. Sem garantia
+   O PROJETO É FORNECIDO "COMO ESTÁ", SEM GARANTIA DE QUALQUER NATUREZA,
+   EXPRESSA OU IMPLÍCITA, INCLUINDO, MAS NÃO SE LIMITANDO A, GARANTIAS DE
+   COMERCIABILIDADE, ADEQUAÇÃO A UM PROPÓSITO ESPECÍFICO E NÃO VIOLAÇÃO.
+
+6. Limitação de responsabilidade
+   EM NENHUMA HIPÓTESE OS AUTORES OU TITULARES DOS DIREITOS AUTORAIS SERÃO
+   RESPONSÁVEIS POR QUALQUER REIVINDICAÇÃO, DANO OU OUTRA OBRIGAÇÃO,
+   DECORRENTES DE OU EM CONEXÃO COM O PROJETO OU SEU USO, AINDA QUE
+   ADVERTIDOS DA POSSIBILIDADE DE TAIS DANOS.
+
+7. Lei aplicável
+   Esta licença é regida pelas leis da República Federativa do Brasil.
+   Qualquer controvérsia será dirimida no foro do domicílio do detentor
+   dos direitos autorais.
+
+8. Aceitação
+   O simples acesso, clone ou fork deste repositório implica plena
+   ciência e aceitação destes termos.

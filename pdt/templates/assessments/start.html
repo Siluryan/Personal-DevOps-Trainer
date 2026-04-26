@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Teste de admissão · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-2xl mx-auto px-4 py-10">
+  <h1 class="text-2xl font-bold" style="color:#ddeeff">Teste de admissão</h1>
+  <p class="text-sm mt-2" style="color:#8bacc8;line-height:1.6">
+    {{ questions_total }} questões básicas de Linux e Redes. Aprovação a partir de
+    <strong style="color:#bae6fd">{{ pass_score }} acertos</strong>. O objetivo é garantir
+    que você tem o alicerce para acompanhar a trilha, não é uma prova difícil, mas é necessária.
+  </p>
+
+  {% if last_attempt %}
+    <div style="margin-top:24px;background:#07122a;border:1px solid #1a2f50;border-radius:10px;padding:16px">
+      <p class="text-sm" style="color:#8bacc8">
+        Última tentativa: <strong style="color:#ddeeff">{{ last_attempt.score }}/10</strong>.
+      </p>
+      {% if not can_retake %}
+        <p class="text-sm mt-2" style="color:#fbbf24">
+          Você poderá refazer a partir de {{ next_try_at|date:"d/m H:i" }}.
+        </p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <form method="post" class="mt-6">
+    {% csrf_token %}
+    <button {% if not can_retake %}disabled{% endif %}
+            style="background:#0891b2;color:#f0f9ff;font-weight:700;padding:10px 22px;
+                   border-radius:8px;font-size:.9375rem;transition:background .15s;
+                   opacity:{% if can_retake %}1{% else %}.4{% endif %};cursor:{% if can_retake %}pointer{% else %}not-allowed{% endif %}"
+            class="hover:bg-sky-500">
+      Iniciar teste
+    </button>
+  </form>
+</section>
+{% endblock %}

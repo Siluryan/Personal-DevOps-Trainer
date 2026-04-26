@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Configure seu perfil · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-2xl mx-auto px-4 py-10">
+  <h1 class="text-2xl font-bold" style="color:#ddeeff">Conte um pouco sobre você</h1>
+  <p class="text-sm mt-2" style="color:#8bacc8;line-height:1.6">
+    O PDT pede LinkedIn e GitHub porque o objetivo é colocar quem se dedica em evidência
+    para o mercado de trabalho. Esses dados ficam visíveis para outros usuários quando você
+    optar por aparecer no ranking.
+  </p>
+
+  <form method="post"
+        class="mt-6 space-y-4"
+        style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:20px">
+    {% csrf_token %}
+    {% for field in form %}
+      <div>
+        <label style="display:block;font-size:.875rem;color:#8bacc8;margin-bottom:4px">
+          {{ field.label }}
+        </label>
+        {{ field }}
+        {% if field.help_text %}
+          <p style="font-size:.75rem;color:#5a7a9a;margin-top:4px">{{ field.help_text }}</p>
+        {% endif %}
+        {% if field.errors %}
+          <p style="color:#f87171;font-size:.75rem;margin-top:4px">{{ field.errors|join:" " }}</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+    {% if form.non_field_errors %}
+      <p style="color:#f87171;font-size:.75rem">{{ form.non_field_errors|join:" " }}</p>
+    {% endif %}
+    <button style="background:#0891b2;color:#f0f9ff;font-weight:700;
+                   padding:10px 22px;border-radius:8px;font-size:.9375rem;transition:background .15s"
+            class="hover:bg-sky-500">
+      Salvar e continuar
+    </button>
+  </form>
+</section>
+{% endblock %}

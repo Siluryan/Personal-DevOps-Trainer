@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Resultado do quiz · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-3xl mx-auto px-4 py-8">
+  <h1 class="text-2xl font-bold" style="color:#ddeeff">Resultado · {{ topic.title }}</h1>
+
+  <!-- score principal -->
+  <p class="mt-2 text-4xl font-bold"
+     style="color:{% if attempt.score >= 7 %}#34d399{% elif attempt.score >= 5 %}#fbbf24{% else %}#f87171{% endif %}">
+    {{ attempt.score }} / {{ attempt.total_questions }}
+  </p>
+
+  <div class="mt-6 space-y-4">
+    {% for ans in answers %}
+      <div style="background:#07122a;border:1px solid
+                  {% if ans.is_correct %}rgba(52,211,153,.35){% else %}rgba(248,113,113,.35){% endif %};
+                  border-radius:10px;padding:16px">
+        <p class="font-semibold" style="color:#ddeeff;line-height:1.5">
+          {{ forloop.counter }}. {{ ans.question.statement }}
+        </p>
+        <p class="text-sm mt-2" style="color:#8bacc8">
+          Sua resposta:
+          {% if ans.choice %}
+            <span style="font-weight:600;color:{% if ans.is_correct %}#34d399{% else %}#f87171{% endif %}">
+              {{ ans.choice.text }}
+            </span>
+          {% else %}
+            <span style="color:#5a7a9a">(em branco)</span>
+          {% endif %}
+        </p>
+        {% if not ans.is_correct %}
+          {% for c in ans.question.choices.all %}
+            {% if c.is_correct %}
+              <p class="text-sm mt-1" style="color:#8bacc8">
+                Correta: <span style="color:#34d399;font-weight:600">{{ c.text }}</span>
+              </p>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        {% if ans.question.explanation %}
+          <p class="text-xs mt-2" style="color:#5a7a9a;font-style:italic">
+            {{ ans.question.explanation }}
+          </p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="mt-8 flex flex-wrap gap-3">
+    <a href="{% url 'courses:topic_detail' topic.slug %}"
+       style="border:1px solid #1a2f50;color:#8bacc8;padding:8px 18px;border-radius:8px;font-size:.875rem;
+              text-decoration:none;transition:border-color .15s"
+       class="hover:border-sky-500/40 hover:text-sky-300">
+      Voltar ao tópico
+    </a>
+    <a href="{% url 'courses:quiz' topic.slug %}"
+       style="background:#0891b2;color:#f0f9ff;font-weight:700;padding:8px 18px;border-radius:8px;
+              font-size:.875rem;text-decoration:none;transition:background .15s"
+       class="hover:bg-sky-500">
+      Tentar de novo
+    </a>
+  </div>
+</section>
+{% endblock %}

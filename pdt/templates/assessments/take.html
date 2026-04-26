@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Respondendo · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-3xl mx-auto px-4 py-10">
+  {% if not attempt %}
+    <p style="color:#8bacc8">
+      Sessão de teste não iniciada.
+      <a style="color:#38bdf8" href="{% url 'assessments:start' %}">Voltar</a>.
+    </p>
+  {% else %}
+    <h1 class="text-2xl font-bold mb-4" style="color:#ddeeff">Teste de admissão</h1>
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+      {% for q in questions %}
+        <div style="background:#07122a;border:1px solid #1a2f50;border-radius:10px;padding:16px">
+          <p class="font-semibold mb-3" style="color:#ddeeff;line-height:1.5">
+            {{ forloop.counter }}. {{ q.statement }}
+          </p>
+          <div class="space-y-2 text-sm">
+            {% for c in q.choices.all %}
+              <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;
+                            color:#8bacc8;line-height:1.5">
+                <input type="radio" name="q_{{ q.id }}" value="{{ c.id }}"
+                       style="margin-top:3px;accent-color:#0ea5e9" required />
+                <span>{{ c.text }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+      <button style="background:#0891b2;color:#f0f9ff;font-weight:700;
+                     padding:10px 22px;border-radius:8px;font-size:.9375rem;transition:background .15s"
+              class="hover:bg-sky-500">
+        Enviar respostas
+      </button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

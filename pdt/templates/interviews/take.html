@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Entrevista {{ level_label }} · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-3xl mx-auto px-4 py-8">
+
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div>
+      <p style="color:#5a7a9a;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase">
+        Simulador · {{ level_label }}
+      </p>
+      <h1 class="text-xl sm:text-2xl font-bold" style="color:#ddeeff">
+        Questão {{ human_index }} de {{ total }}
+      </h1>
+    </div>
+    <a href="{% url 'interviews:index' %}"
+       style="color:#8bacc8;font-size:.85rem"
+       class="hover:text-sky-300 transition-colors">← Voltar à lista</a>
+  </div>
+
+  <div style="background:#04091c;border:1px solid #1a2f50;border-radius:999px;
+              height:8px;overflow:hidden;margin-bottom:18px">
+    <div style="background:linear-gradient(90deg,#0ea5e9,#22d3ee);height:100%;
+                width:{{ progress_percent }}%;transition:width .3s"></div>
+  </div>
+
+  <form method="post" action="{% url 'interviews:take' attempt.pk %}"
+        style="background:#07122a;border:1px solid #1a2f50;border-radius:14px;padding:20px"
+        x-data="{ choice: '{% if previous_choice is not None %}{{ previous_choice }}{% endif %}' }">
+    {% csrf_token %}
+    <input type="hidden" name="index" value="{{ index }}" />
+
+    {% if question.category %}
+      <p style="color:#5a7a9a;font-size:.75rem;letter-spacing:.04em;
+                text-transform:uppercase;margin-bottom:8px">
+        {{ question.category }}
+      </p>
+    {% endif %}
+
+    <p class="font-semibold mb-5" style="color:#ddeeff;line-height:1.55;font-size:1.0625rem">
+      {{ question.statement }}
+    </p>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      {% for choice_text in question.choices %}
+        <label x-bind:style="{
+                  background: choice === '{{ forloop.counter0 }}' ? 'rgba(14,165,233,.15)' : '#04091c',
+                  borderColor: choice === '{{ forloop.counter0 }}' ? 'rgba(14,165,233,.55)' : '#1a2f50',
+                  color: choice === '{{ forloop.counter0 }}' ? '#ddeeff' : '#bcd2e8'
+                }"
+               style="display:flex;gap:10px;align-items:flex-start;width:100%;
+                      padding:11px 13px;border-radius:9px;cursor:pointer;
+                      border-width:1px;border-style:solid;
+                      line-height:1.5;font-size:.9375rem;transition:all .12s">
+          <input type="radio" name="choice" value="{{ forloop.counter0 }}"
+                 x-model="choice"
+                 style="margin-top:3px;accent-color:#0ea5e9;flex-shrink:0" />
+          <span style="flex:1">{{ choice_text }}</span>
+        </label>
+      {% endfor %}
+    </div>
+
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-wrap gap-2">
+        {% if index > 0 %}
+          <button type="submit" name="action" value="prev"
+                  style="background:transparent;border:1px solid #1a2f50;
+                         color:#94a3b8;padding:8px 14px;border-radius:8px;font-size:.85rem"
+                  class="hover:text-sky-300 hover:border-sky-400/40 transition-colors">
+            ← Anterior
+          </button>
+        {% endif %}
+        <button type="submit" name="action" value="save_exit"
+                style="background:transparent;border:1px solid #1a2f50;
+                       color:#94a3b8;padding:8px 14px;border-radius:8px;font-size:.85rem"
+                class="hover:text-amber-300 hover:border-amber-400/40 transition-colors">
+          Salvar e sair
+        </button>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        {% if human_index < total %}
+          <button type="submit" name="action" value="next"
+                  style="background:#0891b2;color:#f0f9ff;font-weight:600;
+                         padding:8px 18px;border-radius:8px;font-size:.875rem"
+                  class="hover:bg-sky-500 transition-colors">
+            Próxima →
+          </button>
+        {% else %}
+          <button type="submit" name="action" value="finish"
+                  style="background:#22c55e;color:#04091c;font-weight:700;
+                         padding:8px 18px;border-radius:8px;font-size:.875rem"
+                  class="hover:bg-emerald-400 transition-colors">
+            Finalizar entrevista
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+
+  <p class="mt-3 text-center" style="color:#5a7a9a;font-size:.78rem">
+    {{ answered_count }} de {{ total }} respondidas · suas respostas são salvas a cada avanço.
+  </p>
+
+</section>
+{% endblock %}

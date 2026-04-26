@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Ranking · PDT{% endblock %}
+
+{% block content %}
+<section class="max-w-3xl mx-auto px-4 py-8">
+  <h1 class="text-2xl font-bold" style="color:#ddeeff">Ranking público (Top 50)</h1>
+  <p class="text-sm mt-1" style="color:#5a7a9a">Apenas usuários que escolheram aparecer no ranking.</p>
+
+  <ol class="mt-6 space-y-1">
+    {% for u in users %}
+      <li style="display:flex;align-items:center;justify-content:space-between;
+                 background:#07122a;border:1px solid #1a2f50;border-radius:8px;
+                 padding:10px 16px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="color:#5a7a9a;width:1.5rem;text-align:right;font-size:.875rem">
+            {{ forloop.counter }}.
+          </span>
+          <a href="{% url 'accounts:profile' u.pk %}"
+             style="font-weight:600;color:#ddeeff;text-decoration:none"
+             class="hover:text-sky-300 transition-colors">
+            {{ u.display_name }}
+          </a>
+          <span style="font-size:.68rem;color:#0ea5e9;font-weight:600;
+                       background:rgba(14,165,233,.12);padding:1px 7px;border-radius:999px;
+                       letter-spacing:.02em">
+            {{ u.career_label }}
+          </span>
+          {% if u.country %}
+            <span style="font-size:.75rem;color:#5a7a9a">· {{ u.country }}</span>
+          {% endif %}
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          {% if u.linkedin_url %}
+            <a href="{{ u.linkedin_url }}" target="_blank"
+               style="font-size:.75rem;color:#5a7a9a" class="hover:text-sky-300">LinkedIn</a>
+          {% endif %}
+          {% if u.github_url %}
+            <a href="{{ u.github_url }}" target="_blank"
+               style="font-size:.75rem;color:#5a7a9a" class="hover:text-sky-300">GitHub</a>
+          {% endif %}
+          <span style="color:#34d399;font-weight:700;font-size:.9rem">{{ u.total }} pts</span>
+        </div>
+      </li>
+    {% empty %}
+      <li style="color:#5a7a9a;font-size:.875rem">Ninguém apareceu no ranking ainda.</li>
+    {% endfor %}
+  </ol>
+</section>
+{% endblock %}
