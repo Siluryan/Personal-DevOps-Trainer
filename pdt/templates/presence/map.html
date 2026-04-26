@@ -60,20 +60,23 @@
   .cluster-has-help { background:rgba(244,63,94,.18) !important; }
   .cluster-has-help div { background:rgba(244,63,94,.65) !important; }
 
-  /* painel "Pedir ajuda" em telas menores */
-  @media (max-width: 1024px), (max-height: 900px) {
-    .help-request-panel {
-      position: fixed !important;
-      left: 50%;
-      right: auto;
-      top: 5rem;
-      transform: translateX(-50%);
-      width: auto !important;
-      margin-top: 0 !important;
-      max-width: calc(100vw - 1.5rem);
-      max-height: calc(100dvh - 6rem);
-      overflow-y: auto;
-    }
+  .help-request-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 8, 23, 0.72);
+    backdrop-filter: blur(1px);
+    z-index: 1300;
+  }
+  .help-request-panel {
+    position: fixed !important;
+    z-index: 1310;
+    left: 50%;
+    top: 5rem;
+    transform: translateX(-50%);
+    width: min(24rem, calc(100vw - 1.5rem)) !important;
+    margin-top: 0 !important;
+    max-height: calc(100dvh - 6rem);
+    overflow-y: auto;
   }
 </style>
 {% endblock %}
@@ -93,7 +96,7 @@
     </div>
 
     {# Painel de ajuda, gerenciado via Alpine sem reload #}
-    <div x-data="helpPanel()" x-init="init()" class="relative" style="z-index:1100">
+    <div x-data="helpPanel()" x-init="init()" @keydown.escape.window="open = false" class="relative" style="z-index:1100">
 
       {# estado: pedido aberto — quem pediu entra na sala por aqui (URL /mapa/ajuda/&lt;id&gt;/) #}
       <div x-show="hasOpen" x-cloak class="flex flex-wrap gap-2 items-center justify-end">
@@ -119,16 +122,24 @@
       {# estado: sem pedido aberto #}
       <div x-show="!hasOpen" x-cloak>
         {% if user_can_request_help %}
-        <button @click="open = !open"
+        <button @click="open = true"
                 style="background:#f43f5e;color:#fff;font-weight:700;
                        padding:8px 18px;border-radius:8px;font-size:.875rem;transition:background .15s"
                 class="hover:bg-rose-400">
           🆘 Pedir ajuda
         </button>
+        <div x-show="open" x-cloak @click="open = false" class="help-request-backdrop"></div>
         <div x-show="open" x-cloak
-             class="help-request-panel absolute right-0 mt-2 w-80 max-w-[calc(100vw-1.5rem)] max-h-[calc(100dvh-7rem)] overflow-y-auto shadow-2xl"
+             @click.stop
+             class="help-request-panel shadow-2xl"
              style="z-index:1200;background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:16px">
-          <p style="font-size:.9rem;font-weight:700;color:#ddeeff;margin-bottom:12px">Pedir ajuda</p>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <p style="font-size:.9rem;font-weight:700;color:#ddeeff;margin:0">Pedir ajuda</p>
+            <button @click="open = false" type="button"
+                    style="background:transparent;border:0;color:#8bacc8;font-size:1.1rem;line-height:1;cursor:pointer;padding:2px 6px">
+              ×
+            </button>
+          </div>
           <div class="space-y-3">
             <div>
               <label style="display:block;font-size:.75rem;color:#8bacc8;margin-bottom:4px">Tópico</label>
@@ -547,6 +558,7 @@
           const d = await r.json();
           if (r.ok) {
             window._setHelpOpen(d.id, d.topic, d.help_url || "");
+            this.open = false;
             await fetchOnline();
           } else {
             this.errMsg = d.error || 'Erro ao criar pedido.';
