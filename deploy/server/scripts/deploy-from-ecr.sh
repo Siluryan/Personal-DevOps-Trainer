@@ -166,6 +166,78 @@ ensure_redis() {
   systemctl start redis-server 2>/dev/null || systemctl start redis 2>/dev/null || true
 }
 
+# Coloca o nginx HTTP-only no ar a partir do template (sem o bloco 443) para
+# o certbot conseguir o desafio HTTP-01. Idempotente.
+write_nginx_http_only() {
+  local domain="$1" template="$REPO_DIR/deploy/server/nginx/pdt.conf.tpl"
+  local out=/etc/nginx/sites-available/pdt.conf
+  if [ ! -f "$template" ]; then
+    echo "::error::template nginx ausente em $template" >&2
+    exit 1
+  fi
+  install -d -m 0755 /var/www/html /etc/nginx/snippets
+  install -m 0644 "$REPO_DIR/deploy/server/nginx/snippets/pdt_proxy.conf" \
+    /etc/nginx/snippets/pdt_proxy.conf
+  python3 - "$template" "$domain" "$out" <<'PYEOF'
+import re, sys
+src = open(sys.argv[1]).read().replace("__DOMAIN__", sys.argv[2])
+out = []
+depth = 0
+seen = 0
+for line in src.splitlines():
+    stripped = line.strip()
+    if re.match(r"^server\s*\{", stripped):
+        seen += 1
+        depth = 1
+        if seen == 2:
+            continue
+        out.append(line)
+        continue
+    if depth and seen == 2:
+        if "{" in stripped:
+            depth += 1
+        if "}" in stripped:
+            depth -= 1
+            if depth == 0:
+                continue
+        continue
+    out.append(line)
+open(sys.argv[3], "w").write("\n".join(out) + "\n")
+PYEOF
+  ln -sf /etc/nginx/sites-available/pdt.conf /etc/nginx/sites-enabled/pdt.conf
+  rm -f /etc/nginx/sites-enabled/default
+  nginx -t
+  systemctl enable --now nginx
+  systemctl reload nginx
+}
+
+ensure_nginx_tls() {
+  local domain="$1" email="$2"
+  apt_install_if_missing nginx certbot python3-certbot-nginx
+  if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q 'Status: active'; then
+    ufw allow 80/tcp || true
+    ufw allow 443/tcp || true
+  fi
+
+  if [ ! -d "/etc/letsencrypt/live/$domain" ]; then
+    write_nginx_http_only "$domain"
+    if [ -z "$email" ]; then
+      logger -t "$SCRIPT_NAME" "aviso: letsencrypt_email vazio; pulando emissao do cert (DNS+email exigidos)"
+    else
+      certbot --nginx -d "$domain" \
+        --non-interactive --agree-tos -m "$email" --redirect \
+        || logger -t "$SCRIPT_NAME" "certbot inicial falhou (DNS apontando para esta EC2?)"
+    fi
+  else
+    install -d -m 0755 /etc/nginx/snippets
+    install -m 0644 "$REPO_DIR/deploy/server/nginx/snippets/pdt_proxy.conf" \
+      /etc/nginx/snippets/pdt_proxy.conf
+    nginx -t && systemctl reload nginx 2>/dev/null || systemctl restart nginx 2>/dev/null || true
+    systemctl enable --now nginx 2>/dev/null || true
+  fi
+  systemctl enable --now certbot.timer 2>/dev/null || true
+}
+
 ensure_pdt_env
 ensure_postgres
 ensure_redis
@@ -191,6 +263,13 @@ docker compose -f "$COMPOSE_FILE" exec -T web python manage.py collectstatic --n
 
 # Nginx le /static e /media (www-data): garante leitura.
 chmod -R a+rX /opt/pdt/app/pdt/staticfiles /opt/pdt/app/pdt/media 2>/dev/null || true
+
+# Publica em 80/443 via nginx + Let's Encrypt (idempotente, requer DNS apontando aqui).
+DOMAIN_VAL=$(ssm_get "/$PROJECT_NAME/$ENVIRONMENT_NAME/domain_name")
+LE_EMAIL_VAL=$(ssm_get "/$PROJECT_NAME/$ENVIRONMENT_NAME/letsencrypt_email")
+if [ -n "$DOMAIN_VAL" ]; then
+  ensure_nginx_tls "$DOMAIN_VAL" "$LE_EMAIL_VAL"
+fi
 
 # Mantem a copia em /opt/pdt/scripts atualizada (idempotente).
 install -d -m 0755 /opt/pdt/scripts

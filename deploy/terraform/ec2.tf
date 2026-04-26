@@ -44,6 +44,13 @@ resource "aws_ssm_parameter" "domain_name" {
   value = var.domain_name
 }
 
+# Lido pelo deploy-from-ecr.sh para emitir/renovar o cert via certbot --nginx.
+resource "aws_ssm_parameter" "letsencrypt_email" {
+  name  = "/${var.project_name}/${var.environment}/letsencrypt_email"
+  type  = "String"
+  value = var.letsencrypt_email
+}
+
 # A EC2 precisa poder ler esses parâmetros (chave KMS aws/ssm é gerenciada).
 data "aws_iam_policy_document" "ssm_params_read" {
   statement {
@@ -52,6 +59,7 @@ data "aws_iam_policy_document" "ssm_params_read" {
       aws_ssm_parameter.django_secret.arn,
       aws_ssm_parameter.postgres_password.arn,
       aws_ssm_parameter.domain_name.arn,
+      aws_ssm_parameter.letsencrypt_email.arn,
       aws_ssm_parameter.backup_bucket.arn,
     ]
   }

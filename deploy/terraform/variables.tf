@@ -54,6 +54,7 @@ variable "domain_name" {
 variable "letsencrypt_email" {
   description = "E-mail usado pelo certbot para o Let's Encrypt."
   type        = string
+  default     = "guilhermerrdias@gmail.com"
 }
 
 variable "operator_cidrs" {
