@@ -63,7 +63,46 @@ ENVEOF
   logger -t "$SCRIPT_NAME" "criado $ENV_FILE a partir de SSM"
 }
 
+# docker-compose.prod.yml usa network_mode: host; o contêiner fala com 127.0.0.1 no host.
+# Se o Postgres/Redis tiverem parado (reboot, falha, instância sem user_data completo), migrate falha.
+ensure_host_postgres_redis() {
+  systemctl start postgresql 2>/dev/null || true
+  if [ -d /etc/postgresql ]; then
+    shopt -s nullglob
+    for d in /etc/postgresql/*/main; do
+      [ -d "$d" ] || continue
+      v="${d#"/etc/postgresql/"}"
+      v="${v%%/*}"
+      if systemctl list-unit-files "postgresql@${v}-main.service" 2>/dev/null | grep -q .; then
+        systemctl start "postgresql@${v}-main" 2>/dev/null || true
+      fi
+    done
+    shopt -u nullglob
+  fi
+
+  if command -v pg_isready >/dev/null 2>&1; then
+    local w=0
+    while [ "$w" -lt 60 ]; do
+      if pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null; then
+        logger -t "$SCRIPT_NAME" "Postgres OK em 127.0.0.1:5432"
+        break
+      fi
+      w=$((w + 1))
+      sleep 1
+    done
+    if ! pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null; then
+      echo "Postgres inacessivel em 127.0.0.1:5432. Verifique: systemctl status postgresql; a instalação no user_data (apt postgresql) foi concluida." >&2
+      exit 1
+    fi
+  else
+    logger -t "$SCRIPT_NAME" "aviso: pg_isready nao disponivel, nao foi possivel aguardar o Postgres"
+  fi
+
+  systemctl start redis-server 2>/dev/null || systemctl start redis 2>/dev/null || true
+}
+
 ensure_pdt_env
+ensure_host_postgres_redis
 
 # Login no ECR (instância com role que permite ecr pull).
 ECR_HOST=$(echo "$IMAGE_URI" | cut -d/ -f1)

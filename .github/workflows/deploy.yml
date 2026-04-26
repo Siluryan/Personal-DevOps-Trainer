@@ -111,7 +111,72 @@ jobs:
           fi
           echo "instance_id=$INSTANCE_ID" >>"$GITHUB_OUTPUT"
 
-      - name: SSM (git no commit + deploy-from-ecr)
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Sincronizar scripts (runner → /opt/pdt/scripts)
+        id: sync
+        run: |
+          set -euo pipefail
+          INSTANCE_ID="${{ steps.target.outputs.instance_id }}"
+
+          # Tar com todos os .sh (mesma pasta que a EC2 usaria após o git), antes do pull.
+          ( cd deploy/server/scripts && find . -maxdepth 1 -name '*.sh' -type f -print0 | tar czf - --null -T - ) > /tmp/pdt-server-scripts.tgz
+          B64=$(base64 -w0 < /tmp/pdt-server-scripts.tgz)
+          N=${#B64}
+          if [ "$N" -gt 200000 ]; then
+            echo "::error::Arquivo SSM muito grande ($N b64). Reduza o tar ou use outro meio (S3)."
+            exit 1
+          fi
+
+          PJSON=$(jq -n --arg b "$B64" '{
+            "commands": [
+              "set -eu",
+              "command -v base64 && command -v tar",
+              "install -d -m 0755 /opt/pdt/scripts",
+              ("printf %s " + $b + " | base64 -d | tar xzf - -C /opt/pdt/scripts"),
+              "chmod 0755 /opt/pdt/scripts/*.sh 2>/dev/null || true"
+            ]
+          }')
+
+          CMD_ID=$(aws ssm send-command \
+            --document-name AWS-RunShellScript \
+            --instance-ids "$INSTANCE_ID" \
+            --comment "pdt sync scripts #${{ github.run_id }} sha=${{ github.sha }}" \
+            --timeout-seconds 300 \
+            --parameters "$PJSON" \
+            --query 'Command.CommandId' --output text)
+          echo "command_id=$CMD_ID" >>"$GITHUB_OUTPUT"
+
+      - name: Aguardar sincronização de scripts
+        if: success()
+        env:
+          CMD_ID: ${{ steps.sync.outputs.command_id }}
+          INSTANCE_ID: ${{ steps.target.outputs.instance_id }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 24); do
+            STATUS=$(aws ssm list-command-invocations \
+              --command-id "$CMD_ID" \
+              --details --query 'CommandInvocations[0].Status' --output text 2>/dev/null || echo Pending)
+            echo "tentativa $i: $STATUS"
+            case "$STATUS" in
+              Success) exit 0;;
+              Failed|Cancelled|TimedOut)
+                echo "::error::Falha ao instalar scripts em /opt/pdt/scripts."
+                aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+                  --query '[StandardOutputContent, StandardErrorContent, Status, ResponseCode]' --output text
+                exit 1
+                ;;
+            esac
+            sleep 5
+          done
+          echo "::error::Timeout aguardando SSM (scripts)."
+          exit 1
+
+      - name: SSM (git + deploy ECR)
         id: send
         env:
           URI: ${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -128,7 +193,7 @@ jobs:
               "commands": [
                 "set -eu",
                 "export AWS_DEFAULT_REGION=\($r) AWS_REGION=\($r)",
-                "command -v docker >/dev/null 2>&1 || { echo ::error::Docker nao esta instalado na EC2. Rode em SSM: bash /opt/pdt/app/deploy/server/scripts/install-docker-on-ec2.sh; exit 1; }",
+                "command -v docker >/dev/null 2>&1 || { echo ::error::Docker nao esta instalado na EC2. Rode em SSM: bash /opt/pdt/scripts/install-docker-on-ec2.sh; exit 1; }",
                 "sudo -u deploy -H git -C /opt/pdt/app config --global --add safe.directory /opt/pdt/app || true",
                 ("sudo -u deploy -H /bin/bash -lc " + ( "\"set +e; cd /opt/pdt/app; "
                   + "git remote set-url origin https://github.com/" + $re + ".git; "
@@ -144,8 +209,8 @@ jobs:
                   + "set -e; "
                   + "git rev-parse -q --verify " + $g + "^{commit} || { echo ::error::commit_inacessivel_apos_fetch; echo remote=; git remote -v; echo head=; git log -1 --oneline 2>&1; exit 128; }; "
                   + "git reset --hard " + $g + "\"") ),
-                "test -f /opt/pdt/app/deploy/server/scripts/deploy-from-ecr.sh || { echo ::error::falta_deploy_from_ecr; ls -la /opt/pdt/app/deploy/server/scripts 2>&1 || true; exit 1; }",
-                "sudo /opt/pdt/app/deploy/server/scripts/deploy-from-ecr.sh " + $u + " " + $g + " " + $r
+                "test -f /opt/pdt/scripts/deploy-from-ecr.sh || { echo '::error::Falta /opt/pdt/scripts/deploy-from-ecr.sh. Rodou o passo Sincronizar scripts?'; ls -la /opt/pdt/scripts 2>&1 || true; exit 1; }",
+                "sudo /opt/pdt/scripts/deploy-from-ecr.sh " + $u + " " + $g + " " + $r
               ]
             }')
           CMD_ID=$(aws ssm send-command \
@@ -191,7 +256,7 @@ jobs:
             case "$STATUS" in
               Success) exit 0;;
               Failed|Cancelled|TimedOut)
-                echo "::error::O comando SSM na EC2 terminou com $STATUS. Causa comum: /opt/pdt/app inexistente, git sem o commit, Docker ausente, ou deploy-from-ecr (ECR) com erro. Saída abaixo."
+                echo "::error::O comando SSM na EC2 terminou com $STATUS. Causa comum: /opt/pdt/app inexistente, git sem o commit, Docker ausente, Postgres parado, ou deploy-from-ecr (ECR) com erro. Verifique o passo Sincronizar scripts. Saída abaixo."
                 dump_ssm_log
                 exit 1
                 ;;
