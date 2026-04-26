@@ -348,14 +348,6 @@
     } catch(e) { console.warn(e); }
   }
 
-  function warnLocationIssue(msg) {
-    if (window.pdtToast) {
-      window.pdtToast(msg, { title: 'Localização no mapa' });
-    } else {
-      console.warn(msg);
-    }
-  }
-
   async function checkin(lat, lng) {
     const fd = new FormData();
     fd.append('lat', lat); fd.append('lng', lng);
@@ -363,11 +355,9 @@
       const r = await fetch(URLS.checkin, { method:'POST', headers:{'X-CSRFToken':CSRF}, body:fd });
       if (r.ok) {
         locationCheckinOk = true;
-      } else {
-        warnLocationIssue('Não foi possível confirmar sua posição. Tente permitir geolocalização no navegador.');
       }
     } catch (e) {
-      warnLocationIssue('Falha de rede ao enviar sua posição para o mapa.');
+      console.warn('Falha ao enviar checkin do mapa.', e);
     }
     await fetchOnline();
   }
@@ -403,11 +393,9 @@
         leafMap.setView([lat, lon], 11);
         await checkin(lat, lon);
       } else {
-        warnLocationIssue('Não foi possível obter sua localização por IP. Seu pin pode não aparecer.');
         await fallbackToDefaultLocation();
       }
     } catch {
-      warnLocationIssue('Não foi possível obter sua localização (GPS/IP). Seu pin pode não aparecer.');
       await fallbackToDefaultLocation();
     }
   }
@@ -431,7 +419,6 @@
         if (ws.readyState===1) ws.send(JSON.stringify({action:'update_location',lat,lng}));
       },
       () => {
-        warnLocationIssue('Geolocalização bloqueada/indisponível. Tentando fallback por IP.');
         geoByIP();
       },
       { enableHighAccuracy:false, timeout:8000 }
