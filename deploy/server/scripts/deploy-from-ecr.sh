@@ -55,9 +55,13 @@ ensure_pdt_env() {
   if [ -f "$ENV_FILE" ]; then
     return 0
   fi
-  local SK DOM BUCK
+  local SK DOM ROOT_DOM WWW_DOM ALLOWED_HOSTS CSRF_EXTRA BUCK
   SK=$(ssm_get "/$PN/$PE/django/secret_key" yes)
   DOM=$(ssm_get "/$PN/$PE/domain_name")
+  ROOT_DOM="${DOM#www.}"
+  WWW_DOM="www.$ROOT_DOM"
+  ALLOWED_HOSTS="$ROOT_DOM,$WWW_DOM,127.0.0.1,localhost"
+  CSRF_EXTRA="https://$ROOT_DOM,https://$WWW_DOM"
   BUCK=$(ssm_get "/$PN/$PE/backup_bucket")
   BUCK=${BUCK:-${PDT_BACKUP_BUCKET:-}}
   if [ -z "$BUCK" ]; then
@@ -68,8 +72,8 @@ ensure_pdt_env() {
   cat >"$ENV_FILE" <<ENVEOF
 DJANGO_SECRET_KEY=$SK
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=$DOM,127.0.0.1,localhost
-CSRF_TRUSTED_ORIGINS_EXTRA=https://$DOM
+DJANGO_ALLOWED_HOSTS=$ALLOWED_HOSTS
+CSRF_TRUSTED_ORIGINS_EXTRA=$CSRF_EXTRA
 POSTGRES_DB=pdt
 POSTGRES_USER=pdt
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD_VAL
@@ -169,7 +173,7 @@ ensure_redis() {
 # Coloca o nginx HTTP-only no ar a partir do template (sem o bloco 443) para
 # o certbot conseguir o desafio HTTP-01. Idempotente.
 write_nginx_http_only() {
-  local domain="$1" template="$REPO_DIR/deploy/server/nginx/pdt.conf.tpl"
+  local domain_names="$1" template="$REPO_DIR/deploy/server/nginx/pdt.conf.tpl"
   local out=/etc/nginx/sites-available/pdt.conf
   if [ ! -f "$template" ]; then
     echo "::error::template nginx ausente em $template" >&2
@@ -178,7 +182,7 @@ write_nginx_http_only() {
   install -d -m 0755 /var/www/html /etc/nginx/snippets
   install -m 0644 "$REPO_DIR/deploy/server/nginx/snippets/pdt_proxy.conf" \
     /etc/nginx/snippets/pdt_proxy.conf
-  python3 - "$template" "$domain" "$out" <<'PYEOF'
+  python3 - "$template" "$domain_names" "$out" <<'PYEOF'
 import re, sys
 src = open(sys.argv[1]).read().replace("__DOMAIN__", sys.argv[2])
 out = []
@@ -212,28 +216,26 @@ PYEOF
 }
 
 ensure_nginx_tls() {
-  local domain="$1" email="$2"
+  local domain="$1" email="$2" root_domain www_domain
+  root_domain="${domain#www.}"
+  www_domain="www.$root_domain"
   apt_install_if_missing nginx certbot python3-certbot-nginx
   if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q 'Status: active'; then
     ufw allow 80/tcp || true
     ufw allow 443/tcp || true
   fi
 
-  if [ ! -d "/etc/letsencrypt/live/$domain" ]; then
-    write_nginx_http_only "$domain"
-    if [ -z "$email" ]; then
-      logger -t "$SCRIPT_NAME" "aviso: letsencrypt_email vazio; pulando emissao do cert (DNS+email exigidos)"
-    else
-      certbot --nginx -d "$domain" \
-        --non-interactive --agree-tos -m "$email" --redirect \
-        || logger -t "$SCRIPT_NAME" "certbot inicial falhou (DNS apontando para esta EC2?)"
-    fi
+  if [ -z "$email" ]; then
+    logger -t "$SCRIPT_NAME" "aviso: letsencrypt_email vazio; pulando emissao do cert (DNS+email exigidos)"
   else
-    install -d -m 0755 /etc/nginx/snippets
-    install -m 0644 "$REPO_DIR/deploy/server/nginx/snippets/pdt_proxy.conf" \
-      /etc/nginx/snippets/pdt_proxy.conf
-    nginx -t && systemctl reload nginx 2>/dev/null || systemctl restart nginx 2>/dev/null || true
-    systemctl enable --now nginx 2>/dev/null || true
+    # Sempre gera hostnames de apex+www para evitar 404 no www e manter cert SAN.
+    write_nginx_http_only "$root_domain $www_domain"
+    certbot --nginx \
+      -d "$root_domain" \
+      -d "$www_domain" \
+      --non-interactive --agree-tos -m "$email" --redirect \
+      --expand \
+      || logger -t "$SCRIPT_NAME" "certbot falhou (DNS apex/www apontando para esta EC2?)"
   fi
   systemctl enable --now certbot.timer 2>/dev/null || true
 }
