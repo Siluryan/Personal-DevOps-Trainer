@@ -61,15 +61,17 @@
   .cluster-has-help div { background:rgba(244,63,94,.65) !important; }
 
   /* painel "Pedir ajuda" em telas menores */
-  @media (max-width: 639px), (max-height: 760px) {
+  @media (max-width: 1024px), (max-height: 900px) {
     .help-request-panel {
       position: fixed !important;
-      left: 0.75rem;
-      right: 0.75rem;
-      top: 4.5rem;
+      left: 50%;
+      right: auto;
+      top: 5rem;
+      transform: translateX(-50%);
       width: auto !important;
       margin-top: 0 !important;
-      max-height: calc(100dvh - 5.25rem);
+      max-width: calc(100vw - 1.5rem);
+      max-height: calc(100dvh - 6rem);
       overflow-y: auto;
     }
   }
