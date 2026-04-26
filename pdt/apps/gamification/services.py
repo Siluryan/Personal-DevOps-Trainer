@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from django.contrib.auth import get_user_model
-from django.db.models import Sum
+from django.db.models import IntegerField, Sum, Value
+from django.db.models.functions import Coalesce
 
 from apps.courses.models import Topic
 
@@ -42,8 +43,14 @@ def top_users(limit: int = 50):
     """Retorna o top N de quem optou por aparecer no ranking."""
     qs = (
         User.objects.filter(show_in_leaderboard=True, admission_passed=True)
-        .annotate(total=Sum("topic_scores__points"))
+        .annotate(
+            total=Coalesce(
+                Sum("topic_scores__points"),
+                Value(0),
+                output_field=IntegerField(),
+            )
+        )
         .filter(total__gt=0)
-        .order_by("-total")[:limit]
+        .order_by("-total", "-id")[:limit]
     )
     return qs

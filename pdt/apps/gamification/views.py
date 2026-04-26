@@ -12,6 +12,14 @@ class LeaderboardView(TemplateView):
         ctx["users"] = top_users(50)
         return ctx
 
+    def render_to_response(self, context, **response_kwargs):
+        # Evita resposta cacheada por browser/proxy/CDN em produção.
+        response = super().render_to_response(context, **response_kwargs)
+        response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response["Pragma"] = "no-cache"
+        response["Expires"] = "0"
+        return response
+
 
 class MyRadarView(LoginRequiredMixin, TemplateView):
     template_name = "gamification/radar.html"
