@@ -1,8 +1,9 @@
 # Deploy to Production: build da imagem no runner do GitHub Actions, push
 # no ECR e aplicação na EC2 (docker compose + pdt/docker-compose.prod.yml).
-# Configure a variável de repositório: ECR_REPOSITORY = output
-# ecr_repository_url do Terraform. A role OIDC (GHA_DEPLOY_ROLE_ARN) precisa
-# das políticas de ECR push aplicadas no Terraform.
+# Variáveis (ex.: ECR_REPOSITORY) devem estar no environment `prod` no GitHub
+# (ou no repositório). Ambos os jobs usam `environment: prod` para enxergar
+# as variables do environment. ecr_repository_url = output Terraform.
+# GHA_DEPLOY_ROLE_ARN: OIDC com políticas ECR (Terraform).
 name: Deploy to Production
 
 on:
@@ -25,13 +26,15 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
   IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' && github.event.inputs.tag || github.sha }}
 
 jobs:
   build-and-push:
     name: Build and push
+    environment: prod
     runs-on: ubuntu-24.04
+    env:
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
     steps:
       - name: Exigir ECR_REPOSITORY
         run: |
@@ -81,6 +84,8 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-24.04
     environment: prod
+    env:
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
