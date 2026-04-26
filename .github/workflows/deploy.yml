@@ -1,4 +1,9 @@
-name: deploy
+# Deploy to Production: build da imagem no runner do GitHub Actions, push
+# no ECR e aplicação na EC2 (docker compose + pdt/docker-compose.prod.yml).
+# Configure a variável de repositório: ECR_REPOSITORY = output
+# ecr_repository_url do Terraform. A role OIDC (GHA_DEPLOY_ROLE_ARN) precisa
+# das políticas de ECR push aplicadas no Terraform.
+name: Deploy to Production
 
 on:
   push:
@@ -9,33 +14,82 @@ on:
       - "**/*.md"
   workflow_dispatch:
     inputs:
-      branch:
-        description: "Branch que será deployada na EC2"
-        default: main
-        required: true
+      tag:
+        description: "Tag da imagem no ECR (vazio = commit SHA do run)"
+        required: false
+        default: ""
 
 permissions:
-  id-token: write   # OIDC
+  id-token: write
   contents: read
 
 env:
   AWS_REGION: us-east-1
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' && github.event.inputs.tag || github.sha }}
 
 jobs:
+  build-and-push:
+    name: Build and push
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Exigir ECR_REPOSITORY
+        run: |
+          if [ -z "${{ vars.ECR_REPOSITORY }}" ]; then
+            echo '::error::Defina a variável ECR_REPOSITORY (ex.: saída ecr_repository_url do Terraform).'
+            exit 1
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.GHA_DEPLOY_ROLE_ARN }}
+          role-session-name: pdt-gha-build-ecr
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: pdt
+          file: pdt/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=registry,ref=${{ env.ECR_REPOSITORY }}:buildcache
+          cache-to: type=registry,ref=${{ env.ECR_REPOSITORY }}:buildcache,mode=max
+          platforms: linux/amd64
+
+      - name: Imagem publicada
+        run: |
+          echo "Repositório: ${{ env.ECR_REPOSITORY }}"
+          echo "Tag: ${{ env.IMAGE_TAG }}"
+          echo "Imagem: ${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+
   deploy:
-    name: ssm send-command
+    name: SSM e smoke
+    needs: build-and-push
     runs-on: ubuntu-24.04
     environment: prod
-    needs: []
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.GHA_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.GHA_DEPLOY_ROLE_ARN }}
+          role-session-name: pdt-gha-deploy-ec2
 
-      - name: Localizar EC2 alvo (tag Project=pdt + Environment=prod)
+      - name: Localizar instância PDT
         id: target
         run: |
           set -euo pipefail
@@ -52,28 +106,47 @@ jobs:
           fi
           echo "instance_id=$INSTANCE_ID" >>"$GITHUB_OUTPUT"
 
-      - name: SSM send-command (deploy.sh)
+      - name: SSM (git no commit + deploy-from-ecr)
         id: send
         env:
-          BRANCH: ${{ github.event.inputs.branch || 'main' }}
+          URI: ${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          REF: ${{ github.sha }}
         run: |
           set -euo pipefail
+          PJSON=$(jq -n \
+            --arg u "$URI" \
+            --arg g "$REF" \
+            --arg r "${{ env.AWS_REGION }}" \
+            '{
+              "commands": [
+                "set -euo pipefail",
+                "export AWS_DEFAULT_REGION=\($r) AWS_REGION=\($r)",
+                "command -v docker >/dev/null 2>&1 || { echo ::error::Docker nao esta instalado na EC2. Rode em SSM: bash /opt/pdt/app/deploy/server/scripts/install-docker-on-ec2.sh; exit 1; }",
+                "sudo -u deploy -H git -C /opt/pdt/app config --global --add safe.directory /opt/pdt/app || true",
+                "sudo -u deploy -H git -C /opt/pdt/app fetch origin",
+                "if ! sudo -u deploy -H git -C /opt/pdt/app rev-parse -q --verify " + $g + "^{commit} 2>/dev/null; then sudo -u deploy -H git -C /opt/pdt/app fetch --unshallow 2>/dev/null || true; sudo -u deploy -H git -C /opt/pdt/app fetch --depth=500 origin; fi",
+                "sudo -u deploy -H git -C /opt/pdt/app reset --hard " + $g,
+                "test -f /opt/pdt/app/deploy/server/scripts/deploy-from-ecr.sh",
+                "sudo /opt/pdt/app/deploy/server/scripts/deploy-from-ecr.sh " + $u + " " + $g + " " + $r
+              ]
+            }')
           CMD_ID=$(aws ssm send-command \
             --document-name AWS-RunShellScript \
             --instance-ids "${{ steps.target.outputs.instance_id }}" \
-            --comment "deploy via GHA #${{ github.run_id }}" \
-            --parameters "commands=['/opt/pdt/scripts/deploy.sh $BRANCH']" \
-            --timeout-seconds 1500 \
+            --comment "pdt ecr #${{ github.run_id }} sha=${{ github.sha }}" \
+            --timeout-seconds 1800 \
+            --parameters "$PJSON" \
             --query 'Command.CommandId' --output text)
           echo "command_id=$CMD_ID" >>"$GITHUB_OUTPUT"
 
-      - name: Aguardar conclusão
+      - name: Aguardar SSM
+        if: success()
         run: |
           set -euo pipefail
-          for i in $(seq 1 60); do
+          for i in $(seq 1 80); do
             STATUS=$(aws ssm list-command-invocations \
               --command-id "${{ steps.send.outputs.command_id }}" \
-              --details --query 'CommandInvocations[0].Status' --output text)
+              --details --query 'CommandInvocations[0].Status' --output text 2>/dev/null || echo Pending)
             echo "tentativa $i: $STATUS"
             case "$STATUS" in
               Success) exit 0;;

@@ -44,9 +44,12 @@ apt-get install -y --no-install-recommends \
   libpq-dev pkg-config libffi-dev libssl-dev \
   postgresql postgresql-contrib redis-server \
   nginx certbot python3-certbot-nginx \
+  docker.io docker-compose-v2 \
   awscli logrotate cron rsync sqlite3
 
 systemctl enable --now ssm-agent || systemctl enable --now amazon-ssm-agent || true
+systemctl enable --now docker || true
+usermod -aG docker $APP_USER 2>/dev/null || true
 
 # ─── 2. Swap de 2GB (t3.micro = 1GB RAM) ────────────────────────────────────
 if [ ! -f /swapfile ]; then
@@ -311,6 +314,8 @@ install -m 0755 /opt/pdt/app/deploy/server/scripts/backup.sh /opt/pdt/scripts/ba
   || { mkdir -p /opt/pdt/scripts; cp /opt/pdt/app/deploy/server/scripts/backup.sh /opt/pdt/scripts/backup.sh; chmod 0755 /opt/pdt/scripts/backup.sh; }
 install -m 0755 /opt/pdt/app/deploy/server/scripts/deploy.sh /opt/pdt/scripts/deploy.sh 2>/dev/null \
   || { cp /opt/pdt/app/deploy/server/scripts/deploy.sh /opt/pdt/scripts/deploy.sh; chmod 0755 /opt/pdt/scripts/deploy.sh; }
+install -m 0755 /opt/pdt/app/deploy/server/scripts/deploy-from-ecr.sh /opt/pdt/scripts/deploy-from-ecr.sh 2>/dev/null \
+  || { cp /opt/pdt/app/deploy/server/scripts/deploy-from-ecr.sh /opt/pdt/scripts/deploy-from-ecr.sh; chmod 0755 /opt/pdt/scripts/deploy-from-ecr.sh; }
 chown -R $APP_USER:$APP_USER /opt/pdt/scripts
 
 # ─── 18. logrotate da app ────────────────────────────────────────────────
