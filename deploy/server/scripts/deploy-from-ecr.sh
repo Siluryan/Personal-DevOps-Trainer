@@ -237,6 +237,25 @@ ensure_nginx_tls() {
       --expand \
       || logger -t "$SCRIPT_NAME" "certbot falhou (DNS apex/www apontando para esta EC2?)"
   fi
+  # Com cert presente, reescreve config completa com bloco 443 (pode ter ficado
+  # HTTP-only de uma execucao anterior) e aponta para o cert vigente.
+  if [ -d "/etc/letsencrypt/live/$root_domain" ]; then
+    sed "s|__DOMAIN__|$root_domain $www_domain|g" \
+      "$REPO_DIR/deploy/server/nginx/pdt.conf.tpl" \
+      >/etc/nginx/sites-available/pdt.conf
+    sed -i \
+      -e "s|^[[:space:]]*#\?[[:space:]]*ssl_certificate[[:space:]].*|    ssl_certificate     /etc/letsencrypt/live/$root_domain/fullchain.pem;|" \
+      -e "s|^[[:space:]]*#\?[[:space:]]*ssl_certificate_key[[:space:]].*|    ssl_certificate_key /etc/letsencrypt/live/$root_domain/privkey.pem;|" \
+      /etc/nginx/sites-available/pdt.conf
+    install -d -m 0755 /etc/nginx/snippets
+    install -m 0644 "$REPO_DIR/deploy/server/nginx/snippets/pdt_proxy.conf" \
+      /etc/nginx/snippets/pdt_proxy.conf
+    ln -sf /etc/nginx/sites-available/pdt.conf /etc/nginx/sites-enabled/pdt.conf
+    rm -f /etc/nginx/sites-enabled/default
+    nginx -t
+    systemctl enable --now nginx
+    systemctl reload nginx
+  fi
   systemctl enable --now certbot.timer 2>/dev/null || true
 }
 
