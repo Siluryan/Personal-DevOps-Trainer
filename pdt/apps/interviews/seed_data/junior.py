@@ -156,7 +156,7 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual comando exibe os endereços IP das interfaces de rede em distros Linux modernas (com pacote iproute2)?",
         "choices": [
             "`ifconfig`, comando do `net-tools`, é a maneira recomendada nas distros modernas e vem instalado por padrão em Debian 12, Ubuntu 24.04 e RHEL 9.",
-            "`ip addr` (do pacote `iproute2`) lista as interfaces e seus endereços IPv4/IPv6, substituindo o legado `ifconfig`.",
+            "`ip addr` lista as interfaces e seus endereços IPv4/IPv6, substituindo o legado `ifconfig`.",
             "`netstat -i` é a forma canônica de listar IPs por interface, `ip` apenas mostra rotas, não endereços.",
             "`iwconfig` é o utilitário padrão para enumerar IPs de qualquer interface, com ou sem fio, em kernels Linux 5.x+.",
         ],
@@ -320,13 +320,13 @@ JUNIOR_QUESTIONS: list[dict] = [
         "category": "Git",
         "statement": "Qual a diferença entre `git fetch` e `git pull` na branch atual?",
         "choices": [
-            "`fetch` baixa refs e objetos do remoto atualizando `refs/remotes/*` sem tocar no working tree; `pull` é açúcar para `fetch` seguido de `merge` (ou `rebase`, se `pull.rebase=true`) na branch atual.",
-            "Ambos baixam objetos do remoto, mas só `pull` atualiza os refs de tracking remoto; `fetch` apenas grava blobs no `.git/objects` sem mover refs.",
-            "`fetch` baixa apenas tags assinadas e branches protegidas; `pull` baixa todo o resto, incluindo objetos LFS sob demanda.",
-            "`pull` exige permissão de leitura no remoto; `fetch` requer permissão de escrita, por isso é evitado em pipelines de CI sem token.",
+            "O `git fetch` baixa refs e objetos do remoto e atualiza `refs/remotes/*` sem alterar o working tree; `git pull` agrega `fetch` mais `merge` ou `rebase` na branch atual (ex.: com `pull.rebase=true`).",
+            "Mantém que ambos baixam objetos do remoto mas só `pull` atualizaria refs de tracking e `fetch` só encheria `.git/objects` sem mover refs — inverte o papel de cada comando.",
+            "Pretende que `fetch` limitaria o download a tags assinadas e branches protegidas e `pull` traria o restante inclusive LFS — cenário inventado.",
+            "Afirma que `pull` bastaria com permissão de leitura e `fetch` exigiria escrita no remoto — troca as premissas de permissão.",
         ],
         "correct_index": 0,
-        "explanation": "Resposta certa: fetch só atualiza refs remotos; pull = fetch + merge/rebase. Os distratores misturam meias-verdades plausíveis: ambos de fato manipulam refs (B inverte qual deles), `fetch` realmente aceita filtros mas não 'só tags assinadas' (C), e nenhum dos dois exige escrita (D inverte permissões).",
+        "explanation": "Certo: `fetch` atualiza `refs/remotes/*` e o objeto graph sem aplicar merge no working tree; `pull` é `fetch` + integração na branch atual. A segunda inverte quem move refs de tracking. A terceira inventa filtros exclusivos de `fetch`. A quarta inverte requisitos de permissão (leitura costuma bastar para ambos).",
     },
     {
         "category": "Git",
