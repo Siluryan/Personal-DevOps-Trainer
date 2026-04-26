@@ -4,7 +4,7 @@
 # (ou no repositório). Ambos os jobs usam `environment: prod` para enxergar
 # as variables do environment. ecr_repository_url = output Terraform.
 # GHA_DEPLOY_ROLE_ARN: OIDC com políticas ECR (Terraform).
-name: Deploy to Production
+name: Deploy Production
 
 on:
   push:
@@ -30,7 +30,7 @@ env:
 
 jobs:
   build-and-push:
-    name: Build and push
+    name: Build and Push
     environment: prod
     runs-on: ubuntu-24.04
     env:
@@ -80,7 +80,7 @@ jobs:
           echo "Imagem: ${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
 
   deploy:
-    name: SSM e smoke
+    name: Deploy via SSM and Smoke Test
     needs: build-and-push
     runs-on: ubuntu-24.04
     environment: prod

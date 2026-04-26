@@ -404,12 +404,21 @@
         await checkin(lat, lon);
       } else {
         warnLocationIssue('Não foi possível obter sua localização por IP. Seu pin pode não aparecer.');
-        await fetchOnline();
+        await fallbackToDefaultLocation();
       }
     } catch {
       warnLocationIssue('Não foi possível obter sua localização (GPS/IP). Seu pin pode não aparecer.');
-      await fetchOnline();
+      await fallbackToDefaultLocation();
     }
+  }
+
+  async function fallbackToDefaultLocation() {
+    // Fallback final para garantir presença no mapa mesmo sem GPS/IP.
+    // Mantém o usuário visível com posição aproximada no Brasil (Brasília).
+    const defaultLat = -15.7801;
+    const defaultLng = -47.9292;
+    leafMap.setView([defaultLat, defaultLng], 4);
+    await checkin(defaultLat, defaultLng);
   }
 
   function geo() {
