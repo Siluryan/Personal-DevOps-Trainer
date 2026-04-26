@@ -97,6 +97,14 @@ class User(AbstractUser):
             "outros não veem seu pin e a plataforma não aceita novos pedidos de ajuda."
         ),
     )
+    help_notifications_enabled = models.BooleanField(
+        "receber notificações de ajuda",
+        default=True,
+        help_text=(
+            "Quando marcado, você recebe avisos de novas mensagens/atualizações da sala "
+            "de ajuda enquanto navega em outras seções da plataforma."
+        ),
+    )
 
     admission_passed = models.BooleanField("teste de admissão aprovado", default=False)
     admission_score = models.PositiveSmallIntegerField(

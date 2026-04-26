@@ -39,6 +39,7 @@ class UserAdmin(DjangoUserAdmin):
                     "admission_score",
                     "show_in_leaderboard",
                     "show_on_map",
+                    "help_notifications_enabled",
                 )
             },
         ),

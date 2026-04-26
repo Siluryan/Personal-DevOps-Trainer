@@ -15,7 +15,8 @@ sejam copiados na hora; a senha nunca é gravada em arquivo nem no repositório.
 
 Flags habilitados:
     is_active, is_staff, is_superuser, admission_passed,
-    show_in_leaderboard, show_contact_info, show_on_map.
+    show_in_leaderboard, show_contact_info, show_on_map,
+    help_notifications_enabled.
 Career level definido como Sênior, liberando todos os simulados.
 """
 from __future__ import annotations
@@ -81,6 +82,7 @@ class Command(BaseCommand):
             show_in_leaderboard=True,
             show_contact_info=True,
             show_on_map=True,
+            help_notifications_enabled=True,
         )
 
         user, created = User.objects.update_or_create(email=email, defaults=defaults)
@@ -97,7 +99,8 @@ class Command(BaseCommand):
         self.stdout.write(f"senha  : {password}")
         self.stdout.write(
             "flags  : is_active, is_staff, is_superuser, admission_passed, "
-            "show_in_leaderboard, show_contact_info, show_on_map"
+            "show_in_leaderboard, show_contact_info, show_on_map, "
+            "help_notifications_enabled"
         )
         self.stdout.write(f"nível  : {user.career_label} ({user.career_level})")
         self.stdout.write(self.style.SUCCESS(bar))

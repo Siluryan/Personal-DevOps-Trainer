@@ -17,6 +17,7 @@ class ProfileSetupForm(forms.ModelForm):
             "show_in_leaderboard",
             "show_contact_info",
             "show_on_map",
+            "help_notifications_enabled",
         ]
         widgets = {
             "bio": forms.Textarea(attrs={"rows": 3}),
@@ -44,5 +45,6 @@ class ProfileEditForm(forms.ModelForm):
             "show_in_leaderboard",
             "show_contact_info",
             "show_on_map",
+            "help_notifications_enabled",
         ]
         widgets = {"bio": forms.Textarea(attrs={"rows": 3})}

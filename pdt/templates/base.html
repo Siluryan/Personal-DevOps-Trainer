@@ -31,6 +31,24 @@
 </head>
 <body class="min-h-full flex flex-col" style="background:#04091c;color:#ddeeff">
 
+{% if user.is_authenticated and user.admission_passed %}
+<script>
+(function () {
+  window.pdtBeaconPresenceOffline = function () {
+    try {
+      var m = document.cookie.match(/csrftoken=([^;]+)/);
+      var csrf = m ? decodeURIComponent(m[1]) : "";
+      var body = "csrfmiddlewaretoken=" + encodeURIComponent(csrf);
+      navigator.sendBeacon(
+        "{% url 'presence:api_presence_offline' %}",
+        new Blob([body], { type: "application/x-www-form-urlencoded" })
+      );
+    } catch (e) {}
+  };
+})();
+</script>
+{% endif %}
+
 <!-- ── CABEÇALHO ──────────────────────────────────────────────────────────── -->
 <header style="background:#07122a;border-bottom:1px solid #1a2f50" class="sticky top-0 z-30">
   <nav class="max-w-7xl mx-auto px-4 py-3"
@@ -87,7 +105,8 @@
               {{ user.career_label }}
             </span>
           </a>
-          <form method="post" action="{% url 'account_logout' %}" class="hidden sm:inline">
+          <form method="post" action="{% url 'account_logout' %}" class="hidden sm:inline"
+                onsubmit="if (window.pdtBeaconPresenceOffline) window.pdtBeaconPresenceOffline();">
             {% csrf_token %}
             <button style="font-size:.875rem;color:#5a7a9a"
                     class="hover:text-sky-300 transition-colors">Sair</button>
@@ -151,7 +170,8 @@
               · {{ user.career_label }}
             </span>
           </a>
-          <form method="post" action="{% url 'account_logout' %}">
+          <form method="post" action="{% url 'account_logout' %}"
+                onsubmit="if (window.pdtBeaconPresenceOffline) window.pdtBeaconPresenceOffline();">
             {% csrf_token %}
             <button style="font-size:.875rem;color:#5a7a9a" class="hover:text-sky-300">Sair</button>
           </form>
@@ -348,6 +368,79 @@
   window.pdtNotifyIfAway = function pdtNotifyIfAway(title, body, options) {
     if (document.hidden || !document.hasFocus()) window.pdtNotify(title, body, options);
   };
+
+  // Listener global de eventos da sala de ajuda fora de /mapa e /mapa/ajuda/.
+  // Garante que notificações de novas mensagens cheguem também em
+  // dashboard/ranking/trilha/entrevistas.
+  var _helpWs = null;
+  var _helpWsId = null;
+  function closeHelpWs() {
+    if (_helpWs) {
+      try { _helpWs.close(); } catch (e) {}
+      _helpWs = null;
+      _helpWsId = null;
+    }
+  }
+  function shouldRunGlobalHelpListener() {
+    var path = String(window.location.pathname || "");
+    if (path.indexOf("/mapa/ajuda/") === 0) return false;
+    if (path === "/mapa/" || path.indexOf("/mapa/?") === 0) return false;
+    return true;
+  }
+  function connectHelpWs(helpId) {
+    if (!helpId) return;
+    if (_helpWs && _helpWsId === helpId) return;
+    closeHelpWs();
+    _helpWsId = helpId;
+    var proto = location.protocol === "https:" ? "wss" : "ws";
+    var ws = new WebSocket(proto + "://" + location.host + "/ws/help/" + helpId + "/");
+    _helpWs = ws;
+    ws.onmessage = function (ev) {
+      var msg = null;
+      try { msg = JSON.parse(ev.data); } catch (e) { return; }
+      if (!msg || msg.self) return;
+      if (msg.type === "chat") {
+        window.pdtNotify(
+          "Mensagem na sala de ajuda",
+          String(msg.name || "Alguém") + ": " + String(msg.text || "").slice(0, 160)
+        );
+      } else if (msg.type === "system" && msg.kind === "joined" && msg.name) {
+        window.pdtNotify("Sala de ajuda", String(msg.name) + " entrou na sala.", {
+          tag: "pdt-join-" + String(helpId) + "-" + String(msg.user_id ?? ""),
+        });
+      } else if (msg.type === "system" && msg.kind === "resolved") {
+        window.pdtNotify("Sala de ajuda", "Seu atendimento foi marcado como resolvido.", {
+          tag: "pdt-resolved-" + String(helpId),
+        });
+        closeHelpWs();
+      }
+    };
+    ws.onclose = function () {
+      if (_helpWs === ws) {
+        _helpWs = null;
+      }
+    };
+  }
+  function refreshActiveHelpRoom() {
+    if (!shouldRunGlobalHelpListener()) {
+      closeHelpWs();
+      return;
+    }
+    fetch("/mapa/api/help/active-room/", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !data.active || !data.help_id || !data.notify_enabled) {
+          closeHelpWs();
+          return;
+        }
+        connectHelpWs(data.help_id);
+      })
+      .catch(function () {});
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    refreshActiveHelpRoom();
+    setInterval(refreshActiveHelpRoom, 20000);
+  });
 })();
 </script>
 {% block scripts %}{% endblock %}

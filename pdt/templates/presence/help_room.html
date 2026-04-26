@@ -273,26 +273,10 @@ function helpRoom(opts) {
     handleMessage(msg) {
       if (msg.type === "chat") {
         this.pushMessage({ kind:"chat", name:msg.name, text:msg.text, self:msg.self });
-        if (!msg.self && window.pdtNotify) {
-          window.pdtNotify(
-            "Mensagem na sala de ajuda",
-            (msg.name || "Alguém") + ": " + (msg.text || "").slice(0, 160)
-          );
-        }
       } else if (msg.type === "system") {
         if (msg.kind === "joined" || msg.kind === "left") {
           if (!msg.self && msg.name) {
             this.peerName = msg.kind === "joined" ? msg.name : "";
-          }
-          if (
-            !msg.self &&
-            msg.kind === "joined" &&
-            msg.name &&
-            window.pdtNotify
-          ) {
-            window.pdtNotify("Sala de ajuda", msg.name + " entrou na sala.", {
-              tag: "pdt-join-" + String(this.helpId) + "-" + String(msg.user_id ?? ""),
-            });
           }
           return;
         }
@@ -305,11 +289,6 @@ function helpRoom(opts) {
           this.stopMic();
           const who = msg.name || "O solicitante";
           this.resolvedNotice = `${who} marcou este pedido como resolvido.`;
-          if (!msg.self && window.pdtNotify) {
-            window.pdtNotify("Sala de ajuda", this.resolvedNotice, {
-              tag: "pdt-resolved-" + String(this.helpId),
-            });
-          }
           try { this.ws?.close(1000, "resolved"); } catch (e) {}
           return;
         }

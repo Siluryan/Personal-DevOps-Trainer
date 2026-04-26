@@ -44,6 +44,20 @@ class TestPresenceAPIs:
         resp = client.post(reverse("presence:api_checkin"), {})
         assert resp.status_code == 400
 
+    def test_presence_offline_marca_estado(self, client, admitted_user):
+        PresenceState.objects.create(
+            user=admitted_user,
+            latitude=-23.0,
+            longitude=-46.0,
+            status=PresenceState.AVAILABLE,
+        )
+        client.force_login(admitted_user)
+        resp = client.post(reverse("presence:api_presence_offline"))
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+        state = PresenceState.objects.get(user=admitted_user)
+        assert state.status == PresenceState.OFFLINE
+
     def test_online_users_retorna_apenas_disponiveis_no_mapa(
         self, client, admitted_user, make_user
     ):
@@ -101,6 +115,56 @@ class TestPresenceAPIs:
         row = next(u for u in resp.json()["users"] if u["user_id"] == pedinte.id)
         assert row["help_request_id"] == hr.id
         assert row["help_request_status"] == HelpRequest.JOINED
+
+    def test_active_help_room_disponivel_para_requester(
+        self, client, admitted_user, topic
+    ):
+        hr = HelpRequest.objects.create(
+            requester=admitted_user, topic=topic, status=HelpRequest.OPEN
+        )
+        client.force_login(admitted_user)
+        resp = client.get(reverse("presence:api_help_active_room"))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["active"] is True
+        assert data["help_id"] == hr.id
+        assert data["notify_enabled"] is True
+        assert data["role"] == "requester"
+
+    def test_active_help_room_desliga_notificacao_por_preferencia(
+        self, client, make_user, topic
+    ):
+        requester = make_user(
+            email="sem-notify@x.com",
+            help_notifications_enabled=False,
+        )
+        hr = HelpRequest.objects.create(
+            requester=requester, topic=topic, status=HelpRequest.OPEN
+        )
+        client.force_login(requester)
+        resp = client.get(reverse("presence:api_help_active_room"))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["active"] is True
+        assert data["help_id"] == hr.id
+        assert data["notify_enabled"] is False
+
+    def test_active_help_room_helper_nao_recebe_listener_global(
+        self, client, admitted_user, make_user, topic
+    ):
+        helper = make_user(email="helper-no-notify@x.com")
+        HelpRequest.objects.create(
+            requester=admitted_user,
+            helper=helper,
+            topic=topic,
+            status=HelpRequest.JOINED,
+        )
+        client.force_login(helper)
+        resp = client.get(reverse("presence:api_help_active_room"))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["active"] is False
+        assert data["help_id"] is None
 
 
 @pytest.mark.django_db

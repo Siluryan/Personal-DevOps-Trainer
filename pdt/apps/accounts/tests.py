@@ -84,6 +84,7 @@ class TestProfileSetupForm:
                 "github_url": "",
                 "show_in_leaderboard": False,
                 "show_on_map": True,
+                "help_notifications_enabled": True,
             }
         )
         assert not form.is_valid()
@@ -99,6 +100,7 @@ class TestProfileSetupForm:
                 "github_url": "https://github.com/ana",
                 "show_in_leaderboard": False,
                 "show_on_map": True,
+                "help_notifications_enabled": False,
             }
         )
         assert form.is_valid(), form.errors

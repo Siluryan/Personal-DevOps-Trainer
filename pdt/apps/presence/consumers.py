@@ -33,9 +33,11 @@ class PresenceConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_discard(PRESENCE_GROUP, self.channel_name)
         except Exception:  # noqa: BLE001
             pass
+        # Não marcar OFFLINE aqui: ao sair do mapa o navegador fecha o WS e o
+        # usuário sumiria do mapa indevidamente. Presença fica no banco até
+        # logout explícito (ver `presence_offline`) ou fluxo que zere o estado.
         if getattr(self, "user", None):
-            await self._mark_offline()
-            await self.broadcast_state()
+            await self._bump_last_seen()
 
     async def receive_json(self, content, **kwargs):
         action = content.get("action")
@@ -80,14 +82,15 @@ class PresenceConsumer(AsyncJsonWebsocketConsumer):
         return state
 
     @database_sync_to_async
-    def _mark_offline(self):
+    def _bump_last_seen(self):
         from .models import PresenceState
         try:
             state = PresenceState.objects.get(user=self.user)
         except PresenceState.DoesNotExist:
             return
-        state.status = PresenceState.OFFLINE
-        state.save(update_fields=["status", "last_seen"])
+        if state.status == PresenceState.OFFLINE:
+            return
+        state.save(update_fields=["last_seen"])
 
     @database_sync_to_async
     def _update_location(self, lat: float, lng: float):

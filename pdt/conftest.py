@@ -23,6 +23,7 @@ def make_user(db):
         show_in_leaderboard: bool = False,
         show_contact_info: bool = False,
         show_on_map: bool = True,
+        help_notifications_enabled: bool = True,
     ):
         counter["i"] += 1
         if email is None:
@@ -36,6 +37,7 @@ def make_user(db):
             show_in_leaderboard=show_in_leaderboard,
             show_contact_info=show_contact_info,
             show_on_map=show_on_map,
+            help_notifications_enabled=help_notifications_enabled,
         )
         return user
 
