@@ -37,14 +37,40 @@
 <script>
 (function () {
   var _presenceOfflineSent = false;
+  var _internalNavigationInProgress = false;
+
+  function isSameOriginUrl(rawUrl) {
+    try {
+      var u = new URL(String(rawUrl || ""), window.location.href);
+      return u.origin === window.location.origin;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  document.addEventListener("click", function (ev) {
+    var el = ev.target && ev.target.closest ? ev.target.closest("a[href]") : null;
+    if (!el) return;
+    if (el.target && el.target !== "_self") return;
+    if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+    if (isSameOriginUrl(el.href)) _internalNavigationInProgress = true;
+  });
+
+  document.addEventListener("submit", function (ev) {
+    var form = ev.target;
+    if (!form || form.tagName !== "FORM") return;
+    var action = form.getAttribute("action") || window.location.href;
+    if (isSameOriginUrl(action)) _internalNavigationInProgress = true;
+  });
 
   window.pdtBeaconPresenceOffline = function (reason) {
     if (_presenceOfflineSent) return;
+    var why = reason || "";
+    if (_internalNavigationInProgress && why !== "logout") return;
     _presenceOfflineSent = true;
     try {
       var m = document.cookie.match(/csrftoken=([^;]+)/);
       var csrf = m ? decodeURIComponent(m[1]) : "";
-      var why = reason || "";
       var body = "csrfmiddlewaretoken=" + encodeURIComponent(csrf) +
                  "&reason=" + encodeURIComponent(why);
       navigator.sendBeacon(
@@ -53,6 +79,14 @@
       );
     } catch (e) {}
   };
+
+  // Fechou aba/navegador: marca OFFLINE imediatamente.
+  window.addEventListener("pagehide", function () {
+    window.pdtBeaconPresenceOffline("close");
+  });
+  window.addEventListener("beforeunload", function () {
+    window.pdtBeaconPresenceOffline("close");
+  });
 
   (function () {
     var pingUrl = "{% url 'presence:api_presence_ping' %}";

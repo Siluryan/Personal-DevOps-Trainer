@@ -61,6 +61,20 @@ class TestPresenceAPIs:
         state = PresenceState.objects.get(user=admitted_user)
         assert state.status == PresenceState.OFFLINE
 
+    def test_presence_offline_reason_close_marca_estado(self, client, admitted_user):
+        PresenceState.objects.create(
+            user=admitted_user,
+            latitude=-23.0,
+            longitude=-46.0,
+            status=PresenceState.AVAILABLE,
+        )
+        client.force_login(admitted_user)
+        resp = client.post(reverse("presence:api_presence_offline"), {"reason": "close"})
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+        state = PresenceState.objects.get(user=admitted_user)
+        assert state.status == PresenceState.OFFLINE
+
     def test_presence_offline_sem_reason_logout_e_ignorado(self, client, admitted_user):
         PresenceState.objects.create(
             user=admitted_user,

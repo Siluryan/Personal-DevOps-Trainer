@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.views.generic import TemplateView
 
 from apps.courses.models import Phase, Topic
-from apps.gamification.services import build_radar_payload, top_users
+from apps.gamification.services import build_radar_payload, top_users, total_score_for
 
 
 class LandingView(TemplateView):
@@ -26,6 +26,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         ctx["phases"] = Phase.objects.prefetch_related("topics").all()
         ctx["topics_total"] = Topic.objects.count()
         ctx["radar"] = build_radar_payload(self.request.user)
+        ctx["my_total_score"] = total_score_for(self.request.user)
         users = list(top_users(limit=10))
         ctx["leaderboard"] = users
         # Serializar dados de contato para uso no Alpine.js (apenas quem optou)

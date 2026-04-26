@@ -59,6 +59,15 @@
            x-data="leaderboardPanel()"
            x-init="init()">
         <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">Top 10</h2>
+        <p style="font-size:.8rem;color:#8bacc8;margin:0 0 8px">
+          Sua pontuação total: <span style="color:#34d399;font-weight:700">{{ my_total_score }} pts</span>
+        </p>
+        {% if not user.show_in_leaderboard %}
+          <p style="font-size:.78rem;color:#5a7a9a;margin:0 0 10px">
+            Você está fora do ranking público porque a opção
+            <strong style="color:#8bacc8">Aparecer no ranking</strong> está desativada no perfil.
+          </p>
+        {% endif %}
         <ol class="space-y-1 text-sm">
           {% for u in leaderboard %}
             <li style="display:flex;justify-content:space-between;align-items:center;

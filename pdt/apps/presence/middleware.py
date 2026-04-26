@@ -8,6 +8,7 @@ from __future__ import annotations
 from django.utils import timezone
 
 from .models import HelpRequest, PresenceState
+from .services import broadcast_presence_refresh_after_commit
 
 
 class PresenceHeartbeatMiddleware:
@@ -34,6 +35,7 @@ class PresenceHeartbeatMiddleware:
             if state.status == PresenceState.OFFLINE:
                 state.status = target_status
                 state.save(update_fields=["status", "last_seen"])
+                broadcast_presence_refresh_after_commit()
             else:
                 PresenceState.objects.filter(pk=state.pk).update(last_seen=timezone.now())
 

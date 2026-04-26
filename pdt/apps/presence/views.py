@@ -113,9 +113,9 @@ def active_help_room(request):
 @require_POST
 def presence_offline(request):
     """Marca presença como offline (ex.: beacon ao fechar aba). Logout também aciona signal."""
-    # Blindagem: só aceitamos OFFLINE explícito no logout.
+    # Blindagem: só aceitamos OFFLINE explícito por logout/fechamento real.
     # Evita sumiço de pin por chamadas acidentais durante navegação.
-    if request.POST.get("reason") != "logout":
+    if request.POST.get("reason") not in {"logout", "close"}:
         return JsonResponse({"ok": True, "ignored": True})
     user_presence_mark_offline(request.user)
     return JsonResponse({"ok": True})
