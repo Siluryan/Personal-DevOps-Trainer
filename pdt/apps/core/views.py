@@ -2,6 +2,7 @@ import json
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.views.generic import TemplateView
 
 from apps.courses.models import Phase, Topic
@@ -36,9 +37,10 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                     "bio": u.bio,
                     "linkedin": u.linkedin_url,
                     "github": u.github_url,
-                    "total": u.total,
-                    "show_contact": u.show_contact_info,
+                    "total": int(u.total or 0),
+                    "show_contact": bool(u.show_contact_info),
                     "career": u.career_label,
+                    "profile_url": reverse("accounts:profile", args=[u.pk]),
                 }
                 for u in users
             }

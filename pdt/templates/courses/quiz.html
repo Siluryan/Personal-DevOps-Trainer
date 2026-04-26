@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load pdt_extras %}
 {% block title %}Quiz · {{ topic.title }} · PDT{% endblock %}
 
 {% block content %}
@@ -16,7 +17,7 @@
       {% for q in questions %}
         <div style="background:#07122a;border:1px solid #1a2f50;border-radius:10px;padding:16px">
           <p class="font-semibold mb-3" style="color:#ddeeff;line-height:1.5">
-            {{ forloop.counter }}. {{ q.statement }}
+            {{ forloop.counter }}. {{ q.statement|bold_ticks }}
           </p>
           <div class="space-y-2 text-sm">
             {% for c in q.choices.all %}
@@ -24,7 +25,7 @@
                             color:#8bacc8;line-height:1.5">
                 <input type="radio" name="q_{{ q.id }}" value="{{ c.id }}"
                        style="margin-top:3px;accent-color:#0ea5e9" required />
-                <span>{{ c.text }}</span>
+                <span>{{ c.text|bold_ticks }}</span>
               </label>
             {% endfor %}
           </div>

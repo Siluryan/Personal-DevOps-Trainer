@@ -14,6 +14,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
+from apps.core.templatetags.pdt_extras import interview_choice_lead
 from apps.interviews.models import (
     LEVEL_JUNIOR,
     LEVEL_PLENO,
@@ -23,6 +24,7 @@ from apps.interviews.models import (
     InterviewAttempt,
     InterviewQuestion,
 )
+from apps.interviews.views import _failure_message
 
 User = get_user_model()
 
@@ -439,6 +441,55 @@ class TestFinishAndPromotion:
             admitted_user.refresh_from_db()
             assert admitted_user.career_level == target
 
+    def test_finalizar_lista_questoes_pendentes(
+        self, client, admitted_user, seed_interview_bank
+    ):
+        """A tela de finalizar deve apontar exatamente quais questões faltam,
+        para o usuário voltar e responder antes de submeter."""
+        attempt = self._start(client, admitted_user, LEVEL_JUNIOR)
+        # Responde só duas questões: a primeira e a quinta.
+        answers = {
+            str(attempt.question_ids[0]): 0,
+            str(attempt.question_ids[4]): 0,
+        }
+        attempt.answers = answers
+        attempt.save(update_fields=["answers"])
+
+        resp = client.get(reverse("interviews:finish", args=[attempt.pk]))
+        assert resp.status_code == 200
+
+        ctx = resp.context
+        assert ctx["unanswered"] == QUESTIONS_PER_TEST - 2
+        assert len(ctx["unanswered_items"]) == QUESTIONS_PER_TEST - 2
+
+        items = ctx["unanswered_items"]
+        # As respondidas (índices 0 e 4) NÃO devem aparecer.
+        indexes = {it["index"] for it in items}
+        assert 0 not in indexes
+        assert 4 not in indexes
+        # A 2ª (idx 1) deve aparecer e o `human_index` é 1-based.
+        first_pending = items[0]
+        assert first_pending["index"] == 1
+        assert first_pending["human_index"] == 2
+
+        # O HTML traz link para retomar a primeira pendente.
+        body = resp.content.decode()
+        retake_url = reverse("interviews:take", args=[attempt.pk]) + "?i=1"
+        assert retake_url in body
+
+    def test_finalizar_sem_pendentes_nao_lista(
+        self, client, admitted_user, seed_interview_bank
+    ):
+        attempt = self._start(client, admitted_user, LEVEL_JUNIOR)
+        attempt.answers = {str(qid): 0 for qid in attempt.question_ids}
+        attempt.save(update_fields=["answers"])
+
+        resp = client.get(reverse("interviews:finish", args=[attempt.pk]))
+        assert resp.status_code == 200
+        ctx = resp.context
+        assert ctx["unanswered"] == 0
+        assert ctx["unanswered_items"] == []
+
 
 @pytest.mark.django_db
 class TestResultView:
@@ -500,3 +551,93 @@ class TestCancelView:
         resp = client.post(reverse("interviews:cancel", args=[attempt.pk]))
         assert resp.status_code == 404
         assert InterviewAttempt.objects.filter(pk=attempt.pk).exists()
+
+
+class TestInterviewChoiceLeadFilter:
+    def test_sujeito_simples_em_crase_some_a_descricao(self):
+        s = "`nslookup` consulta servidores DNS e retorna registros como A/AAAA/MX, mas não testa latência."
+        assert interview_choice_lead(s) == "`nslookup`"
+
+    def test_sujeito_com_sigla_em_parenteses(self):
+        s = "`mtr` (My TraceRoute) e `traceroute` exibem cada hop entre origem e destino."
+        assert interview_choice_lead(s) == "`mtr` (My TraceRoute) e `traceroute`"
+
+    def test_sujeito_com_argumentos(self):
+        s = "`telnet host porta` apenas testa se uma porta TCP aceita conexão."
+        assert interview_choice_lead(s) == "`telnet host porta`"
+
+    def test_sujeito_seguido_de_aposto_com_virgula(self):
+        # "`systemctl`, frontend do systemd que controla units…" → só o comando.
+        s = "`systemctl`, frontend do systemd que controla units (`.service`, `.timer`)."
+        assert interview_choice_lead(s) == "`systemctl`"
+
+    def test_opcao_sem_crase_corta_em_ponto_e_virgula(self):
+        s = "Ambos exigem `sudo`; sem isso falham com `Permission denied`."
+        assert interview_choice_lead(s) == "Ambos exigem `sudo`"
+
+    def test_opcao_sem_crase_corta_em_mas(self):
+        s = "Procurar padrões em arquivos, mas sem suporte a regex."
+        assert interview_choice_lead(s) == "Procurar padrões em arquivos"
+
+    def test_frase_longa_sem_crase_corta_na_primeira_virgula(self):
+        s = (
+            "Quando o domínio ainda é pequeno, a equipe é enxuta e "
+            "os bounded contexts não estão claros, um monólito modular reduz custo."
+        )
+        assert interview_choice_lead(s) == "Quando o domínio ainda é pequeno"
+
+    def test_alternativa_que_eh_so_o_sujeito_fica_intacta(self):
+        s = "`/var`"
+        assert interview_choice_lead(s) == "`/var`"
+
+    def test_alternativa_vazia(self):
+        assert interview_choice_lead("") == ""
+        assert interview_choice_lead(None) == ""
+
+    def test_nao_corta_dentro_de_parenteses(self):
+        # A vírgula entre «Okta, Auth0» está dentro de parênteses; o filtro
+        # tem que ignorá-la para não deixar «(Okta» sem fechar.
+        s = (
+            "Federação SSO/IDP central (Okta, Auth0) decide quem entra e "
+            "centraliza o ciclo de vida de identidade dos colaboradores."
+        )
+        out = interview_choice_lead(s)
+        assert out.count("(") == out.count(")"), (
+            f"parênteses desbalanceados: {out!r}"
+        )
+
+    def test_corta_fora_de_parenteses_quando_existe(self):
+        # Mesmo texto longo, agora com vírgula externa: deve cortar nela.
+        s = (
+            "Federação SSO/IDP central (Okta, Auth0) decide quem entra, "
+            "centralizando o ciclo de vida de identidade dos colaboradores."
+        )
+        out = interview_choice_lead(s)
+        assert out == "Federação SSO/IDP central (Okta, Auth0) decide quem entra"
+
+
+class TestFailureMessage:
+    """A mensagem de reprovação precisa ser proporcional ao score."""
+
+    def test_score_baixo_nao_diz_faltou_pouco(self):
+        msg = _failure_message(30.0)
+        assert "Faltou pouco" not in msg
+        assert f"{PASS_PERCENT}%" in msg
+
+    def test_score_muito_baixo_sugere_estudo(self):
+        msg = _failure_message(10.0)
+        assert "Faltou pouco" not in msg
+        assert "estudar" in msg.lower() or "trilha" in msg.lower()
+
+    def test_score_intermediario_no_caminho(self):
+        msg = _failure_message(60.0)
+        assert "no caminho" in msg.lower()
+        assert "Faltou pouco" not in msg
+
+    def test_score_proximo_ao_corte_diz_faltou_pouco(self):
+        msg = _failure_message(75.0)
+        assert msg.startswith("Faltou pouco")
+
+    def test_score_no_corte_inferior_da_faixa_70(self):
+        # 70% exato deve cair na mensagem de "Faltou pouco" (limite inclusivo).
+        assert _failure_message(70.0).startswith("Faltou pouco")

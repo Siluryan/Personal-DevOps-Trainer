@@ -7,7 +7,10 @@
            helpId: {{ help_request.id }},
            selfUserId: {{ request.user.id }},
            selfName: '{{ request.user.display_name|escapejs }}',
-           iceServers: JSON.parse(document.getElementById('ice-servers').textContent || '[]')
+           iceServers: JSON.parse(document.getElementById('ice-servers').textContent || '[]'),
+           forbidden: {% if forbidden %}true{% else %}false{% endif %},
+           roomClosed: {% if help_request.status == 'resolved' or help_request.status == 'cancelled' %}true{% else %}false{% endif %},
+           chatInitial: JSON.parse(document.getElementById('help-chat-initial')?.textContent || '[]')
          })"
          @beforeunload.window="leave()">
 
@@ -28,12 +31,22 @@
           {% endif %}
         </p>
       </div>
-      <div style="font-size:.75rem;color:#5a7a9a;display:flex;gap:8px;align-items:center" x-cloak>
+      <div style="font-size:.75rem;color:#5a7a9a;display:flex;flex-wrap:wrap;gap:8px;align-items:center" x-cloak>
         <span style="width:8px;height:8px;border-radius:50%;display:inline-block"
-              :style="{ background: connected ? '#34d399' : '#f87171' }"></span>
-        <span x-text="connected ? 'Conectado à sala' : 'Reconectando...'"></span>
+              :style="{
+                background: connected ? '#34d399'
+                  : (roomClosed ? '#94a3b8' : '#f87171')
+              }"></span>
+        <span x-text="statusLine"></span>
         <span style="color:#1a2f50">·</span>
         <span x-text="(peerName || 'Aguardando o outro participante')"></span>
+        <button type="button" @click="pdtNotifyPermission()"
+                style="margin-left:4px;background:transparent;border:1px solid #1a2f50;color:#8bacc8;
+                       padding:4px 10px;border-radius:6px;font-size:.7rem;cursor:pointer"
+                class="hover:text-sky-300 hover:border-sky-400/40"
+                title="Aviso do sistema quando chegar mensagem ou o outro participante entrar (aba em segundo plano)">
+          🔔 Avisos do navegador
+        </button>
       </div>
     </header>
 
@@ -65,6 +78,8 @@
                     color: micActive ? '#fff' : '#f0f9ff'
                   }"
                   style="padding:6px 14px;border-radius:7px;font-size:.8125rem;font-weight:700;transition:background .15s"
+                  class="disabled:opacity-50"
+                  :disabled="roomClosed"
                   @click="toggleMic()"
                   x-text="micActive ? 'Desligar mic' : 'Ligar mic'"></button>
 
@@ -72,7 +87,7 @@
                   style="padding:6px 14px;border-radius:7px;font-size:.8125rem;font-weight:700;
                          background:#1a2f50;color:#8bacc8;transition:background .15s"
                   class="hover:bg-navy-700 disabled:opacity-50"
-                  :disabled="!micActive || inCall"
+                  :disabled="roomClosed || !micActive || inCall"
                   @click="startCall()">
             Chamar peer
           </button>
@@ -81,7 +96,7 @@
                   style="padding:6px 14px;border-radius:7px;font-size:.8125rem;font-weight:700;
                          background:#1a2f50;color:#8bacc8;transition:background .15s"
                   class="hover:bg-navy-700 disabled:opacity-50"
-                  :disabled="!inCall"
+                  :disabled="roomClosed || !inCall"
                   @click="hangUp()">
             Encerrar
           </button>
@@ -105,20 +120,11 @@
              style="flex:1;min-height:220px;max-height:360px;overflow-y:auto;padding-right:4px"
              class="space-y-2">
           <template x-for="msg in messages" :key="msg.id">
-            <div :style="msg.kind === 'system'
-                          ? 'color:#5a7a9a;font-size:.75rem;font-style:italic'
-                          : msg.self
-                            ? 'color:#7dd3fc;font-size:.875rem'
-                            : 'color:#ddeeff;font-size:.875rem'">
-              <template x-if="msg.kind !== 'system'">
-                <div>
-                  <span style="font-weight:700" x-text="msg.name + ':'"></span>
-                  <span style="margin-left:4px" x-text="msg.text"></span>
-                </div>
-              </template>
-              <template x-if="msg.kind === 'system'">
-                <div x-text="msg.text"></div>
-              </template>
+            <div :style="msg.self
+                          ? 'color:#7dd3fc;font-size:.875rem'
+                          : 'color:#ddeeff;font-size:.875rem'">
+              <span style="font-weight:700" x-text="msg.name + ':'"></span>
+              <span style="margin-left:4px" x-text="msg.text"></span>
             </div>
           </template>
         </div>
@@ -160,6 +166,7 @@
   {% endif %}
 
   {{ ice_servers|json_script:"ice-servers" }}
+  {{ help_chat_history|json_script:"help-chat-initial" }}
 </section>
 
 <script>
@@ -169,8 +176,12 @@ function helpRoom(opts) {
     selfUserId: opts.selfUserId,
     selfName: opts.selfName,
     iceServers: opts.iceServers || [],
+    forbidden: !!opts.forbidden,
+    roomClosed: !!opts.roomClosed,
     ws: null,
     connected: false,
+    reconnectDisabled: !!(opts.roomClosed || opts.forbidden),
+    reconnectAttempts: 0,
     draft: "",
     messages: [],
     micActive: false,
@@ -182,25 +193,110 @@ function helpRoom(opts) {
     error: "",
     nextId: 1,
 
-    init() { this.connect(); },
+    get statusLine() {
+      if (this.forbidden) return "";
+      if (this.connected) return "Conectado à sala";
+      if (this.roomClosed) return "Sala encerrada — histórico do chat abaixo (sem tempo real)";
+      if (this.reconnectDisabled && this.error) return this.error;
+      return "Reconectando...";
+    },
+
+    init() {
+      if (this.forbidden) return;
+      const initial = Array.isArray(opts.chatInitial) ? opts.chatInitial : [];
+      for (const m of initial) {
+        this.pushMessage({
+          kind: "chat",
+          name: m.name,
+          text: m.text,
+          self: !!m.self,
+        });
+      }
+      if (this.roomClosed) {
+        this.error = "";
+        return;
+      }
+      this.connect();
+    },
 
     connect() {
+      if (this.forbidden || this.reconnectDisabled) return;
       const proto = location.protocol === "https:" ? "wss" : "ws";
       const url = `${proto}://${location.host}/ws/help/${this.helpId}/`;
       this.ws = new WebSocket(url);
-      this.ws.onopen  = () => { this.connected = true; this.error = ""; };
-      this.ws.onclose = () => { this.connected = false; setTimeout(() => this.connect(), 2000); };
-      this.ws.onerror = () => { this.error = "Falha no WebSocket."; };
+      this.ws.onopen = () => {
+        this.connected = true;
+        this.reconnectAttempts = 0;
+        this.error = "";
+      };
+      this.ws.onclose = (ev) => {
+        this.connected = false;
+        if (this.reconnectDisabled) return;
+        const code = ev.code || 0;
+        if (code === 4410) {
+          this.reconnectDisabled = true;
+          this.roomClosed = true;
+          this.error =
+            "Esta sala foi encerrada. As mensagens já enviadas permanecem no histórico.";
+          return;
+        }
+        if (code === 4403) {
+          this.reconnectDisabled = true;
+          this.error = "Você não tem acesso a esta sala.";
+          return;
+        }
+        if (code === 4404) {
+          this.reconnectDisabled = true;
+          this.error = "Sala não encontrada.";
+          return;
+        }
+        if (code === 4401) {
+          this.reconnectDisabled = true;
+          this.error = "Sessão expirada. Recarregue a página.";
+          return;
+        }
+        this.reconnectAttempts += 1;
+        if (this.reconnectAttempts > 8) {
+          this.reconnectDisabled = true;
+          this.error = "Não foi possível reconectar. Recarregue a página.";
+          return;
+        }
+        setTimeout(() => {
+          if (!this.reconnectDisabled) this.connect();
+        }, 2000);
+      };
+      this.ws.onerror = () => {
+        if (!this.roomClosed) this.error = "Falha no WebSocket.";
+      };
       this.ws.onmessage = (ev) => this.handleMessage(JSON.parse(ev.data));
     },
 
     handleMessage(msg) {
       if (msg.type === "chat") {
         this.pushMessage({ kind:"chat", name:msg.name, text:msg.text, self:msg.self });
+        if (!msg.self && window.pdtNotify) {
+          window.pdtNotify(
+            "Mensagem na sala de ajuda",
+            (msg.name || "Alguém") + ": " + (msg.text || "").slice(0, 160)
+          );
+        }
       } else if (msg.type === "system") {
-        const verb = msg.kind === "joined" ? "entrou" : "saiu";
-        if (!msg.self && msg.name) this.peerName = msg.kind === "joined" ? msg.name : "";
-        this.pushMessage({ kind:"system", text:`${msg.name || "alguém"} ${verb} na sala` });
+        if (msg.kind === "joined" || msg.kind === "left") {
+          if (!msg.self && msg.name) {
+            this.peerName = msg.kind === "joined" ? msg.name : "";
+          }
+          if (
+            !msg.self &&
+            msg.kind === "joined" &&
+            msg.name &&
+            window.pdtNotify
+          ) {
+            window.pdtNotify("Sala de ajuda", msg.name + " entrou na sala.", {
+              tag: "pdt-join-" + String(this.helpId) + "-" + String(msg.user_id ?? ""),
+            });
+          }
+          return;
+        }
       } else if (msg.type === "signal") {
         this.peerName = msg.from_name || this.peerName;
         this.handleSignal(msg.payload);

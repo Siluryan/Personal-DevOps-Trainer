@@ -1,4 +1,5 @@
 {% load static %}
+{% load pdt_extras %}
 <!doctype html>
 <html lang="pt-br" class="h-full" style="background:#04091c;color:#ddeeff">
 <head>
@@ -45,17 +46,23 @@
       <!-- links de navegação, ocultos em mobile, visíveis em md+ -->
       {% if user.is_authenticated and user.admission_passed %}
         <div class="hidden md:flex items-center gap-5">
-          <a style="color:#8bacc8;font-size:.9rem" class="hover:text-sky-300 transition-colors"
+          <a style="font-size:.9rem;{% if request|nav_section_active:'dashboard' %}color:#38bdf8;font-weight:700{% else %}color:#8bacc8{% endif %}"
+             class="hover:text-sky-300 transition-colors"
              href="{% url 'core:dashboard' %}">Dashboard</a>
-          <a style="color:#8bacc8;font-size:.9rem" class="hover:text-sky-300 transition-colors"
+          <a style="font-size:.9rem;{% if request|nav_section_active:'courses' %}color:#38bdf8;font-weight:700{% else %}color:#8bacc8{% endif %}"
+             class="hover:text-sky-300 transition-colors"
              href="{% url 'courses:track' %}">Trilha</a>
-          <a style="color:#8bacc8;font-size:.9rem" class="hover:text-sky-300 transition-colors"
+          <a style="font-size:.9rem;{% if request|nav_section_active:'radar' %}color:#38bdf8;font-weight:700{% else %}color:#8bacc8{% endif %}"
+             class="hover:text-sky-300 transition-colors"
              href="{% url 'gamification:radar' %}">Radar</a>
-          <a style="color:#8bacc8;font-size:.9rem" class="hover:text-sky-300 transition-colors"
+          <a style="font-size:.9rem;{% if request|nav_section_active:'leaderboard' %}color:#38bdf8;font-weight:700{% else %}color:#8bacc8{% endif %}"
+             class="hover:text-sky-300 transition-colors"
              href="{% url 'gamification:leaderboard' %}">Ranking</a>
-          <a style="color:#8bacc8;font-size:.9rem" class="hover:text-sky-300 transition-colors"
+          <a style="font-size:.9rem;{% if request|nav_section_active:'presence' %}color:#38bdf8;font-weight:700{% else %}color:#8bacc8{% endif %}"
+             class="hover:text-sky-300 transition-colors"
              href="{% url 'presence:map' %}">Mapa</a>
-          <a style="color:#8bacc8;font-size:.9rem" class="hover:text-sky-300 transition-colors"
+          <a style="font-size:.9rem;{% if request|nav_section_active:'interviews' %}color:#38bdf8;font-weight:700{% else %}color:#8bacc8{% endif %}"
+             class="hover:text-sky-300 transition-colors"
              href="{% url 'interviews:index' %}">Entrevistas</a>
         </div>
       {% endif %}
@@ -74,7 +81,7 @@
 
         {% if user.is_authenticated %}
           <a class="hidden sm:flex flex-col leading-tight items-end hover:text-sky-200 transition-colors"
-             style="text-align:right" href="{% url 'accounts:profile' user.pk %}">
+             style="text-align:right" href="{% url 'accounts:profile_edit' %}">
             <span style="font-size:.875rem;color:#8bacc8">{{ user.display_name }}</span>
             <span style="font-size:.7rem;color:#0ea5e9;font-weight:600;letter-spacing:.02em">
               {{ user.career_label }}
@@ -118,26 +125,26 @@
            style="border-top:1px solid #1a2f50;margin-top:10px;padding-top:10px"
            class="md:hidden flex flex-col gap-1">
         <a @click="open=false" href="{% url 'core:dashboard' %}"
-           style="color:#8bacc8;padding:9px 6px;border-radius:7px;font-size:.9375rem"
+           style="padding:9px 6px;border-radius:7px;font-size:.9375rem;{% if request|nav_section_active:'dashboard' %}color:#38bdf8;font-weight:700{% else %}color:#8bacc8{% endif %}"
            class="hover:bg-sky-500/10 block transition-colors">Dashboard</a>
         <a @click="open=false" href="{% url 'courses:track' %}"
-           style="color:#8bacc8;padding:9px 6px;border-radius:7px;font-size:.9375rem"
+           style="padding:9px 6px;border-radius:7px;font-size:.9375rem;{% if request|nav_section_active:'courses' %}color:#38bdf8;font-weight:700{% else %}color:#8bacc8{% endif %}"
            class="hover:bg-sky-500/10 block transition-colors">Trilha</a>
         <a @click="open=false" href="{% url 'gamification:radar' %}"
-           style="color:#8bacc8;padding:9px 6px;border-radius:7px;font-size:.9375rem"
+           style="padding:9px 6px;border-radius:7px;font-size:.9375rem;{% if request|nav_section_active:'radar' %}color:#38bdf8;font-weight:700{% else %}color:#8bacc8{% endif %}"
            class="hover:bg-sky-500/10 block transition-colors">Meu radar</a>
         <a @click="open=false" href="{% url 'gamification:leaderboard' %}"
-           style="color:#8bacc8;padding:9px 6px;border-radius:7px;font-size:.9375rem"
+           style="padding:9px 6px;border-radius:7px;font-size:.9375rem;{% if request|nav_section_active:'leaderboard' %}color:#38bdf8;font-weight:700{% else %}color:#8bacc8{% endif %}"
            class="hover:bg-sky-500/10 block transition-colors">Ranking</a>
         <a @click="open=false" href="{% url 'presence:map' %}"
-           style="color:#8bacc8;padding:9px 6px;border-radius:7px;font-size:.9375rem"
+           style="padding:9px 6px;border-radius:7px;font-size:.9375rem;{% if request|nav_section_active:'presence' %}color:#38bdf8;font-weight:700{% else %}color:#8bacc8{% endif %}"
            class="hover:bg-sky-500/10 block transition-colors">Mapa</a>
         <a @click="open=false" href="{% url 'interviews:index' %}"
-           style="color:#8bacc8;padding:9px 6px;border-radius:7px;font-size:.9375rem"
+           style="padding:9px 6px;border-radius:7px;font-size:.9375rem;{% if request|nav_section_active:'interviews' %}color:#38bdf8;font-weight:700{% else %}color:#8bacc8{% endif %}"
            class="hover:bg-sky-500/10 block transition-colors">Entrevistas</a>
         <div style="border-top:1px solid #1a2f50;margin-top:6px;padding-top:6px;
                     display:flex;justify-content:space-between;align-items:center">
-          <a href="{% url 'accounts:profile' user.pk %}"
+          <a href="{% url 'accounts:profile_edit' %}"
              style="font-size:.875rem;color:#8bacc8" class="hover:text-sky-200">
             {{ user.display_name }}
             <span style="font-size:.7rem;color:#0ea5e9;font-weight:600;margin-left:4px">
@@ -198,6 +205,157 @@
   </div>
 </footer>
 
+{# Avisos de chat (mensagem nova / alguém entrou):
+   1) Notification do navegador, se houver permissão.
+   2) Som curto (WebAudio), se o usuário já interagiu com a página.
+   3) Título da aba pisca «(N) <título>» enquanto a aba está em segundo plano.
+   4) Toast in-page (canto inferior direito), independente de permissão.
+   Assim o usuário recebe sinal mesmo se o navegador bloquear `Notification`. #}
+<script>
+(function () {
+  // ── Notificações nativas do SO ──────────────────────────────────────
+  window.pdtNotifyPermission = function pdtNotifyPermission() {
+    if (!("Notification" in window)) {
+      window.pdtToast("Este navegador não suporta avisos do sistema. Os avisos in-page continuam ativos.");
+      return Promise.resolve("unsupported");
+    }
+    if (Notification.permission === "granted") {
+      window.pdtToast("Avisos do sistema já estão ativos.");
+      return Promise.resolve("granted");
+    }
+    if (Notification.permission === "denied") {
+      window.pdtToast("Avisos do sistema bloqueados nas configurações deste site. Os avisos in-page continuam ativos.");
+      return Promise.resolve("denied");
+    }
+    return Notification.requestPermission().then(function (result) {
+      if (result === "granted") window.pdtToast("Avisos do sistema ativados.");
+      else if (result === "denied") window.pdtToast("Permissão negada. Os avisos in-page continuam ativos.");
+      return result;
+    });
+  };
+
+  function nativeNotify(title, body, options) {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    try {
+      var o = Object.assign({ silent: false }, options || {});
+      new Notification(String(title), Object.assign({ body: String(body || "") }, o));
+    } catch (e) {}
+  }
+
+  // ── Bipe via WebAudio ───────────────────────────────────────────────
+  var _audioCtx = null;
+  function beep() {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      _audioCtx = _audioCtx || new Ctx();
+      if (_audioCtx.state === "suspended") {
+        _audioCtx.resume().catch(function () {});
+      }
+      var osc = _audioCtx.createOscillator();
+      var gain = _audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, _audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.18, _audioCtx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, _audioCtx.currentTime + 0.25);
+      osc.connect(gain).connect(_audioCtx.destination);
+      osc.start();
+      osc.stop(_audioCtx.currentTime + 0.27);
+    } catch (e) {}
+  }
+
+  // ── Título piscando enquanto a aba está oculta ──────────────────────
+  var _origTitle = document.title;
+  var _unread = 0;
+  function refreshTitle() {
+    if (_unread > 0 && document.hidden) {
+      document.title = "(" + _unread + ") " + _origTitle;
+    } else {
+      document.title = _origTitle;
+    }
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) { _unread = 0; refreshTitle(); }
+  });
+  window.addEventListener("focus", function () { _unread = 0; refreshTitle(); });
+
+  // ── Toast in-page ───────────────────────────────────────────────────
+  function ensureToastHost() {
+    var host = document.getElementById("pdt-toast-host");
+    if (host) return host;
+    host = document.createElement("div");
+    host.id = "pdt-toast-host";
+    host.style.cssText =
+      "position:fixed;left:50%;top:24px;transform:translateX(-50%);" +
+      "z-index:99999;display:flex;flex-direction:column;gap:10px;align-items:center;" +
+      "width:min(560px,calc(100vw - 32px));pointer-events:none;font-family:system-ui,sans-serif";
+    var styleEl = document.getElementById("pdt-toast-style");
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = "pdt-toast-style";
+      styleEl.textContent =
+        "@keyframes pdtToastIn { from { transform:translateY(-12px) scale(.98); opacity:0 } to { transform:translateY(0) scale(1); opacity:1 } }" +
+        "@keyframes pdtToastOut { from { transform:translateY(0) scale(1); opacity:1 } to { transform:translateY(-12px) scale(.98); opacity:0 } }" +
+        "@keyframes pdtToastPulse { 0%,100% { box-shadow:0 12px 38px rgba(14,165,233,.45),0 0 0 0 rgba(14,165,233,.55) }" +
+        " 50% { box-shadow:0 16px 48px rgba(14,165,233,.6),0 0 0 8px rgba(14,165,233,0) } }";
+      document.head.appendChild(styleEl);
+    }
+    document.body.appendChild(host);
+    return host;
+  }
+  window.pdtToast = function pdtToast(text, opts) {
+    opts = opts || {};
+    var host = ensureToastHost();
+    var card = document.createElement("div");
+    card.style.cssText =
+      "pointer-events:auto;width:100%;background:linear-gradient(135deg,#0b1733 0%,#0e2347 100%);" +
+      "border:1px solid #38bdf8;color:#ddeeff;border-radius:12px;padding:14px 18px 14px 50px;" +
+      "position:relative;font-size:.95rem;line-height:1.4;cursor:pointer;" +
+      "animation:pdtToastIn .22s ease-out, pdtToastPulse 1.6s ease-in-out 2";
+    var icon = document.createElement("div");
+    icon.textContent = "🔔";
+    icon.style.cssText =
+      "position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:1.4rem;" +
+      "background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.45);" +
+      "width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center";
+    card.appendChild(icon);
+    if (opts.title) {
+      var t = document.createElement("div");
+      t.textContent = String(opts.title);
+      t.style.cssText = "font-weight:700;color:#7dd3fc;margin-bottom:2px;font-size:.85rem;letter-spacing:.2px";
+      card.appendChild(t);
+    }
+    var body = document.createElement("div");
+    body.textContent = String(text || "");
+    body.style.cssText = "color:#ddeeff;font-weight:500";
+    card.appendChild(body);
+    card.addEventListener("click", function () { card.remove(); });
+    host.appendChild(card);
+    var ttl = typeof opts.ttl === "number" ? opts.ttl : 6000;
+    setTimeout(function () {
+      card.style.animation = "pdtToastOut .22s ease-in forwards";
+      setTimeout(function () { card.remove(); }, 240);
+    }, ttl);
+  };
+
+  // ── API pública usada pelo chat ─────────────────────────────────────
+  // sempre dispara: toast + bipe + título; e Notification se permitido.
+  window.pdtNotify = function pdtNotify(title, body, options) {
+    options = options || {};
+    nativeNotify(title, body, options);
+    if (document.hidden || !document.hasFocus()) {
+      _unread += 1;
+      refreshTitle();
+    }
+    if (options.silent !== true) beep();
+    window.pdtToast(body || "", { title: title, ttl: options.ttl });
+  };
+  window.pdtNotifyIfAway = function pdtNotifyIfAway(title, body, options) {
+    if (document.hidden || !document.hasFocus()) window.pdtNotify(title, body, options);
+  };
+})();
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

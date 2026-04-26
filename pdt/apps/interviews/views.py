@@ -45,6 +45,31 @@ LEVEL_TO_USER_TARGET = {
 }
 
 
+def _failure_message(score_percent: float) -> str:
+    """Mensagem de reprovação proporcional ao acerto.
+
+    «Faltou pouco» só aparece quando faz sentido (≥ 70%); resultados mais baixos
+    recebem um texto que reflete o trabalho real que ainda falta.
+    """
+    rule = f"São necessários {PASS_PERCENT}% para subir de nível."
+    if score_percent >= 70:
+        return f"Faltou pouco. {rule} Revise o gabarito e tente de novo."
+    if score_percent >= 50:
+        return (
+            f"Você está no caminho, mas ainda não passou. {rule} "
+            "Estude os pontos onde errou no gabarito antes de refazer."
+        )
+    if score_percent >= 30:
+        return (
+            f"Ainda há terreno a cobrir. {rule} "
+            "Use o gabarito como guia de estudos antes de tentar de novo."
+        )
+    return (
+        f"O resultado mostra que vale estudar o conteúdo antes de refazer. {rule} "
+        "Comece pelo gabarito e pelos tópicos relacionados na trilha."
+    )
+
+
 def _level_status(user, level: str) -> dict:
     """Resume o status de um nível para o usuário."""
     target = LEVEL_TO_USER_TARGET[level]
@@ -263,13 +288,19 @@ class FinishView(LoginRequiredMixin, View):
         from django.shortcuts import render
 
         attempt = self._get_attempt(request, pk)
-        unanswered = len(attempt.question_ids) - attempt.answered_count
+        answers = attempt.answers or {}
+        unanswered_items = [
+            {"index": i, "human_index": i + 1}
+            for i, qid in enumerate(attempt.question_ids)
+            if str(qid) not in answers
+        ]
         return render(
             request,
             self.template_name,
             {
                 "attempt": attempt,
-                "unanswered": unanswered,
+                "unanswered": len(unanswered_items),
+                "unanswered_items": unanswered_items,
                 "total": len(attempt.question_ids),
                 "level_label": attempt.get_level_display(),
             },
@@ -308,10 +339,8 @@ class FinishView(LoginRequiredMixin, View):
                     "Você passou no teste. Continue praticando ou avance para o próximo nível.",
                 )
         else:
-            messages.warning(
-                request,
-                f"Faltou pouco, você precisa de {PASS_PERCENT}% para subir de nível.",
-            )
+            score_percent = (score / max(len(attempt.question_ids), 1)) * 100
+            messages.warning(request, _failure_message(score_percent))
 
         return redirect("interviews:result", pk=attempt.pk)
 
@@ -351,6 +380,8 @@ class ResultView(LoginRequiredMixin, TemplateView):
         ctx["score_percent"] = attempt.score_percent
         ctx["pass_percent"] = PASS_PERCENT
         ctx["level_label"] = attempt.get_level_display()
+        if not attempt.passed:
+            ctx["failure_message"] = _failure_message(attempt.score_percent)
         return ctx
 
 

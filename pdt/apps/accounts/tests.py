@@ -115,3 +115,36 @@ class TestProfileViews:
         resp = client.get(url)
         assert resp.status_code == 200
         assert admitted_user.display_name.encode() in resp.content
+
+    def test_profile_sem_show_contact_oculta_urls_para_terceiros(
+        self, client, make_user
+    ):
+        alvo = make_user(
+            email="alvo@example.com",
+            show_contact_info=False,
+            full_name="Alvo",
+        )
+        alvo.linkedin_url = "https://linkedin.com/in/alvo-priv"
+        alvo.github_url = "https://github.com/alvo-priv"
+        alvo.save(update_fields=["linkedin_url", "github_url"])
+        outro = make_user(email="visitante@example.com")
+        client.force_login(outro)
+        resp = client.get(reverse("accounts:profile", args=[alvo.pk]))
+        assert resp.status_code == 200
+        low = resp.content.decode().lower()
+        assert "linkedin.com/in/alvo-priv" not in low
+        assert "github.com/alvo-priv" not in low
+
+    def test_profile_dono_nao_ve_links_com_show_contact_desligado(
+        self, client, make_user
+    ):
+        u = make_user(
+            email="dono@example.com",
+            show_contact_info=False,
+        )
+        u.linkedin_url = "https://linkedin.com/in/dono"
+        u.save(update_fields=["linkedin_url"])
+        client.force_login(u)
+        resp = client.get(reverse("accounts:profile", args=[u.pk]))
+        assert b"linkedin.com/in/dono" not in resp.content.lower()
+        assert b"editar perfil" in resp.content.lower()

@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 
 from apps.courses.models import Phase, Topic
 from apps.presence.help_consumer import HelpRoomConsumer
-from apps.presence.models import HelpRequest
+from apps.presence.models import HelpChatMessage, HelpRequest
 
 User = get_user_model()
 
@@ -109,6 +109,11 @@ class TestHelpRoomConsumer:
         assert msg_help["type"] == "chat"
         assert msg_help["text"] == "olá!"
         assert msg_help["self"] is False
+
+        saved = await database_sync_to_async(
+            lambda: HelpChatMessage.objects.filter(help_request_id=hr.id).count()
+        )()
+        assert saved == 1
 
         await c_req.disconnect()
         await c_help.disconnect()

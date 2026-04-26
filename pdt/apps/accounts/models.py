@@ -82,11 +82,11 @@ class User(AbstractUser):
         help_text="Marque para liberar a exibição no ranking público.",
     )
     show_contact_info = models.BooleanField(
-        "exibir informações de contato no ranking",
+        "deixar informações de contato visíveis para outros usuários",
         default=False,
         help_text=(
-            "Quando marcado, quem clicar no seu nome no ranking verá "
-            "seu LinkedIn, GitHub, país e bio."
+            "Quando marcado, outros usuários podem ver seu LinkedIn, GitHub, país e bio "
+            "(no ranking, na página pública do perfil e onde o seu nome for exibido com detalhes)."
         ),
     )
     show_on_map = models.BooleanField(

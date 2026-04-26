@@ -74,3 +74,29 @@ class HelpRequest(models.Model):
 
     def __str__(self) -> str:
         return f"Ajuda de {self.requester} em {self.topic} [{self.status}]"
+
+
+class HelpChatMessage(models.Model):
+    """Mensagem de texto na sala de ajuda (persistida para histórico após refresh)."""
+
+    help_request = models.ForeignKey(
+        HelpRequest,
+        on_delete=models.CASCADE,
+        related_name="chat_messages",
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="help_chat_messages",
+    )
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["help_request", "created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Chat #{self.pk} em ajuda {self.help_request_id}"

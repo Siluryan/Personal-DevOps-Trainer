@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 {% block title %}Dashboard · PDT{% endblock %}
 
 {% block content %}
@@ -63,7 +64,7 @@
             <li style="display:flex;justify-content:space-between;align-items:center;
                        padding:5px 6px;border-radius:7px;cursor:pointer;transition:background .12s"
                 class="hover:bg-sky-500/10"
-                @click="select('{{ u.pk }}')"
+                @click="select('{{ u.pk }}', {{ u.show_contact_info|yesno:'true,false' }}, {% localize off %}{{ u.total|default:0|floatformat:0 }}{% endlocalize %})"
                 :style="{ background: selected && selected.id === '{{ u.pk }}' ? 'rgba(14,165,233,.12)' : '' }">
               <span style="color:#8bacc8">{{ forloop.counter }}. {{ u.display_name }}</span>
               <span style="color:#34d399;font-weight:700">{{ u.total }} pts</span>
@@ -86,14 +87,38 @@
                          color:#5a7a9a;font-size:1.1rem;line-height:1;background:none;border:none;cursor:pointer"
                   class="hover:text-sky-300">✕</button>
 
-          <!-- nome + pontos + título de carreira -->
-          <p style="font-weight:700;font-size:.9375rem;color:#ddeeff;padding-right:20px"
-             x-text="selected?.name"></p>
-          <p style="font-size:.7rem;color:#0ea5e9;font-weight:600;margin-top:2px;letter-spacing:.02em"
-             x-text="selected?.career"></p>
-          <p style="font-size:.75rem;color:#34d399;font-weight:600;margin-top:4px">
-            <span x-text="selected?.total"></span> pts
+          <p style="font-size:.68rem;color:#5a7a9a;text-transform:uppercase;
+                    letter-spacing:.04em;margin:0 0 8px;padding-right:20px">
+            No Top 10 do ranking
           </p>
+          <p style="font-weight:700;font-size:1rem;color:#ddeeff;padding-right:20px;line-height:1.35;margin:0"
+             x-text="selected?.name || '—'"></p>
+          <p x-show="selected?.career"
+             style="display:inline-block;margin-top:6px;font-size:.68rem;color:#0ea5e9;
+                    font-weight:600;letter-spacing:.02em;background:rgba(14,165,233,.12);
+                    padding:2px 8px;border-radius:999px"
+             x-text="selected.career"></p>
+
+          <div style="margin-top:12px;padding:11px 12px;background:rgba(14,165,233,.06);
+                      border:1px solid rgba(14,165,233,.22);border-radius:9px">
+            <p style="margin:0 0 6px;font-size:.72rem;color:#8bacc8;line-height:1.45">
+              <span style="color:#bae6fd;font-weight:600">Pontuação total</span> no ranking:
+              é a soma dos pontos em <span style="color:#bae6fd;font-weight:600">cada tópico</span>
+              da trilha. Em cada tópico contam a melhor nota já feita no quiz daquele tema e,
+              se existir, o bônus por ajuda no mapa.
+            </p>
+            <p style="margin:0;font-size:1.05rem;color:#34d399;font-weight:700">
+              <span x-text="selected?.total ?? 0"></span><span style="font-weight:600;font-size:.85rem"> pts</span>
+            </p>
+          </div>
+
+          <a x-show="selected?.profile_url"
+             :href="selected.profile_url"
+             style="display:inline-block;margin-top:12px;font-size:.8125rem;font-weight:600;
+                    color:#38bdf8;text-decoration:none"
+             class="hover:text-sky-200">
+            Ver perfil público →
+          </a>
 
           <!-- sem permissão para exibir contato -->
           <template x-if="selected && !selected.show_contact">
@@ -205,14 +230,24 @@ function leaderboardPanel() {
       const el = document.getElementById('lb-contacts');
       if (el) this.contacts = JSON.parse(el.textContent || '{}');
     },
-    select(id) {
+    select(id, showContactFromRow, rowTotal) {
       const data = this.contacts[id];
       if (!data) return;
       // toggle: clique no mesmo fecha o painel
       if (this.selected && this.selected.id === id) {
         this.selected = null;
       } else {
-        this.selected = { id, ...data };
+        const show_contact = showContactFromRow === true;
+        // Pontos: sempre o mesmo número exibido na linha (evita divergir do JSON/Alpine)
+        let pts = 0;
+        if (rowTotal !== undefined && rowTotal !== null && rowTotal !== '') {
+          const n = Number(rowTotal);
+          pts = Number.isFinite(n) ? Math.round(n) : 0;
+        } else {
+          const n = Number(data.total ?? 0);
+          pts = Number.isFinite(n) ? Math.round(n) : 0;
+        }
+        this.selected = { id, ...data, show_contact, total: pts };
       }
     },
   };

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load pdt_extras %}
 {% block title %}Resultado do quiz · PDT{% endblock %}
 
 {% block content %}
@@ -17,13 +18,13 @@
                   {% if ans.is_correct %}rgba(52,211,153,.35){% else %}rgba(248,113,113,.35){% endif %};
                   border-radius:10px;padding:16px">
         <p class="font-semibold" style="color:#ddeeff;line-height:1.5">
-          {{ forloop.counter }}. {{ ans.question.statement }}
+          {{ forloop.counter }}. {{ ans.question.statement|bold_ticks }}
         </p>
         <p class="text-sm mt-2" style="color:#8bacc8">
           Sua resposta:
           {% if ans.choice %}
             <span style="font-weight:600;color:{% if ans.is_correct %}#34d399{% else %}#f87171{% endif %}">
-              {{ ans.choice.text }}
+              {{ ans.choice.text|bold_ticks }}
             </span>
           {% else %}
             <span style="color:#5a7a9a">(em branco)</span>
@@ -33,14 +34,14 @@
           {% for c in ans.question.choices.all %}
             {% if c.is_correct %}
               <p class="text-sm mt-1" style="color:#8bacc8">
-                Correta: <span style="color:#34d399;font-weight:600">{{ c.text }}</span>
+                Correta: <span style="color:#34d399;font-weight:600">{{ c.text|bold_ticks }}</span>
               </p>
             {% endif %}
           {% endfor %}
         {% endif %}
         {% if ans.question.explanation %}
           <p class="text-xs mt-2" style="color:#5a7a9a;font-style:italic">
-            {{ ans.question.explanation }}
+            {{ ans.question.explanation|bold_ticks }}
           </p>
         {% endif %}
       </div>

@@ -97,6 +97,10 @@ class HelpRoomConsumer(AsyncJsonWebsocketConsumer):
             if not text:
                 return
             text = text[:2000]
+            try:
+                await self._save_chat_message(text)
+            except Exception:  # noqa: BLE001
+                return
             await self.channel_layer.group_send(
                 self.group,
                 {
@@ -185,3 +189,13 @@ class HelpRoomConsumer(AsyncJsonWebsocketConsumer):
             "helper_id": hr.helper_id,
             "status": hr.status,
         }
+
+    @database_sync_to_async
+    def _save_chat_message(self, text: str):
+        from .models import HelpChatMessage
+
+        HelpChatMessage.objects.create(
+            help_request_id=self.help_id,
+            author_id=self.user.id,
+            body=text,
+        )

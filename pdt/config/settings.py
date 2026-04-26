@@ -18,6 +18,26 @@ ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
 CSRF_TRUSTED_ORIGINS = [
     f"http://{h}:8000" for h in ALLOWED_HOSTS if h not in ("0.0.0.0",)
 ]
+# Em produção atrás de nginx + Let's Encrypt, CSRF_TRUSTED_ORIGINS_EXTRA
+# carrega por env (ex.: https://pdt.exemplo.com).
+_csrf_extra = env("CSRF_TRUSTED_ORIGINS_EXTRA", default="")
+if _csrf_extra:
+    CSRF_TRUSTED_ORIGINS.extend(
+        o.strip() for o in _csrf_extra.split(",") if o.strip()
+    )
+
+# Quando o nginx termina TLS e proxia para o Daphne em HTTP, Django precisa
+# saber que a requisição original era HTTPS para gerar URLs corretas e
+# aplicar cookies seguros. O nginx envia X-Forwarded-Proto.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = False  # quem redireciona é o nginx
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 0  # HSTS é injetado pelo nginx, evita conflito
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
 
 INSTALLED_APPS = [
     "daphne",

@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
@@ -18,7 +19,8 @@ from apps.courses.models import Topic
 from apps.gamification.models import TopicScore
 
 from .consumers import PRESENCE_GROUP
-from .models import HelpRequest, PresenceState
+from .models import HelpChatMessage, HelpRequest, PresenceState
+from .online_payload import build_online_users_payload
 
 
 def _broadcast_refresh():
@@ -36,41 +38,21 @@ class MapView(LoginRequiredMixin, TemplateView):
         ctx["topics"] = Topic.objects.select_related("phase").order_by(
             "phase__order", "order"
         )
-        ctx["open_help"] = HelpRequest.objects.filter(
-            requester=self.request.user, status__in=[HelpRequest.OPEN, HelpRequest.JOINED]
-        ).first()
+        ctx["open_help"] = (
+            HelpRequest.objects.filter(
+                requester=self.request.user,
+                status__in=[HelpRequest.OPEN, HelpRequest.JOINED],
+            )
+            .select_related("topic")
+            .first()
+        )
         ctx["user_can_request_help"] = self.request.user.show_on_map
         return ctx
 
 
 @login_required
 def online_users(request):
-    rows = (
-        PresenceState.objects.select_related("user")
-        .exclude(status=PresenceState.OFFLINE)
-        .filter(user__show_on_map=True, latitude__isnull=False, longitude__isnull=False)
-    )
-    open_help = {
-        h.requester_id: h
-        for h in HelpRequest.objects.filter(status=HelpRequest.OPEN).select_related(
-            "topic"
-        )
-    }
-    payload = []
-    for p in rows:
-        help_req = open_help.get(p.user_id)
-        payload.append(
-            {
-                "user_id": p.user_id,
-                "name": p.user.display_name,
-                "lat": p.latitude,
-                "lng": p.longitude,
-                "status": p.status,
-                "help_request_id": help_req.id if help_req else None,
-                "help_topic": help_req.topic.title if help_req else None,
-            }
-        )
-    return JsonResponse({"users": payload})
+    return JsonResponse({"users": build_online_users_payload()})
 
 
 @login_required
@@ -115,9 +97,11 @@ def create_help_request(request):
     description = (request.POST.get("description") or "").strip()
     topic = get_object_or_404(Topic, pk=topic_id)
 
-    HelpRequest.objects.filter(
+    open_qs = HelpRequest.objects.filter(
         requester=request.user, status__in=[HelpRequest.OPEN, HelpRequest.JOINED]
-    ).update(status=HelpRequest.CANCELLED)
+    )
+    HelpChatMessage.objects.filter(help_request__in=open_qs).delete()
+    open_qs.update(status=HelpRequest.CANCELLED)
 
     help_request = HelpRequest.objects.create(
         requester=request.user,
@@ -135,6 +119,7 @@ def create_help_request(request):
             "id": help_request.id,
             "room_token": help_request.room_token,
             "topic": topic.title,
+            "help_url": reverse("presence:help_room", args=[help_request.id]),
         }
     )
 
@@ -165,6 +150,7 @@ def resolve_help_request(request, pk):
     help_request.status = HelpRequest.RESOLVED
     help_request.resolved_at = timezone.now()
     help_request.save(update_fields=["status", "resolved_at"])
+    HelpChatMessage.objects.filter(help_request=help_request).delete()
 
     if help_request.helper:
         TopicScore.add_help_bonus(
@@ -186,6 +172,7 @@ def cancel_help_request(request, pk):
         return JsonResponse({"error": "Solicitação já encerrada."}, status=400)
     help_request.status = HelpRequest.CANCELLED
     help_request.save(update_fields=["status"])
+    HelpChatMessage.objects.filter(help_request=help_request).delete()
     state, _ = PresenceState.objects.get_or_create(user=request.user)
     state.status = PresenceState.AVAILABLE
     state.save(update_fields=["status", "last_seen"])
@@ -215,4 +202,20 @@ class HelpRoomView(LoginRequiredMixin, TemplateView):
             ctx["forbidden"] = False
         ctx["help_request"] = help_request
         ctx["ice_servers"] = settings.WEBRTC_ICE_SERVERS
+        if not ctx["forbidden"]:
+            qs = (
+                HelpChatMessage.objects.filter(help_request=help_request)
+                .select_related("author")
+                .order_by("created_at")[:500]
+            )
+            ctx["help_chat_history"] = [
+                {
+                    "name": m.author.display_name,
+                    "text": m.body,
+                    "self": m.author_id == self.request.user.id,
+                }
+                for m in qs
+            ]
+        else:
+            ctx["help_chat_history"] = []
         return ctx

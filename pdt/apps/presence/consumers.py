@@ -60,22 +60,9 @@ class PresenceConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def _build_payload(self):
-        from .models import PresenceState
-        rows = (
-            PresenceState.objects.select_related("user")
-            .exclude(status=PresenceState.OFFLINE)
-            .filter(user__show_on_map=True, latitude__isnull=False, longitude__isnull=False)
-        )
-        return [
-            {
-                "user_id": p.user_id,
-                "name": p.user.display_name,
-                "lat": p.latitude,
-                "lng": p.longitude,
-                "status": p.status,
-            }
-            for p in rows
-        ]
+        from .online_payload import build_online_users_payload
+
+        return build_online_users_payload()
 
     @database_sync_to_async
     def _mark_online(self):

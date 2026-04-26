@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load pdt_extras %}
 {% block title %}Resultado · {{ level_label }} · PDT{% endblock %}
 
 {% block content %}
@@ -34,8 +35,7 @@
       </p>
     {% else %}
       <p style="color:#fde68a;line-height:1.55">
-        Você precisa de <strong>{{ pass_percent }}%</strong> para passar.
-        Revise as respostas, estude e tente de novo, você pode reiniciar pelo menu.
+        {{ failure_message }}
       </p>
     {% endif %}
   </div>
@@ -58,7 +58,7 @@
           <strong style="color:#5a7a9a;font-weight:500;margin-right:6px">
             {{ forloop.counter }}.
           </strong>
-          {{ row.question.statement }}
+          {{ row.question.statement|bold_ticks }}
         </summary>
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a2f50">
           <ul style="font-size:.875rem;line-height:1.55;list-style:none;padding:0;margin:0">
@@ -73,13 +73,13 @@
                 {% endif %}">
                 {% if forloop.counter0 == row.question.correct_index %}✓{% endif %}
                 {% if forloop.counter0 == row.picked_idx and forloop.counter0 != row.question.correct_index %}↩{% endif %}
-                {{ c }}
+                {{ c|bold_ticks }}
               </li>
             {% endfor %}
           </ul>
           {% if row.question.explanation %}
             <p style="margin-top:8px;font-size:.85rem;line-height:1.55;color:#a5b8cc">
-              <strong style="color:#bae6fd">Por quê:</strong> {{ row.question.explanation }}
+              <strong style="color:#bae6fd">Por quê:</strong> {{ row.question.explanation|bold_ticks }}
             </p>
           {% endif %}
         </div>

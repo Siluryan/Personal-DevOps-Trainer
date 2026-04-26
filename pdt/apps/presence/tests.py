@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from apps.courses.models import Phase, Topic
 from apps.gamification.models import TopicScore
-from apps.presence.models import HelpRequest, PresenceState
+from apps.presence.models import HelpChatMessage, HelpRequest, PresenceState
 
 
 @pytest.fixture
@@ -77,6 +77,31 @@ class TestPresenceAPIs:
         assert outro.display_name in names
         assert offline.display_name not in names
 
+    def test_online_users_mantem_help_request_id_em_joined(
+        self, client, admitted_user, make_user, topic
+    ):
+        """Pedido em JOINED ainda deve expor id/status no JSON — senão o popup do mapa
+        mostra «pedindo ajuda» sem botão (só cabeçalho)."""
+        pedinte = make_user(email="pedinte@x.com", show_on_map=True)
+        client.force_login(admitted_user)
+        PresenceState.objects.create(
+            user=pedinte,
+            latitude=-22.0,
+            longitude=-47.0,
+            status=PresenceState.HELP,
+        )
+        hr = HelpRequest.objects.create(
+            requester=pedinte,
+            topic=topic,
+            status=HelpRequest.JOINED,
+            helper=admitted_user,
+        )
+        resp = client.get(reverse("presence:api_online"))
+        assert resp.status_code == 200
+        row = next(u for u in resp.json()["users"] if u["user_id"] == pedinte.id)
+        assert row["help_request_id"] == hr.id
+        assert row["help_request_status"] == HelpRequest.JOINED
+
 
 @pytest.mark.django_db
 class TestHelpRequestAPI:
@@ -90,6 +115,7 @@ class TestHelpRequestAPI:
         data = resp.json()
         assert data["ok"] is True
         assert data["topic"] == topic.title
+        assert data["help_url"] == reverse("presence:help_room", args=[data["id"]])
 
         hr = HelpRequest.objects.get(id=data["id"])
         assert hr.requester == admitted_user
@@ -254,6 +280,87 @@ class TestHelpRoomView:
         resp = client.get(reverse("presence:help_room", args=[hr.id]))
         assert "ice_servers" in resp.context
         assert isinstance(resp.context["ice_servers"], list)
+
+    def test_room_inclui_historico_de_chat_persistido(
+        self, client, admitted_user, make_user, topic
+    ):
+        helper = make_user(email="hist@x.com")
+        hr = HelpRequest.objects.create(
+            requester=admitted_user,
+            helper=helper,
+            topic=topic,
+            status=HelpRequest.JOINED,
+        )
+        HelpChatMessage.objects.create(
+            help_request=hr, author=helper, body="Olá do banco"
+        )
+        client.force_login(admitted_user)
+        resp = client.get(reverse("presence:help_room", args=[hr.id]))
+        hist = resp.context["help_chat_history"]
+        assert len(hist) == 1
+        assert hist[0]["text"] == "Olá do banco"
+        assert hist[0]["self"] is False
+        assert hist[0]["name"] == helper.display_name
+
+
+@pytest.mark.django_db
+class TestHelpChatLifecycle:
+    def test_resolver_apaga_mensagens(
+        self, client, admitted_user, make_user, topic
+    ):
+        helper = make_user(email="resolver@x.com")
+        hr = HelpRequest.objects.create(
+            requester=admitted_user,
+            helper=helper,
+            topic=topic,
+            status=HelpRequest.JOINED,
+        )
+        HelpChatMessage.objects.create(help_request=hr, author=helper, body="oi")
+        HelpChatMessage.objects.create(help_request=hr, author=admitted_user, body="oi de volta")
+
+        client.force_login(admitted_user)
+        resp = client.post(reverse("presence:api_help_resolve", args=[hr.id]))
+        assert resp.status_code == 200
+        assert HelpChatMessage.objects.filter(help_request=hr).count() == 0
+
+    def test_cancelar_apaga_mensagens(
+        self, client, admitted_user, topic
+    ):
+        hr = HelpRequest.objects.create(
+            requester=admitted_user, topic=topic, status=HelpRequest.OPEN
+        )
+        HelpChatMessage.objects.create(
+            help_request=hr, author=admitted_user, body="rascunho"
+        )
+
+        client.force_login(admitted_user)
+        resp = client.post(reverse("presence:api_help_cancel", args=[hr.id]))
+        assert resp.status_code == 200
+        assert HelpChatMessage.objects.filter(help_request=hr).count() == 0
+
+    def test_novo_pedido_apaga_mensagens_dos_anteriores(
+        self, client, admitted_user, make_user, topic
+    ):
+        helper = make_user(email="anterior@x.com")
+        antigo = HelpRequest.objects.create(
+            requester=admitted_user,
+            helper=helper,
+            topic=topic,
+            status=HelpRequest.JOINED,
+        )
+        HelpChatMessage.objects.create(
+            help_request=antigo, author=helper, body="conversa antiga"
+        )
+
+        client.force_login(admitted_user)
+        resp = client.post(
+            reverse("presence:api_help_request"),
+            {"topic_id": topic.id, "description": "novo"},
+        )
+        assert resp.status_code == 200
+        antigo.refresh_from_db()
+        assert antigo.status == HelpRequest.CANCELLED
+        assert HelpChatMessage.objects.filter(help_request=antigo).count() == 0
 
 
 @pytest.mark.django_db
