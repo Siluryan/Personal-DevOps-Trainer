@@ -63,8 +63,7 @@
   .help-request-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(2, 8, 23, 0.72);
-    backdrop-filter: blur(1px);
+    background: rgba(2, 8, 23, 0.28);
     z-index: 1300;
   }
   .help-request-panel {
@@ -132,7 +131,7 @@
         <div x-show="open" x-cloak
              @click.stop
              class="help-request-panel shadow-2xl"
-             style="z-index:1200;background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:16px">
+             style="z-index:1310;background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
             <p style="font-size:.9rem;font-weight:700;color:#ddeeff;margin:0">Pedir ajuda</p>
             <button @click="open = false" type="button"
