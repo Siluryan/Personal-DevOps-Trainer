@@ -39,6 +39,23 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
 
+    # Compartilha cookies entre apex e www (evita falhas de CSRF ao alternar host).
+    _cookie_base_domain = next(
+        (
+            h.lstrip(".")
+            for h in ALLOWED_HOSTS
+            if h not in ("localhost", "127.0.0.1", "0.0.0.0")
+            and "." in h
+            and not h.replace(".", "").isdigit()
+        ),
+        "",
+    )
+    if _cookie_base_domain.startswith("www."):
+        _cookie_base_domain = _cookie_base_domain[4:]
+    if _cookie_base_domain:
+        SESSION_COOKIE_DOMAIN = f".{_cookie_base_domain}"
+        CSRF_COOKIE_DOMAIN = f".{_cookie_base_domain}"
+
 INSTALLED_APPS = [
     "daphne",
     "django.contrib.admin",
