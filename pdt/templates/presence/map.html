@@ -164,7 +164,11 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
-  const CSRF = document.cookie.split('; ').find(c=>c.startsWith('csrftoken='))?.split('=')[1]||'';
+  const CSRF = (
+    document.querySelector('meta[name="csrf-token"]')?.content
+    || document.cookie.split('; ').find(c=>c.startsWith('csrftoken='))?.split('=')[1]
+    || ''
+  );
   const CURRENT_USER_ID = {{ request.user.id }};
   const URLS = {
     online:   '{% url "presence:api_online" %}',
@@ -371,14 +375,51 @@
 
   // ── WebSocket ──────────────────────────────────────────────────────────
   const wsScheme = location.protocol==='https:'?'wss':'ws';
-  const ws = new WebSocket(`${wsScheme}://${location.host}/ws/presence/`);
-  ws.onmessage = ev => {
+  let ws = null;
+  let wsReconnectTimer = null;
+  let wsReconnectDelayMs = 1000;
+
+  function clearWsReconnectTimer() {
+    if (wsReconnectTimer) {
+      clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = null;
+    }
+  }
+
+  function scheduleWsReconnect() {
+    if (wsReconnectTimer) return;
+    wsReconnectTimer = setTimeout(() => {
+      wsReconnectTimer = null;
+      connectPresenceWs();
+    }, wsReconnectDelayMs);
+    wsReconnectDelayMs = Math.min(wsReconnectDelayMs * 2, 15000);
+  }
+
+  function connectPresenceWs() {
     try {
-      const msg = JSON.parse(ev.data);
-      if (msg.type==='presence' && Array.isArray(msg.users)) refreshMap(msg.users);
-    } catch {}
-  };
-  ws.onopen = () => fetchOnline();
+      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+      ws = new WebSocket(`${wsScheme}://${location.host}/ws/presence/`);
+      ws.onmessage = ev => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.type==='presence' && Array.isArray(msg.users)) refreshMap(msg.users);
+        } catch {}
+      };
+      ws.onopen = () => {
+        clearWsReconnectTimer();
+        wsReconnectDelayMs = 1000;
+        fetchOnline();
+      };
+      ws.onclose = () => scheduleWsReconnect();
+      ws.onerror = () => scheduleWsReconnect();
+    } catch {
+      scheduleWsReconnect();
+    }
+  }
+
+  connectPresenceWs();
 
   // ── Geolocalização com fallback IP ─────────────────────────────────────
   async function geoByIP() {
@@ -416,7 +457,7 @@
         const {latitude:lat, longitude:lng} = pos.coords;
         leafMap.setView([lat,lng], 13);
         await checkin(lat, lng);
-        if (ws.readyState===1) ws.send(JSON.stringify({action:'update_location',lat,lng}));
+        if (ws && ws.readyState===1) ws.send(JSON.stringify({action:'update_location',lat,lng}));
       },
       () => {
         geoByIP();
@@ -432,6 +473,22 @@
     }
     await fetchOnline();
   }, 30000);
+
+  // Mobile: ao voltar para a aba/app, força sync imediato e reconecta WS.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      connectPresenceWs();
+      fetchOnline();
+    }
+  });
+  window.addEventListener('focus', () => {
+    connectPresenceWs();
+    fetchOnline();
+  });
+  window.addEventListener('pageshow', () => {
+    connectPresenceWs();
+    fetchOnline();
+  });
 
   // ── Alpine component ───────────────────────────────────────────────────
   function helpPanel() {
