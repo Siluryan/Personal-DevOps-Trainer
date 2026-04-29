@@ -34,8 +34,6 @@ avançado.
   de acerto. Detalhes em [Simulador de entrevistas](#simulador-de-entrevistas).
 - **"Pague um café"** configurável via variável de ambiente.
 
-A pasta `imagens/` traz a referência visual do gráfico de desempenho.
-
 ## Stack
 
 - Python 3.12 + Django 5.1 (ASGI com Daphne)
@@ -323,7 +321,6 @@ sobre cognição e aprendizagem, não apenas estética.
   Em redes corporativas com NAT simétrico, configure um TURN próprio
   (ex.: Coturn) e exporte via `WEBRTC_ICE_SERVERS_JSON`.
 - Internacionalização (hoje todo o conteúdo está em pt-BR).
-- Pipelines de CI/CD com lint, testes e build da imagem Docker.
 
 ## Contribuindo
 
