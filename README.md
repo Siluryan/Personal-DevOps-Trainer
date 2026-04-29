@@ -334,8 +334,7 @@ respeite o estilo e a licença.
 ## Contato
 
 Para autorização de uso/operação ou parcerias, abra uma issue com a label
-`license-request` ou envie e-mail para o mantenedor (atualize aqui o seu
-endereço pessoal antes de tornar o repositório público).
+`license-request` ou envie e-mail para o mantenedor guilhermerrdias@gmail.com
 
 ## Licença
 
