@@ -23,6 +23,9 @@ cd $APP_REPO_DIR/pdt
 pip install -r requirements.txt
 set -a; . $ENV_FILE; set +a
 python manage.py migrate --noinput
+python manage.py seed_topics || true
+python manage.py seed_admission_test || true
+python manage.py seed_interviews || true
 python manage.py collectstatic --noinput
 EOSU
 

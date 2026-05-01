@@ -279,6 +279,9 @@ docker compose -f "$COMPOSE_FILE" up -d web
 
 # Migracao e estaticos dentro do conteiner (mesma imagem usada no run).
 docker compose -f "$COMPOSE_FILE" exec -T web python manage.py migrate --noinput
+docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_topics || true
+docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_admission_test || true
+docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_interviews || true
 docker compose -f "$COMPOSE_FILE" exec -T web python manage.py collectstatic --noinput
 
 # Nginx le /static e /media (www-data): garante leitura.
