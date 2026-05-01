@@ -41,7 +41,7 @@ SENIOR_QUESTIONS: list[dict] = [
             "API Gateway é responsável por persistência cacheada de respostas e BFF é responsável por roteamento entre microsserviços de domínio com balanceamento de carga interno.",
         ],
         "correct_index": 1,
-        "explanation": "Gateway é genérico/horizontal; BFF é específico por canal/vertical. A primeira é confusão comum: BFF é um padrão distinto que pode coexistir com Gateway, não sinônimo. A terceira confunde BFF com SSR (server-side rendering). A quarta troca os papéis: cache é função genérica de Gateway, e roteamento de domínio é responsabilidade de service mesh ou do próprio Gateway, não de BFF.",
+        "explanation": "Gateway é genérico/horizontal; BFF é específico por canal/vertical. A primeira é confusão comum: BFF é um padrão distinto que pode coexistir com Gateway, não sinônimo. A terceira confunde BFF com SSR (server-side rendering). A quarta troca os papéis: cache é função genérica de Gateway, e roteamento de domínio é responsabilidade de service mesh ou do próprio Gateway.",
     },
     {
         "category": "Arquitetura",
@@ -149,7 +149,7 @@ SENIOR_QUESTIONS: list[dict] = [
             "Camada de cache de respostas externas que evita acoplamento de latência entre serviços; o nome 'anti-corruption' refere-se à corrupção de cache em cenários de partição de rede.",
         ],
         "correct_index": 1,
-        "explanation": "ACL = barreira de tradução de modelo entre contextos para preservar pureza do domínio interno. A primeira confunde ACL com criptografia/validação por causa da palavra 'corruption' (que aqui é semântica de domínio, não de dados). A terceira mistura ACL com IAM/authz, não tem relação. A quarta cria correlação inexistente entre 'corruption' e cache corruption, termos homônimos em domínios distintos.",
+        "explanation": "ACL = barreira de tradução de modelo entre contextos para preservar pureza do domínio interno. A primeira confunde ACL com criptografia/validação por causa da palavra 'corruption' (que aqui é semântica de domínio. A terceira mistura ACL com IAM/authz, não tem relação. A quarta cria correlação inexistente entre 'corruption' e cache corruption, termos homônimos em domínios distintos.",
     },
     # ── Escalabilidade e padrões (12) ───────────────────────────────────────
     {
@@ -174,7 +174,7 @@ SENIOR_QUESTIONS: list[dict] = [
             "Apenas durante migrações de dados entre clusters, como mecanismo temporário; em estado estável, o sharding deve ser desfeito para simplificar operação e backup unificado.",
         ],
         "correct_index": 1,
-        "explanation": "Sharding adiciona complexidade real (rebalance, queries cross-shard, hot keys); só vale após esgotar opções mais simples. A primeira é cargo-cult, sharding precoce machuca mais que ajuda em domínios médios. A terceira inverte o critério: tabelas pequenas se beneficiam de cache/réplicas, não de sharding (overhead supera o ganho). A quarta confunde sharding com migração de dados, são objetivos completamente distintos.",
+        "explanation": "Sharding adiciona complexidade real (rebalance, queries cross-shard, hot keys); só vale após esgotar opções mais simples. A primeira é cargo-cult, sharding precoce machuca mais que ajuda em domínios médios. A terceira inverte o critério: tabelas pequenas se beneficiam de cache/réplicas. A quarta confunde sharding com migração de dados, são objetivos completamente distintos.",
     },
     {
         "category": "Escalabilidade",
@@ -319,7 +319,7 @@ SENIOR_QUESTIONS: list[dict] = [
             "Failover entre regiões é manual e exige reescrita do código da aplicação para apontar para a região secundária; não depende de DNS nem de health checks automatizados.",
         ],
         "correct_index": 1,
-        "explanation": "Active-passive = uma região serve, outra em standby pronta para assumir; trade-off entre custo (capacity ociosa) e simplicidade operacional vs active-active. A primeira é cargo-cult ('active-active sempre'). A terceira descreve active-active e renomeia errado. A quarta confunde com migração de aplicação, failover é processo de orquestração, não de redeploy.",
+        "explanation": "Active-passive = uma região serve, outra em standby pronta para assumir; trade-off entre custo (capacity ociosa) e simplicidade operacional vs active-active. A primeira é cargo-cult ('active-active sempre'). A terceira descreve active-active e renomeia errado. A quarta confunde com migração de aplicação, failover é processo de orquestração.",
     },
     {
         "category": "HA/DR",
@@ -403,7 +403,7 @@ SENIOR_QUESTIONS: list[dict] = [
             "Backups frequentes para outra região cobrem o cenário de falha de AZ porque permitem restore rápido em qualquer outra AZ disponível na mesma região imediatamente após incidente.",
         ],
         "correct_index": 1,
-        "explanation": "HA intra-region = espalhar por AZs com LB + health check + DB com quórum. A primeira contradiz a definição de SPOF. A terceira é falsa: muitos serviços managed exigem configuração explícita Multi-AZ (RDS Single-AZ existe). A quarta confunde HA com DR, backup ajuda em recovery, não em disponibilidade contínua.",
+        "explanation": "HA intra-region = espalhar por AZs com LB + health check + DB com quórum. A primeira contradiz a definição de SPOF. A terceira é falsa: muitos serviços managed exigem configuração explícita Multi-AZ (RDS Single-AZ existe). A quarta confunde HA com DR, backup ajuda em recovery.",
     },
     {
         "category": "HA/DR",
@@ -985,7 +985,7 @@ SENIOR_QUESTIONS: list[dict] = [
             "Não há diferença prática observável em sistemas reais; a maioria dos databases modernos opera com tunable consistency que torna a escolha invisível ao desenvolvedor durante operação cotidiana.",
         ],
         "correct_index": 1,
-        "explanation": "Trade-off real: eventual escala/disponibilidade vs strong simplicidade. A primeira e a terceira são dogmas opostos (sempre pior/sempre melhor). A quarta nega o trade-off, tunable consistency *expõe* a escolha, não a esconde. Decisão por necessidade de domínio, não dogma.",
+        "explanation": "Trade-off real: eventual escala/disponibilidade vs strong simplicidade. A primeira e a terceira são dogmas opostos (sempre pior/sempre melhor). A quarta nega o trade-off, tunable consistency *expõe* a escolha, não a esconde. Decisão por necessidade de domínio.",
     },
     {
         "category": "Trade-offs",

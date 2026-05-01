@@ -168,7 +168,7 @@ PLENO_QUESTIONS: list[dict] = [
             "Mantém que as duas estratégias seriam graduais e que `Service` versus `Ingress` definiria o ritmo — o controle é `spec.strategy`, não L4/L7.",
         ],
         "correct_index": 1,
-        "explanation": "`RollingUpdate` é o padrão e mantém disponibilidade. A primeira inverte os papéis. A terceira descreve uma estratégia blue-green/canário, não nativa do Deployment. A quarta inventa um mecanismo de controle inexistente; a estratégia é definida em `spec.strategy` do Deployment, não em Service ou Ingress.",
+        "explanation": "`RollingUpdate` é o padrão e mantém disponibilidade. A primeira inverte os papéis. A terceira descreve uma estratégia blue-green/canário, não nativa do Deployment. A quarta inventa um mecanismo de controle inexistente; a estratégia é definida em `spec.strategy` do Deployment.",
     },
     {
         "category": "Kubernetes",
@@ -224,7 +224,7 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como evitar invalidações de cache desnecessárias em um Dockerfile?",
         "choices": [
             "Sempre executar `docker build --no-cache` para garantir builds determinísticos; aproveitar cache é antipattern em pipelines de CI/CD.",
-            "Ordenar instruções do Dockerfile do menos para o mais mutável (ex.: `COPY package.json` + `RUN npm ci` antes de `COPY . .`), aproveitando o cache de layers até a primeira alteração real.",
+            "Ordenar instruções do Dockerfile do menos para o mais mutável (ex.: `COPY package.json` + `RUN npm ci` antes de `COPY.`), aproveitando o cache de layers até a primeira alteração real.",
             "Usar `ARG CACHEBUST=$(date +%s)` antes de cada `RUN` significativo, forçando o engine a invalidar o cache quando necessário.",
             "Montar o diretório de código como volume durante o build e usar `RUN --mount=type=tmpfs` para evitar que arquivos modificados quebrem o cache.",
         ],
@@ -277,7 +277,7 @@ PLENO_QUESTIONS: list[dict] = [
             "Atestado em SLSA Level 3 que descreve o ambiente de build, runners e variáveis usadas; é assinado pelo CI mas não lista dependências diretamente.",
         ],
         "correct_index": 1,
-        "explanation": "SBOM = inventário de componentes (CycloneDX, SPDX). A primeira descreve um *vulnerability report* (consome o SBOM, mas é diferente). A terceira descreve o manifest OCI da imagem, que é metadado de layers, não de componentes. A quarta descreve um *build attestation* SLSA, que complementa o SBOM mas não é o mesmo.",
+        "explanation": "SBOM = inventário de componentes (CycloneDX, SPDX). A primeira descreve um *vulnerability report* (consome o SBOM, mas é diferente). A terceira descreve o manifest OCI da imagem, que é metadado de layers. A quarta descreve um *build attestation* SLSA, que complementa o SBOM mas não é o mesmo.",
     },
     # ── IaC / Terraform (12) ────────────────────────────────────────────────
     {
@@ -720,7 +720,7 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como garantir que o build de uma aplicação seja reprodutível?",
         "choices": [
             "Sempre referenciar dependências por `latest` para que o build pegue correções de segurança automaticamente em todas as execuções.",
-            "Pinar versões exatas de dependências em lockfiles (`package-lock.json`, `poetry.lock`, `go.sum`), usar imagens base por digest (`@sha256:...`), congelar timestamps com `SOURCE_DATE_EPOCH` e validar checksums dos artefatos.",
+            "Pinar versões exatas de dependências em lockfiles (`package-lock.json`, `poetry.lock`, `go.sum`), usar imagens base por digest (`@sha256:..`), congelar timestamps com `SOURCE_DATE_EPOCH` e validar checksums dos artefatos.",
             "Pinar versões nos `Dockerfile`s é suficiente; lockfiles são opcionais quando o pipeline tem cache habilitado.",
             "Reexecutar o build em um runner com mesmo OS garante reprodutibilidade, independentemente das versões das dependências resolvidas.",
         ],
@@ -952,7 +952,7 @@ PLENO_QUESTIONS: list[dict] = [
             "Habilitar `log_min_duration_statement`, instalar `pg_stat_statements` para o top-N de queries por tempo total e usar `EXPLAIN (ANALYZE, BUFFERS)` para entender plano de execução, índices e IO real.",
             "Executar `REINDEX DATABASE` semanal e `VACUUM FULL` mensal; queries lentas em Postgres são quase sempre causadas por índices fragmentados.",
             "Aumentar `autovacuum_vacuum_cost_limit` e `maintenance_work_mem`; o autovacuum agressivo já elimina a maior parte das queries lentas.",
-            "Trocar o disco por NVMe e reiniciar o serviço; queries lentas em sistemas modernos são limitadas por throughput de IO, não por planner.",
+            "Trocar o disco por NVMe e reiniciar o serviço; queries lentas em sistemas modernos são limitadas por throughput de IO.",
         ],
         "correct_index": 0,
         "explanation": "log_min_duration + pg_stat_statements + EXPLAIN ANALYZE. A segunda generaliza erradamente (REINDEX/VACUUM FULL bloqueia e raramente é a causa). A terceira é meia-verdade: autovacuum ajuda, mas não substitui análise de plano. A quarta é diagnóstico cego sem medir.",
@@ -1000,7 +1000,7 @@ PLENO_QUESTIONS: list[dict] = [
             "Trocar o SSD por NVMe sem medir; em workloads de produção a latência de IO é dominada pelo controlador, não pelo media subjacente.",
             "Reiniciar o host e observar; a maioria dos problemas de IO em produção são resolvidos com `echo 3 > /proc/sys/vm/drop_caches`.",
             "Combinar métricas (`iostat -x 1` para `await`, `%util`, throughput; `iotop`/`pidstat -d` para processos) e benchmark (`fio`) para isolar latência por dispositivo, identificar saturação e separar leitura/escrita.",
-            "Esvaziar `/tmp` e `/var/tmp` para reduzir uso de inodes; o problema costuma ser falta de inodes, não desempenho de IO.",
+            "Esvaziar `/tmp` e `/var/tmp` para reduzir uso de inodes; o problema costuma ser falta de inodes.",
         ],
         "correct_index": 2,
         "explanation": "iostat + iotop + fio = diagnóstico apropriado. A primeira é cara e cega (e o que ela afirma é falso). A segunda confunde IO com cache do kernel. A quarta confunde IO lento com falta de inodes (que dá outro erro: `No space left on device`).",
@@ -1064,7 +1064,7 @@ PLENO_QUESTIONS: list[dict] = [
             "Métrica que define a largura de banda máxima de uma interface em Mbps; valor padrão é 1500 Mbps em redes Ethernet modernas.",
         ],
         "correct_index": 1,
-        "explanation": "MTU é tamanho máximo, e mismatch quebra. A primeira confunde MTU com MSS (MSS é derivado de MTU, mas não é a mesma coisa). A terceira reduz MTU a jumbo frames apenas. A quarta confunde MTU com banda, MTU é em bytes, não em Mbps.",
+        "explanation": "MTU é tamanho máximo, e mismatch quebra. A primeira confunde MTU com MSS (MSS é derivado de MTU, mas não é a mesma coisa). A terceira reduz MTU a jumbo frames apenas. A quarta confunde MTU com banda, MTU é em bytes.",
     },
     {
         "category": "Networking",
@@ -1134,7 +1134,7 @@ PLENO_QUESTIONS: list[dict] = [
             "Restaurar um backup físico base (`pg_basebackup` ou snapshot) e fazer replay dos logs de transação (WAL no Postgres, binlog no MySQL) até o LSN/timestamp desejado, geralmente parando logo antes do incidente.",
             "Restaurar somente o último backup completo; PITR é um nome alternativo para 'restore from latest snapshot'.",
             "Reaplicar manualmente o `pg_dump` lógico em um banco vazio até a transação alvo; logs de WAL não são necessários.",
-            "Reiniciar o banco com a flag `--recover-to-time=...`; o engine determina sozinho qual backup base usar.",
+            "Reiniciar o banco com a flag `--recover-to-time=..`; o engine determina sozinho qual backup base usar.",
         ],
         "correct_index": 0,
         "explanation": "PITR = backup base + replay de WAL. A segunda confunde com restore from snapshot. A terceira é falsa: `pg_dump` é snapshot lógico do momento, não permite parar em uma transação específica. A quarta inventa uma flag inexistente.",
