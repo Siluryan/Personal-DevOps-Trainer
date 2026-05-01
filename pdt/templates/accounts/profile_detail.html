@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load static %}
 {% block title %}{{ profile_user.display_name }} · PDT{% endblock %}
 
 {% block content %}
@@ -48,7 +47,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {{ radar|json_script:"radar-data" }}
 <script>
   const pdtLabelHover = {

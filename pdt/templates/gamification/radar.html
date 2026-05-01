@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load static %}
 {% block title %}Meu radar · PDT{% endblock %}
 
 {% block content %}
@@ -19,7 +18,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {{ radar|json_script:"radar-data" }}
 <script>
   /* Plugin: zoom leve no texto do label ao passar o mouse */
