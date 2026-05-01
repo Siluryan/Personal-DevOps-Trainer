@@ -37,7 +37,7 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 0  # HSTS é injetado pelo nginx, evita conflito
     SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = None
+    X_FRAME_OPTIONS = "DENY"
     CSRF_COOKIE_HTTPONLY = True
 
     # Compartilha cookies entre apex e www (evita falhas de CSRF ao alternar host).
