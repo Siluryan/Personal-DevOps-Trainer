@@ -201,7 +201,7 @@ JUNIOR_QUESTIONS: list[dict] = [
         "choices": [
             "Um protocolo de roteamento dinâmico que troca tabelas de rotas entre roteadores, função desempenhada na verdade por OSPF e BGP.",
             "Um sistema hierárquico distribuído que traduz nomes de domínio (ex.: `exemplo.com`) em endereços IP e vice-versa, normalmente sobre UDP/53 (com fallback para TCP/53).",
-            "Um serviço de entrega de e-mails entre servidores.",
+            "Um serviço de entrega de e-mails entre servidores, típico do SMTP para encaminhamento e do IMAP/POP3 para leitura das caixas postais pelos clientes.",
             "Um padrão de criptografia simétrica usado para proteger sessões TLS, equivalente ao AES-GCM negociado no handshake.",
         ],
         "correct_index": 1,
@@ -814,7 +814,7 @@ JUNIOR_QUESTIONS: list[dict] = [
             "Sintaxe compacta para construir uma lista a partir de um iterável, opcionalmente com filtro: `[expr for x in iter if cond]`, mais legível e geralmente mais rápida que um `for` com `append`.",
             "Função embutida para leitura de arquivos linha-a-linha em formato de lista, papel real do método `f.readlines()` em objetos file.",
             "Tipo de exceção lançada ao operar em listas vazias com `min`/`max`, esta exceção, na verdade, é `ValueError`.",
-            "Servidor HTTP minimalista incluído na stdlib.server`.",
+            "Servidor HTTP minimalista incluído no módulo `http.server` da stdlib, normalmente usado para testes locais rápidos e não para produção.",
         ],
         "correct_index": 0,
         "explanation": "List comprehension: `[x*2 for x in nums if x>0]`. Existem versões para set (`{..}`), dict (`{k:v for..}`) e generator (`(..)`). Os outros descrevem `readlines`, exceções específicas e o servidor builtin, todos sem relação.",
