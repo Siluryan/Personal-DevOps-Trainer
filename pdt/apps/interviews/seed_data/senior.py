@@ -276,7 +276,7 @@ SENIOR_QUESTIONS: list[dict] = [
         "category": "Escalabilidade",
         "statement": "Como resolver conflitos de escrita em sistemas eventualmente consistentes?",
         "choices": [
-            "Ignorar conflitos é aceitável porque, com o tempo, as escritas convergem naturalmente em sistemas modernos baseados em vector clocks implícitos pela camada de transporte.",
+            "Ignorar conflitos e aceitavel pois as escritas convergem sozinhas ao longo do tempo em sistemas modernos.",
             "Por meio de CRDTs quando o domínio se modela como tipo convergente, last-write-wins quando perda controlada de updates é aceitável, ou regras de merge específicas do domínio (carrinho, contadores).",
             "Confiar exclusivamente em timestamps físicos do servidor para resolver: a escrita com timestamp mais recente sempre vence, garantindo determinismo total entre os nós.",
             "Substituir o banco eventual por um banco fortemente consistente assim que conflitos aparecerem; CRDTs e LWW são paliativos para limitações da escolha original do storage.",
