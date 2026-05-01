@@ -37,7 +37,10 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 0  # HSTS é injetado pelo nginx, evita conflito
     SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = "DENY"
+    # Evita header duplicado (já definido no nginx com add_header).
+    X_FRAME_OPTIONS = None
+    # Reduz superfície de ataque a CSRF token via JavaScript.
+    CSRF_COOKIE_HTTPONLY = True
 
     # Compartilha cookies entre apex e www (evita falhas de CSRF ao alternar host).
     _cookie_base_domain = next(
