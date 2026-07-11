@@ -1,11 +1,11 @@
-# Ubuntu Server 24.04 LTS (Noble) — Canonical, x86_64.
+# Ubuntu Server 24.04 LTS (Noble) — Canonical, ARM64 (Graviton / t4g).
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"] # Canonical
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-arm64-server-*"]
   }
 
   filter {

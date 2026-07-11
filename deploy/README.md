@@ -1,6 +1,6 @@
-# Deploy do PDT na AWS (t3.micro) — Terraform + GitHub Actions
+# Deploy do PDT na AWS (t4g.nano, ARM64) — Terraform + GitHub Actions
 
-Este diretório provisiona uma instância t3.micro Ubuntu 24.04 LTS na AWS,
+Este diretório provisiona uma instância t4g.nano (ARM64/Graviton) Ubuntu 24.04 LTS na AWS,
 roda o stack Django + Channels + nginx + Postgres + Redis, emite TLS via
 Let's Encrypt (com renovação automática), aplica patches semanais via SSM
 Patch Manager, faz backups diários para o S3 e expõe deploy contínuo via
@@ -40,7 +40,7 @@ Internet ── 80/443 ── nginx ──┬── /static/  → /opt/pdt/app/p
                               ├── /ws/      → daphne 127.0.0.1:8000 (WebSocket)
                               └── /        → daphne 127.0.0.1:8000 (HTTP)
 
-EC2 (t3.micro)
+EC2 (t4g.nano, ARM64)
 ├── postgres 16 (local, 30 conexões, 128MB shared_buffers)
 ├── redis 7    (bind 127.0.0.1, 96MB maxmemory)
 ├── daphne     (systemd, ASGI)
@@ -177,10 +177,10 @@ expira após `backup_retention_days * 12`. Ajuste em `backups.tf`.
 
 | recurso        | preço/mês (USD) |
 | -------------- | --------------- |
-| t3.micro       | ~7.50 (free tier 1º ano: $0) |
+| t4g.nano       | ~3.00 (ARM64/Graviton, on-demand us-east-1) |
 | EBS gp3 20GB   | ~1.60 |
 | EIP em uso     | $0 |
 | S3 (poucos MB) | <$1 |
 | Data transfer  | varia (100GB grátis no free tier) |
 
-Total típico: **$10–15/mês** após o free tier.
+Total típico: **$6–10/mês** após o free tier.
