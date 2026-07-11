@@ -1,12 +1,13 @@
 #!/bin/bash
 # ============================================================================
-# user_data: prepara a EC2 t3.micro Ubuntu 24.04 para rodar o PDT (Django + 
-# Channels). Idempotente o suficiente para reexecutar via `cloud-init clean`.
+# user_data: prepara a EC2 t4g.nano (ARM64) Ubuntu 24.04 para rodar o PDT
+# (Django + Channels). Idempotente o suficiente para reexecutar via
+# `cloud-init clean`.
 #
 # Pilares:
 #   1) hardening do sistema (SSH, UFW, fail2ban, sysctl, auditd, automatic
 #      security updates),
-#   2) swap de 2GB (a t3.micro tem só 1GB de RAM),
+#   2) swap de 2GB (a t4g.nano tem só 0.5GB de RAM),
 #   3) instalação do runtime (python, postgres, redis, nginx, certbot),
 #   4) usuário `deploy` sem sudo,
 #   5) systemd unit do app, nginx + Let's Encrypt e cron de backup.
@@ -65,7 +66,7 @@ systemctl enable --now ssm-agent || systemctl enable --now amazon-ssm-agent || t
 systemctl enable --now docker || true
 usermod -aG docker $APP_USER 2>/dev/null || true
 
-# ─── 2. Swap de 2GB (t3.micro = 1GB RAM) ────────────────────────────────────
+# ─── 2. Swap de 2GB (t4g.nano = 0.5GB RAM) ──────────────────────────────────
 if [ ! -f /swapfile ]; then
   fallocate -l 2G /swapfile
   chmod 600 /swapfile
@@ -222,7 +223,7 @@ PG_VERSION=$(ls /etc/postgresql/ | head -n1)
 PG_CONF=/etc/postgresql/$PG_VERSION/main/postgresql.conf
 cat >>$PG_CONF <<'EOF'
 
-# tuning t3.micro (1GB RAM)
+# tuning t4g.nano (0.5GB RAM + swap 2GB)
 shared_buffers = 128MB
 work_mem = 4MB
 maintenance_work_mem = 32MB

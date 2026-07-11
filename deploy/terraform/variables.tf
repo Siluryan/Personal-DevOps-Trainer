@@ -29,15 +29,15 @@ variable "vpc_cidr" {
 }
 
 variable "public_subnet_cidr" {
-  description = "CIDR da única subnet pública (t3.micro mora aqui)."
+  description = "CIDR da única subnet pública (a instância da app mora aqui)."
   type        = string
   default     = "10.42.1.0/24"
 }
 
 variable "instance_type" {
-  description = "Tipo da instância EC2."
+  description = "Tipo da instância EC2. ARM64/Graviton (família t4g) exige AMI arm64 (ver ec2.tf)."
   type        = string
-  default     = "t3.micro"
+  default     = "t4g.nano"
 }
 
 variable "ebs_root_size_gb" {
