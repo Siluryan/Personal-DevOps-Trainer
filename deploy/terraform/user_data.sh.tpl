@@ -308,6 +308,9 @@ systemctl enable --now pdt-daphne.service
 
 # ─── 16. nginx + Let's Encrypt ────────────────────────────────────────────
 NGINX_CONF=/etc/nginx/sites-available/pdt.conf
+install -d -m 0755 /etc/nginx/snippets
+install -m 0644 /opt/pdt/app/deploy/server/nginx/snippets/pdt_proxy.conf \
+  /etc/nginx/snippets/pdt_proxy.conf
 sed "s|__DOMAIN__|$DOMAIN_NAME|g" \
   /opt/pdt/app/deploy/server/nginx/pdt.conf.tpl >$NGINX_CONF
 ln -sf $NGINX_CONF /etc/nginx/sites-enabled/pdt.conf
