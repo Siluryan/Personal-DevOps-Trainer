@@ -34,9 +34,20 @@ logger -t "$LOG_TAG" "iniciando user_data para $PROJECT/$ENVIRONMENT"
 
 export DEBIAN_FRONTEND=noninteractive
 
-# ─── 1. Pacotes base ────────────────────────────────────────────────────────
+# ─── 1. Swap antes do APT (t4g.nano = 0.5GB RAM) ────────────────────────────
+# Criar antes de update/install evita OOM durante o bootstrap.
+if [ ! -f /swapfile ]; then
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  sysctl -w vm.swappiness=10
+  echo 'vm.swappiness=10' > /etc/sysctl.d/99-pdt-swap.conf
+fi
+
+# ─── 2. Pacotes base ────────────────────────────────────────────────────────
 apt-get update
-apt-get -y dist-upgrade
 apt-get install -y --no-install-recommends \
   ca-certificates curl gnupg jq unzip git \
   ufw fail2ban auditd unattended-upgrades apt-listchanges needrestart \
@@ -65,17 +76,6 @@ fi
 systemctl enable --now ssm-agent || systemctl enable --now amazon-ssm-agent || true
 systemctl enable --now docker || true
 usermod -aG docker $APP_USER 2>/dev/null || true
-
-# ─── 2. Swap de 2GB (t4g.nano = 0.5GB RAM) ──────────────────────────────────
-if [ ! -f /swapfile ]; then
-  fallocate -l 2G /swapfile
-  chmod 600 /swapfile
-  mkswap /swapfile
-  swapon /swapfile
-  echo '/swapfile none swap sw 0 0' >> /etc/fstab
-  sysctl -w vm.swappiness=10
-  echo 'vm.swappiness=10' > /etc/sysctl.d/99-pdt-swap.conf
-fi
 
 # ─── 3. Hardening de kernel ────────────────────────────────────────────────
 cat >/etc/sysctl.d/99-pdt-hardening.conf <<'EOF'
