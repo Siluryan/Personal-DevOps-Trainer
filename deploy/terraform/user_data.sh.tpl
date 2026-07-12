@@ -8,9 +8,9 @@
 #   1) hardening do sistema (SSH, UFW, fail2ban, sysctl, auditd, automatic
 #      security updates),
 #   2) swap de 2GB (a t4g.nano tem só 0.5GB de RAM),
-#   3) instalação do runtime (python, postgres, redis, nginx, certbot),
+#   3) instalação do runtime (python, postgres, redis, nginx, cloudflared),
 #   4) usuário `deploy` sem sudo,
-#   5) systemd unit do app, nginx + Let's Encrypt e cron de backup.
+#   5) systemd unit do app, nginx localhost + Cloudflare Tunnel e cron de backup.
 # ============================================================================
 set -euxo pipefail
 
@@ -23,6 +23,7 @@ GITHUB_REPO="${github_repo}"
 BACKUP_BUCKET="${backup_bucket}"
 SSM_DJANGO_SECRET="${ssm_django_secret}"
 SSM_POSTGRES_PWD="${ssm_postgres_pwd}"
+SSM_TUNNEL_TOKEN="${ssm_tunnel_token}"
 
 APP_USER=deploy
 APP_DIR=/opt/pdt
@@ -55,7 +56,7 @@ apt-get install -y --no-install-recommends \
   python3 python3-venv python3-pip python3-dev build-essential \
   libpq-dev pkg-config libffi-dev libssl-dev \
   postgresql postgresql-contrib redis-server \
-  nginx certbot python3-certbot-nginx \
+  nginx \
   docker.io docker-compose-v2 \
   logrotate cron rsync sqlite3
 
@@ -140,8 +141,6 @@ ufw --force reset
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow 22/tcp comment 'ssh'
-ufw allow 80/tcp comment 'http'
-ufw allow 443/tcp comment 'https'
 ufw logging low
 ufw --force enable
 
@@ -155,26 +154,6 @@ backend  = systemd
 
 [sshd]
 enabled = true
-
-[nginx-http-auth]
-enabled = true
-
-[nginx-bad-request]
-enabled = true
-filter  = nginx-bad-request
-logpath = /var/log/nginx/error.log
-maxretry = 10
-
-[nginx-botsearch]
-enabled = true
-filter  = nginx-botsearch
-logpath = /var/log/nginx/access.log
-maxretry = 5
-EOF
-cat >/etc/fail2ban/filter.d/nginx-bad-request.conf <<'EOF'
-[Definition]
-failregex = ^<HOST>.*"(GET|POST|HEAD).*" (400|408|444) .*$
-ignoreregex =
 EOF
 systemctl enable --now fail2ban
 
@@ -268,11 +247,13 @@ git config --global --add safe.directory $APP_REPO_DIR
 EOSU
 
 # ─── 13. .env do app ──────────────────────────────────────────────────────
+ROOT_DOMAIN="$${DOMAIN_NAME#www.}"
+WWW_DOMAIN="www.$ROOT_DOMAIN"
 cat >$ENV_FILE <<EOF
 DJANGO_SECRET_KEY=$DJANGO_SECRET_KEY
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=$DOMAIN_NAME,127.0.0.1,localhost
-CSRF_TRUSTED_ORIGINS_EXTRA=https://$DOMAIN_NAME
+DJANGO_ALLOWED_HOSTS=$ROOT_DOMAIN,$WWW_DOMAIN,127.0.0.1,localhost
+CSRF_TRUSTED_ORIGINS_EXTRA=https://$ROOT_DOMAIN,https://$WWW_DOMAIN
 POSTGRES_DB=pdt
 POSTGRES_USER=pdt
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
@@ -306,26 +287,50 @@ install -m 0644 /opt/pdt/app/deploy/server/systemd/pdt-daphne.service \
 systemctl daemon-reload
 systemctl enable --now pdt-daphne.service
 
-# ─── 16. nginx + Let's Encrypt ────────────────────────────────────────────
+# ─── 16. nginx (localhost) + Cloudflare Tunnel ─────────────────────────────
+ROOT_DOMAIN="$${DOMAIN_NAME#www.}"
+WWW_DOMAIN="www.$ROOT_DOMAIN"
 NGINX_CONF=/etc/nginx/sites-available/pdt.conf
 install -d -m 0755 /etc/nginx/snippets
 install -m 0644 /opt/pdt/app/deploy/server/nginx/snippets/pdt_proxy.conf \
   /etc/nginx/snippets/pdt_proxy.conf
-sed "s|__DOMAIN__|$DOMAIN_NAME|g" \
+sed "s|__DOMAIN__|$ROOT_DOMAIN $WWW_DOMAIN|g" \
   /opt/pdt/app/deploy/server/nginx/pdt.conf.tpl >$NGINX_CONF
 ln -sf $NGINX_CONF /etc/nginx/sites-enabled/pdt.conf
 rm -f /etc/nginx/sites-enabled/default
-nginx -t && systemctl reload nginx
+nginx -t && systemctl enable --now nginx && systemctl reload nginx
 
-# Emite certificado se ainda não existe; o systemd timer do certbot cuida da renovação.
-if [ ! -d /etc/letsencrypt/live/$DOMAIN_NAME ]; then
-  certbot --nginx \
-    -d $DOMAIN_NAME \
-    --non-interactive --agree-tos -m "$LE_EMAIL" \
-    --redirect || logger -t "$LOG_TAG" "certbot inicial falhou; rode manualmente após o DNS apontar"
+install_cloudflared() {
+  if command -v cloudflared >/dev/null 2>&1; then
+    return 0
+  fi
+  local cf_arch
+  case "$(uname -m)" in
+    aarch64|arm64) cf_arch=arm64 ;;
+    x86_64|amd64)  cf_arch=amd64 ;;
+    *) logger -t "$LOG_TAG" "cloudflared: arquitetura nao suportada"; return 1 ;;
+  esac
+  curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$${cf_arch}" \
+    -o /usr/local/bin/cloudflared
+  chmod 755 /usr/local/bin/cloudflared
+}
+
+TUNNEL_TOKEN=$(aws ssm get-parameter --with-decryption \
+  --name "$SSM_TUNNEL_TOKEN" --region "$AWS_REGION" \
+  --query 'Parameter.Value' --output text 2>/dev/null || true)
+if [ -n "$TUNNEL_TOKEN" ] && [ "$TUNNEL_TOKEN" != "None" ]; then
+  install_cloudflared
+  install -d -m 0700 /etc/cloudflared
+  umask 077
+  printf '%s' "$TUNNEL_TOKEN" >/etc/cloudflared/token
+  chmod 600 /etc/cloudflared/token
+  install -m 0644 /opt/pdt/app/deploy/server/systemd/cloudflared.service \
+    /etc/systemd/system/cloudflared.service
+  systemctl daemon-reload
+  systemctl enable --now cloudflared.service
+else
+  logger -t "$LOG_TAG" "cloudflared: token SSM vazio; configure /$PROJECT/$ENVIRONMENT/cloudflare/tunnel_token"
 fi
-systemctl enable --now certbot.timer
-systemctl enable --now snap.certbot.renew.timer 2>/dev/null || true
 
 # ─── 17. Scripts utilitários (backup, deploy) ────────────────────────────
 install -m 0755 /opt/pdt/app/deploy/server/scripts/backup.sh /opt/pdt/scripts/backup.sh 2>/dev/null \

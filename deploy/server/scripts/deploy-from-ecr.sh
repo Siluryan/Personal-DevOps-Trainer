@@ -169,44 +169,22 @@ ensure_redis() {
   systemctl start redis-server 2>/dev/null || systemctl start redis 2>/dev/null || true
 }
 
-# Coloca o nginx HTTP-only no ar a partir do template (sem o bloco 443) para
-# o certbot conseguir o desafio HTTP-01. Idempotente.
-write_nginx_http_only() {
-  local domain_names="$1" template="$REPO_DIR/deploy/server/nginx/pdt.conf.tpl"
+# Coloca nginx HTTP-only em localhost:8080 (atrás de Cloudflare Tunnel). Idempotente.
+ensure_nginx_tunnel() {
+  local domain="$1"
+  local root_domain="${domain#www.}"
+  local www_domain="www.$root_domain"
+  local template="$REPO_DIR/deploy/server/nginx/pdt.conf.tpl"
   local out=/etc/nginx/sites-available/pdt.conf
   if [ ! -f "$template" ]; then
     echo "::error::template nginx ausente em $template" >&2
     exit 1
   fi
-  install -d -m 0755 /var/www/html /etc/nginx/snippets
+  apt_install_if_missing nginx
+  install -d -m 0755 /etc/nginx/snippets
   install -m 0644 "$REPO_DIR/deploy/server/nginx/snippets/pdt_proxy.conf" \
     /etc/nginx/snippets/pdt_proxy.conf
-  python3 - "$template" "$domain_names" "$out" <<'PYEOF'
-import re, sys
-src = open(sys.argv[1]).read().replace("__DOMAIN__", sys.argv[2])
-out = []
-depth = 0
-seen = 0
-for line in src.splitlines():
-    stripped = line.strip()
-    if re.match(r"^server\s*\{", stripped):
-        seen += 1
-        depth = 1
-        if seen == 2:
-            continue
-        out.append(line)
-        continue
-    if depth and seen == 2:
-        if "{" in stripped:
-            depth += 1
-        if "}" in stripped:
-            depth -= 1
-            if depth == 0:
-                continue
-        continue
-    out.append(line)
-open(sys.argv[3], "w").write("\n".join(out) + "\n")
-PYEOF
+  sed "s|__DOMAIN__|$root_domain $www_domain|g" "$template" >"$out"
   ln -sf /etc/nginx/sites-available/pdt.conf /etc/nginx/sites-enabled/pdt.conf
   rm -f /etc/nginx/sites-enabled/default
   nginx -t
@@ -214,48 +192,41 @@ PYEOF
   systemctl reload nginx
 }
 
-ensure_nginx_tls() {
-  local domain="$1" email="$2" root_domain www_domain
-  root_domain="${domain#www.}"
-  www_domain="www.$root_domain"
-  apt_install_if_missing nginx certbot python3-certbot-nginx
-  if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q 'Status: active'; then
-    ufw allow 80/tcp || true
-    ufw allow 443/tcp || true
+install_cloudflared_binary() {
+  if command -v cloudflared >/dev/null 2>&1; then
+    return 0
   fi
+  local cf_arch
+  case "$(uname -m)" in
+    aarch64|arm64) cf_arch=arm64 ;;
+    x86_64|amd64)  cf_arch=amd64 ;;
+    *)
+      echo "::error::cloudflared: arquitetura nao suportada: $(uname -m)" >&2
+      exit 1
+      ;;
+  esac
+  curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${cf_arch}" \
+    -o /usr/local/bin/cloudflared
+  chmod 755 /usr/local/bin/cloudflared
+}
 
-  if [ -z "$email" ]; then
-    logger -t "$SCRIPT_NAME" "aviso: letsencrypt_email vazio; pulando emissao do cert (DNS+email exigidos)"
-  else
-    # Sempre gera hostnames de apex+www para evitar 404 no www e manter cert SAN.
-    write_nginx_http_only "$root_domain $www_domain"
-    certbot --nginx \
-      -d "$root_domain" \
-      -d "$www_domain" \
-      --non-interactive --agree-tos -m "$email" --redirect \
-      --expand \
-      || logger -t "$SCRIPT_NAME" "certbot falhou (DNS apex/www apontando para esta EC2?)"
+ensure_cloudflared() {
+  local token
+  token=$(ssm_get "/$PROJECT_NAME/$ENVIRONMENT_NAME/cloudflare/tunnel_token" yes)
+  if [ -z "$token" ]; then
+    logger -t "$SCRIPT_NAME" "aviso: token cloudflare vazio; pulando cloudflared"
+    return 0
   fi
-  # Com cert presente, reescreve config completa com bloco 443 (pode ter ficado
-  # HTTP-only de uma execucao anterior) e aponta para o cert vigente.
-  if [ -d "/etc/letsencrypt/live/$root_domain" ]; then
-    sed "s|__DOMAIN__|$root_domain $www_domain|g" \
-      "$REPO_DIR/deploy/server/nginx/pdt.conf.tpl" \
-      >/etc/nginx/sites-available/pdt.conf
-    sed -i \
-      -e "s|^[[:space:]]*#\?[[:space:]]*ssl_certificate[[:space:]].*|    ssl_certificate     /etc/letsencrypt/live/$root_domain/fullchain.pem;|" \
-      -e "s|^[[:space:]]*#\?[[:space:]]*ssl_certificate_key[[:space:]].*|    ssl_certificate_key /etc/letsencrypt/live/$root_domain/privkey.pem;|" \
-      /etc/nginx/sites-available/pdt.conf
-    install -d -m 0755 /etc/nginx/snippets
-    install -m 0644 "$REPO_DIR/deploy/server/nginx/snippets/pdt_proxy.conf" \
-      /etc/nginx/snippets/pdt_proxy.conf
-    ln -sf /etc/nginx/sites-available/pdt.conf /etc/nginx/sites-enabled/pdt.conf
-    rm -f /etc/nginx/sites-enabled/default
-    nginx -t
-    systemctl enable --now nginx
-    systemctl reload nginx
-  fi
-  systemctl enable --now certbot.timer 2>/dev/null || true
+  install_cloudflared_binary
+  install -d -m 0700 /etc/cloudflared
+  umask 077
+  printf '%s' "$token" >/etc/cloudflared/token
+  chmod 600 /etc/cloudflared/token
+  install -m 0644 "$REPO_DIR/deploy/server/systemd/cloudflared.service" \
+    /etc/systemd/system/cloudflared.service
+  systemctl daemon-reload
+  systemctl enable cloudflared.service
+  systemctl restart cloudflared.service
 }
 
 ensure_pdt_env
@@ -287,12 +258,12 @@ docker compose -f "$COMPOSE_FILE" exec -T web python manage.py collectstatic --n
 # Nginx le /static e /media (www-data): garante leitura.
 chmod -R a+rX /opt/pdt/app/pdt/staticfiles /opt/pdt/app/pdt/media 2>/dev/null || true
 
-# Publica em 80/443 via nginx + Let's Encrypt (idempotente, requer DNS apontando aqui).
+# Publica via nginx localhost + Cloudflare Tunnel (sem portas 80/443 publicas).
 DOMAIN_VAL=$(ssm_get "/$PROJECT_NAME/$ENVIRONMENT_NAME/domain_name")
-LE_EMAIL_VAL=$(ssm_get "/$PROJECT_NAME/$ENVIRONMENT_NAME/letsencrypt_email")
 if [ -n "$DOMAIN_VAL" ]; then
-  ensure_nginx_tls "$DOMAIN_VAL" "$LE_EMAIL_VAL"
+  ensure_nginx_tunnel "$DOMAIN_VAL"
 fi
+ensure_cloudflared
 
 # Mantem a copia em /opt/pdt/scripts atualizada (idempotente).
 install -d -m 0755 /opt/pdt/scripts

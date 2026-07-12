@@ -44,7 +44,14 @@ resource "aws_ssm_parameter" "domain_name" {
   value = var.domain_name
 }
 
-# Lido pelo deploy-from-ecr.sh para emitir/renovar o cert via certbot --nginx.
+# Lido pelo cloudflared na EC2 (token do tunnel remotely-managed).
+resource "aws_ssm_parameter" "cloudflare_tunnel_token" {
+  name  = "/${var.project_name}/${var.environment}/cloudflare/tunnel_token"
+  type  = "SecureString"
+  value = var.cloudflare_tunnel_token
+}
+
+# Legado: mantido para compatibilidade de state; certbot não é mais usado.
 resource "aws_ssm_parameter" "letsencrypt_email" {
   name  = "/${var.project_name}/${var.environment}/letsencrypt_email"
   type  = "String"
@@ -60,6 +67,7 @@ data "aws_iam_policy_document" "ssm_params_read" {
       aws_ssm_parameter.postgres_password.arn,
       aws_ssm_parameter.domain_name.arn,
       aws_ssm_parameter.letsencrypt_email.arn,
+      aws_ssm_parameter.cloudflare_tunnel_token.arn,
       aws_ssm_parameter.backup_bucket.arn,
     ]
   }
@@ -93,6 +101,7 @@ locals {
     backup_bucket     = aws_s3_bucket.backups.bucket
     ssm_django_secret = aws_ssm_parameter.django_secret.name
     ssm_postgres_pwd  = aws_ssm_parameter.postgres_password.name
+    ssm_tunnel_token  = aws_ssm_parameter.cloudflare_tunnel_token.name
   })
 }
 
@@ -138,10 +147,4 @@ resource "aws_instance" "app" {
     Environment = var.environment
     PatchGroup  = "${var.project_name}-${var.environment}"
   }
-}
-
-resource "aws_eip" "app" {
-  domain   = "vpc"
-  instance = aws_instance.app.id
-  tags     = { Name = "${var.project_name}-${var.environment}-eip" }
 }

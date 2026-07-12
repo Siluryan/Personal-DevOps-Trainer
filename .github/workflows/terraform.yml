@@ -24,7 +24,8 @@ env:
   TF_VAR_letsencrypt_email: ${{ vars.LETSENCRYPT_EMAIL }}
   TF_VAR_domain_name:       ${{ vars.PDT_DOMAIN_NAME }}
   TF_VAR_github_repo:       ${{ github.repository }}
-  TF_VAR_ssh_public_key:    ${{ vars.PDT_SSH_PUBLIC_KEY }}
+  TF_VAR_ssh_public_key:           ${{ vars.PDT_SSH_PUBLIC_KEY }}
+  TF_VAR_cloudflare_tunnel_token:  ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
   # `operator_cidrs` é list(string); a Variable do GitHub deve já vir em
   # formato JSON, ex.: ["1.2.3.4/32"]. Default vazio é mapeado para "[]".
   TF_VAR_operator_cidrs:    ${{ vars.PDT_OPERATOR_CIDRS || '[]' }}
