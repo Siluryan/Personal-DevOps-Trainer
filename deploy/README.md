@@ -72,9 +72,15 @@ EC2 (t4g.nano, ARM64) — sem EIP, sem 80/443 públicos
    - `personaldevopstrainer.online` → `http://127.0.0.1:8080`
    - `www.personaldevopstrainer.online` → `http://127.0.0.1:8080`
 4. Habilite **WebSockets** se o painel oferecer (necessário para `/ws/`).
-5. No DNS da Cloudflare, remova o **A record** apontando para o EIP antigo.
-   O tunnel cria/atualiza os registros automaticamente (CNAME para `*.cfargotunnel.com`).
-6. Guarde o token:
+5. No DNS da Cloudflare, remova o **A record** apontando para o EIP antigo e
+   confirme que **apex e www** ficam com CNAME para `*.cfargotunnel.com`
+   (criado automaticamente ao salvar cada Public Hostname no tunnel).
+   Sem esse CNAME, o domínio não chega ao `cloudflared` da EC2 (502 ou NXDOMAIN).
+6. Use um **tunnel dedicado** só para o PDT. Não reutilize token de tunnel
+   compartilhado com Kubernetes/outros hosts — vários connectors no mesmo tunnel
+   fazem o Cloudflare rotear pedidos para a máquina errada (`127.0.0.1:8080` em
+   outro servidor → 502).
+7. Guarde o token:
    - GitHub secret `CLOUDFLARE_TUNNEL_TOKEN` (para `terraform.yml`), e/ou
    - `cloudflare_tunnel_token` em `terraform.tfvars`.
 
