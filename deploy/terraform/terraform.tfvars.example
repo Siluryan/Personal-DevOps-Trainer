@@ -21,6 +21,6 @@ operator_cidrs = []
 ssh_public_key = ""
 
 ebs_root_size_gb = 20
-patch_window_cron = "cron(0 4 ? * SUN *)"
+patch_window_cron = "cron(0 10 ? * SUN *)"
 backup_bucket_name_override = ""
 backup_retention_days       = 30

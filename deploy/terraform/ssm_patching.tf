@@ -40,6 +40,8 @@ resource "aws_ssm_maintenance_window" "patch" {
   allow_unassociated_targets = false
 }
 
+# Instala patches aprovados na baseline (domingo 10:00 UTC, após scan diário).
+
 resource "aws_ssm_maintenance_window_target" "patch" {
   window_id     = aws_ssm_maintenance_window.patch.id
   name          = "${var.project_name}-${var.environment}-targets"
@@ -85,13 +87,14 @@ resource "aws_ssm_maintenance_window_task" "patch_install" {
 # Compliance/scan diário, fora da janela: avisa se a instância ficou
 # defasada antes do próximo install agendado.
 resource "aws_ssm_association" "scan_daily" {
-  name                = "AWS-RunPatchBaseline"
-  association_name    = "${var.project_name}-${var.environment}-scan"
-  schedule_expression = "cron(0 6 * * ? *)"
+  name                        = "AWS-RunPatchBaseline"
+  association_name            = "${var.project_name}-${var.environment}-scan"
+  schedule_expression         = "cron(0 9 * * ? *)" # 09:00 UTC — após apt-daily-upgrade (~06:44 UTC)
+  apply_only_at_cron_interval = true                # não dispara scan durante bootstrap (evita lock do apt)
 
   targets {
-    key    = "tag:PatchGroup"
-    values = ["${var.project_name}-${var.environment}"]
+    key    = "InstanceIds"
+    values = [aws_instance.app.id]
   }
 
   parameters = {
