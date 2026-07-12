@@ -272,18 +272,43 @@ jobs:
           dump_ssm_log
           exit 1
 
-      - name: Smoke test via Cloudflare
+      - name: Smoke test na origem (SSM)
+        if: success()
         env:
-          DOMAIN: ${{ vars.PDT_DOMAIN_NAME }}
+          INSTANCE_ID: ${{ steps.target.outputs.instance_id }}
         run: |
           set -euo pipefail
-          for i in 1 2 3; do
-            CODE=$(curl -sk -o /dev/null -w '%{http_code}' "https://$DOMAIN/")
-            echo "tentativa $i: https://$DOMAIN/ HTTP $CODE"
-            case "$CODE" in
-              200|301|302) exit 0;;
+          CMD_ID=$(aws ssm send-command \
+            --document-name AWS-RunShellScript \
+            --instance-ids "$INSTANCE_ID" \
+            --comment "pdt smoke #${{ github.run_id }}" \
+            --timeout-seconds 120 \
+            --parameters '{"commands":["/opt/pdt/scripts/healthcheck.sh"]}' \
+            --query 'Command.CommandId' --output text)
+          for i in $(seq 1 20); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'Status' --output text 2>/dev/null || echo Pending)
+            echo "tentativa $i: $STATUS"
+            case "$STATUS" in
+              Success)
+                aws ssm get-command-invocation \
+                  --command-id "$CMD_ID" \
+                  --instance-id "$INSTANCE_ID" \
+                  --query 'StandardOutputContent' --output text
+                exit 0
+                ;;
+              Failed|Cancelled|TimedOut)
+                aws ssm get-command-invocation \
+                  --command-id "$CMD_ID" \
+                  --instance-id "$INSTANCE_ID" \
+                  --query '[StandardOutputContent,StandardErrorContent]' --output text
+                echo "::error::Healthcheck na origem falhou."
+                exit 1
+                ;;
             esac
-            sleep 5
+            sleep 3
           done
-          echo "::error::Healthcheck via Cloudflare falhou."
+          echo "::error::Timeout aguardando healthcheck SSM."
           exit 1
