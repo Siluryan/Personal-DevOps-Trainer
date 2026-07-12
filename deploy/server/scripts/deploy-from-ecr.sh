@@ -229,6 +229,18 @@ ensure_cloudflared() {
   systemctl restart cloudflared.service
 }
 
+ensure_ufw_tunnel() {
+  if ! command -v ufw >/dev/null 2>&1; then
+    return 0
+  fi
+  ufw delete allow 80/tcp 2>/dev/null || true
+  ufw delete allow 443/tcp 2>/dev/null || true
+  ufw default deny incoming
+  ufw default allow outgoing
+  ufw allow 22/tcp comment 'ssh' 2>/dev/null || true
+  ufw --force enable
+}
+
 ensure_pdt_env
 ensure_postgres
 ensure_redis
@@ -264,6 +276,7 @@ if [ -n "$DOMAIN_VAL" ]; then
   ensure_nginx_tunnel "$DOMAIN_VAL"
 fi
 ensure_cloudflared
+ensure_ufw_tunnel
 
 # Mantem a copia em /opt/pdt/scripts atualizada (idempotente).
 install -d -m 0755 /opt/pdt/scripts
