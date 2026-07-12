@@ -235,10 +235,15 @@ ensure_ufw_tunnel() {
   fi
   ufw delete allow 80/tcp 2>/dev/null || true
   ufw delete allow 443/tcp 2>/dev/null || true
+  ufw delete allow 22/tcp 2>/dev/null || true
   ufw default deny incoming
   ufw default allow outgoing
-  ufw allow 22/tcp comment 'ssh' 2>/dev/null || true
   ufw --force enable
+}
+
+ensure_certbot_disabled() {
+  systemctl disable --now certbot.timer 2>/dev/null || true
+  systemctl disable --now certbot.service 2>/dev/null || true
 }
 
 ensure_pdt_env
@@ -277,6 +282,7 @@ if [ -n "$DOMAIN_VAL" ]; then
 fi
 ensure_cloudflared
 ensure_ufw_tunnel
+ensure_certbot_disabled
 
 # Mantem a copia em /opt/pdt/scripts atualizada (idempotente).
 install -d -m 0755 /opt/pdt/scripts
