@@ -188,16 +188,42 @@ expira após `backup_retention_days * 12`. Ajuste em `backups.tf`.
 | ---------------- | -------------------------------------- | ------ |
 | `ci.yml`         | push/PR                                | pytest + tf fmt/validate |
 | `terraform.yml`  | PR/push em `deploy/terraform/**`       | plan em PR (comenta), apply em push (env `prod`) |
-| `deploy.yml`     | push em `main` (fora de `deploy/terraform`) | OIDC → `aws ssm send-command` → `/opt/pdt/scripts/deploy.sh` → smoke test |
+| `deploy.yml`     | push em `main` (fora de `deploy/terraform`) | OIDC → `aws ssm send-command` → deploy ECR → smoke test |
+| `ec2-schedule.yml` | cron + manual                        | liga 08:00 / desliga 00:00 (UTC-3); site fora do ar das 00:00 às 08:00 |
+
+## Horário de operação da EC2
+
+A instância liga e desliga automaticamente via GitHub Actions (`ec2-schedule.yml`):
+
+| evento | horário (UTC-3 / BRT) | cron UTC (GitHub) |
+| ------ | --------------------- | ----------------- |
+| **Start** | 08:00 | `0 11 * * *` |
+| **Stop**  | 00:00 (meia-noite) | `0 3 * * *` |
+
+Janela ativa: **16 h/dia** (~480 h/mês). Fora desse horário o site fica indisponível
+(Cloudflare Tunnel sem connector). Backup (09:00), scan de patches (10:00) e install
+semanal (domingo 11:00) foram alinhados à janela ligada.
+
+Disparo manual: **Actions → EC2 Schedule → Run workflow** (`start` ou `stop`).
 
 ## Custo aproximado (us-east-1, 2026)
 
-| recurso        | preço/mês (USD) |
-| -------------- | --------------- |
-| t4g.nano       | ~3.00 (ARM64/Graviton, on-demand us-east-1) |
-| EBS gp3 20GB   | ~1.60 |
-| Cloudflare Tunnel | $0 (plano Free) |
-| S3 (poucos MB) | <$1 |
-| Data transfer  | varia (100GB grátis no free tier) |
+Premissas: t4g.nano on-demand **~$0,0042/h**, EBS gp3 20 GB **~$0,08/GB/mês**,
+instância ligada **16 h/dia** (08:00–00:00 UTC-3), Cloudflare Tunnel Free.
 
-Total típico: **$6–10/mês** após o free tier.
+| recurso | cálculo | USD/mês |
+| ------- | ------- | ------- |
+| **EC2 t4g.nano** | 480 h × $0,0042 | **~$2,00** |
+| **EBS gp3 20 GB** | 24/7 (disco persiste com instância parada) | **~$1,60** |
+| **Cloudflare Tunnel** | plano Free | **$0** |
+| **S3 backups** | poucos MB | **<$1** |
+| **Data transfer** | baixo (tunnel outbound) | **<$1** |
+
+| cenário | USD/mês |
+| ------- | ------- |
+| **Com agenda 16 h/dia (atual)** | **~$4,50–5,50** |
+| 24 h/dia (sem agenda) | ~$6,50–8,00 |
+| Economia vs 24/7 | **~$1,00–2,50/mês** (~30% no compute) |
+
+O EBS continua cobrando com a instância parada; a maior economia vem das horas de
+compute desligadas. EIP não é usado (Cloudflare Tunnel).

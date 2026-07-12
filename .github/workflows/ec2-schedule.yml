@@ -1,0 +1,98 @@
+# Liga/desliga a EC2 de produção em horário fixo (08:00–00:00 UTC-3 / BRT).
+# Horários em UTC (GitHub cron): start 11:00, stop 03:00.
+name: EC2 Schedule
+
+on:
+  schedule:
+    - cron: "0 11 * * *" # 08:00 America/Sao_Paulo (UTC-3)
+    - cron: "0 3 * * *"  # 00:00 America/Sao_Paulo (UTC-3)
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Ação manual"
+        required: true
+        type: choice
+        options:
+          - start
+          - stop
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  PROJECT_TAG: pdt
+  ENVIRONMENT_TAG: prod
+
+jobs:
+  ec2-power:
+    name: EC2 power schedule
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.GHA_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: pdt-gha-ec2-schedule
+
+      - name: Definir ação
+        id: plan
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ACTION="${{ github.event.inputs.action }}"
+          elif [ "${{ github.event.schedule }}" = "0 11 * * *" ]; then
+            ACTION=start
+          else
+            ACTION=stop
+          fi
+          echo "action=$ACTION" >>"$GITHUB_OUTPUT"
+          echo "Ação: $ACTION"
+
+      - name: Localizar instância PDT
+        id: target
+        run: |
+          set -euo pipefail
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters \
+              "Name=tag:Project,Values=${{ env.PROJECT_TAG }}" \
+              "Name=tag:Environment,Values=${{ env.ENVIRONMENT_TAG }}" \
+              "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+            --query 'Reservations[0].Instances[0].InstanceId' \
+            --output text)
+          STATE=$(aws ec2 describe-instances \
+            --instance-ids "$INSTANCE_ID" \
+            --query 'Reservations[0].Instances[0].State.Name' \
+            --output text)
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "::error::Instância PDT não encontrada."
+            exit 1
+          fi
+          echo "instance_id=$INSTANCE_ID" >>"$GITHUB_OUTPUT"
+          echo "state=$STATE" >>"$GITHUB_OUTPUT"
+          echo "Instância $INSTANCE_ID ($STATE)"
+
+      - name: Ligar instância
+        if: steps.plan.outputs.action == 'start' && steps.target.outputs.state == 'stopped'
+        run: |
+          set -euo pipefail
+          aws ec2 start-instances --instance-ids "${{ steps.target.outputs.instance_id }}"
+          aws ec2 wait instance-running --instance-ids "${{ steps.target.outputs.instance_id }}"
+          echo "Instância ligada."
+
+      - name: Instância já em execução
+        if: steps.plan.outputs.action == 'start' && steps.target.outputs.state == 'running'
+        run: echo "Instância já estava running; nada a fazer."
+
+      - name: Desligar instância
+        if: steps.plan.outputs.action == 'stop' && steps.target.outputs.state == 'running'
+        run: |
+          set -euo pipefail
+          aws ec2 stop-instances --instance-ids "${{ steps.target.outputs.instance_id }}"
+          aws ec2 wait instance-stopped --instance-ids "${{ steps.target.outputs.instance_id }}"
+          echo "Instância desligada."
+
+      - name: Instância já parada
+        if: steps.plan.outputs.action == 'stop' && steps.target.outputs.state == 'stopped'
+        run: echo "Instância já estava stopped; nada a fazer."

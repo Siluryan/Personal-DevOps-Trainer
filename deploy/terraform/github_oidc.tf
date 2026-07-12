@@ -77,6 +77,15 @@ data "aws_iam_policy_document" "gha_deploy" {
     actions   = ["ssm:SendCommand"]
     resources = [aws_instance.app.arn]
   }
+
+  statement {
+    sid = "Ec2StartStop"
+    actions = [
+      "ec2:StartInstances",
+      "ec2:StopInstances",
+    ]
+    resources = [aws_instance.app.arn]
+  }
 }
 
 resource "aws_iam_policy" "gha_deploy" {

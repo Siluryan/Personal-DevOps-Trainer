@@ -97,9 +97,9 @@ variable "github_deployment_environments" {
 }
 
 variable "patch_window_cron" {
-  description = "Janela semanal de patching (cron AWS). Padrão: domingo 10:00 UTC (07:00 BRT)."
+  description = "Janela semanal de patching (cron AWS). Padrão: domingo 14:00 UTC (11:00 BRT)."
   type        = string
-  default     = "cron(0 10 ? * SUN *)"
+  default     = "cron(0 14 ? * SUN *)"
 }
 
 variable "backup_bucket_name_override" {

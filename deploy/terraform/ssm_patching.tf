@@ -40,7 +40,7 @@ resource "aws_ssm_maintenance_window" "patch" {
   allow_unassociated_targets = false
 }
 
-# Instala patches aprovados na baseline (domingo 10:00 UTC, após scan diário).
+# Instala patches aprovados na baseline (domingo 14:00 UTC = 11:00 BRT).
 
 resource "aws_ssm_maintenance_window_target" "patch" {
   window_id     = aws_ssm_maintenance_window.patch.id
@@ -89,7 +89,7 @@ resource "aws_ssm_maintenance_window_task" "patch_install" {
 resource "aws_ssm_association" "scan_daily" {
   name                        = "AWS-RunPatchBaseline"
   association_name            = "${var.project_name}-${var.environment}-scan"
-  schedule_expression         = "cron(0 9 * * ? *)" # 09:00 UTC — após apt-daily-upgrade (~06:44 UTC)
+  schedule_expression         = "cron(0 13 * * ? *)" # 13:00 UTC = 10:00 BRT (janela 08:00–00:00)
   apply_only_at_cron_interval = true                # não dispara scan durante bootstrap (evita lock do apt)
 
   targets {
@@ -108,7 +108,7 @@ resource "aws_ssm_association" "scan_daily" {
 resource "aws_ssm_association" "backup_daily" {
   name                = "AWS-RunShellScript"
   association_name    = "${var.project_name}-${var.environment}-backup"
-  schedule_expression = "cron(0 5 * * ? *)" # 05:00 UTC = 02:00 BRT
+  schedule_expression = "cron(0 12 * * ? *)" # 12:00 UTC = 09:00 BRT (janela 08:00–00:00)
 
   targets {
     key    = "InstanceIds"
