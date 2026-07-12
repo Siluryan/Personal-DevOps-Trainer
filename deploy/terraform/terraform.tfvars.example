@@ -23,4 +23,4 @@ ssh_public_key = ""
 ebs_root_size_gb = 20
 patch_window_cron = "cron(0 14 ? * SUN *)"
 backup_bucket_name_override = ""
-backup_retention_days       = 30
+backup_retention_days       = 3

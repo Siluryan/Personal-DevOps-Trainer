@@ -151,14 +151,16 @@ Se você usar Patch Manager apenas, comente o bloco de
 
 ## Backups
 
-`SSM Association` `pdt-prod-backup` roda às 05:00 UTC todo dia, executando
+`SSM Association` `pdt-prod-backup` roda às 12:00 UTC (09:00 BRT) todo dia, executando
 `/opt/pdt/scripts/backup.sh`. Sobe para o bucket `aws_s3_bucket.backups`:
 
 - `db/pdt_<TS>.dump` — formato custom do `pg_dump` (restore com `pg_restore`).
 - `media/media_<TS>.tar.gz` — tarball do diretório `media/`.
 
-Lifecycle do bucket move objetos para Glacier IR depois de 30 dias e
-expira após `backup_retention_days * 12`. Ajuste em `backups.tf`.
+Lifecycle: expira após `backup_retention_days` (padrão **3 dias**) em **S3 Standard**.
+Sem Glacier — para dumps pequenos (~500 KiB/dia), Standard por poucos dias é mais
+barato que transição + taxa mínima do Glacier IR. Versioning desligado (cada backup
+tem chave única por timestamp). Ajuste em `backups.tf` / `backup_retention_days`.
 
 ## Hardening aplicado
 
@@ -179,7 +181,7 @@ expira após `backup_retention_days * 12`. Ajuste em `backups.tf`.
 | **IMDS**          | v2 obrigatório, hop limit 2 |
 | **Secrets**       | Postgres + Django SECRET_KEY em SSM Parameter Store (SecureString) |
 | **EBS**           | criptografia em repouso (KMS aws/ebs) |
-| **S3 backups**    | Versioning + SSE-AES256 + Public Access Block + Lifecycle |
+| **S3 backups**    | SSE-AES256 + Public Access Block + expiração em 3 dias (Standard) |
 | **Acesso**        | preferir SSM Session Manager (não exige porta 22 aberta) |
 
 ## CI / CD
@@ -216,7 +218,7 @@ instância ligada **16 h/dia** (08:00–00:00 UTC-3), Cloudflare Tunnel Free.
 | **EC2 t4g.nano** | 480 h × $0,0042 | **~$2,00** |
 | **EBS gp3 20 GB** | 24/7 (disco persiste com instância parada) | **~$1,60** |
 | **Cloudflare Tunnel** | plano Free | **$0** |
-| **S3 backups** | poucos MB | **<$1** |
+| **S3 backups** | ~3 dias × ~0,5 MB/dia (Standard) | **~$0,01** |
 | **Data transfer** | baixo (tunnel outbound) | **<$1** |
 
 | cenário | USD/mês |

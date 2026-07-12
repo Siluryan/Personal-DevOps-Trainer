@@ -36,7 +36,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "backups" {
 resource "aws_s3_bucket_versioning" "backups" {
   bucket = aws_s3_bucket.backups.id
   versioning_configuration {
-    status = "Enabled"
+    # Objetos são únicos por timestamp; versioning só aumenta custo sem benefício.
+    status = "Suspended"
   }
 }
 
@@ -49,17 +50,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
 
     filter {}
 
-    transition {
-      days          = 30
-      storage_class = "GLACIER_IR"
-    }
-
+    # Retenção curta em Standard: mais barato que Glacier IR para dumps pequenos
+    # (~500 KiB/dia) — evita taxa mínima por objeto e custo de transição.
     expiration {
-      days = var.backup_retention_days * 12
-    }
-
-    noncurrent_version_expiration {
-      noncurrent_days = var.backup_retention_days
+      days = var.backup_retention_days
     }
   }
 }

@@ -109,7 +109,7 @@ variable "backup_bucket_name_override" {
 }
 
 variable "backup_retention_days" {
-  description = "Dias de retenção dos backups antes do glacier/expiração."
+  description = "Dias de retenção dos backups no S3 Standard antes da expiração automática."
   type        = number
-  default     = 30
+  default     = 3
 }
