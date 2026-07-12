@@ -5,14 +5,14 @@ environment       = "prod"
 owner             = "platform"
 aws_region        = "us-east-1"
 
-# Domínio público que vai apontar para o EIP.
-domain_name       = "pdt.exemplo.com"
-# letsencrypt_email tem default em variables.tf; sobrescreva apenas se necessario.
-# letsencrypt_email = "guilhermerrdias@gmail.com"
+# Domínio público exposto via Cloudflare Tunnel.
+domain_name = "pdt.exemplo.com"
+
+# Token do tunnel (remotely-managed). Também pode ir em secrets.CLOUDFLARE_TUNNEL_TOKEN no GitHub.
+# cloudflare_tunnel_token = "eyJh..."
 
 # Repositório no formato owner/repo, usado pelo OIDC e clone no user_data.
 github_repo = "Siluryan/Personal-DevOps-Trainer"
-# Sem `environment:` no job → `sub` usa ref. Com `environment: prod` → `sub` usa environment: (ver default em variables.tf).
 github_default_branches          = ["refs/heads/main"]
 github_deployment_environments = ["prod"]
 
@@ -20,12 +20,7 @@ github_deployment_environments = ["prod"]
 operator_cidrs = []
 ssh_public_key = ""
 
-# Dimensionamento do disco. Aumente se for guardar muitas mídias localmente.
 ebs_root_size_gb = 20
-
-# Patch toda madrugada de domingo às 04:00 UTC.
 patch_window_cron = "cron(0 4 ? * SUN *)"
-
-# Bucket de backups; vazio = nome gerado com sufixo aleatório.
 backup_bucket_name_override = ""
 backup_retention_days       = 30

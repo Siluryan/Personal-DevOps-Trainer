@@ -1,9 +1,9 @@
 # Deploy do PDT na AWS (t4g.nano, ARM64) — Terraform + GitHub Actions
 
 Este diretório provisiona uma instância t4g.nano (ARM64/Graviton) Ubuntu 24.04 LTS na AWS,
-roda o stack Django + Channels + nginx + Postgres + Redis, emite TLS via
-Let's Encrypt (com renovação automática), aplica patches semanais via SSM
-Patch Manager, faz backups diários para o S3 e expõe deploy contínuo via
+roda o stack Django + Channels + nginx + Postgres + Redis, expõe a aplicação via
+**Cloudflare Tunnel** (sem EIP nem portas 80/443 públicas na origem), aplica patches
+semanais via SSM Patch Manager, faz backups diários para o S3 e expõe deploy contínuo via
 GitHub Actions usando OIDC (sem chave AWS de longa duração no repo).
 
 ```
@@ -25,7 +25,8 @@ deploy/
     │   ├── pdt.conf.tpl
     │   └── snippets/pdt_proxy.conf
     ├── systemd/
-    │   └── pdt-daphne.service
+    │   ├── pdt-daphne.service
+    │   └── cloudflared.service
     └── scripts/
         ├── deploy.sh         # chamado pelo SSM SendCommand do GHA
         ├── backup.sh         # chamado por SSM Association diário
@@ -35,19 +36,20 @@ deploy/
 ## Topologia
 
 ```
-Internet ── 80/443 ── nginx ──┬── /static/  → /opt/pdt/app/pdt/staticfiles/
-                              ├── /media/   → /opt/pdt/app/pdt/media/
-                              ├── /ws/      → daphne 127.0.0.1:8000 (WebSocket)
-                              └── /        → daphne 127.0.0.1:8000 (HTTP)
+Internet ── HTTPS ── Cloudflare (TLS + proxy) ── cloudflared (outbound) ── nginx 127.0.0.1:8080
+                                                      ├── /static/  → /opt/pdt/app/pdt/staticfiles/
+                                                      ├── /media/   → /opt/pdt/app/pdt/media/
+                                                      ├── /ws/      → daphne 127.0.0.1:8000 (WebSocket)
+                                                      └── /        → daphne 127.0.0.1:8000 (HTTP)
 
-EC2 (t4g.nano, ARM64)
+EC2 (t4g.nano, ARM64) — sem EIP, sem 80/443 públicos
 ├── postgres 16 (local, 30 conexões, 128MB shared_buffers)
 ├── redis 7    (bind 127.0.0.1, 96MB maxmemory)
-├── daphne     (systemd, ASGI)
-├── nginx      (TLS via Let's Encrypt + HSTS)
-├── certbot    (renew via systemd timer)
-├── ufw        (22 op, 80/443 mundo, deny all)
-├── fail2ban   (sshd, nginx-bad-request, nginx-botsearch)
+├── docker     (app arm64 via ECR, network_mode: host)
+├── nginx      (HTTP localhost:8080, proxy para daphne)
+├── cloudflared (tunnel outbound para Cloudflare)
+├── ufw        (22 opcional, deny all inbound restante)
+├── fail2ban   (sshd)
 ├── auditd     (regras /etc/passwd, sudoers, sshd_config, /opt/pdt)
 └── unattended-upgrades + AWS SSM Patch Manager (defesa em profundidade)
 ```
@@ -58,18 +60,33 @@ EC2 (t4g.nano, ARM64)
    admin separado, fora do CI).
 2. Bucket + tabela DynamoDB para o state remoto (substitua os valores em
    `versions.tf` antes do primeiro `init`).
-3. Domínio público (`vars.PDT_DOMAIN_NAME`) com um A record apontando para o
-   EIP (output `ec2_public_ip`). É possível criar a EC2 antes do DNS apontar:
-   nesse caso o certbot inicial vai falhar e você reexecuta `certbot --nginx`
-   manualmente após o DNS propagar.
-4. Repositório no GitHub com permissão para criar OIDC role.
+3. Domínio no **Cloudflare** (`vars.PDT_DOMAIN_NAME`) com DNS gerenciado lá.
+4. **Cloudflare Tunnel** criado em Zero Trust → Networks → Tunnels (remotely-managed).
+5. Repositório no GitHub com permissão para criar OIDC role.
+
+## Cloudflare Tunnel (configuração)
+
+1. Em [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → **Networks** → **Tunnels** → **Create a tunnel**.
+2. Escolha **Cloudflared** e copie o **token** do connector.
+3. Em **Public Hostname**, adicione rotas para o origin local:
+   - `personaldevopstrainer.online` → `http://127.0.0.1:8080`
+   - `www.personaldevopstrainer.online` → `http://127.0.0.1:8080`
+4. Habilite **WebSockets** se o painel oferecer (necessário para `/ws/`).
+5. No DNS da Cloudflare, remova o **A record** apontando para o EIP antigo.
+   O tunnel cria/atualiza os registros automaticamente (CNAME para `*.cfargotunnel.com`).
+6. Guarde o token:
+   - GitHub secret `CLOUDFLARE_TUNNEL_TOKEN` (para `terraform.yml`), e/ou
+   - `cloudflare_tunnel_token` em `terraform.tfvars`.
+
+TLS termina na Cloudflare (modo **Full** ou **Full (strict)**). A origem fala HTTP
+com nginx em localhost; não é necessário certbot/Let's Encrypt na EC2.
 
 ## Bootstrap inicial
 
 ```bash
 cd deploy/terraform
 cp terraform.tfvars.example terraform.tfvars
-# edite terraform.tfvars (domínio, e-mail, github_repo)
+# edite terraform.tfvars (domínio, cloudflare_tunnel_token, github_repo)
 
 terraform init
 terraform apply
@@ -77,48 +94,41 @@ terraform apply
 
 Saídas relevantes:
 
-- `ec2_public_ip` — apontar o A record do domínio.
+- `ec2_public_ip` — IP efêmero (outbound/SSM); tráfego web não passa por aqui.
+- `cloudflare_tunnel_token_ssm` — parâmetro SSM onde o token fica armazenado.
 - `github_actions_role_arn` — usar como secret `GHA_DEPLOY_ROLE_ARN` no repo.
 - `backup_bucket` — onde os dumps do Postgres e tar.gz de media param.
 
-Após o DNS propagar, conecte via SSM Session Manager e rode:
-
-```bash
-sudo certbot --nginx -d pdt.exemplo.com --non-interactive --agree-tos -m ops@exemplo.com --redirect
-```
+Após o apply, dispare um deploy (`push` na main ou workflow manual) para
+instalar/atualizar nginx localhost + cloudflared na instância existente.
 
 ## Variáveis no GitHub
 
 Em `Settings → Secrets and variables → Actions` do repositório, configure:
 
 ### Secrets
-| nome                    | usado em       | descrição                                |
-| ----------------------- | -------------- | ---------------------------------------- |
-| `GHA_DEPLOY_ROLE_ARN`   | `deploy.yml`   | Role do OIDC (output `github_actions_role_arn`). |
-| `TF_AWS_ROLE_ARN`       | `terraform.yml`| Role com permissão de Terraform (NÃO criada por este código; provisione manualmente com permissões só ao que o TF maneja). |
+| nome                       | usado em        | descrição                                |
+| -------------------------- | --------------- | ---------------------------------------- |
+| `GHA_DEPLOY_ROLE_ARN`      | `deploy.yml`    | Role do OIDC (output `github_actions_role_arn`). |
+| `TF_AWS_ROLE_ARN`          | `terraform.yml` | Role com permissão de Terraform.         |
+| `CLOUDFLARE_TUNNEL_TOKEN`  | `terraform.yml` | Token do Cloudflare Tunnel (remotely-managed). |
 
 ### Variables
 | nome                  | descrição                                              |
 | --------------------- | ------------------------------------------------------ |
-| `PDT_DOMAIN_NAME`     | Mesmo domínio que está no `terraform.tfvars`.          |
-| `LETSENCRYPT_EMAIL`   | E-mail de notificação do Let's Encrypt.                |
+| `PDT_DOMAIN_NAME`     | Domínio no Cloudflare (ex.: `personaldevopstrainer.online`). |
 | `PDT_SSH_PUBLIC_KEY`  | Chave OpenSSH (opcional; vazio = só Session Manager).  |
 | `PDT_OPERATOR_CIDRS`  | JSON `["1.2.3.4/32"]` (opcional).                      |
 
-## Renovação de certificados
+## Migração de EIP → Cloudflare Tunnel
 
-O pacote `certbot` instalado pelo `user_data` cria o timer
-`certbot.timer` (e `snap.certbot.renew.timer` quando aplicável). O timer
-roda 2× ao dia e renova certificados que estão a 30 dias do vencimento.
-Após renovar, o hook `--deploy-hook` recarrega o nginx (já configurado pelo
-`certbot --nginx` na primeira emissão).
+Se você já tinha produção com EIP + Let's Encrypt:
 
-Você pode forçar manualmente:
-
-```bash
-sudo certbot renew --dry-run
-sudo systemctl list-timers certbot.timer
-```
+1. Crie o tunnel e configure hostnames (`127.0.0.1:8080`) **antes** de remover o A record.
+2. Adicione `CLOUDFLARE_TUNNEL_TOKEN` no GitHub e rode `terraform apply` (remove EIP, fecha SG 80/443).
+3. Dispare deploy para reconfigurar nginx + cloudflared na EC2.
+4. Remova o A record antigo no Cloudflare; confirme que o tunnel assumiu o DNS.
+5. Opcional: desative certbot na instância (`systemctl disable --now certbot.timer`).
 
 ## Patches agendados
 
@@ -150,14 +160,15 @@ expira após `backup_retention_days * 12`. Ajuste em `backups.tf`.
 | ----------------- | ------ |
 | **SSH**           | sem root, sem senha, sem X11/agent/TCP forwarding, MaxAuthTries=3, banner |
 | **Firewall**      | UFW deny in/allow out + SG (defesa em profundidade) |
-| **Brute-force**   | fail2ban com jails sshd/nginx (logs via systemd) |
+| **Brute-force**   | fail2ban com jail sshd |
+| **Exposição**     | origem fechada (sem 80/443 públicos); tráfego via Cloudflare Tunnel |
 | **Kernel**        | sysctl: rp_filter, syncookies, ptrace_scope=2, kptr_restrict, dmesg_restrict, BPF não-privilegiado off, randomize_va_space=2 |
 | **Filesystem**    | protected_{hardlinks,symlinks,fifos,regular}, suid_dumpable=0, EBS gp3 + KMS |
 | **AppArmor**      | habilitado por padrão no Ubuntu 24.04 (perfis nginx/postgres ativos) |
 | **Auditd**        | regras /etc/passwd, /etc/shadow, /etc/sudoers, /etc/ssh/sshd_config, /opt/pdt |
 | **Patches**       | unattended-upgrades (auto-reboot 04:30) + SSM Patch Manager semanal |
 | **App**           | Daphne em systemd com NoNewPrivileges, ProtectSystem=strict, PrivateTmp, MemoryDenyWriteExecute, SystemCallFilter |
-| **TLS**           | TLSv1.2/1.3, HSTS 1y, OCSP stapling, ciphers GCM apenas |
+| **TLS**           | terminado na Cloudflare (Full/Full strict) |
 | **HTTP**          | X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy |
 | **IMDS**          | v2 obrigatório, hop limit 2 |
 | **Secrets**       | Postgres + Django SECRET_KEY em SSM Parameter Store (SecureString) |
@@ -179,7 +190,7 @@ expira após `backup_retention_days * 12`. Ajuste em `backups.tf`.
 | -------------- | --------------- |
 | t4g.nano       | ~3.00 (ARM64/Graviton, on-demand us-east-1) |
 | EBS gp3 20GB   | ~1.60 |
-| EIP em uso     | $0 |
+| Cloudflare Tunnel | $0 (plano Free) |
 | S3 (poucos MB) | <$1 |
 | Data transfer  | varia (100GB grátis no free tier) |
 

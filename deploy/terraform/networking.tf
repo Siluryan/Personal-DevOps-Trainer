@@ -46,27 +46,10 @@ resource "aws_route_table_association" "public" {
 # ─────────────────────────────────────────────────────────────────────────
 resource "aws_security_group" "app" {
   name        = "${var.project_name}-${var.environment}-app-sg"
-  description = "App Django (Daphne via Nginx) na t3.micro"
+  description = "App Django (Daphne via Nginx + Cloudflare Tunnel outbound)"
   vpc_id      = aws_vpc.main.id
 
-  # 80 e 443 abertos para o mundo (Let's Encrypt + tráfego web).
-  ingress {
-    description = "HTTP (redireciona para HTTPS)"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # SSH só do(s) operador(es). Vazio => completamente fechado;
+  # Sem 80/443 públicos: tráfego HTTP entra via Cloudflare Tunnel (outbound da EC2).
   # use somente Session Manager (recomendado).
   dynamic "ingress" {
     for_each = length(var.operator_cidrs) > 0 ? [1] : []

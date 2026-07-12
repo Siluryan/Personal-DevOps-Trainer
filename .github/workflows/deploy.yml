@@ -272,28 +272,18 @@ jobs:
           dump_ssm_log
           exit 1
 
-      - name: Smoke test da origem
+      - name: Smoke test via Cloudflare
         env:
           DOMAIN: ${{ vars.PDT_DOMAIN_NAME }}
-          INSTANCE_ID: ${{ steps.target.outputs.instance_id }}
         run: |
           set -euo pipefail
-          ORIGIN_IP=$(aws ec2 describe-instances \
-            --instance-ids "$INSTANCE_ID" \
-            --query 'Reservations[0].Instances[0].PublicIpAddress' \
-            --output text)
-          if [ -z "$ORIGIN_IP" ] || [ "$ORIGIN_IP" = "None" ]; then
-            echo "::error::Instância sem IP público para o smoke test."
-            exit 1
-          fi
           for i in 1 2 3; do
-            CODE=$(curl -sk --resolve "$DOMAIN:443:$ORIGIN_IP" \
-              -o /dev/null -w '%{http_code}' "https://$DOMAIN/")
-            echo "tentativa $i: origem=$ORIGIN_IP HTTP $CODE"
+            CODE=$(curl -sk -o /dev/null -w '%{http_code}' "https://$DOMAIN/")
+            echo "tentativa $i: https://$DOMAIN/ HTTP $CODE"
             case "$CODE" in
               200|301|302) exit 0;;
             esac
             sleep 5
           done
-          echo "::error::Healthcheck da origem falhou."
+          echo "::error::Healthcheck via Cloudflare falhou."
           exit 1

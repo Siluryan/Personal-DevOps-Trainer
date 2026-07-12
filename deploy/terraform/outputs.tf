@@ -1,6 +1,6 @@
 output "ec2_public_ip" {
-  description = "IP público fixo (EIP) da instância."
-  value       = aws_eip.app.public_ip
+  description = "IP público efêmero da instância (outbound/SSM). Tráfego web entra via Cloudflare Tunnel."
+  value       = aws_instance.app.public_ip
 }
 
 output "ec2_instance_id" {
@@ -28,7 +28,12 @@ output "ecr_repository_url" {
   value       = aws_ecr_repository.app.repository_url
 }
 
+output "cloudflare_tunnel_token_ssm" {
+  description = "Nome do parâmetro SSM com o token do Cloudflare Tunnel."
+  value       = aws_ssm_parameter.cloudflare_tunnel_token.name
+}
+
 output "ssh_command_hint" {
   description = "Comando de exemplo para acessar a instância via SSH (operador autorizado)."
-  value       = "ssh -i <sua-chave> deploy@${aws_eip.app.public_ip}"
+  value       = "ssh -i <sua-chave> deploy@${aws_instance.app.public_ip}"
 }
