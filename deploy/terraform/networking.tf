@@ -46,7 +46,7 @@ resource "aws_route_table_association" "public" {
 # ─────────────────────────────────────────────────────────────────────────
 resource "aws_security_group" "app" {
   name        = "${var.project_name}-${var.environment}-app-sg"
-  description = "App Django (Daphne via Nginx + Cloudflare Tunnel outbound)"
+  description = "App Django (Daphne via Nginx) na t3.micro"
   vpc_id      = aws_vpc.main.id
 
   # Sem 80/443 públicos: tráfego HTTP entra via Cloudflare Tunnel (outbound da EC2).
