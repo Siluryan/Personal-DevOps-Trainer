@@ -21,404 +21,478 @@ PHASE5 = {
                     "tópico te dá o modelo mental sólido para os 9 que vêm a seguir."
                 ),
                 "body": (
-                    "<h3>1. O modelo mental: declarativo + reconciliação</h3>"
-                    "<p>K8s não é um conjunto de scripts que você executa em ordem. É um "
-                    "<strong>sistema de controle baseado em estado desejado</strong>. Você "
-                    "descreve o que quer (ex.: '3 réplicas de um Deployment com a imagem nginx:1.25 "
-                    "expostas via Service'), envia esse desejo ao API server, e dezenas de "
-                    "<em>controllers</em> trabalham em loop infinito para fazer a realidade "
-                    "convergir ao desejado.</p>"
-                    "<pre><code># Loop conceitual de qualquer controller K8s\n"
-                    "while True:\n"
-                    "    desired = api.get_desired_state()  # do etcd\n"
-                    "    actual = api.get_actual_state()    # do cluster\n"
-                    "    diff = compare(desired, actual)\n"
-                    "    if diff:\n"
-                    "        apply_changes(diff)            # cria/atualiza/destrói\n"
-                    "    sleep(short_interval)</code></pre>"
-                    "<p>Isso muda profundamente como você opera. Você não 'manda matar um pod'. "
-                    "Você diz 'quero que esse pod não exista' (deletando o objeto) e o controller "
-                    "<em>reconcilia</em>. Se o objeto sumir do etcd, mas o pod continuar rodando, "
-                    "o kubelet vai matar. Se o objeto existir mas o pod morrer, o controller cria "
-                    "outro. Convergência contínua, não comandos pontuais.</p>"
+                """<h3>1. O modelo mental que muda tudo: você não manda, você declara</h3>
+<p>Kubernetes não é uma sequência de scripts que você executa em ordem —
+é um <strong>sistema de controle baseado em estado desejado</strong>.
+Você descreve o que quer ("3 réplicas de um Deployment com a imagem
+nginx:1.25, expostas via Service"), envia essa descrição ao API server,
+e dezenas de <em>controllers</em> trabalham em loop infinito para fazer
+a realidade CONVERGIR ao que foi declarado:</p>
+<pre><code># Loop conceitual de qualquer controller K8s
+while True:
+    desired = api.get_desired_state()  # do etcd
+    actual = api.get_actual_state()    # do cluster
+    diff = compare(desired, actual)
+    if diff:
+        apply_changes(diff)            # cria/atualiza/destrói
+    sleep(short_interval)</code></pre>
+<p>Isso muda a forma de OPERAR o sistema de um jeito profundo: você
+nunca "manda matar um pod" diretamente — você diz "quero que este objeto
+não exista" (deletando-o), e o controller correspondente RECONCILIA a
+diferença. Se o objeto sumir do etcd mas o processo continuar rodando, o
+kubelet o mata na próxima reconciliação. Se o objeto continuar existindo
+mas o pod morrer sozinho (crash, node caindo), o controller cria outro
+automaticamente. É convergência CONTÍNUA, não uma sequência de comandos
+pontuais executados uma vez — a diferença central entre operar
+Kubernetes e operar um script tradicional de shell.</p>
 
-                    "<h3>2. Arquitetura: control plane e workers</h3>"
-                    "<p>Cluster K8s tem dois grupos de nós:</p>"
-                    "<ul>"
-                    "<li><strong>Control plane</strong> (cérebro):"
-                    "<ul>"
-                    "<li><code>kube-apiserver</code>: única porta de entrada. REST API + watch streams.</li>"
-                    "<li><code>etcd</code>: banco key-value distribuído (Raft). Armazena <em>todo</em> "
-                    "o estado do cluster.</li>"
-                    "<li><code>kube-scheduler</code>: decide em qual node cada pod vai rodar.</li>"
-                    "<li><code>kube-controller-manager</code>: roda os controllers built-in "
-                    "(Deployment, ReplicaSet, Node, Endpoint, etc.).</li>"
-                    "<li><code>cloud-controller-manager</code>: integra com cloud (LoadBalancer, "
-                    "volumes, nodes).</li>"
-                    "</ul></li>"
-                    "<li><strong>Workers</strong> (onde rodam suas cargas):"
-                    "<ul>"
-                    "<li><code>kubelet</code>: agente em cada node. Recebe especificação de pods, "
-                    "fala com container runtime, reporta status.</li>"
-                    "<li><code>kube-proxy</code>: programa iptables/ipvs/eBPF para implementar "
-                    "Services.</li>"
-                    "<li><strong>Container runtime</strong>: containerd, CRI-O. Roda os containers "
-                    "de fato (Docker como runtime foi descontinuado em 1.24+).</li>"
-                    "</ul></li>"
-                    "</ul>"
-                    "<p>Em cluster gerenciado (EKS, GKE, AKS), o control plane é responsabilidade "
-                    "do provedor. Você só vê os workers e a API. Em produção, raramente vale "
-                    "self-host (operação de etcd em alta disponibilidade não é trivial).</p>"
+<h3>2. Arquitetura: cérebro e músculo, e por que gerenciado ganhou na maioria dos casos</h3>
+<p>Um cluster tem dois grupos de nós com papéis completamente
+diferentes. O <strong>control plane</strong> é o cérebro:
+<code>kube-apiserver</code> é a ÚNICA porta de entrada — toda interação
+com o cluster passa por ele, via REST API e streams de watch;
+<code>etcd</code> é o banco de dados key-value distribuído (usando o
+protocolo de consenso Raft) que guarda literalmente TODO o estado do
+cluster — perdê-lo sem backup é perder o cluster inteiro;
+<code>kube-scheduler</code> decide em qual node específico cada pod novo
+vai rodar; <code>kube-controller-manager</code> roda os controllers
+embutidos (o mesmo loop da seção 1, para Deployment, ReplicaSet, Node,
+Endpoint, e outros); e <code>cloud-controller-manager</code> integra o
+cluster com recursos específicos da nuvem (LoadBalancer, volumes, nodes
+provisionados dinamicamente). Os <strong>workers</strong> são onde as
+cargas de verdade rodam: <code>kubelet</code> é o agente presente em
+cada node, recebendo a especificação de pods, conversando com o runtime
+de container, e reportando status de volta; <code>kube-proxy</code>
+programa as regras (iptables, ipvs, ou eBPF conforme a implementação)
+que fazem os Services funcionarem de fato; e o container runtime
+(containerd, CRI-O — o Docker foi descontinuado como runtime a partir do
+Kubernetes 1.24) executa os containers propriamente ditos. Em clusters
+gerenciados (EKS, GKE, AKS), o provedor de nuvem assume toda a
+responsabilidade operacional do control plane — você só vê workers e a
+API — e é por isso que a esmagadora maioria das operações em produção
+usa gerenciado: operar etcd em alta disponibilidade por conta própria
+não é trivial, e o ganho de fazer isso manualmente raramente compensa o
+risco.</p>
 
-                    "<h3>3. Os primitivos essenciais</h3>"
-                    "<p>K8s tem dezenas de objetos. Você precisa dominar estes:</p>"
-                    "<ul>"
-                    "<li><strong>Pod</strong>: a menor unidade deployable. 1+ containers que "
-                    "compartilham rede (mesmo IP, mesma porta) e volumes. Em 99% dos casos é "
-                    "1 container. Sidecars (Istio, Vault Agent, log shipper) são exceções "
-                    "úteis.</li>"
-                    "<li><strong>ReplicaSet</strong>: garante que N pods existam. Você raramente "
-                    "cria diretamente, usa Deployment.</li>"
-                    "<li><strong>Deployment</strong>: gerencia ReplicaSets para fazer rolling "
-                    "updates. <em>Stateless</em>: não há identidade entre pods.</li>"
-                    "<li><strong>StatefulSet</strong>: pods com identidade estável "
-                    "(<code>app-0</code>, <code>app-1</code>) e armazenamento persistente associado. "
-                    "Para DBs, Kafka, Elasticsearch.</li>"
-                    "<li><strong>DaemonSet</strong>: 1 pod por node. Para agentes (CNI, log "
-                    "collector, node-exporter, Falco).</li>"
-                    "<li><strong>Job / CronJob</strong>: batch. Job roda até completar. CronJob "
-                    "agenda Jobs com cron syntax.</li>"
-                    "<li><strong>Service</strong>: endpoint estável + load balancer L4 para um "
-                    "conjunto de pods (selecionados por label). Sem Service, IP dos pods muda "
-                    "a cada deploy e não há balanceamento.</li>"
-                    "<li><strong>Ingress</strong>: roteamento HTTP/HTTPS externo (host + path). "
-                    "Precisa de um <em>ingress-controller</em> (NGINX, Traefik, HAProxy) "
-                    "implementando o objeto.</li>"
-                    "<li><strong>ConfigMap</strong>: configuração não-sensível (env, arquivos).</li>"
-                    "<li><strong>Secret</strong>: configuração sensível (apenas base64 por padrão; "
-                    "habilite encryption-at-rest no etcd, ver tópico 5.2).</li>"
-                    "<li><strong>Namespace</strong>: agrupamento lógico. <em>Não</em> é boundary "
-                    "forte de segurança, apenas escopo de objetos.</li>"
-                    "<li><strong>PersistentVolume / PersistentVolumeClaim</strong>: storage "
-                    "persistente. PV é o recurso, PVC é o pedido.</li>"
-                    "<li><strong>ServiceAccount</strong>: identidade de uma carga (não de um "
-                    "humano). Usada para autenticar contra a API.</li>"
-                    "</ul>"
+<h3>3. Os primitivos que valem dominar antes de qualquer coisa mais avançada</h3>
+<p>Um <strong>Pod</strong> é a menor unidade que pode ser implantada —
+um ou mais containers compartilhando a mesma rede (mesmo IP, mesmas
+portas) e os mesmos volumes; na prática, 99% dos pods têm um único
+container, e sidecars (proxy do Istio, agente do Vault, coletor de log)
+são a exceção deliberada, não a regra. Um <strong>ReplicaSet</strong>
+garante que N réplicas de um pod existam — raramente criado diretamente,
+quase sempre gerenciado por um Deployment. Um <strong>Deployment</strong>
+gerencia ReplicaSets para fazer rolling updates de forma controlada, e é
+inerentemente STATELESS: não há identidade individual entre as réplicas.
+Um <strong>StatefulSet</strong> resolve o caso oposto: pods com
+identidade ESTÁVEL (<code>app-0</code>, <code>app-1</code>, sempre os
+mesmos nomes) e armazenamento persistente associado a cada um
+especificamente — o padrão certo para bancos de dados, Kafka,
+Elasticsearch. Um <strong>DaemonSet</strong> garante exatamente um pod
+por node — o padrão para agentes que precisam rodar em TODO node (o
+próprio CNI, coletor de log, node-exporter, Falco). <strong>Job</strong>
+e <strong>CronJob</strong> cobrem trabalho em lote: Job roda até
+completar uma vez, CronJob agenda Jobs com sintaxe cron. Um
+<strong>Service</strong> dá um endpoint ESTÁVEL e balanceamento de
+carga L4 para um conjunto de pods selecionados por label — sem ele, o IP
+de cada pod muda a cada deploy e não há distribuição de tráfego nenhuma.
+Um <strong>Ingress</strong> roteia HTTP/HTTPS externo por host e caminho
+— mas só funciona com um ingress-controller (NGINX, Traefik, HAProxy)
+efetivamente implementando o objeto declarado. <strong>ConfigMap</strong>
+guarda configuração NÃO sensível; <strong>Secret</strong> guarda
+configuração sensível, mas por padrão é só base64 — a aula de Hardening
+detalha por que isso não é criptografia de verdade e como corrigir.
+<strong>Namespace</strong> é agrupamento LÓGICO de recursos — não uma
+fronteira forte de segurança por si só, apenas escopo organizacional.
+<strong>PersistentVolume/PersistentVolumeClaim</strong> separam o
+RECURSO de armazenamento (PV) do PEDIDO por armazenamento (PVC). E
+<strong>ServiceAccount</strong> é identidade de uma CARGA de trabalho,
+não de um humano — usada para autenticar programaticamente contra a
+API.</p>
 
-                    "<h3>4. Pod: o coração do K8s</h3>"
-                    "<pre><code>apiVersion: v1\n"
-                    "kind: Pod\n"
-                    "metadata:\n"
-                    "  name: web\n"
-                    "  labels:\n"
-                    "    app: web\n"
-                    "spec:\n"
-                    "  containers:\n"
-                    "  - name: nginx\n"
-                    "    image: nginx:1.25@sha256:abcdef...\n"
-                    "    ports:\n"
-                    "    - containerPort: 80\n"
-                    "    resources:\n"
-                    "      requests:\n"
-                    "        cpu: 100m\n"
-                    "        memory: 128Mi\n"
-                    "      limits:\n"
-                    "        cpu: 500m\n"
-                    "        memory: 256Mi\n"
-                    "    livenessProbe:\n"
-                    "      httpGet: { path: /, port: 80 }\n"
-                    "      periodSeconds: 10\n"
-                    "    readinessProbe:\n"
-                    "      httpGet: { path: /healthz, port: 80 }\n"
-                    "      periodSeconds: 5\n"
-                    "    securityContext:\n"
-                    "      runAsNonRoot: true\n"
-                    "      runAsUser: 101\n"
-                    "      readOnlyRootFilesystem: true\n"
-                    "      allowPrivilegeEscalation: false\n"
-                    "      capabilities:\n"
-                    "        drop: [\"ALL\"]\n"
-                    "  securityContext:\n"
-                    "    seccompProfile:\n"
-                    "      type: RuntimeDefault</code></pre>"
-                    "<p>Observe os blocos:</p>"
-                    "<ul>"
-                    "<li><strong>resources</strong>: <code>requests</code> é o que o scheduler "
-                    "usa para decidir node; <code>limits</code> é o teto que o cgroup impõe. Sem "
-                    "requests, scheduler chuta; sem limits, pod pode comer node todo.</li>"
-                    "<li><strong>livenessProbe</strong>: se falhar, kubelet reinicia o container. "
-                    "Use para detectar deadlock, não para healthcheck dependente de DB (cascata "
-                    "de restart se DB cair).</li>"
-                    "<li><strong>readinessProbe</strong>: se falhar, pod sai do Service "
-                    "(Endpoints). Use para 'estou pronto para receber tráfego'. Carga inicial, "
-                    "warm-up de cache, etc.</li>"
-                    "<li><strong>securityContext</strong>: ver tópico 5.2 (Hardening). "
-                    "<code>runAsNonRoot</code>, <code>readOnlyRootFilesystem</code>, drop de "
-                    "<code>ALL</code> capabilities é o mínimo aceitável.</li>"
-                    "</ul>"
+<h3>4. O Pod na prática: cada bloco do manifesto resolve um problema específico</h3>
+<pre><code>apiVersion: v1
+kind: Pod
+metadata:
+  name: web
+  labels:
+    app: web
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.25@sha256:abcdef...
+    ports:
+    - containerPort: 80
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    livenessProbe:
+      httpGet: { path: /, port: 80 }
+      periodSeconds: 10
+    readinessProbe:
+      httpGet: { path: /healthz, port: 80 }
+      periodSeconds: 5
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 101
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault</code></pre>
+<p><code>requests</code> é o valor que o SCHEDULER usa para decidir em
+qual node o pod cabe — sem ele, a decisão é um "chute" sem garantia real
+de recurso disponível. <code>limits</code> é o teto que o cgroup do
+Linux de fato IMPÕE em runtime — sem ele, um pod com vazamento de
+memória ou pico de CPU pode consumir recursos do node inteiro,
+degradando todos os vizinhos que compartilham aquele node (o problema
+conhecido como "noisy neighbor"). <code>livenessProbe</code> falhando
+faz o kubelet REINICIAR o container — use para detectar travamento
+interno (deadlock), nunca para uma dependência externa como banco de
+dados, porque isso causaria uma cascata de reinícios em TODOS os pods
+que dependem daquele banco assim que ele tiver um soluço momentâneo.
+<code>readinessProbe</code> falhando apenas remove o pod da lista de
+Endpoints do Service — sem reiniciar nada — o mecanismo certo para
+"ainda estou de pé, mas não pronto para tráfego" durante aquecimento de
+cache ou carga inicial. E <code>securityContext</code> (detalhado na
+aula de Hardening) com <code>runAsNonRoot</code>,
+<code>readOnlyRootFilesystem</code> e descarte de todas as capabilities
+representa o mínimo aceitável de configuração de segurança, não um
+extra opcional.</p>
 
-                    "<h3>5. Deployment: o que você usa no dia a dia</h3>"
-                    "<pre><code>apiVersion: apps/v1\n"
-                    "kind: Deployment\n"
-                    "metadata:\n"
-                    "  name: web\n"
-                    "  namespace: prod\n"
-                    "spec:\n"
-                    "  replicas: 5\n"
-                    "  selector:\n"
-                    "    matchLabels: { app: web }\n"
-                    "  strategy:\n"
-                    "    type: RollingUpdate\n"
-                    "    rollingUpdate:\n"
-                    "      maxSurge: 25%       # quantos pods extras durante rollout\n"
-                    "      maxUnavailable: 0   # zero downtime\n"
-                    "  template:\n"
-                    "    metadata:\n"
-                    "      labels: { app: web }\n"
-                    "    spec:\n"
-                    "      containers:\n"
-                    "      - name: web\n"
-                    "        image: ghcr.io/me/web:v1.2.3\n"
-                    "        # ... resources, probes, securityContext\n"
-                    "      topologySpreadConstraints:\n"
-                    "      - maxSkew: 1\n"
-                    "        topologyKey: topology.kubernetes.io/zone\n"
-                    "        whenUnsatisfiable: ScheduleAnyway\n"
-                    "        labelSelector:\n"
-                    "          matchLabels: { app: web }</code></pre>"
-                    "<p>Conceitos importantes:</p>"
-                    "<ul>"
-                    "<li><strong>RollingUpdate</strong>: substitui pods aos poucos. "
-                    "<code>maxUnavailable: 0</code> + <code>maxSurge: 25%</code> garante zero "
-                    "downtime (cria novos antes de matar antigos).</li>"
-                    "<li><strong>Recreate</strong>: outra estratégia, mata todos, depois cria. "
-                    "Há downtime; útil quando há migration de schema incompatível.</li>"
-                    "<li><strong>topologySpreadConstraints</strong>: distribui pods entre AZs. "
-                    "Sem isso, scheduler pode colocar tudo numa AZ e você perde tudo se ela cair.</li>"
-                    "<li><strong>imagem com tag mutável (<code>:latest</code>, <code>:main</code>)</strong> "
-                    "é antipattern: deploy não é reproducível. Use SemVer ou digest "
-                    "(<code>@sha256:...</code>).</li>"
-                    "</ul>"
+<h3>5. Deployment: rolling update, e como evitar perder o cluster inteiro numa zona</h3>
+<pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: prod
+spec:
+  replicas: 5
+  selector:
+    matchLabels: { app: web }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%       # quantos pods extras durante rollout
+      maxUnavailable: 0   # zero downtime
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      containers:
+      - name: web
+        image: ghcr.io/me/web:v1.2.3
+        # ... resources, probes, securityContext
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels: { app: web }</code></pre>
+<p>A estratégia <code>RollingUpdate</code> substitui pods GRADUALMENTE
+— com <code>maxUnavailable: 0</code> e <code>maxSurge: 25%</code>, novos
+pods sobem ANTES dos antigos serem removidos, garantindo zero downtime
+durante todo o processo. A estratégia <code>Recreate</code> (menos
+comum) mata TODOS os pods antigos primeiro e só então cria os novos —
+com downtime real, mas necessária quando há migração de schema de banco
+incompatível entre versões, onde rodar as duas versões simultaneamente
+corromperia dados. <code>topologySpreadConstraints</code> distribui as
+réplicas entre zonas de disponibilidade diferentes — sem essa
+configuração, o scheduler pode (por coincidência ou otimização de
+recurso) colocar TODAS as réplicas na mesma zona, e perder essa zona
+específica significa perder o serviço inteiro, mesmo tendo 5 réplicas
+"redundantes" no papel. E usar tag mutável como <code>:latest</code> ou
+<code>:main</code> na imagem é anti-padrão porque o deploy deixa de ser
+REPRODUZÍVEL — o mesmo manifesto aplicado em momentos diferentes pode
+puxar conteúdo de imagem diferente; prefira versionamento semântico ou,
+mais forte ainda, o digest da imagem (<code>@sha256:...</code>).</p>
 
-                    "<h3>6. Service: endpoint estável</h3>"
-                    "<p>Pods são gado, não animais de estimação: criados e destruídos. IPs "
-                    "mudam. Como você fala com 'a app web', não com 'o IP 10.0.3.42'?</p>"
-                    "<pre><code>apiVersion: v1\n"
-                    "kind: Service\n"
-                    "metadata:\n"
-                    "  name: web\n"
-                    "spec:\n"
-                    "  type: ClusterIP\n"
-                    "  selector: { app: web }\n"
-                    "  ports:\n"
-                    "  - port: 80\n"
-                    "    targetPort: 8080</code></pre>"
-                    "<p>Tipos de Service:</p>"
-                    "<ul>"
-                    "<li><strong>ClusterIP</strong> (default): IP virtual interno. Para "
-                    "comunicação entre pods. Resolvido por DNS interno: "
-                    "<code>web.prod.svc.cluster.local</code>.</li>"
-                    "<li><strong>NodePort</strong>: abre uma porta (30000-32767) em todo node. "
-                    "Pra dev/teste; em prod use Ingress ou LoadBalancer.</li>"
-                    "<li><strong>LoadBalancer</strong>: pede ao cloud um LB externo (AWS NLB, "
-                    "GCP LB). Caro se você tem 50 services, combine com Ingress.</li>"
-                    "<li><strong>ExternalName</strong>: alias DNS para serviço externo "
-                    "(<code>db.prod.svc.cluster.local → rds.amazonaws.com</code>).</li>"
-                    "<li><strong>Headless</strong> (<code>clusterIP: None</code>): retorna IPs "
-                    "dos pods diretamente. Para StatefulSets e service discovery custom.</li>"
-                    "</ul>"
+<h3>6. Service: por que "falar com o IP do pod" nunca funciona de verdade</h3>
+<p>Pods são efetivamente descartáveis — criados e destruídos com
+frequência, e o IP de cada um muda a cada recriação. A pergunta que
+Service resolve é "como eu falo consistentemente com 'a aplicação web',
+sem depender de um IP específico que muda a cada deploy?":</p>
+<pre><code>apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  type: ClusterIP
+  selector: { app: web }
+  ports:
+  - port: 80
+    targetPort: 8080</code></pre>
+<p><strong>ClusterIP</strong> (o tipo padrão) cria um IP virtual interno,
+resolvido via DNS interno (<code>web.prod.svc.cluster.local</code>) —
+usado para comunicação ENTRE pods dentro do cluster.
+<strong>NodePort</strong> abre uma porta fixa (entre 30000 e 32767) em
+TODO node do cluster — adequado para desenvolvimento e teste, raramente
+para produção. <strong>LoadBalancer</strong> pede um balanceador
+EXTERNO gerenciado pela nuvem (NLB da AWS, LB da GCP) — funcional, mas
+caro quando multiplicado por dezenas de serviços, o que motiva combinar
+com Ingress (seção 7) para expor muitos serviços através de um único
+balanceador. <strong>ExternalName</strong> cria um alias DNS apontando
+para um serviço FORA do cluster (por exemplo,
+<code>db.prod.svc.cluster.local</code> apontando para uma instância
+RDS da AWS) — útil para tratar dependências externas com a mesma
+convenção de nomenclatura interna. E <strong>Headless</strong>
+(<code>clusterIP: None</code>) devolve os IPs dos pods DIRETAMENTE, sem
+IP virtual intermediário — necessário para StatefulSets, onde cada pod
+tem identidade própria que precisa ser endereçável individualmente.</p>
 
-                    "<h3>7. Ingress: HTTP/S externo</h3>"
-                    "<p>LoadBalancer por Service é caro. Ingress oferece um único entry-point "
-                    "com roteamento por host/path:</p>"
-                    "<pre><code>apiVersion: networking.k8s.io/v1\n"
-                    "kind: Ingress\n"
-                    "metadata:\n"
-                    "  name: app\n"
-                    "  annotations:\n"
-                    "    cert-manager.io/cluster-issuer: letsencrypt\n"
-                    "spec:\n"
-                    "  ingressClassName: nginx\n"
-                    "  tls:\n"
-                    "  - hosts: [app.example.com]\n"
-                    "    secretName: app-tls\n"
-                    "  rules:\n"
-                    "  - host: app.example.com\n"
-                    "    http:\n"
-                    "      paths:\n"
-                    "      - path: /api\n"
-                    "        pathType: Prefix\n"
-                    "        backend:\n"
-                    "          service: { name: api, port: { number: 80 } }\n"
-                    "      - path: /\n"
-                    "        pathType: Prefix\n"
-                    "        backend:\n"
-                    "          service: { name: web, port: { number: 80 } }</code></pre>"
-                    "<p>Você precisa de um <em>ingress controller</em> instalado (NGINX, Traefik, "
-                    "HAProxy, GKE Ingress). Ele lê os objetos Ingress e configura o proxy real. "
-                    "<strong>Gateway API</strong> (mais novo) é o sucessor de Ingress, com modelo "
-                    "mais expressivo.</p>"
+<h3>7. Ingress: um único ponto de entrada para muitos serviços HTTP</h3>
+<p>Um LoadBalancer dedicado por Service fica caro rapidamente conforme o
+número de serviços cresce. Ingress resolve isso com um único ponto de
+entrada, roteando por host e caminho para os serviços internos
+corretos:</p>
+<pre><code>apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts: [app.example.com]
+    secretName: app-tls
+  rules:
+  - host: app.example.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service: { name: api, port: { number: 80 } }
+      - path: /
+        pathType: Prefix
+        backend:
+          service: { name: web, port: { number: 80 } }</code></pre>
+<p>O objeto Ingress sozinho não faz nada — ele PRECISA de um ingress
+controller instalado (NGINX, Traefik, HAProxy, ou o Ingress nativo do
+GKE) que efetivamente LÊ esses objetos e configura um proxy real de
+acordo. A <strong>Gateway API</strong>, mais recente, é o sucessor
+designado de Ingress, com um modelo de configuração mais expressivo e
+extensível — vale acompanhar sua adoção conforme amadurece.</p>
 
-                    "<h3>8. Probes: liveness, readiness, startup</h3>"
-                    "<p>Sem probes, K8s manda tráfego para pod ainda subindo. Com probes "
-                    "ruins, pod entra em loop de restart por motivos errados. Distinguir é "
-                    "essencial:</p>"
-                    "<ul>"
-                    "<li><strong>livenessProbe</strong>: 'estou vivo?'. Falhar = container "
-                    "reiniciado. <em>Não</em> dependa de DB externo aqui, você causa "
-                    "cascading failure.</li>"
-                    "<li><strong>readinessProbe</strong>: 'posso receber tráfego?'. Falhar = "
-                    "pod removido do Service mas <em>não</em> reiniciado. Use para "
-                    "warm-up, dependency check.</li>"
-                    "<li><strong>startupProbe</strong>: 'já terminei de iniciar?'. Roda primeiro; "
-                    "enquanto não passa, liveness/readiness não rodam. Para apps com boot "
-                    "demorado (Java, .NET).</li>"
-                    "</ul>"
-                    "<pre><code># Bom\n"
-                    "livenessProbe:\n"
-                    "  exec: { command: [\"/bin/sh\", \"-c\", \"pgrep -f myapp || exit 1\"] }\n"
-                    "  periodSeconds: 30\n"
-                    "  failureThreshold: 3\n"
-                    "readinessProbe:\n"
-                    "  httpGet: { path: /ready, port: 8080 }\n"
-                    "  periodSeconds: 5\n"
-                    "  failureThreshold: 1\n"
-                    "startupProbe:\n"
-                    "  httpGet: { path: /healthz, port: 8080 }\n"
-                    "  periodSeconds: 10\n"
-                    "  failureThreshold: 30  # 5 min para subir</code></pre>"
+<h3>8. Três tipos de probe, e por que confundi-los causa cascata de falha</h3>
+<p>Sem probes configuradas, o Kubernetes manda tráfego para um pod que
+ainda está subindo (antes de estar pronto) ou nunca detecta um processo
+travado internamente. Com probes MAL configuradas, um pod perfeitamente
+saudável entra em loop de reinício por motivo errado. A distinção entre
+os três tipos é essencial: <code>livenessProbe</code> pergunta "estou
+vivo?" — falhar reinicia o CONTAINER; nunca deve depender de uma
+dependência EXTERNA (banco de dados), porque isso causaria falha em
+cascata: se o banco tiver um soluço momentâneo, TODOS os pods que o
+consultam na liveness probe reiniciariam simultaneamente, piorando uma
+situação que já era ruim. <code>readinessProbe</code> pergunta "posso
+receber tráfego agora?" — falhar remove o pod do Service, MAS não o
+reinicia; é o lugar certo para checar aquecimento de cache ou
+dependência que ainda não terminou de conectar.
+<code>startupProbe</code> pergunta "já terminei de iniciar?" — roda
+PRIMEIRO, e enquanto não passar, liveness e readiness ficam suspensas;
+essencial para aplicações com boot lento (Java, .NET), onde sem essa
+proteção a liveness probe reiniciaria o container repetidamente antes
+mesmo dele terminar de inicializar pela primeira vez:</p>
+<pre><code># Bom
+livenessProbe:
+  exec: { command: ["/bin/sh", "-c", "pgrep -f myapp || exit 1"] }
+  periodSeconds: 30
+  failureThreshold: 3
+readinessProbe:
+  httpGet: { path: /ready, port: 8080 }
+  periodSeconds: 5
+  failureThreshold: 1
+startupProbe:
+  httpGet: { path: /healthz, port: 8080 }
+  periodSeconds: 10
+  failureThreshold: 30  # 5 min para subir</code></pre>
 
-                    "<h3>9. ConfigMap e Secret</h3>"
-                    "<pre><code>apiVersion: v1\n"
-                    "kind: ConfigMap\n"
-                    "metadata: { name: app-config }\n"
-                    "data:\n"
-                    "  log_level: info\n"
-                    "  api_url: https://api.example.com\n"
-                    "---\n"
-                    "apiVersion: v1\n"
-                    "kind: Secret\n"
-                    "metadata: { name: app-secret }\n"
-                    "type: Opaque\n"
-                    "data:\n"
-                    "  db_password: cGFzczEyMw==  # base64</code></pre>"
-                    "<p>Injete em pods de duas formas:</p>"
-                    "<pre><code>spec:\n"
-                    "  containers:\n"
-                    "  - name: app\n"
-                    "    envFrom:\n"
-                    "    - configMapRef: { name: app-config }\n"
-                    "    - secretRef: { name: app-secret }\n"
-                    "    # ou monte como arquivo\n"
-                    "    volumeMounts:\n"
-                    "    - name: secret-vol\n"
-                    "      mountPath: /etc/secrets\n"
-                    "      readOnly: true\n"
-                    "  volumes:\n"
-                    "  - name: secret-vol\n"
-                    "    secret: { secretName: app-secret }</code></pre>"
-                    "<p><strong>Cuidado</strong>: Secret é só base64, não criptografia. "
-                    "Em produção: External Secrets Operator (puxa do Vault/AWS Secrets Manager) "
-                    "ou SealedSecrets (Bitnami) para GitOps. Em todo caso, encryption-at-rest "
-                    "do etcd ligado.</p>"
+<h3>9. ConfigMap e Secret: mesma mecânica, garantias bem diferentes</h3>
+<pre><code>apiVersion: v1
+kind: ConfigMap
+metadata: { name: app-config }
+data:
+  log_level: info
+  api_url: https://api.example.com
+---
+apiVersion: v1
+kind: Secret
+metadata: { name: app-secret }
+type: Opaque
+data:
+  db_password: cGFzczEyMw==  # base64</code></pre>
+<p>Os dois podem ser injetados em pods das mesmas duas formas — como
+variável de ambiente ou montados como arquivo:</p>
+<pre><code>spec:
+  containers:
+  - name: app
+    envFrom:
+    - configMapRef: { name: app-config }
+    - secretRef: { name: app-secret }
+    # ou monte como arquivo
+    volumeMounts:
+    - name: secret-vol
+      mountPath: /etc/secrets
+      readOnly: true
+  volumes:
+  - name: secret-vol
+    secret: { secretName: app-secret }</code></pre>
+<p>A diferença crítica entre os dois não está na mecânica de uso — está
+na (falsa) sensação de segurança: Secret é apenas CODIFICADO em base64,
+não criptografado, uma codificação reversível sem chave nenhuma. Em
+produção, o padrão recomendado é usar um External Secrets Operator
+(puxando de Vault ou AWS Secrets Manager em tempo real) ou SealedSecrets
+da Bitnami (para permitir versionar segredos criptografados em Git, no
+fluxo GitOps da seção 11) — e em qualquer caso, ter encryption-at-rest
+habilitado no etcd (detalhado na aula de Hardening) como camada
+adicional.</p>
 
-                    "<h3>10. Helm: gerência de releases</h3>"
-                    "<p>YAML repetido em 4 ambientes (dev/qa/staging/prod) vira inferno. "
-                    "<strong>Helm</strong> empacota manifests em <em>charts</em> com templates "
-                    "Go e arquivo de <em>values</em> por ambiente:</p>"
-                    "<pre><code>mychart/\n"
-                    "├── Chart.yaml\n"
-                    "├── values.yaml          # defaults\n"
-                    "├── values-prod.yaml     # overrides\n"
-                    "└── templates/\n"
-                    "    ├── deployment.yaml\n"
-                    "    └── service.yaml\n"
-                    "\n"
-                    "$ helm install myapp ./mychart -f values-prod.yaml --namespace prod\n"
-                    "$ helm upgrade myapp ./mychart -f values-prod.yaml --namespace prod\n"
-                    "$ helm rollback myapp 1 --namespace prod</code></pre>"
-                    "<p>Charts ficam em registry OCI (ECR, GAR, GHCR), versionados como imagem. "
-                    "Alternativas: Kustomize (overlays YAML, sem template engine) e operadores "
-                    "(controllers customizados que entendem CRDs).</p>"
+<h3>10. Helm: parametrizar o mesmo manifesto para ambientes diferentes</h3>
+<p>Manter o mesmo YAML repetido manualmente em quatro ambientes
+(dev/qa/staging/prod), com pequenas diferenças espalhadas entre cópias,
+vira fonte constante de divergência e erro. Helm empacota manifestos em
+<em>charts</em>, usando templates (na linguagem de template do Go) mais
+um arquivo de <em>values</em> específico por ambiente:</p>
+<pre><code>mychart/
+├── Chart.yaml
+├── values.yaml          # defaults
+├── values-prod.yaml     # overrides
+└── templates/
+    ├── deployment.yaml
+    └── service.yaml
 
-                    "<h3>11. GitOps: Argo CD e Flux</h3>"
-                    "<p>Você ainda corre <code>kubectl apply</code> manualmente? Em produção "
-                    "moderna, ninguém faz isso. <strong>GitOps</strong> torna o repo Git a "
-                    "fonte da verdade do cluster:</p>"
-                    "<ol>"
-                    "<li>Engenheiro abre PR alterando manifest no repo.</li>"
-                    "<li>PR é revisado, mergeado.</li>"
-                    "<li>Argo CD (rodando no cluster) detecta o commit, compara com cluster, "
-                    "aplica diff.</li>"
-                    "<li>Drift no cluster (alguém mexeu manualmente)? Argo reverte ou alerta.</li>"
-                    "</ol>"
-                    "<p>Benefícios: trilha de auditoria via Git, rollback é um <code>git revert</code>, "
-                    "permissões reduzidas (engenheiros não precisam de kubectl em prod).</p>"
+$ helm install myapp ./mychart -f values-prod.yaml --namespace prod
+$ helm upgrade myapp ./mychart -f values-prod.yaml --namespace prod
+$ helm rollback myapp 1 --namespace prod</code></pre>
+<p>Charts podem ser publicados num registry OCI (ECR, GAR, GHCR) e
+versionados exatamente como uma imagem de container — o mesmo fluxo de
+tag e pull, aplicado a pacotes de manifesto. Kustomize (overlays de
+YAML puro, sem motor de template) e operadores (controllers customizados
+que entendem CRDs específicos) são alternativas para casos onde
+templating completo é excessivo ou insuficiente, respectivamente.</p>
 
-                    "<h3>12. Distribuições e gerenciados</h3>"
-                    "<ul>"
-                    "<li><strong>kind / minikube</strong>: K8s local para dev e testes.</li>"
-                    "<li><strong>k3s / k0s</strong>: K8s leve para edge/IoT/CI.</li>"
-                    "<li><strong>kubeadm</strong>: vanilla, você monta. Útil para aprender; "
-                    "raro em prod por operação.</li>"
-                    "<li><strong>OpenShift, Rancher, Tanzu</strong>: distribuições comerciais "
-                    "com features extras.</li>"
-                    "<li><strong>EKS, GKE, AKS</strong>: gerenciados (cloud opera control plane).</li>"
-                    "</ul>"
-                    "<p>Para 95% dos casos, gerenciado. Self-host é justificado por compliance, "
-                    "edge ou bare-metal específico.</p>"
+<h3>11. GitOps: o repositório Git como única fonte da verdade do cluster</h3>
+<p>Rodar <code>kubectl apply</code> manualmente contra produção, direto
+do laptop de alguém, é cada vez mais raro em operações maduras — não por
+tradição, mas porque perde rastreabilidade e permissão granular. GitOps
+inverte o fluxo: o repositório Git se torna a fonte de verdade
+declarada, e uma ferramenta dentro do cluster mantém a realidade
+sincronizada com ele.</p>
+<ol>
+<li>Um engenheiro abre um PR alterando o manifesto no repositório.</li>
+<li>O PR passa por revisão normal e é mergeado.</li>
+<li>Argo CD (rodando dentro do próprio cluster) detecta o novo commit,
+compara com o estado atual do cluster, e aplica a diferença.</li>
+<li>Se alguém alterar algo manualmente no cluster (drift), o Argo detecta
+essa divergência e reverte automaticamente ou alerta, conforme a
+configuração.</li>
+</ol>
+<p>Os benefícios concretos: trilha de auditoria vem de graça do próprio
+histórico do Git; rollback é literalmente um <code>git revert</code>,
+sem comando especial de infraestrutura; e engenheiros individuais não
+precisam mais de acesso direto via <code>kubectl</code> a produção — o
+Argo CD é quem detém essa permissão, reduzindo a superfície de acesso
+humano direto ao cluster real.</p>
 
-                    "<h3>13. Comandos kubectl essenciais</h3>"
-                    "<pre><code># Visualizar\n"
-                    "kubectl get pods -n prod -o wide\n"
-                    "kubectl describe pod web-abc -n prod\n"
-                    "kubectl logs -f web-abc -n prod\n"
-                    "kubectl logs --previous web-abc -n prod  # após restart\n"
-                    "kubectl top pod -n prod                  # CPU/RAM\n"
-                    "\n"
-                    "# Aplicar/remover\n"
-                    "kubectl apply -f manifests/\n"
-                    "kubectl delete -f manifests/web.yaml\n"
-                    "kubectl scale deploy web --replicas=10 -n prod\n"
-                    "\n"
-                    "# Debug\n"
-                    "kubectl exec -it web-abc -n prod -- /bin/sh\n"
-                    "kubectl port-forward svc/web 8080:80 -n prod\n"
-                    "kubectl run debug --rm -it --image=busybox -- sh\n"
-                    "kubectl debug -it web-abc --image=busybox -n prod  # ephemeral container\n"
-                    "\n"
-                    "# Diff e dry-run\n"
-                    "kubectl diff -f manifest.yaml\n"
-                    "kubectl apply -f manifest.yaml --dry-run=server\n"
-                    "\n"
-                    "# Eventos (chave em troubleshooting)\n"
-                    "kubectl get events -n prod --sort-by=.lastTimestamp</code></pre>"
+<h3>12. Distribuições: do laptop ao cluster gerenciado em produção</h3>
+<p><strong>kind</strong> e <strong>minikube</strong> rodam Kubernetes
+localmente para desenvolvimento e teste — sem custo de nuvem, sem
+disponibilidade real, exatamente o propósito. <strong>k3s</strong> e
+<strong>k0s</strong> são distribuições leves voltadas a edge, IoT ou
+ambientes de CI, onde o overhead de um cluster completo não se justifica.
+<strong>kubeadm</strong> monta um cluster "vanilla" manualmente — ótimo
+para aprender o que cada componente faz de verdade, raro em produção
+justamente pelo esforço operacional contínuo que exige.
+<strong>OpenShift, Rancher</strong> e <strong>Tanzu</strong> são
+distribuições comerciais com funcionalidades extras sobre o Kubernetes
+padrão. E <strong>EKS, GKE, AKS</strong> são as opções gerenciadas, onde
+o provedor de nuvem opera o control plane inteiro. Para a esmagadora
+maioria dos casos, gerenciado é a escolha certa — self-host só se
+justifica por exigência específica de compliance, ambiente de edge, ou
+hardware bare-metal com necessidade particular que a nuvem gerenciada
+não atende.</p>
 
-                    "<h3>14. Anti-patterns frequentes</h3>"
-                    "<ul>"
-                    "<li><strong>Pod sem requests/limits</strong>: scheduler chuta, noisy "
-                    "neighbor mata vizinhos.</li>"
-                    "<li><strong>livenessProbe que depende de DB externo</strong>: cascading "
-                    "failure quando DB hiccup.</li>"
-                    "<li><strong>imagem :latest</strong>: deploy não-reproduzível.</li>"
-                    "<li><strong>Tudo em namespace <code>default</code></strong>: NetworkPolicy/"
-                    "RBAC viram pesadelo.</li>"
-                    "<li><strong>Logar em arquivo dentro do pod</strong>: viola 12-factor; "
-                    "use stdout.</li>"
-                    "<li><strong>HostPath para 'persistência'</strong>: escapa do isolamento; "
-                    "use PV.</li>"
-                    "<li><strong>1 réplica em prod</strong>: rolling update vira recreate; "
-                    "qualquer node maintenance derruba app.</li>"
-                    "</ul>"
+<h3>13. Comandos `kubectl` que resolvem 90% do dia a dia</h3>
+<pre><code># Visualizar
+kubectl get pods -n prod -o wide
+kubectl describe pod web-abc -n prod
+kubectl logs -f web-abc -n prod
+kubectl logs --previous web-abc -n prod  # após restart
+kubectl top pod -n prod                  # CPU/RAM
 
-                    "<h3>15. Quando NÃO usar K8s</h3>"
-                    "<p>K8s é ferramenta poderosa mas tem custo operacional alto. <em>Para "
-                    "apps simples</em> (1-3 services, baixo tráfego), Docker Compose, ECS, "
-                    "Cloud Run ou Fly.io entregam mais valor com menos complexidade. K8s brilha "
-                    "quando você tem dezenas+ de microsserviços, autoscaling complexo, "
-                    "compliance que exige observability/policy avançado, ou time grande "
-                    "trabalhando em paralelo. Não use K8s só porque virou padrão, use porque "
-                    "resolve seu problema.</p>"
+# Aplicar/remover
+kubectl apply -f manifests/
+kubectl delete -f manifests/web.yaml
+kubectl scale deploy web --replicas=10 -n prod
+
+# Debug
+kubectl exec -it web-abc -n prod -- /bin/sh
+kubectl port-forward svc/web 8080:80 -n prod
+kubectl run debug --rm -it --image=busybox -- sh
+kubectl debug -it web-abc --image=busybox -n prod  # ephemeral container
+
+# Diff e dry-run
+kubectl diff -f manifest.yaml
+kubectl apply -f manifest.yaml --dry-run=server
+
+# Eventos (chave em troubleshooting)
+kubectl get events -n prod --sort-by=.lastTimestamp</code></pre>
+<p>Um detalhe que vale destacar entre esses comandos: <code>kubectl logs
+--previous</code> recupera os logs do container ANTERIOR a um reinício
+— sem essa flag específica, você vê os logs do processo atual, que pode
+não ter nenhuma pista sobre o que causou o crash anterior.
+<code>kubectl get events</code> ordenado por timestamp é frequentemente
+a primeira parada num troubleshooting real, porque revela ações do
+próprio Kubernetes (scheduling falhou, imagem não foi encontrada, probe
+falhando) que não aparecem nem nos logs da aplicação nem no
+<code>describe</code> de um objeto isolado.</p>
+
+<h3>14. Sete anti-padrões que aparecem em praticamente todo cluster iniciante</h3>
+<ul>
+<li><strong>Pod sem requests/limits</strong>: o scheduler decide sem
+informação real, e um "vizinho barulhento" consegue afetar outros
+workloads no mesmo node.</li>
+<li><strong>livenessProbe dependente de banco externo</strong>: causa
+falha em cascata exatamente no momento em que o banco já está com
+problema — o pior momento possível para reiniciar tudo simultaneamente.</li>
+<li><strong>Imagem com tag `:latest`</strong>: deploy deixa de ser
+reproduzível, o mesmo manifesto aplicado hoje e amanhã pode puxar
+conteúdo diferente sem nenhuma mudança visível no YAML.</li>
+<li><strong>Tudo no namespace `default`</strong>: aplicar NetworkPolicy
+ou RBAC granular vira praticamente impossível sem segmentação lógica
+mínima por namespace.</li>
+<li><strong>Log gravado em arquivo dentro do pod</strong>: viola o
+princípio dos 12 fatores de aplicação cloud-native; use stdout, e deixe
+a coleta de log ser responsabilidade da infraestrutura, não da
+aplicação.</li>
+<li><strong>hostPath como "persistência"</strong>: escapa do isolamento
+de container ao amarrar o pod a um caminho específico do NODE
+físico — use PersistentVolume, que é portável entre nodes.</li>
+<li><strong>Uma única réplica em produção</strong>: qualquer manutenção
+de node (planejada ou não) derruba a aplicação inteira, porque não há
+segunda réplica para absorver o tráfego durante o rolling update.</li>
+</ul>
+
+<h3>15. Quando Kubernetes é a ferramenta ERRADA para o problema</h3>
+<p>Kubernetes é poderoso, mas carrega custo operacional real — para
+aplicações simples (um a três serviços, tráfego baixo), Docker Compose,
+ECS, Cloud Run ou Fly.io entregam o mesmo resultado prático com uma
+fração da complexidade operacional. Kubernetes se justifica quando existem
+dezenas ou mais de microsserviços coordenados, necessidade real de
+autoscaling complexo, exigência de compliance que demanda observabilidade
+e política avançadas (as próximas nove aulas desta fase), ou um time
+grande o suficiente trabalhando em paralelo para que a coordenação
+declarativa valha o overhead de aprendizado. Adotar Kubernetes só porque
+"virou o padrão da indústria", sem que o problema real da organização o
+exija, troca simplicidade real por complexidade que não paga o próprio
+custo.</p>"""
                 ),
                 "practical": (
                     "Suba <code>kind create cluster</code> local. Crie um Deployment de NGINX "
@@ -954,247 +1028,307 @@ todo o resto, sendo estático, não alcança.</li>
                     "Aprender a escrevê-las bem é uma das maiores alavancas de defesa."
                 ),
                 "body": (
-                    "<h3>1. Como NP funciona por baixo</h3>"
-                    "<p>NP é um <em>objeto K8s</em>. O API server aceita o YAML e armazena no "
-                    "etcd. Quem efetivamente <em>aplica</em> as regras é o <strong>CNI plugin</strong>. "
-                    "Se o CNI não suporta NP (default kubenet, flannel sem add-on), o objeto "
-                    "vira <em>YAML decorativo</em>: existe, mas ninguém liga. Use Calico, Cilium, "
-                    "Antrea, Weave em prod.</p>"
-                    "<p>O CNI traduz NP em iptables, ipvs, eBPF, ou o que ele usar. Você não "
-                    "precisa pensar nisso, só saber que tem que estar lá.</p>"
+                """<h3>1. NetworkPolicy é só um objeto — quem de fato aplica é o CNI</h3>
+<p>Um detalhe que confunde muita gente na primeira vez: NetworkPolicy é
+um objeto Kubernetes comum, aceito pelo API server e gravado no etcd
+como qualquer outro recurso — mas o API server NUNCA aplica a regra em
+si. Quem efetivamente FAZ a política valer é o plugin CNI instalado no
+cluster. Se o CNI em uso não suporta NetworkPolicy (kubenet padrão, ou
+flannel sem um add-on específico), o objeto se torna literalmente
+decorativo: existe no etcd, aparece no <code>kubectl get</code>, mas
+nenhum pacote é de fato bloqueado — um risco silencioso, porque o time
+pode acreditar que está protegido só por ter aplicado o YAML. Em
+produção, use um CNI que implemente NetworkPolicy de verdade — Calico,
+Cilium, Antrea ou Weave. Por baixo dos panos, o CNI traduz a política
+declarativa em regras de iptables, ipvs ou eBPF (dependendo da
+implementação) — um detalhe que você não precisa gerenciar diretamente,
+só saber que precisa estar presente.</p>
 
-                    "<h3>2. Anatomia de uma NP</h3>"
-                    "<pre><code>apiVersion: networking.k8s.io/v1\n"
-                    "kind: NetworkPolicy\n"
-                    "metadata:\n"
-                    "  name: api-allow-web\n"
-                    "  namespace: prod\n"
-                    "spec:\n"
-                    "  podSelector:\n"
-                    "    matchLabels: { app: api }       # quem é alvo desta política\n"
-                    "  policyTypes: [Ingress, Egress]    # qual direção\n"
-                    "  ingress:\n"
-                    "  - from:\n"
-                    "    - podSelector:\n"
-                    "        matchLabels: { app: web }   # quem pode entrar\n"
-                    "    ports:\n"
-                    "    - protocol: TCP\n"
-                    "      port: 8080\n"
-                    "  egress:\n"
-                    "  - to:\n"
-                    "    - namespaceSelector:\n"
-                    "        matchLabels: { kubernetes.io/metadata.name: kube-system }\n"
-                    "      podSelector:\n"
-                    "        matchLabels: { k8s-app: kube-dns }\n"
-                    "    ports:\n"
-                    "    - protocol: UDP\n"
-                    "      port: 53\n"
-                    "  - to:\n"
-                    "    - podSelector:\n"
-                    "        matchLabels: { app: postgres }\n"
-                    "    ports:\n"
-                    "    - protocol: TCP\n"
-                    "      port: 5432</code></pre>"
-                    "<p>Pontos importantes:</p>"
-                    "<ul>"
-                    "<li><code>podSelector: {}</code> (vazio) = <em>todos</em> os pods do "
-                    "namespace.</li>"
-                    "<li>NP é <strong>aditivo</strong>: múltiplas políticas se somam. Não há "
-                    "regra de prioridade, qualquer NP que permita um fluxo, permite.</li>"
-                    "<li>Default: se nenhuma NP atinge um pod, <em>tudo é permitido</em>. Se "
-                    "qualquer NP atinge, default é <em>deny tudo</em> exceto o que ela permite.</li>"
-                    "<li>NP padrão é <strong>L3/L4</strong> (IP + porta). Para L7 (paths HTTP, "
-                    "métodos), use Cilium NP ou service mesh.</li>"
-                    "</ul>"
+<h3>2. Anatomia de uma política: seletor, direção, e o que cada campo decide</h3>
+<pre><code>apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-allow-web
+  namespace: prod
+spec:
+  podSelector:
+    matchLabels: { app: api }       # quem é alvo desta política
+  policyTypes: [Ingress, Egress]    # qual direção
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels: { app: web }   # quem pode entrar
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels: { kubernetes.io/metadata.name: kube-system }
+      podSelector:
+        matchLabels: { k8s-app: kube-dns }
+    ports:
+    - protocol: UDP
+      port: 53
+  - to:
+    - podSelector:
+        matchLabels: { app: postgres }
+    ports:
+    - protocol: TCP
+      port: 5432</code></pre>
+<p>Um <code>podSelector: {}</code> vazio significa TODOS os pods do
+namespace, não "nenhum" — uma inversão que confunde quem espera lógica
+de lista vazia = vazio. NetworkPolicy é ADITIVA: quando várias políticas
+atingem o mesmo pod, os efeitos se SOMAM — não existe conceito de
+prioridade ou de uma política "vencer" outra; se QUALQUER política
+permite um fluxo específico, esse fluxo é permitido, mesmo que outra
+política mais restritiva também exista. O comportamento padrão inverte
+dependendo de existir ou não alguma política visando aquele pod: sem
+NENHUMA NetworkPolicy atingindo um pod, tudo é permitido livremente; no
+momento em que QUALQUER política passa a atingir esse pod, o padrão vira
+negar tudo, exceto o que essa política explicitamente permitir. E
+NetworkPolicy padrão opera nas camadas 3 e 4 (endereço IP e porta) — para
+controle na camada 7 (caminho HTTP específico, método), é preciso Cilium
+Network Policies (seção 7) ou um service mesh completo.</p>
 
-                    "<h3>3. Default-deny por namespace</h3>"
-                    "<p>Padrão de prod:</p>"
-                    "<pre><code>apiVersion: networking.k8s.io/v1\n"
-                    "kind: NetworkPolicy\n"
-                    "metadata:\n"
-                    "  name: default-deny\n"
-                    "  namespace: prod\n"
-                    "spec:\n"
-                    "  podSelector: {}\n"
-                    "  policyTypes: [Ingress, Egress]\n"
-                    "# sem `ingress` nem `egress` = nada é permitido</code></pre>"
-                    "<p>Aplicado isolado, esse NP bloqueia <em>tudo</em>, inclusive DNS, "
-                    "telemetria, registry. Você precisa adicionar regras de exceção para fluxos "
-                    "válidos.</p>"
+<h3>3. Default-deny por namespace: o ponto de partida de qualquer segmentação séria</h3>
+<pre><code>apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: prod
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+# sem `ingress` nem `egress` = nada é permitido</code></pre>
+<p>Aplicada sozinha, essa política bloqueia absolutamente TUDO — inclusive
+resolução de DNS, telemetria e acesso ao registry de imagens — porque
+"nada especificado" significa "nada permitido" quando a política já
+está atingindo o pod. É deliberadamente o ponto de partida mais
+restritivo possível: a partir daqui, cada exceção necessária é adicionada
+explicitamente, em vez de começar permissivo e tentar identificar depois
+o que deveria ter sido bloqueado.</p>
 
-                    "<h3>4. Permita DNS sempre</h3>"
-                    "<p>Pod sem egress para kube-dns não resolve nomes. Sintoma: app reclama "
-                    "'Name or service not known' a cada conexão. Solução universal:</p>"
-                    "<pre><code>apiVersion: networking.k8s.io/v1\n"
-                    "kind: NetworkPolicy\n"
-                    "metadata:\n"
-                    "  name: allow-dns\n"
-                    "  namespace: prod\n"
-                    "spec:\n"
-                    "  podSelector: {}\n"
-                    "  policyTypes: [Egress]\n"
-                    "  egress:\n"
-                    "  - to:\n"
-                    "    - namespaceSelector:\n"
-                    "        matchLabels: { kubernetes.io/metadata.name: kube-system }\n"
-                    "      podSelector:\n"
-                    "        matchLabels: { k8s-app: kube-dns }\n"
-                    "    ports:\n"
-                    "    - protocol: UDP\n"
-                    "      port: 53\n"
-                    "    - protocol: TCP\n"
-                    "      port: 53</code></pre>"
+<h3>4. A primeira exceção que todo mundo esquece: DNS</h3>
+<p>Um pod sem egress liberado para o kube-dns simplesmente não resolve
+NENHUM nome — o sintoma característico é a aplicação reclamando "Name or
+service not known" em toda tentativa de conexão, um erro que parece de
+configuração de aplicação mas na verdade é a NetworkPolicy funcionando
+exatamente como configurada:</p>
+<pre><code>apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: prod
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels: { kubernetes.io/metadata.name: kube-system }
+      podSelector:
+        matchLabels: { k8s-app: kube-dns }
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53</code></pre>
+<p>Essa exceção é praticamente universal — todo namespace com
+default-deny precisa dela, porque nenhuma aplicação moderna funciona sem
+resolução de nome funcionando.</p>
 
-                    "<h3>5. Selectors: a parte que confunde</h3>"
-                    "<p>Há quatro 'tipos' de matching:</p>"
-                    "<ul>"
-                    "<li><strong>podSelector</strong>: filtra por label do pod (mesmo namespace).</li>"
-                    "<li><strong>namespaceSelector</strong>: filtra por label do namespace.</li>"
-                    "<li><strong>podSelector + namespaceSelector</strong> dentro de um mesmo "
-                    "elemento: AND (label do pod E label do NS).</li>"
-                    "<li><strong>ipBlock</strong>: por CIDR (geralmente para egress externo).</li>"
-                    "</ul>"
-                    "<p>Combinatória crítica:</p>"
-                    "<pre><code>ingress:\n"
-                    "- from:\n"
-                    "  - namespaceSelector: { matchLabels: { env: prod } }\n"
-                    "    podSelector: { matchLabels: { app: web } }\n"
-                    "# regra acima: pod E ns combinados (AND)\n"
-                    "\n"
-                    "ingress:\n"
-                    "- from:\n"
-                    "  - namespaceSelector: { matchLabels: { env: prod } }\n"
-                    "  - podSelector: { matchLabels: { app: web } }\n"
-                    "# regra acima: pod OU ns (OR, dois itens da lista from)</code></pre>"
-                    "<p>Erro fácil de cometer; teste sempre.</p>"
+<h3>5. Seletores: onde AND e OR se confundem por causa da indentação</h3>
+<p>Existem quatro formas de "casar" um destino ou origem numa
+NetworkPolicy: <code>podSelector</code> filtra por label do pod (dentro
+do mesmo namespace); <code>namespaceSelector</code> filtra por label do
+NAMESPACE; a combinação dos dois DENTRO do mesmo elemento da lista
+funciona como AND (label do pod E label do namespace, ambos
+simultaneamente); e <code>ipBlock</code> filtra por faixa CIDR,
+geralmente usado para egress a destinos externos ao cluster. A
+combinatória crítica, e fonte comum de erro, está em como o YAML é
+estruturado:</p>
+<pre><code>ingress:
+- from:
+  - namespaceSelector: { matchLabels: { env: prod } }
+    podSelector: { matchLabels: { app: web } }
+# regra acima: pod E ns combinados (AND)
 
-                    "<h3>6. Egress: o controle mais subestimado</h3>"
-                    "<p>NP de Ingress é o que todo mundo escreve. Egress é onde você ganha "
-                    "muito mais segurança e quase ninguém escreve. Pod comprometido sem egress "
-                    "controlado:</p>"
-                    "<ul>"
-                    "<li>não exfiltra dados para C2 (command &amp; control) externo;</li>"
-                    "<li>não pivota para outros pods do cluster;</li>"
-                    "<li>não baixa malware adicional do registry público.</li>"
-                    "</ul>"
-                    "<p>Estratégia em camadas:</p>"
-                    "<ol>"
-                    "<li>Default-deny egress.</li>"
-                    "<li>Permita DNS (kube-dns).</li>"
-                    "<li>Permita destinos internos necessários (DB, cache, outros services).</li>"
-                    "<li>Para internet: roteie por proxy de saída (squid, ZTNA) que aplica "
-                    "allowlist de domínios e gera log auditável.</li>"
-                    "</ol>"
-                    "<pre><code># exemplo: pod web só fala com api e DNS\n"
-                    "apiVersion: networking.k8s.io/v1\n"
-                    "kind: NetworkPolicy\n"
-                    "metadata: { name: web-egress, namespace: prod }\n"
-                    "spec:\n"
-                    "  podSelector: { matchLabels: { app: web } }\n"
-                    "  policyTypes: [Egress]\n"
-                    "  egress:\n"
-                    "  - to:\n"
-                    "    - podSelector: { matchLabels: { app: api } }\n"
-                    "    ports: [{ protocol: TCP, port: 8080 }]\n"
-                    "  - to:\n"
-                    "    - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }\n"
-                    "      podSelector: { matchLabels: { k8s-app: kube-dns } }\n"
-                    "    ports: [{ protocol: UDP, port: 53 }]</code></pre>"
+ingress:
+- from:
+  - namespaceSelector: { matchLabels: { env: prod } }
+  - podSelector: { matchLabels: { app: web } }
+# regra acima: pod OU ns (OR, dois itens da lista from)</code></pre>
+<p>A diferença entre as duas versões é APENAS onde o traço (<code>-</code>)
+de item de lista aparece — no primeiro caso, os dois seletores estão
+dentro do MESMO item da lista <code>from</code> (portanto AND); no
+segundo, são dois itens SEPARADOS da lista (portanto OR, "casa com
+qualquer um dos dois"). É um erro fácil de cometer justamente porque a
+diferença visual no YAML é sutil, e o efeito prático — uma regra
+pretendida restritiva (AND) que na verdade ficou permissiva (OR) — só
+aparece testando de verdade, nunca só lendo o arquivo.</p>
 
-                    "<h3>7. Cilium Network Policies (CNP)</h3>"
-                    "<p>Cilium estende NP padrão com Layer 7 (HTTP, gRPC, Kafka, DNS) e "
-                    "matching por identidade SPIFFE/FQDN:</p>"
-                    "<pre><code>apiVersion: cilium.io/v2\n"
-                    "kind: CiliumNetworkPolicy\n"
-                    "metadata: { name: api-l7, namespace: prod }\n"
-                    "spec:\n"
-                    "  endpointSelector: { matchLabels: { app: api } }\n"
-                    "  ingress:\n"
-                    "  - fromEndpoints:\n"
-                    "    - matchLabels: { app: web }\n"
-                    "    toPorts:\n"
-                    "    - ports: [{ port: \"8080\", protocol: TCP }]\n"
-                    "      rules:\n"
-                    "        http:\n"
-                    "        - method: GET\n"
-                    "          path: \"/api/v1/users\"\n"
-                    "        - method: GET\n"
-                    "          path: \"/api/v1/orders/[0-9]+\"\n"
-                    "  egress:\n"
-                    "  - toFQDNs:\n"
-                    "    - matchPattern: \"*.googleapis.com\"\n"
-                    "    toPorts:\n"
-                    "    - ports: [{ port: \"443\", protocol: TCP }]</code></pre>"
-                    "<p>'Web pode chamar GET /api/v1/users em api, mas não DELETE'. Útil para "
-                    "limitar capacidade de pivot mesmo dentro de fluxo permitido.</p>"
+<h3>6. Egress: o controle que a maioria ignora, e onde mora o valor real</h3>
+<p>Toda política de Ingress que todo mundo escreve por padrão — mas
+Egress é onde a segurança de verdade se ganha, e é sistematicamente
+menos escrita. Um pod comprometido SEM egress controlado pode fazer três
+coisas perigosas livremente: exfiltrar dados para um servidor de
+comando-e-controle externo, pivotar lateralmente para outros pods do
+mesmo cluster, e baixar malware adicional de um registry público
+qualquer. Bloquear egress por padrão fecha as três portas de uma vez. A
+estratégia em camadas: primeiro default-deny de egress; depois liberar
+DNS (seção 4); depois liberar destinos internos especificamente
+necessários (banco, cache, outros serviços que a aplicação de fato
+chama); e para acesso à internet propriamente dito, rotear através de um
+proxy de saída dedicado (Squid, ou uma solução ZTNA) que aplica uma
+allowlist explícita de domínios e gera log auditável de cada conexão —
+em vez de liberar egress irrestrito para qualquer destino externo:</p>
+<pre><code># exemplo: pod web só fala com api e DNS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: web-egress, namespace: prod }
+spec:
+  podSelector: { matchLabels: { app: web } }
+  policyTypes: [Egress]
+  egress:
+  - to:
+    - podSelector: { matchLabels: { app: api } }
+    ports: [{ protocol: TCP, port: 8080 }]
+  - to:
+    - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+      podSelector: { matchLabels: { k8s-app: kube-dns } }
+    ports: [{ protocol: UDP, port: 53 }]</code></pre>
 
-                    "<h3>8. Observabilidade: o ponto cego</h3>"
-                    "<p>NP rejeita silenciosamente, o pacote some. App reclama 'connection "
-                    "refused', você não sabe se foi NP, kube-proxy, app down. Ferramentas:</p>"
-                    "<ul>"
-                    "<li><strong>Cilium Hubble</strong>: stream de fluxos permitidos/negados "
-                    "em tempo real. CLI e UI.</li>"
-                    "<li><strong>Calico Felix logs</strong>: configurável.</li>"
-                    "<li><strong>tcpdump no pod</strong> (com NET_ADMIN ou debug container) "
-                    "para ver se pacote sai.</li>"
-                    "<li><strong>kubectl exec ... -- nc -zv host port</strong> para testar.</li>"
-                    "</ul>"
-                    "<p>Estratégia: rode em modo <em>audit-only</em> primeiro (Calico tem flag, "
-                    "Cilium tem <code>policyEnforcementMode: never</code>), capture violações, "
-                    "ajuste, depois enforce.</p>"
+<h3>7. Cilium Network Policies: quando bloquear por IP e porta não basta</h3>
+<p>Cilium estende a NetworkPolicy padrão para camada 7 — HTTP, gRPC,
+Kafka, DNS — e permite casar tráfego por identidade SPIFFE ou por nome de
+domínio (FQDN), não só por IP:</p>
+<pre><code>apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: { name: api-l7, namespace: prod }
+spec:
+  endpointSelector: { matchLabels: { app: api } }
+  ingress:
+  - fromEndpoints:
+    - matchLabels: { app: web }
+    toPorts:
+    - ports: [{ port: "8080", protocol: TCP }]
+      rules:
+        http:
+        - method: GET
+          path: "/api/v1/users"
+        - method: GET
+          path: "/api/v1/orders/[0-9]+"
+  egress:
+  - toFQDNs:
+    - matchPattern: "*.googleapis.com"
+    toPorts:
+    - ports: [{ port: "443", protocol: TCP }]</code></pre>
+<p>Essa política permite que "web" chame especificamente
+<code>GET /api/v1/users</code> em "api", mas bloqueia
+<code>DELETE</code> no mesmo caminho — uma granularidade que
+NetworkPolicy padrão simplesmente não alcança, porque ela só enxerga até
+a camada de porta TCP, sem noção do conteúdo HTTP por trás. Isso limita
+o que um pod comprometido consegue fazer MESMO dentro de um fluxo de
+rede já permitido — se "web" for comprometido, o atacante ainda não
+consegue chamar operações destrutivas em "api" que a política L7
+explicitamente não autoriza.</p>
 
-                    "<h3>9. Padrão de implantação seguro</h3>"
-                    "<ol>"
-                    "<li>Cluster novo: aplique NP <em>permissivas</em> em todos NS de prod "
-                    "(<code>allow-all</code>).</li>"
-                    "<li>Para um NS de cada vez: substitua por default-deny + regras necessárias.</li>"
-                    "<li>Use Hubble/Felix para validar 'nada está sendo bloqueado errado'.</li>"
-                    "<li>Mova para o próximo NS.</li>"
-                    "<li>Após estabilizar, escreva CI policy: 'todo NS de prod deve ter "
-                    "default-deny'.</li>"
-                    "</ol>"
+<h3>8. Observabilidade: o ponto cego de NetworkPolicy por design</h3>
+<p>Quando uma NetworkPolicy rejeita um pacote, ela faz isso
+SILENCIOSAMENTE — o pacote simplesmente desaparece, sem nenhuma mensagem
+de erro específica voltando para a aplicação. O sintoma na aplicação é
+genérico ("connection refused" ou timeout), e sem ferramenta dedicada
+não há como distinguir se a causa foi a NetworkPolicy, o kube-proxy, ou
+a aplicação de destino simplesmente estar fora do ar. Cilium Hubble
+resolve isso mostrando um stream em tempo real de fluxos permitidos e
+negados, via CLI ou interface visual — a ferramenta certa para responder
+"esse bloqueio é intencional ou é um bug de policy?" rapidamente. Calico
+expõe logs equivalentes via Felix, configuráveis por verbosidade.
+<code>tcpdump</code> rodando dentro do pod (via capability
+<code>NET_ADMIN</code> ou um container efêmero de debug) confirma se o
+pacote sequer sai da interface de rede. E um simples
+<code>kubectl exec ... -- nc -zv host port</code> testa conectividade
+pontual sem instrumentação adicional. A estratégia mais segura para
+introduzir política nova é rodar primeiro em modo "audit-only" — Calico
+tem uma flag específica para isso, Cilium usa
+<code>policyEnforcementMode: never</code> — capturando o que SERIA
+bloqueado antes de ativar o bloqueio de fato.</p>
 
-                    "<h3>10. Controle de tráfego para fora do cluster</h3>"
-                    "<p>NP padrão usa <code>ipBlock</code> com CIDRs:</p>"
-                    "<pre><code>egress:\n"
-                    "- to:\n"
-                    "  - ipBlock:\n"
-                    "      cidr: 10.0.0.0/8         # rede interna corporativa\n"
-                    "      except: [10.0.99.0/24]   # exceto subnet sensível\n"
-                    "  ports: [{ protocol: TCP, port: 443 }]</code></pre>"
-                    "<p>Limitação: IPs externos mudam (S3, APIs SaaS). Por isso Cilium FQDN "
-                    "(<code>toFQDNs</code>) é mais robusto para destinos cloud.</p>"
+<h3>9. Um padrão de implantação que não quebra produção no meio do caminho</h3>
+<ol>
+<li>Em um cluster novo, comece com políticas PERMISSIVAS
+(<code>allow-all</code>) em todos os namespaces de produção — o objetivo
+inicial é ter o mecanismo instalado, não bloquear nada ainda.</li>
+<li>Namespace por namespace, substitua a política permissiva por
+default-deny mais as regras especificamente necessárias.</li>
+<li>Use Hubble ou os logs do Felix para confirmar que nada está sendo
+bloqueado por engano antes de seguir adiante.</li>
+<li>Avance para o próximo namespace só depois de validar o anterior.</li>
+<li>Depois que todos os namespaces críticos estiverem estabilizados,
+escreva uma policy de CI (via Kyverno ou Gatekeeper) exigindo que TODO
+namespace de produção novo já nasça com default-deny — fechando a
+lacuna de alguém esquecer de aplicar manualmente no futuro.</li>
+</ol>
 
-                    "<h3>11. Multi-cluster e service mesh</h3>"
-                    "<p>NP funciona dentro do cluster. Para tráfego entre clusters (multi-region, "
-                    "multi-cloud), você precisa de service mesh (Istio, Linkerd, Cilium "
-                    "ClusterMesh) que dá identidade comum + mTLS + AuthZ por carga. Tópico 5.5 "
-                    "(Zero Trust) cobre isso.</p>"
+<h3>10. Tráfego para fora do cluster: CIDR estático vs. FQDN dinâmico</h3>
+<pre><code>egress:
+- to:
+  - ipBlock:
+      cidr: 10.0.0.0/8         # rede interna corporativa
+      except: [10.0.99.0/24]   # exceto subnet sensível
+  ports: [{ protocol: TCP, port: 443 }]</code></pre>
+<p>NetworkPolicy padrão só sabe trabalhar com CIDR — uma limitação real
+quando o destino é um serviço de nuvem cujo IP muda com frequência (S3,
+uma API SaaS qualquer). Por isso o suporte a FQDN do Cilium
+(<code>toFQDNs</code>, visto na seção 7) é mais robusto para esses
+casos: a política acompanha o NOME do serviço, não um endereço IP
+específico que pode mudar sem aviso.</p>
 
-                    "<h3>12. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>NP só de ingress</strong>: deixa egress livre = exfiltração "
-                    "tranquila.</li>"
-                    "<li><strong>Esquecer DNS</strong>: app quebra silenciosamente.</li>"
-                    "<li><strong>Selector AND vs OR confuso</strong>: regra acidentalmente "
-                    "permissiva.</li>"
-                    "<li><strong>Sem CNI compatível</strong>: NP existe mas não enforça.</li>"
-                    "<li><strong>NetworkPolicy no <code>kube-system</code></strong>: pode quebrar "
-                    "DNS, CNI, ingress controller. Use com cuidado e testes.</li>"
-                    "<li><strong>NP labels que viram com renaming</strong>: app foi renomeada, "
-                    "NP não foi atualizada, fluxo passou a fluir/parar de fluir silenciosamente.</li>"
-                    "</ul>"
+<h3>11. Os limites de NetworkPolicy: dentro de UM cluster, não entre vários</h3>
+<p>NetworkPolicy opera inteiramente DENTRO de um único cluster — para
+tráfego entre clusters diferentes (arquitetura multi-região ou
+multi-nuvem), a ferramenta certa é um service mesh (Istio, Linkerd,
+Cilium ClusterMesh) que estabelece identidade comum, mTLS e autorização
+por carga de trabalho ATRAVÉS da fronteira de cluster, algo que
+NetworkPolicy nativa simplesmente não alcança. A aula de Zero Trust
+Architecture detalha esse cenário mais amplo.</p>
 
-                    "<h3>13. Validação automatizada</h3>"
-                    "<ul>"
-                    "<li><strong>NetworkPolicy editor</strong> (editor.networkpolicy.io): UI "
-                    "visual.</li>"
-                    "<li><strong>cnp-checker</strong>, <strong>kubectl-np-viewer</strong>: "
-                    "valida regras.</li>"
-                    "<li><strong>kyverno/gatekeeper</strong>: policy 'todo NS deve ter "
-                    "default-deny NP'.</li>"
-                    "<li><strong>Hubble</strong> para validar continuamente em prod.</li>"
-                    "</ul>"
+<h3>12. Seis anti-padrões que aparecem com frequência em auditorias</h3>
+<ul>
+<li><strong>Política só de ingress</strong>: deixa egress totalmente
+livre, abrindo a porta de exfiltração que a seção 6 fecha.</li>
+<li><strong>Esquecer a exceção de DNS</strong>: a aplicação quebra de
+forma silenciosa e confusa, sem nenhuma mensagem apontando para a causa
+real.</li>
+<li><strong>Confundir AND com OR nos seletores</strong> (seção 5): uma
+regra pretendida restritiva vira acidentalmente permissiva, sem nenhum
+erro de sintaxe que denuncie o problema.</li>
+<li><strong>CNI incompatível instalado</strong>: a política existe no
+etcd mas não é enforçada por ninguém — o pior tipo de falha, porque
+parece proteção mas não é.</li>
+<li><strong>NetworkPolicy aplicada em `kube-system`</strong>: risco real
+de quebrar DNS, o próprio CNI, ou o ingress controller — exige teste
+cuidadoso antes de aplicar ali.</li>
+<li><strong>Labels que ficam desatualizados após renomear a
+aplicação</strong>: a NetworkPolicy referencia um label que já não
+corresponde a nada, e o fluxo passa a ser bloqueado (ou liberado)
+silenciosamente, sem ninguém ter mudado a política intencionalmente.</li>
+</ul>
+
+<h3>13. Validação automatizada: não depender de revisão manual de YAML</h3>
+<p>O NetworkPolicy Editor (editor.networkpolicy.io) oferece uma
+interface visual para conferir o efeito real de uma política antes de
+aplicá-la — útil justamente para pegar o erro de AND/OR da seção 5 antes
+que chegue a produção. Ferramentas como <code>cnp-checker</code> e
+<code>kubectl-np-viewer</code> validam a lógica das regras
+programaticamente. Kyverno ou Gatekeeper (vistos na aula de Admission
+Controllers) podem forçar, via policy de admissão, que todo namespace
+novo já nasça com default-deny, fechando a lacuna de alguém esquecer o
+passo manual. E Hubble, além de servir para debug pontual (seção 8),
+vale rodar continuamente em produção como validação contínua de que o
+comportamento real da rede ainda corresponde ao que as políticas
+declaram.</p>"""
                 ),
                 "practical": (
                     "Em cluster com Cilium ou Calico, aplique <code>default-deny</code> em um NS "
@@ -1637,149 +1771,204 @@ organização, construídas sobre a base já validada.</li>
                     "Não é uma ferramenta; é arquitetura. Pode levar anos para amadurecer."
                 ),
                 "body": (
-                    "<h3>1. Por que perímetro falhou</h3>"
-                    "<p>Modelo antigo:</p>"
-                    "<ol>"
-                    "<li>Funcionário entra na VPN.</li>"
-                    "<li>Fica 'dentro da rede corporativa'.</li>"
-                    "<li>Acessa file servers, banco de dados, sistemas internos.</li>"
-                    "</ol>"
-                    "<p>Problema: <strong>uma vez dentro, todo recurso é alcançável</strong>. "
-                    "Notebook comprometido com malware? Atacante anda livre. Funcionário "
-                    "demitido com credencial ativa? Mesma coisa. SQL Server interno sem patch? "
-                    "Lateral movement sem fim.</p>"
-                    "<p>Casos famosos:</p>"
-                    "<ul>"
-                    "<li><strong>Target (2013)</strong>: comprometimento de fornecedor de HVAC "
-                    "deu acesso à rede interna; daí para POS, para 110M cartões.</li>"
-                    "<li><strong>OPM (2015)</strong>: invasor permaneceu meses, exfiltrou 21M "
-                    "registros de funcionários federais.</li>"
-                    "<li><strong>SolarWinds (2020)</strong>: supply chain comprometida, malware "
-                    "rodava 'dentro' em centenas de orgs.</li>"
-                    "</ul>"
-                    "<p>Em todos, perímetro 'segurou' mas atacante já estava do lado de dentro.</p>"
+                """<h3>1. Por que o modelo de perímetro quebrou, com três incidentes que provam o ponto</h3>
+<p>O modelo tradicional de TI corporativa opera em três passos simples:
+o funcionário entra na VPN, passa a estar "dentro da rede corporativa", e
+a partir daí acessa file servers, bancos de dados e sistemas internos
+livremente. O problema estrutural é que, uma vez dentro, praticamente
+TODO recurso fica alcançável — um notebook comprometido por malware dá ao
+atacante o mesmo alcance que o funcionário legítimo teria; uma
+credencial de ex-funcionário ainda ativa concede o mesmo acesso; um
+servidor interno sem patch vira trampolim para movimento lateral sem
+limite claro. Três incidentes reais ilustram exatamente essa falha
+estrutural: em <strong>Target (2013)</strong>, o comprometimento de um
+fornecedor de ar-condicionado — sem relação nenhuma com pagamento — deu
+acesso à rede interna, de onde o atacante alcançou os sistemas de ponto
+de venda e roubou 110 milhões de números de cartão. Em
+<strong>OPM (2015)</strong>, um invasor permaneceu dentro da rede por
+MESES sem ser detectado, exfiltrando 21 milhões de registros de
+funcionários federais americanos. Em <strong>SolarWinds (2020)</strong>,
+um comprometimento de supply chain fez malware rodar "dentro" de
+centenas de organizações simultaneamente, cada uma confiando
+implicitamente no software já instalado. Em todos os três casos, o
+perímetro tecnicamente "segurou" — o firewall não foi violado por força
+bruta — porque o atacante já estava do lado de dentro por outro caminho,
+e uma vez lá dentro, nada mais o impedia.</p>
 
-                    "<h3>2. Os pilares (NIST 800-207)</h3>"
-                    "<ol>"
-                    "<li><strong>Identidade forte</strong>: SSO + MFA forte (FIDO2 hardware "
-                    "key &gt; TOTP &gt; SMS). Sem identidade verificada, nada mais importa.</li>"
-                    "<li><strong>Device trust</strong>: dispositivo gerenciado, com disco "
-                    "criptografado, patches em dia, EDR rodando, screen lock automático.</li>"
-                    "<li><strong>Micro-segmentação</strong>: rede dividida em zonas pequenas; "
-                    "comprometimento limitado em raio. Mesma ideia em K8s com NetworkPolicy.</li>"
-                    "<li><strong>Autorização contínua</strong>: não basta autenticar uma vez; "
-                    "decisões reavaliadas com base em contexto (localização, risco, recurso, "
-                    "horário).</li>"
-                    "<li><strong>Visibilidade</strong>: logs, traces, correlation centralizados. "
-                    "Sem isso, não há como decidir o que é normal nem detectar anomalia.</li>"
-                    "</ol>"
+<h3>2. Os cinco pilares do NIST 800-207</h3>
+<p><strong>Identidade forte</strong> é a base de tudo: SSO combinado com
+MFA robusto — uma chave física FIDO2 é mais forte que um código TOTP, que
+por sua vez é mais forte que SMS (vulnerável a SIM swap) — porque sem
+identidade verificada com confiança, nenhuma decisão de acesso posterior
+tem fundamento real. <strong>Confiança no dispositivo</strong> exige que
+o equipamento usado esteja gerenciado, com disco criptografado, patches
+em dia, EDR (Endpoint Detection and Response) rodando e bloqueio de tela
+automático — a identidade da pessoa pode estar correta, mas se o
+dispositivo dela está comprometido, a credencial correta é usada por um
+processo malicioso. <strong>Micro-segmentação</strong> divide a rede em
+zonas pequenas, de forma que comprometer uma zona não dê alcance
+automático às demais — a mesma lógica de NetworkPolicy em Kubernetes,
+aplicada à rede corporativa inteira. <strong>Autorização contínua</strong>
+reconhece que autenticar uma única vez, no login, não é suficiente: cada
+decisão de acesso deveria ser reavaliada considerando contexto atual —
+localização, nível de risco no momento, o recurso específico sendo
+acessado, horário. E <strong>visibilidade</strong> — logs, traces e
+correlação centralizados — é o que permite sequer DEFINIR o que é
+comportamento normal, pré-requisito para detectar qualquer anomalia.</p>
 
-                    "<h3>3. NIST SP 800-207 em uma sentença</h3>"
-                    "<p>'Zero Trust é uma coleção de conceitos e ideias projetadas para minimizar "
-                    "incerteza ao tomar decisões de acesso accurate, least-privilege, por "
-                    "request, em sistemas e serviços vistos como comprometidos.'</p>"
-                    "<p>Note: <em>cada request</em>. Não cada sessão.</p>"
+<h3>3. A definição do NIST, e a palavra que muda tudo: "por requisição"</h3>
+<p>O NIST SP 800-207 define Zero Trust como "uma coleção de conceitos
+projetados para minimizar incerteza ao tomar decisões de acesso precisas
+e de menor privilégio possível, POR REQUISIÇÃO, em sistemas e serviços
+vistos como potencialmente já comprometidos". O detalhe que separa essa
+definição do modelo antigo está em "por requisição", não "por sessão" —
+o modelo de perímetro autentica uma vez (no login da VPN) e depois confia
+indefinidamente durante toda a sessão; Zero Trust trata CADA chamada
+individual como uma decisão nova, reavaliada com o contexto daquele
+instante específico.</p>
 
-                    "<h3>4. Implementação prática para acesso humano</h3>"
-                    "<p>Modelo BeyondCorp (Google) e ferramentas equivalentes:</p>"
-                    "<pre><code>Engenheiro acessa app interna em https://app.corp.example.com\n"
-                    "→ Cloudflare Access intercepta\n"
-                    "→ Verifica identidade (SSO + MFA)\n"
-                    "→ Verifica device posture (laptop gerenciado? OS atualizado? EDR?)\n"
-                    "→ Avalia policy (grupo, recurso, horário, IP)\n"
-                    "→ Concede ou nega\n"
-                    "→ Se OK, proxy passa request com identidade injetada (header)\n"
-                    "→ App interno confia no header (proxy é boundary)</code></pre>"
-                    "<p>Sem VPN. Engenheiro de qualquer lugar acessa exatamente o que precisa, "
-                    "nada mais. Cada acesso é decisão isolada.</p>"
+<h3>4. Implementação para humanos: o modelo BeyondCorp, sem VPN</h3>
+<p>O modelo popularizado pelo Google (BeyondCorp) e replicado por
+ferramentas comerciais equivalentes substitui a VPN por um proxy de
+decisão em cada acesso:</p>
+<pre><code>Engenheiro acessa app interna em https://app.corp.example.com
+→ Cloudflare Access intercepta
+→ Verifica identidade (SSO + MFA)
+→ Verifica device posture (laptop gerenciado? OS atualizado? EDR?)
+→ Avalia policy (grupo, recurso, horário, IP)
+→ Concede ou nega
+→ Se OK, proxy passa request com identidade injetada (header)
+→ App interno confia no header (proxy é boundary)</code></pre>
+<p>O engenheiro nunca "entra numa rede" — cada acesso a cada aplicação
+específica passa pela MESMA sequência de verificação, de qualquer lugar
+do mundo, e o acesso concedido é escopado exatamente ao recurso
+solicitado, não a uma rede inteira. A aplicação interna, por sua vez,
+confia no header injetado pelo proxy — o proxy É a fronteira de
+confiança, não a rede.</p>
 
-                    "<h3>5. Implementação para serviço-a-serviço</h3>"
-                    "<p>Microsserviços conversando: como provar identidade? Soluções:</p>"
-                    "<ul>"
-                    "<li><strong>Service Mesh</strong> (Istio, Linkerd, Consul): mTLS automático "
-                    "+ identidade SPIFFE por carga. Pod 'web' fala com pod 'db' com cert mútuo.</li>"
-                    "<li><strong>SPIFFE/SPIRE</strong>: padrão de identidade de carga. SVID "
-                    "X.509 ou JWT.</li>"
-                    "<li><strong>Workload Identity</strong> (cloud): pods recebem credencial "
-                    "IAM via OIDC/IMDS sem secret estático.</li>"
-                    "<li><strong>Tokens curtos JWT</strong> com aud/iss específicos.</li>"
-                    "</ul>"
+<h3>5. Implementação serviço-a-serviço: como um pod prova identidade a outro</h3>
+<p>Entre microsserviços, a pergunta muda de "quem é o humano?" para
+"qual serviço específico está fazendo esta chamada, e ele deveria ter
+permissão?". Um <strong>Service Mesh</strong> (Istio, Linkerd, Consul)
+resolve isso automaticamente, aplicando mTLS entre cada par de serviços e
+atribuindo identidade SPIFFE a cada carga de trabalho — o pod "web"
+conversa com o pod "db" usando certificado mútuo, sem que o código da
+aplicação precise implementar nada disso manualmente. <strong>SPIFFE/SPIRE</strong>
+é o padrão aberto de identidade de carga de trabalho por trás dessa
+mecânica, emitindo identidades (SVIDs) em formato X.509 ou JWT.
+<strong>Workload Identity</strong> nas nuvens gerenciadas permite que
+pods recebam credenciais IAM via OIDC/IMDS SEM segredo estático
+armazenado em lugar nenhum — a identidade vem da própria infraestrutura,
+não de um arquivo de configuração. E tokens JWT de curta duração, com
+audience e issuer específicos, limitam o dano de um token eventualmente
+vazado, porque ele expira rápido e só serve para o destinatário
+pretendido.</p>
 
-                    "<h3>6. Ferramentas comerciais e open-source</h3>"
-                    "<ul>"
-                    "<li><strong>Cloudflare Access</strong>: ZT corporativo SaaS.</li>"
-                    "<li><strong>Tailscale</strong>: WireGuard mesh com identidade SSO. ZT "
-                    "prático para times pequenos/médios.</li>"
-                    "<li><strong>Twingate, Zscaler, Netskope, Palo Alto Prisma</strong>: "
-                    "soluções enterprise.</li>"
-                    "<li><strong>Pomerium, Boundary (HashiCorp)</strong>: ZT proxies open-source.</li>"
-                    "<li><strong>Teleport</strong>: acesso a SSH, K8s, DB com identidade central.</li>"
-                    "<li><strong>Service Mesh</strong>: Istio, Linkerd, Cilium Service Mesh.</li>"
-                    "</ul>"
+<h3>6. O ecossistema de ferramentas, comerciais e abertas</h3>
+<p><strong>Cloudflare Access</strong> é a solução SaaS corporativa mais
+conhecida para o modelo da seção 4. <strong>Tailscale</strong> constrói
+uma mesh privada sobre WireGuard com identidade via SSO — uma opção
+prática de Zero Trust para times pequenos e médios, sem a complexidade
+de uma solução enterprise completa. <strong>Twingate, Zscaler, Netskope</strong>
+e <strong>Palo Alto Prisma</strong> são soluções enterprise mais amplas.
+<strong>Pomerium</strong> e <strong>Boundary</strong> (HashiCorp) são
+proxies Zero Trust open-source, para quem prefere self-hosted.
+<strong>Teleport</strong> centraliza acesso a SSH, Kubernetes e bancos
+de dados sob uma única identidade gerenciada. E na camada de service
+mesh especificamente, Istio, Linkerd e o service mesh do Cilium cobrem
+a comunicação serviço-a-serviço da seção 5.</p>
 
-                    "<h3>7. Continuous authorization na prática</h3>"
-                    "<p>Decisão única no login não basta. Reavalie:</p>"
-                    "<ul>"
-                    "<li>IP mudou drasticamente (Brasil → Romênia em 5min)? Risco alto.</li>"
-                    "<li>Dispositivo perdeu compliance (patches expirados)? Bloqueie.</li>"
-                    "<li>Tentativa de acesso a recurso sensível em horário incomum? MFA novo.</li>"
-                    "<li>Comportamento atípico (download massivo)? Alerta + step-up.</li>"
-                    "</ul>"
-                    "<p>Essas decisões dependem de <em>signal collection</em>: SIEM, EDR, IdP "
-                    "logs alimentando engine de decisão.</p>"
+<h3>7. Autorização contínua: reavaliar durante a sessão, não só no login</h3>
+<p>Uma decisão única no momento do login não captura mudanças que
+acontecem DEPOIS — o valor real da autorização contínua está em
+reavaliar constantemente: se o IP de origem mudar drasticamente num
+intervalo curto (Brasil para Romênia em 5 minutos, por exemplo, algo
+fisicamente impossível para a mesma pessoa), isso sinaliza risco alto
+imediato; se o dispositivo perder conformidade no meio da sessão (um
+patch que deveria ter sido aplicado expirou), o acesso deveria ser
+bloqueado ali mesmo, não só na próxima vez que fizer login; uma
+tentativa de acessar um recurso especialmente sensível num horário
+atípico pode justificar exigir MFA novamente; e um comportamento
+estatisticamente incomum, como um download em volume muito acima do
+padrão histórico daquele usuário, deveria disparar alerta e possivelmente
+um desafio adicional (step-up authentication). Essas decisões dependem
+de coleta contínua de sinal — SIEM, EDR, logs do provedor de identidade
+— alimentando um motor de decisão que consegue agir em tempo real, não
+só em auditoria posterior.</p>
 
-                    "<h3>8. Maturity model (CISA)</h3>"
-                    "<p>5 pilares × 4 estágios:</p>"
-                    "<ul>"
-                    "<li><strong>Pilares</strong>: Identity, Devices, Networks, Applications, Data.</li>"
-                    "<li><strong>Estágios</strong>: Traditional → Initial → Advanced → Optimal.</li>"
-                    "</ul>"
-                    "<p>Faça self-assessment. Identifique 2 pilares prioritários e 1 quick-win "
-                    "por trimestre. Não tente fazer tudo de uma vez.</p>"
+<h3>8. O modelo de maturidade da CISA: cinco pilares, quatro estágios</h3>
+<p>A CISA organiza a maturidade de Zero Trust em cinco pilares
+(Identity, Devices, Networks, Applications, Data) avaliados em quatro
+estágios progressivos (Traditional → Initial → Advanced → Optimal). O
+valor prático desse modelo não é preencher uma planilha de conformidade
+— é permitir um autodiagnóstico honesto, identificando os DOIS pilares
+mais urgentes para a organização específica e definindo UMA vitória
+rápida concreta por trimestre em cada um. Tentar avançar os cinco
+pilares simultaneamente, de uma vez, é a receita mais comum para um
+programa de Zero Trust que nunca sai do papel.</p>
 
-                    "<h3>9. Padrões e anti-padrões</h3>"
-                    "<p><strong>Padrão</strong>: comece com aplicação interna nova → coloque "
-                    "atrás de Access proxy → desligue acesso direto. Itere.</p>"
-                    "<p><strong>Anti-padrão</strong>: 'comprar produto Zero Trust' como bala "
-                    "de prata. Vendor diz 'aqui está sua ZT'. Sem mudança de processo, "
-                    "arquitetura, cultura, é pintura nova em casa quebrada.</p>"
+<h3>9. Um padrão de adoção que funciona, e um anti-padrão que não</h3>
+<p>O padrão que costuma funcionar é incremental: comece com UMA
+aplicação interna nova, coloque-a atrás de um proxy de acesso (o modelo
+BeyondCorp da seção 4), desligue o acesso direto antigo a ela
+especificamente, e itere aplicação por aplicação a partir desse
+aprendizado. O anti-padrão mais comum é o oposto: comprar um "produto
+Zero Trust" tratando-o como bala de prata — um fornecedor promete "aqui
+está sua arquitetura Zero Trust pronta", mas sem a mudança real de
+processo, arquitetura e cultura organizacional que o modelo exige, o que
+se compra é só uma camada nova de tecnologia sobre os mesmos hábitos
+antigos, o equivalente a pintura nova numa casa com problema
+estrutural.</p>
 
-                    "<h3>10. Caminhos para começar</h3>"
-                    "<ol>"
-                    "<li><strong>Inventário</strong>: quais sistemas humanos acessam? Como?</li>"
-                    "<li><strong>Identidade central</strong>: SSO + MFA forte para todos. Sem "
-                    "isso, nada funciona.</li>"
-                    "<li><strong>Device posture</strong>: política mínima (cripto, patches, "
-                    "EDR, lock).</li>"
-                    "<li><strong>Acesso a apps internas</strong>: substitua VPN para apps "
-                    "internas por Access proxy. Comece com 1 app de baixo risco.</li>"
-                    "<li><strong>Logging central</strong>: tudo manda log para SIEM.</li>"
-                    "<li><strong>Service-to-service mTLS</strong>: service mesh nos clusters K8s.</li>"
-                    "<li><strong>Continuous evaluation</strong>: integre signals de risco.</li>"
-                    "</ol>"
+<h3>10. Por onde começar de verdade: um roteiro em sete passos</h3>
+<ol>
+<li><strong>Inventário</strong>: quais sistemas os humanos acessam
+hoje, e por qual caminho — sem esse mapa, não há como priorizar nada.</li>
+<li><strong>Identidade central</strong>: SSO com MFA forte para todo
+mundo — o pré-requisito estrutural sem o qual nenhum dos passos
+seguintes tem fundamento.</li>
+<li><strong>Postura de dispositivo</strong>: uma política mínima
+(criptografia, patches em dia, EDR ativo, bloqueio automático de tela)
+aplicada de forma consistente.</li>
+<li><strong>Acesso a aplicações internas</strong>: substituir a VPN por
+um proxy de acesso para aplicações internas, começando por UMA aplicação
+de baixo risco antes de expandir.</li>
+<li><strong>Log centralizado</strong>: tudo enviando log para um SIEM
+único, a base de qualquer detecção de anomalia futura.</li>
+<li><strong>mTLS serviço-a-serviço</strong>: adotar service mesh nos
+clusters Kubernetes existentes.</li>
+<li><strong>Avaliação contínua</strong>: integrar sinais de risco em
+tempo real às decisões de acesso, fechando o ciclo da seção 7.</li>
+</ol>
 
-                    "<h3>11. ZT em K8s</h3>"
-                    "<ul>"
-                    "<li>RBAC granular (5.2).</li>"
-                    "<li>NetworkPolicy default-deny (5.3).</li>"
-                    "<li>mTLS via service mesh.</li>"
-                    "<li>Admission policies (5.4).</li>"
-                    "<li>Audit log → SIEM.</li>"
-                    "<li>Imagens assinadas + SBOM.</li>"
-                    "</ul>"
-                    "<p>Cada camada limita o blast radius da próxima falha.</p>"
+<h3>11. Zero Trust dentro de um cluster Kubernetes especificamente</h3>
+<p>Dentro do próprio Kubernetes, os princípios de Zero Trust já aparecem
+em aulas anteriores desta fase, e juntos formam a mesma defesa em
+camadas: RBAC granular (controla QUEM pode fazer O QUÊ na API);
+NetworkPolicy default-deny (controla quais pods podem falar com quais);
+mTLS via service mesh (prova identidade entre serviços); admission
+policies (bloqueiam configuração perigosa antes de existir); audit log
+centralizado num SIEM; e imagens assinadas com SBOM anexado (proveniência
+verificável). Nenhuma dessas camadas sozinha implementa Zero Trust
+completo — juntas, cada uma limita o raio de impacto se a anterior
+falhar, exatamente o princípio de defesa em profundidade.</p>
 
-                    "<h3>12. Limites e críticas</h3>"
-                    "<ul>"
-                    "<li>Tudo depende de identidade, comprometeu IdP, comprometeu tudo. "
-                    "Logo: hardening do IdP é missão crítica.</li>"
-                    "<li>Latência adicional em cada acesso (proxy + decisão).</li>"
-                    "<li>Custo de implementação alto inicialmente.</li>"
-                    "<li>Funcionalidade legada nem sempre suporta (apps antigos sem header "
-                    "auth).</li>"
-                    "<li>Nem tudo precisa de ZT (impressora ofício 3 anos pelo menos não, "
-                    "priorize por risco).</li>"
-                    "</ul>"
+<h3>12. Limites honestos: Zero Trust não é grátis nem universal</h3>
+<p>Toda a arquitetura depende, em última análise, de identidade — se o
+provedor de identidade (IdP) for comprometido, TODO o resto desmorona
+junto, o que torna o hardening do próprio IdP uma prioridade crítica, não
+um item qualquer na lista. Cada decisão de acesso adiciona latência real
+(o proxy precisa avaliar contexto antes de liberar), um custo que
+sistemas de latência ultra-sensível precisam considerar. O custo de
+implementação inicial é alto, tanto em ferramenta quanto em mudança de
+processo. Sistemas legados nem sempre suportam o modelo — uma aplicação
+antiga que nunca foi desenhada para autenticação via header simplesmente
+não tem como participar sem alguma forma de adaptação. E nem tudo
+justifica o mesmo nível de rigor — uma impressora de escritório com três
+anos de uso provavelmente não precisa da mesma arquitetura de Zero Trust
+que o acesso ao banco de dados de produção; priorizar por risco real,
+não aplicar o mesmo padrão a tudo indiscriminadamente, é o que torna o
+programa sustentável.</p>"""
                 ),
                 "practical": (
                     "Defina device posture mínima (disco criptografado, MFA hardware key, OS "
@@ -1857,171 +2046,212 @@ organização, construídas sobre a base já validada.</li>
                     "ela, você só descobre o incidente quando o blog post sai."
                 ),
                 "body": (
-                    "<h3>1. eBPF: a base moderna</h3>"
-                    "<p>Antes do eBPF, monitorar comportamento de processos exigia LKMs "
-                    "(módulos de kernel) ou ptrace, soluções pesadas, frágeis ou inseguras. "
-                    "<strong>eBPF</strong> (extended Berkeley Packet Filter) permite carregar "
-                    "programas pequenos, verificados estaticamente, no kernel Linux, com baixo "
-                    "overhead. Você anexa um programa eBPF a um syscall, kprobe, tracepoint, "
-                    "evento de rede, e ele observa/age sem recompilar kernel.</p>"
-                    "<p>Por que isso importa para segurança:</p>"
-                    "<ul>"
-                    "<li>Visibilidade granular (cada syscall, cada conexão).</li>"
-                    "<li>Sem reboot, sem patch de kernel.</li>"
-                    "<li>Verificador garante que não trava o sistema.</li>"
-                    "<li>Mesma técnica usada por observabilidade (Pixie), networking (Cilium), "
-                    "security (Falco, Tetragon).</li>"
-                    "</ul>"
+                """<h3>1. eBPF: a tecnologia que tornou observar o kernel viável sem recompilá-lo</h3>
+<p>Antes do eBPF, monitorar o comportamento real de processos exigia
+módulos de kernel (LKMs) — pesados, capazes de derrubar o sistema
+inteiro com um bug — ou <code>ptrace</code>, uma técnica frágil e com
+overhead alto. <strong>eBPF</strong> (extended Berkeley Packet Filter)
+resolve isso permitindo carregar pequenos programas, VERIFICADOS
+estaticamente antes de rodar (o kernel recusa programas que possam
+travar o sistema ou entrar em loop infinito), diretamente no kernel
+Linux, com baixo overhead. Um programa eBPF se anexa a um syscall, a um
+kprobe, a um tracepoint ou a um evento de rede, observando ou agindo sem
+precisar de reboot nem patch de kernel. O que isso significa para
+segurança: visibilidade granular sobre CADA syscall e CADA conexão de
+rede, sem os riscos de um módulo de kernel tradicional, e sem downtime
+para instalar — é a mesma tecnologia de base usada por ferramentas de
+observabilidade (Pixie), de rede (Cilium) e de segurança (Falco,
+Tetragon), cada uma aproveitando o mesmo mecanismo eficiente do kernel
+para propósitos diferentes.</p>
 
-                    "<h3>2. Falco: o padrão CNCF</h3>"
-                    "<p>Falco lê eventos do kernel via eBPF (ou módulo) e avalia contra regras "
-                    "YAML. DaemonSet em K8s; alertas via stdout, syslog, ou Falcosidekick "
-                    "(que roteia para Slack, PagerDuty, SIEM).</p>"
-                    "<p>Exemplos de regras default:</p>"
-                    "<ul>"
-                    "<li><strong>Terminal shell in container</strong>: alguém fez "
-                    "<code>kubectl exec</code> e abriu shell.</li>"
-                    "<li><strong>Write below etc</strong>: processo escreveu em "
-                    "<code>/etc/...</code> dentro do container.</li>"
-                    "<li><strong>Outbound connection to suspicious IP</strong>: pod fez "
-                    "conexão para IP em listas de threat intel.</li>"
-                    "<li><strong>Privilege escalation attempt</strong>: setuid binary executado.</li>"
-                    "<li><strong>Read sensitive file</strong>: leitura de "
-                    "<code>/etc/shadow</code>, <code>/proc/self/maps</code>.</li>"
-                    "<li><strong>Container drift detected</strong>: binário novo apareceu "
-                    "(não estava na imagem).</li>"
-                    "</ul>"
-                    "<pre><code># exemplo de regra Falco\n"
-                    "- rule: Shell in container\n"
-                    "  desc: Detecta shell em container de produção\n"
-                    "  condition: >\n"
-                    "    container and shell_procs and proc.tty != 0\n"
-                    "    and not proc.pname in (allowed_shell_parent_processes)\n"
-                    "    and k8s.ns.name in (production_ns)\n"
-                    "  output: >\n"
-                    "    Shell em pod prod (user=%user.name shell=%proc.name\n"
-                    "    pod=%k8s.pod.name ns=%k8s.ns.name image=%container.image.repository)\n"
-                    "  priority: WARNING\n"
-                    "  tags: [container, shell, mitre_execution]</code></pre>"
+<h3>2. Falco: o padrão CNCF para detectar comportamento anômalo em execução</h3>
+<p>Falco lê eventos do kernel via eBPF (ou, em setups mais antigos, via
+módulo de kernel dedicado) e avalia cada evento contra um conjunto de
+regras declaradas em YAML — rodando como DaemonSet, um por node, com
+alertas saindo via stdout, syslog, ou o Falcosidekick, que roteia esses
+alertas para Slack, PagerDuty ou um SIEM. As regras padrão já cobrem os
+comportamentos mais reveladores de comprometimento: um shell aberto
+dentro de um container de produção (via <code>kubectl exec</code>, algo
+que raramente é legítimo fora de debug explícito); escrita em
+<code>/etc/...</code> dentro do container, um alvo clássico de
+persistência; uma conexão de saída para um IP que consta em listas de
+threat intelligence; uma tentativa de escalada de privilégio via binário
+setuid; leitura de arquivo sensível como <code>/etc/shadow</code> ou
+<code>/proc/self/maps</code>; e "container drift" — um binário NOVO
+aparecendo dentro do container que não fazia parte da imagem original,
+sinal forte de que algo foi injetado depois do deploy:</p>
+<pre><code># exemplo de regra Falco
+- rule: Shell in container
+  desc: Detecta shell em container de produção
+  condition: >
+    container and shell_procs and proc.tty != 0
+    and not proc.pname in (allowed_shell_parent_processes)
+    and k8s.ns.name in (production_ns)
+  output: >
+    Shell em pod prod (user=%user.name shell=%proc.name
+    pod=%k8s.pod.name ns=%k8s.ns.name image=%container.image.repository)
+  priority: WARNING
+  tags: [container, shell, mitre_execution]</code></pre>
+<p>Note a lista de exclusão (<code>allowed_shell_parent_processes</code>):
+uma regra sem esse tipo de exceção geraria alerta em toda ferramenta
+legítima de debug também — o equilíbrio entre sensibilidade e ruído é o
+trabalho contínuo de operar Falco de verdade (seção 6).</p>
 
-                    "<h3>3. Tetragon (Cilium)</h3>"
-                    "<p>Da Cilium. Diferencial: <strong>ações em kernel</strong>, pode kill "
-                    "processo ou bloquear syscall imediatamente, não só alertar. Usa Tracing "
-                    "Policies em CRDs:</p>"
-                    "<pre><code>apiVersion: cilium.io/v1alpha1\n"
-                    "kind: TracingPolicy\n"
-                    "metadata: { name: block-curl-in-pods }\n"
-                    "spec:\n"
-                    "  kprobes:\n"
-                    "  - call: \"sys_execve\"\n"
-                    "    syscall: true\n"
-                    "    args:\n"
-                    "    - index: 0\n"
-                    "      type: \"string\"\n"
-                    "    selectors:\n"
-                    "    - matchArgs:\n"
-                    "      - index: 0\n"
-                    "        operator: \"Postfix\"\n"
-                    "        values: [\"/curl\", \"/wget\"]\n"
-                    "      matchActions:\n"
-                    "      - action: Sigkill   # mata o processo</code></pre>"
-                    "<p>Útil para resposta automática a comportamento de exfiltração. Mas "
-                    "tenha cuidado: ações em kernel são definitivas.</p>"
+<h3>3. Tetragon: quando alertar não basta e a resposta precisa ser instantânea</h3>
+<p>Tetragon (do projeto Cilium) compartilha a base eBPF com Falco, mas
+tem um diferencial estrutural: consegue agir DIRETAMENTE no kernel — matar
+um processo ou bloquear um syscall imediatamente, não só gerar um
+alerta para um humano avaliar depois. Isso é configurado via Tracing
+Policies, um CRD nativo do Kubernetes:</p>
+<pre><code>apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata: { name: block-curl-in-pods }
+spec:
+  kprobes:
+  - call: "sys_execve"
+    syscall: true
+    args:
+    - index: 0
+      type: "string"
+    selectors:
+    - matchArgs:
+      - index: 0
+        operator: "Postfix"
+        values: ["/curl", "/wget"]
+      matchActions:
+      - action: Sigkill   # mata o processo</code></pre>
+<p>Essa política mata IMEDIATAMENTE qualquer processo que tente executar
+<code>curl</code> ou <code>wget</code> dentro dos pods selecionados —
+útil como resposta automática a um padrão conhecido de exfiltração
+(um atacante tentando baixar uma ferramenta adicional ou enviar dados
+para fora). O aviso importante: ação em kernel é DEFINITIVA — ao
+contrário de um alerta que um humano pode avaliar e descartar se for
+falso positivo, matar um processo automaticamente pode derrubar uma
+operação legítima que coincidentemente bateu no mesmo padrão, então essa
+capacidade exige regras bem calibradas antes de ativar em produção.</p>
 
-                    "<h3>4. Tracee, Cilium Tetragon, Sysdig</h3>"
-                    "<ul>"
-                    "<li><strong>Tracee</strong> (Aqua): tracing eBPF, foco em forensics.</li>"
-                    "<li><strong>Sysdig Secure</strong>: comercial, integra runtime + image scan + "
-                    "compliance.</li>"
-                    "<li><strong>Pixie</strong>: observabilidade eBPF (não foca segurança, mas "
-                    "complementa).</li>"
-                    "</ul>"
+<h3>4. Outras ferramentas do mesmo espaço, cada uma com um foco distinto</h3>
+<p><strong>Tracee</strong> (da Aqua) usa a mesma base eBPF com foco
+específico em forense — reconstruir o que aconteceu depois do fato, não
+só alertar em tempo real. <strong>Sysdig Secure</strong> é uma oferta
+comercial que integra runtime security, scan de imagem e compliance numa
+única plataforma. E <strong>Pixie</strong>, embora não seja uma
+ferramenta de segurança primariamente, usa a mesma tecnologia eBPF para
+observabilidade geral e frequentemente complementa uma stack de
+segurança runtime com contexto adicional de desempenho.</p>
 
-                    "<h3>5. MITRE ATT&amp;CK Containers</h3>"
-                    "<p>Matriz de táticas/técnicas usadas por adversários contra containers. "
-                    "Categorias principais:</p>"
-                    "<ul>"
-                    "<li><strong>Initial Access</strong>: app vulnerável, image maliciosa.</li>"
-                    "<li><strong>Execution</strong>: kubectl exec, container escape.</li>"
-                    "<li><strong>Persistence</strong>: cronjob malicioso, sidecar injection.</li>"
-                    "<li><strong>Privilege Escalation</strong>: capability abuse, setuid.</li>"
-                    "<li><strong>Defense Evasion</strong>: desligar logging, esconder processos.</li>"
-                    "<li><strong>Credential Access</strong>: ler ServiceAccount token.</li>"
-                    "<li><strong>Discovery</strong>: listar pods, services, configs.</li>"
-                    "<li><strong>Lateral Movement</strong>: explorar pod vizinho via API.</li>"
-                    "<li><strong>Impact</strong>: ransomware, mineração, exfil.</li>"
-                    "</ul>"
-                    "<p>Use para mapear cobertura: 'Falco detecta T1059 (Command and Scripting "
-                    "Interpreter)? T1611 (Escape to Host)? T1552 (Unsecured Credentials)?'. "
-                    "Lacunas viram regras novas.</p>"
+<h3>5. MITRE ATT&CK for Containers: um mapa para achar lacunas de cobertura</h3>
+<p>A matriz específica de containers do MITRE ATT&CK organiza táticas
+adversárias em categorias — Initial Access (aplicação vulnerável, imagem
+maliciosa), Execution (<code>kubectl exec</code>, escape de container),
+Persistence (CronJob malicioso, injeção de sidecar), Privilege Escalation
+(abuso de capability, setuid), Defense Evasion (desligar logging,
+esconder processo), Credential Access (ler token de ServiceAccount),
+Discovery (listar pods, services, configs), Lateral Movement (explorar
+um pod vizinho via API) e Impact (ransomware, mineração de
+criptomoeda, exfiltração). O valor prático dessa matriz não é
+decorá-la — é usá-la como CHECKLIST de cobertura: "as regras do Falco
+que tenho hoje detectam T1059 (Command and Scripting Interpreter)?
+T1611 (Escape to Host)? T1552 (Unsecured Credentials)?" — cada técnica
+sem detecção correspondente vira candidata explícita para a próxima
+regra customizada a escrever, em vez de depender de intuição sobre "o
+que ainda falta cobrir".</p>
 
-                    "<h3>6. Operação no dia a dia</h3>"
-                    "<ul>"
-                    "<li>Comece com regras default. Por 2 semanas, monitore volume e qualidade "
-                    "dos alertas.</li>"
-                    "<li>Tune falsos positivos: pods de debug com shell legítimo, "
-                    "writes esperados, etc. Use labels para excluir.</li>"
-                    "<li>Crie regras customizadas para seu domínio (ex.: 'pod do PCI namespace "
-                    "nunca deveria fazer egress para IP externo').</li>"
-                    "<li>Runbook por severidade. Alertas críticos com SLA &lt; 15 min.</li>"
-                    "<li>Integre com SOAR para resposta inicial automática (isolar pod, "
-                    "snapshot).</li>"
-                    "<li>Game days regulares testando detecção (ver 5.8).</li>"
-                    "</ul>"
+<h3>6. Operar Falco no dia a dia: da instalação ao afinamento contínuo</h3>
+<p>Começar com as regras padrão é o ponto de partida certo, mas rodá-las
+por duas semanas OBSERVANDO volume e qualidade dos alertas antes de
+confiar cegamente nelas é o que revela onde estão os falsos positivos
+específicos do seu ambiente — pods de debug com shell legítimo, escritas
+esperadas em caminhos que a regra padrão não previa. Afinar essas
+exceções (por label, por namespace, por processo pai esperado) é
+trabalho contínuo, não uma configuração única. Regras customizadas para
+o domínio específico da organização — "um pod do namespace de PCI nunca
+deveria fazer egress para um IP externo", por exemplo — capturam
+violações que nenhuma regra genérica do Falco antecipa. Um runbook por
+nível de severidade, com SLA claro (alertas críticos respondidos em
+menos de 15 minutos), transforma o alerta em ação em vez de ruído
+ignorado. Integrar com SOAR (visto na aula de Incident Response) permite
+resposta inicial automática — isolar o pod, tirar snapshot — antes mesmo
+de um humano intervir. E rodar Game Days regularmente (aula de Security
+Chaos Engineering) testando se a detecção de fato funciona é o que
+diferencia "temos Falco instalado" de "sabemos que Falco detecta o que
+diz que detecta".</p>
 
-                    "<h3>7. Resposta a incidente runtime</h3>"
-                    "<p>Alerta de alta severidade (ex.: privilege escalation):</p>"
-                    "<ol>"
-                    "<li><strong>Confirmar</strong>: é falso positivo? Olhe contexto, host, "
-                    "imagem, evento.</li>"
-                    "<li><strong>Conter</strong>: aplique NP <code>egress=none</code> e "
-                    "<code>ingress=none</code> no pod (label seletora). Mas <em>não</em> "
-                    "delete o pod ainda.</li>"
-                    "<li><strong>Forensics</strong>: snapshot do filesystem do pod (kubectl cp, "
-                    "ou debug ephemeral container), captura de syscalls/conexões.</li>"
-                    "<li><strong>Isolar node</strong> se necessário: cordon + drain (cuidado "
-                    "para não evict para outro node sem isolar antes).</li>"
-                    "<li><strong>Notificar</strong> Incident Commander e iniciar runbook IR.</li>"
-                    "<li><strong>Erradicar</strong>: rebuild da imagem, rotacionar credenciais, "
-                    "redeploy de tudo no namespace afetado.</li>"
-                    "<li><strong>Postmortem</strong>: como passou? Lacuna em prevenção, "
-                    "detecção, resposta?</li>"
-                    "</ol>"
+<h3>7. Respondendo a um alerta de runtime: sete passos, em ordem</h3>
+<p>Diante de um alerta de alta severidade (uma tentativa de escalada de
+privilégio, por exemplo), a sequência de resposta segue uma lógica
+específica: primeiro <strong>confirmar</strong> — é falso positivo?
+Olhar contexto, host, imagem, o evento completo antes de qualquer ação
+drástica. Depois <strong>conter</strong> — aplicar uma NetworkPolicy de
+<code>egress=none</code> e <code>ingress=none</code> especificamente no
+pod suspeito (via seletor de label), mas SEM deletar o pod ainda, porque
+apagá-lo destrói evidência forense que pode ser essencial depois. Em
+seguida, <strong>forense</strong>: tirar um snapshot do filesystem do
+pod (via <code>kubectl cp</code> ou um container efêmero de debug),
+capturando syscalls e conexões observadas. Se necessário,
+<strong>isolar o node inteiro</strong> via cordon e drain — com cuidado
+para não simplesmente mover (evict) as cargas comprometidas para outro
+node sem isolamento prévio, o que espalharia o problema em vez de
+contê-lo. <strong>Notificar</strong> o Incident Commander e ativar o
+runbook de resposta a incidente completo (aula anterior).
+<strong>Erradicar</strong>: reconstruir a imagem do zero, rotacionar
+credenciais, refazer deploy de tudo no namespace afetado — não só do
+pod específico. E finalmente o <strong>postmortem</strong>: como o
+comprometimento passou pelas camadas de prevenção anteriores? A lacuna
+estava em prevenção, em detecção, ou na velocidade de resposta?</p>
 
-                    "<h3>8. Limites de runtime security</h3>"
-                    "<ul>"
-                    "<li>É <strong>detecção</strong>, não prevenção. Atacante já está dentro.</li>"
-                    "<li>Falsos positivos consomem time de SOC.</li>"
-                    "<li>Falsos negativos: ataque sofisticado pode evadir regras conhecidas.</li>"
-                    "<li>Overhead de eBPF é baixo, mas não-zero (especialmente em workloads "
-                    "I/O-intensivos).</li>"
-                    "<li>Regras precisam manutenção contínua à medida que apps mudam.</li>"
-                    "</ul>"
-                    "<p>Use junto com prevenção (admission, NP, RBAC, securityContext), "
-                    "defesa em profundidade.</p>"
+<h3>8. Os limites honestos do runtime security</h3>
+<p>Runtime security é fundamentalmente DETECÇÃO, não prevenção — no
+momento em que Falco ou Tetragon geram um alerta, o atacante já
+conseguiu executar alguma ação dentro do ambiente; a camada não impede a
+entrada, só reduz o tempo até a detecção. Falsos positivos consomem
+tempo real de analista de segurança, e uma ferramenta mal afinada vira
+ruído que a equipe aprende a ignorar — exatamente o padrão problemático
+visto em alertas mal calibrados na aula de Incident Response. Falsos
+negativos também existem: um ataque suficientemente sofisticado pode ser
+desenhado especificamente para evadir regras conhecidas e publicadas.
+O overhead de eBPF é baixo, mas não é ZERO, especialmente em cargas de
+trabalho muito intensivas em I/O, onde cada syscall observado tem um
+custo marginal. E regras precisam de manutenção contínua conforme as
+aplicações mudam — uma regra calibrada para o comportamento de hoje pode
+gerar ruído ou, pior, deixar de detectar algo relevante amanhã. Por
+esses limites, runtime security nunca substitui as camadas de PREVENÇÃO
+vistas nas aulas anteriores (admission, NetworkPolicy, RBAC,
+securityContext) — é uma camada adicional de defesa em profundidade,
+não uma alternativa a elas.</p>
 
-                    "<h3>9. Escolhendo a ferramenta</h3>"
-                    "<ul>"
-                    "<li><strong>Open-source, K8s-first</strong>: Falco (mais maduro), "
-                    "Tetragon (ações em kernel).</li>"
-                    "<li><strong>Comercial</strong>: Sysdig Secure, Aqua, Crowdstrike "
-                    "Falcon (containers).</li>"
-                    "<li><strong>Cloud-native managed</strong>: AWS GuardDuty for EKS, GCP "
-                    "Container Threat Detection.</li>"
-                    "</ul>"
-                    "<p>Combine. GuardDuty for EKS detecta padrões em logs do CloudTrail/VPC; "
-                    "Falco no node detecta syscalls. Visões diferentes, complementares.</p>"
+<h3>9. Escolhendo entre as opções disponíveis</h3>
+<p>Entre as opções open-source e nativas de Kubernetes, Falco é a mais
+madura e amplamente adotada; Tetragon se distingue pela capacidade de
+ação direta em kernel (seção 3). Entre as comerciais, Sysdig Secure, Aqua
+e o CrowdStrike Falcon para containers oferecem suporte e integração
+mais completos, ao custo de licenciamento. E nas plataformas gerenciadas,
+AWS GuardDuty for EKS e GCP Container Threat Detection observam a partir
+de uma camada diferente — analisando logs do CloudTrail e de VPC, por
+exemplo, em vez de syscalls diretamente no node. Essa diferença de
+camada é justamente o motivo de combinar as abordagens: GuardDuty
+detecta padrões visíveis na infraestrutura de nuvem ao redor do cluster;
+Falco no node detecta comportamento visível de DENTRO do container — são
+visões complementares, não substitutas uma da outra.</p>
 
-                    "<h3>10. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>Falco instalado, alertas ignorados</strong>: tool ruidosa "
-                    "vira spam → silêncio. Tune!</li>"
-                    "<li><strong>Sem runbook</strong>: alerta dispara, ninguém sabe responder.</li>"
-                    "<li><strong>Apenas regras default</strong>: contexto do seu domínio "
-                    "exige customização.</li>"
-                    "<li><strong>Runtime security como única camada</strong>: detecta tarde; "
-                    "combine com prevenção.</li>"
-                    "</ul>"
+<h3>10. Quatro anti-padrões que tornam a ferramenta inútil na prática</h3>
+<ul>
+<li><strong>Falco instalado, alertas ignorados</strong>: uma ferramenta
+ruidosa sem afinamento vira spam constante, e spam constante vira
+silêncio aprendido — exatamente o efeito que uma boa calibração de
+regras (seção 6) deveria prevenir.</li>
+<li><strong>Sem runbook de resposta</strong>: o alerta dispara
+corretamente, mas ninguém sabe o próximo passo — o valor da detecção
+some se a resposta não está pronta de antemão.</li>
+<li><strong>Só regras padrão, nunca customizadas</strong>: o contexto
+específico do próprio domínio (quais namespaces são sensíveis, quais
+processos são esperados onde) exige regra própria; regra genérica
+sozinha deixa lacunas conhecidas.</li>
+<li><strong>Runtime security como única camada de defesa</strong>: por
+ser fundamentalmente reativa (seção 8), detectar tarde demais sem as
+camadas de prevenção anteriores é aceitar um nível de risco maior do que
+necessário.</li>
+</ul>"""
                 ),
                 "practical": (
                     "Instale Falco via Helm. Faça <code>kubectl exec -it &lt;pod&gt; -- bash</code> "
@@ -2099,241 +2329,312 @@ organização, construídas sobre a base já validada.</li>
                     "Observabilidade avançada é dominar os três pilares, e correlacioná-los."
                 ),
                 "body": (
-                    "<h3>1. Os três pilares</h3>"
-                    "<ul>"
-                    "<li><strong>Metrics</strong>: séries temporais de números agregados. "
-                    "'reqs/s', 'erro 500/s', 'CPU%'. Baixo custo, alto poder estatístico, baixa "
-                    "cardinalidade. Usado em dashboards e alertas.</li>"
-                    "<li><strong>Logs</strong>: eventos textuais discretos. 'login failed for "
-                    "user@x'. Alto detalhe, alto custo de armazenamento, busca por strings.</li>"
-                    "<li><strong>Traces</strong>: árvore de spans representando o caminho de "
-                    "uma requisição entre serviços. Cada span tem início/fim, atributos, "
-                    "status. Permite ver onde tempo foi gasto, onde falhou.</li>"
-                    "</ul>"
-                    "<p>Cada um responde perguntas diferentes. Os três <em>juntos</em>, com "
-                    "correlation, permitem raciocínio rápido em incidente.</p>"
+                """<h3>1. Os três pilares: por que nenhum sozinho basta para investigar um incidente</h3>
+<p><strong>Métricas</strong> são séries temporais de números agregados —
+"requisições/segundo", "erro 500/segundo", "CPU%" — baratas de armazenar
+e estatisticamente poderosas, mas com cardinalidade baixa por
+necessidade: elas dizem O QUÊ está acontecendo em agregado, sem detalhe
+de nenhuma requisição específica. <strong>Logs</strong> são eventos
+textuais discretos ("login failed for user@x"), com detalhe muito maior
+que uma métrica pode carregar, mas com custo de armazenamento
+proporcionalmente maior e busca por texto livre, não por agregação
+numérica. <strong>Traces</strong> são a árvore de spans que representa o
+CAMINHO real de uma requisição através de vários serviços — a única das
+três fontes que responde "por onde essa chamada específica passou, e
+onde o tempo foi gasto". Cada pilar responde uma pergunta diferente;
+numa arquitetura com dezenas de microsserviços, investigar um incidente
+usando só um dos três é like tentar reconstruir um crime vendo só a foto,
+só o áudio, ou só o vídeo — os três JUNTOS, correlacionados (seção 8), é
+o que permite raciocínio rápido durante um incidente real.</p>
 
-                    "<h3>2. Tracing 101</h3>"
-                    "<p>Uma requisição vira um <strong>trace</strong>; cada operação dentro "
-                    "vira um <strong>span</strong>. Spans formam árvore com pai/filho:</p>"
-                    "<pre><code>POST /checkout                              [800ms]\n"
-                    "├── auth.verify_token                       [10ms]\n"
-                    "├── inventory.check_stock                   [30ms]\n"
-                    "├── payment.charge                          [600ms]\n"
-                    "│   ├── stripe.create_charge                [580ms]\n"
-                    "│   └── db.write_charge                     [15ms]\n"
-                    "├── notification.send_email                 [40ms]\n"
-                    "└── db.write_order                          [20ms]</code></pre>"
-                    "<p>Cada span tem:</p>"
-                    "<ul>"
-                    "<li><code>trace_id</code>: identificador único do trace.</li>"
-                    "<li><code>span_id</code>: identificador do span.</li>"
-                    "<li><code>parent_span_id</code>: span pai.</li>"
-                    "<li>start/end timestamps.</li>"
-                    "<li>service.name, operation.name.</li>"
-                    "<li>status (ok/error).</li>"
-                    "<li>attributes (http.method, db.statement, user.id, etc.).</li>"
-                    "<li>events (logs locais ao span).</li>"
-                    "</ul>"
-                    "<p>Propagação via headers HTTP, padrão W3C TraceContext:</p>"
-                    "<pre><code>traceparent: 00-{trace-id-32-hex}-{parent-id-16-hex}-{flags-2-hex}\n"
-                    "tracestate: rojo=00f067aa0ba902b7</code></pre>"
+<h3>2. Tracing: uma requisição vira árvore, não uma linha de log</h3>
+<p>Uma requisição inteira é um <strong>trace</strong>; cada operação
+dentro dela (uma chamada de autenticação, uma query de banco, uma
+chamada a outro serviço) é um <strong>span</strong>, e os spans formam
+uma árvore com relação explícita de pai e filho:</p>
+<pre><code>POST /checkout                              [800ms]
+├── auth.verify_token                       [10ms]
+├── inventory.check_stock                   [30ms]
+├── payment.charge                          [600ms]
+│   ├── stripe.create_charge                [580ms]
+│   └── db.write_charge                     [15ms]
+├── notification.send_email                 [40ms]
+└── db.write_order                          [20ms]</code></pre>
+<p>Só de olhar essa árvore, fica óbvio ONDE os 800ms totais foram gastos:
+<code>payment.charge</code> consome 600ms, e dentro dele a chamada
+externa ao Stripe (580ms) domina — informação que uma métrica de
+"latência média do checkout" jamais revelaria sozinha. Cada span carrega
+um <code>trace_id</code> (identifica o trace inteiro), um
+<code>span_id</code> (identifica esse span específico), um
+<code>parent_span_id</code> (de onde ele veio), timestamps de início e
+fim, nome do serviço e da operação, status (ok/erro), atributos
+(<code>http.method</code>, <code>db.statement</code>, <code>user.id</code>)
+e eventos (logs locais ao próprio span). A propagação entre serviços
+segue o padrão W3C TraceContext, carregado em headers HTTP comuns:</p>
+<pre><code>traceparent: 00-{trace-id-32-hex}-{parent-id-16-hex}-{flags-2-hex}
+tracestate: rojo=00f067aa0ba902b7</code></pre>
+<p>É esse header propagado de serviço a serviço que permite reconstruir
+a árvore inteira depois — sem ele, cada serviço só saberia da própria
+parte, sem noção de que fazem parte da mesma requisição original.</p>
 
-                    "<h3>3. OpenTelemetry: o padrão</h3>"
-                    "<p>OTel é projeto CNCF que padroniza coleta de métricas, logs e traces. "
-                    "Componentes:</p>"
-                    "<ul>"
-                    "<li><strong>SDK</strong> em cada linguagem: instrumenta código.</li>"
-                    "<li><strong>Auto-instrumentação</strong>: para muitas libs (HTTP, DB, RPC) "
-                    "sem mudar código.</li>"
-                    "<li><strong>OTLP</strong>: protocolo binário (gRPC ou HTTP) entre app e "
-                    "coletor.</li>"
-                    "<li><strong>Collector</strong>: agente que recebe OTLP/Jaeger/Zipkin/"
-                    "Prometheus, processa, exporta para backend.</li>"
-                    "</ul>"
-                    "<pre><code># Python\n"
-                    "$ pip install opentelemetry-distro opentelemetry-exporter-otlp\n"
-                    "$ opentelemetry-bootstrap --action=install\n"
-                    "$ OTEL_SERVICE_NAME=checkout \\\n"
-                    "  OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317 \\\n"
-                    "  opentelemetry-instrument python app.py\n"
-                    "# pronto: traces para HTTP, requests, sqlalchemy, redis... aparecem no backend</code></pre>"
+<h3>3. OpenTelemetry: um padrão para não reescrever instrumentação a cada troca de backend</h3>
+<p>OpenTelemetry (OTel, projeto CNCF) resolve um problema real: antes
+dele, instrumentar código para um backend específico de tracing
+significava reescrever essa instrumentação inteira se a empresa
+decidisse trocar de fornecedor. O SDK, disponível em cada linguagem,
+instrumenta o código; a auto-instrumentação cobre bibliotecas comuns
+(HTTP, banco de dados, RPC) SEM exigir mudança manual de código; o OTLP é
+o protocolo binário (gRPC ou HTTP) que carrega os dados entre a aplicação
+e o coletor; e o Collector é um agente que recebe dados em múltiplos
+formatos (OTLP, Jaeger, Zipkin, Prometheus), processa, e exporta para
+QUALQUER backend escolhido — trocar de Jaeger para Tempo, por exemplo,
+vira uma mudança de configuração do coletor, não uma reescrita de
+instrumentação em cada serviço:</p>
+<pre><code># Python
+$ pip install opentelemetry-distro opentelemetry-exporter-otlp
+$ opentelemetry-bootstrap --action=install
+$ OTEL_SERVICE_NAME=checkout \\
+  OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317 \\
+  opentelemetry-instrument python app.py
+# pronto: traces para HTTP, requests, sqlalchemy, redis... aparecem no backend</code></pre>
 
-                    "<h3>4. Backends de traces</h3>"
-                    "<ul>"
-                    "<li><strong>Jaeger</strong>: clássico CNCF, Cassandra/Elasticsearch como storage.</li>"
-                    "<li><strong>Tempo</strong> (Grafana): backend baseado em S3/GCS, barato.</li>"
-                    "<li><strong>Zipkin</strong>: pioneiro Twitter, ainda usado.</li>"
-                    "<li><strong>Honeycomb</strong>: SaaS focado em high-cardinality, query "
-                    "interativa potente.</li>"
-                    "<li><strong>Datadog APM, New Relic, Dynatrace</strong>: SaaS comerciais "
-                    "completos.</li>"
-                    "<li><strong>SigNoz, Uptrace</strong>: open-source self-hosted.</li>"
-                    "</ul>"
+<h3>4. Backends de trace: cada um resolve um trade-off diferente de custo e poder</h3>
+<p><strong>Jaeger</strong> é o backend CNCF clássico, usando Cassandra
+ou Elasticsearch como armazenamento — maduro, mas o custo de storage
+cresce junto com o volume de traces. <strong>Tempo</strong> (Grafana)
+usa armazenamento baseado em S3/GCS, dramaticamente mais barato para
+grandes volumes, ao custo de queries um pouco menos ricas que soluções
+com índice dedicado. <strong>Zipkin</strong> foi pioneiro (originado no
+Twitter) e ainda é usado em sistemas legados. <strong>Honeycomb</strong>
+é SaaS especializado em ALTA cardinalidade — permite queries
+interativas explorando combinações de atributos que backends
+tradicionais não suportariam bem. <strong>Datadog APM</strong>, New
+Relic e Dynatrace são plataformas SaaS comerciais completas, cobrindo os
+três pilares numa única assinatura. <strong>SigNoz</strong> e
+<strong>Uptrace</strong> são alternativas open-source self-hosted para
+quem quer o controle sem o custo recorrente de SaaS.</p>
 
-                    "<h3>5. Métricas: além das médias</h3>"
-                    "<p>Trabalhe com <strong>histogramas</strong>, não médias. p50/p95/p99 "
-                    "dizem onde mora a dor:</p>"
-                    "<pre><code>avg_latency = 100ms                    # parece bom\n"
-                    "p50 = 50ms\n"
-                    "p99 = 5s                                # 1% dos usuários: experiência terrível</code></pre>"
-                    "<p>Estrutura mental para serviços (Tom Wilkie): <strong>RED</strong>:</p>"
-                    "<ul>"
-                    "<li><strong>Rate</strong>: reqs/s.</li>"
-                    "<li><strong>Errors</strong>: erro/s.</li>"
-                    "<li><strong>Duration</strong>: distribuição de latência.</li>"
-                    "</ul>"
-                    "<p>Para recursos (Brendan Gregg): <strong>USE</strong>:</p>"
-                    "<ul>"
-                    "<li><strong>Utilization</strong>: % de uso.</li>"
-                    "<li><strong>Saturation</strong>: fila de espera.</li>"
-                    "<li><strong>Errors</strong>: erros do recurso.</li>"
-                    "</ul>"
-                    "<p>Google SRE: <strong>4 Golden Signals</strong>: latency, traffic, errors, "
-                    "saturation.</p>"
+<h3>5. Métricas: por que média esconde exatamente o problema que você precisa ver</h3>
+<p>Trabalhar com histogramas em vez de médias é a diferença entre saber
+que existe um problema e saber quão grave ele é para uma fração real de
+usuários:</p>
+<pre><code>avg_latency = 100ms                    # parece bom
+p50 = 50ms
+p99 = 5s                                # 1% dos usuários: experiência terrível</code></pre>
+<p>Uma média de 100ms parece perfeitamente saudável — mas o p99 de 5
+segundos revela que 1% dos usuários (que pode ser um número absoluto
+grande, dependendo do tráfego) tem uma experiência terrível que a média
+sozinha esconde completamente. Três estruturas mentais complementares
+ajudam a decidir O QUE medir: RED (de Tom Wilkie), focado em SERVIÇOS —
+Rate (requisições/segundo), Errors (erros/segundo), Duration (distribuição
+de latência); USE (de Brendan Gregg), focado em RECURSOS — Utilization
+(percentual de uso), Saturation (fila de espera acumulada), Errors
+(erros do próprio recurso); e os Quatro Sinais Dourados do Google SRE —
+latency, traffic, errors, saturation, essencialmente uma síntese das
+duas anteriores adaptada para qualquer serviço.</p>
 
-                    "<h3>6. Cardinalidade: a armadilha</h3>"
-                    "<p>Cardinalidade é o número de séries únicas em uma métrica. Cada "
-                    "combinação distinta de labels = série nova.</p>"
-                    "<pre><code># RUIM\n"
-                    "http_requests_total{user_id=\"123\", path=\"/api/users/456\"}\n"
-                    "# 1M users * 100k paths = 100B séries → quebra Prometheus\n"
-                    "\n"
-                    "# BOM\n"
-                    "http_requests_total{route=\"/api/users/:id\", method=\"GET\", status=\"200\"}\n"
-                    "# poucas séries, alta utilidade</code></pre>"
-                    "<p>Detalhes de alta cardinalidade vão para traces e logs (que <em>são</em> "
-                    "high-cardinality por design). Prometheus/cortex/mimir não suportam.</p>"
+<h3>6. Cardinalidade: a armadilha que derruba um Prometheus mal configurado</h3>
+<p>Cardinalidade é o número de séries TEMPORAIS ÚNICAS que uma métrica
+gera — cada combinação distinta de valores de label cria uma série nova
+e separada para o banco de séries temporais armazenar:</p>
+<pre><code># RUIM
+http_requests_total{user_id="123", path="/api/users/456"}
+# 1M users * 100k paths = 100B séries → quebra Prometheus
 
-                    "<h3>7. Sampling em traces</h3>"
-                    "<p>Coletar 100% dos traces custa armazenamento. Estratégias:</p>"
-                    "<ul>"
-                    "<li><strong>Head-based</strong>: decisão na primeira chamada (random N%). "
-                    "Simples; perde casos raros.</li>"
-                    "<li><strong>Tail-based</strong>: coleta tudo, decide depois com base em "
-                    "atributos do trace completo (priorizar erros, lentos). Mais caro de operar; "
-                    "exige collector com buffer.</li>"
-                    "<li><strong>Probabilistic</strong>: 1% de tudo.</li>"
-                    "<li><strong>Rate-limiting</strong>: máx N traces/s por serviço.</li>"
-                    "</ul>"
-                    "<pre><code># OTel Collector tail sampling\n"
-                    "processors:\n"
-                    "  tail_sampling:\n"
-                    "    decision_wait: 30s\n"
-                    "    policies:\n"
-                    "    - name: errors-policy\n"
-                    "      type: status_code\n"
-                    "      status_code: { status_codes: [ERROR] }\n"
-                    "    - name: slow-policy\n"
-                    "      type: latency\n"
-                    "      latency: { threshold_ms: 1000 }\n"
-                    "    - name: random-policy\n"
-                    "      type: probabilistic\n"
-                    "      probabilistic: { sampling_percentage: 1 }</code></pre>"
+# BOM
+http_requests_total{route="/api/users/:id", method="GET", status="200"}
+# poucas séries, alta utilidade</code></pre>
+<p>Usar <code>user_id</code> ou o path COMPLETO (com ID específico) como
+label parece inofensivo linha a linha, mas multiplica combinações de
+forma explosiva — um milhão de usuários vezes cem mil paths diferentes
+gera cardinalidade que nenhum Prometheus, Cortex ou Mimir aguenta
+operacionalmente. A rota PARAMETRIZADA (<code>/api/users/:id</code> em
+vez do ID literal) mantém a cardinalidade baixa e ainda entrega a
+informação agregada útil. Detalhe de alto-cardinalidade — QUAL usuário
+específico, QUAL requisição específica — pertence a traces e logs, que
+são projetados desde a concepção para lidar com esse volume de forma
+diferente de uma série temporal.</p>
 
-                    "<h3>8. Correlation entre logs, métricas e traces</h3>"
-                    "<p>Inclua <code>trace_id</code> em cada log:</p>"
-                    "<pre><code>{\"timestamp\": \"...\", \"level\": \"ERROR\",\n"
-                    " \"service\": \"payment\", \"trace_id\": \"4bf92f3577b34da6\",\n"
-                    " \"span_id\": \"00f067aa0ba902b7\",\n"
-                    " \"msg\": \"stripe charge failed\", \"user_id\": \"u-123\"}</code></pre>"
-                    "<p>No Grafana com Loki + Tempo + Prometheus:</p>"
-                    "<ol>"
-                    "<li>Você vê pico de erros em métrica (Prometheus).</li>"
-                    "<li>Drill-down em logs do serviço (Loki).</li>"
-                    "<li>Click em trace_id de um log com erro → vai direto para o trace (Tempo).</li>"
-                    "<li>No trace, vê qual span falhou e quanto tempo gastou onde.</li>"
-                    "</ol>"
-                    "<p>Sem correlation, você fica fazendo correlation manual, impossível "
-                    "em escala.</p>"
+<h3>7. Sampling: coletar tudo custa caro, coletar amostra errada esconde o que importa</h3>
+<p>Capturar 100% dos traces produzidos por um sistema de alto tráfego
+tem custo de armazenamento proibitivo na maioria dos casos — por isso
+existem estratégias de amostragem, cada uma com um trade-off distinto.
+<strong>Head-based</strong> decide na PRIMEIRA chamada, aleatoriamente
+(por exemplo, guardar N% de tudo) — simples de implementar, mas tende a
+perder justamente os casos raros e interessantes (o erro ocasional, a
+requisição excepcionalmente lenta), porque a decisão é tomada ANTES de
+saber se aquele trace seria interessante. <strong>Tail-based</strong>
+inverte a lógica: coleta tudo temporariamente, e só decide DEPOIS,
+olhando o trace completo — permitindo priorizar deliberadamente erros e
+requisições lentas, exatamente os casos que head-based tende a perder.
+O custo é operacional: exige um coletor com buffer, guardando traces
+temporariamente até a decisão ser tomada. <strong>Probabilístico</strong>
+é uma amostra fixa simples (por exemplo, sempre 1%). E
+<strong>rate-limiting</strong> impõe um teto absoluto de traces por
+segundo, por serviço, independente do volume total de tráfego:</p>
+<pre><code># OTel Collector tail sampling
+processors:
+  tail_sampling:
+    decision_wait: 30s
+    policies:
+    - name: errors-policy
+      type: status_code
+      status_code: { status_codes: [ERROR] }
+    - name: slow-policy
+      type: latency
+      latency: { threshold_ms: 1000 }
+    - name: random-policy
+      type: probabilistic
+      probabilistic: { sampling_percentage: 1 }</code></pre>
+<p>Essa configuração combina as três estratégias: sempre guarda erros,
+sempre guarda o que é lento, e amostra 1% do resto — o padrão mais comum
+em produção, porque preserva exatamente os casos que mais importam para
+debug sem pagar o custo de guardar tudo.</p>
 
-                    "<h3>9. SLI / SLO / Error Budget</h3>"
-                    "<ul>"
-                    "<li><strong>SLI</strong> (Service Level Indicator): métrica que mede "
-                    "experiência do usuário. Ex.: '% de requests &lt; 500ms'.</li>"
-                    "<li><strong>SLO</strong> (Objective): meta numérica. Ex.: '99.9% das requests "
-                    "&lt; 500ms em janela de 30 dias'.</li>"
-                    "<li><strong>Error Budget</strong>: 100% - SLO. Para 99.9% = 43 min/mês "
-                    "de erro permitido. Quando o budget queima rápido, freie deploys.</li>"
-                    "<li><strong>SLA</strong>: contrato com cliente. Geralmente mais frouxo que "
-                    "SLO interno (você quer detectar antes de violar contrato).</li>"
-                    "</ul>"
+<h3>8. Correlação: o que transforma três fontes separadas numa investigação rápida</h3>
+<p>Incluir o <code>trace_id</code> em CADA linha de log é o elo que
+conecta as três fontes de observabilidade:</p>
+<pre><code>{"timestamp": "...", "level": "ERROR",
+ "service": "payment", "trace_id": "4bf92f3577b34da6",
+ "span_id": "00f067aa0ba902b7",
+ "msg": "stripe charge failed", "user_id": "u-123"}</code></pre>
+<p>Com essa correlação e uma stack como Grafana com Loki (logs) + Tempo
+(traces) + Prometheus (métricas), o fluxo de investigação de um
+incidente vira literalmente clicável: você vê o pico de erro numa
+métrica; faz drill-down nos logs daquele serviço no mesmo intervalo de
+tempo; clica no <code>trace_id</code> de um log de erro específico e cai
+DIRETO no trace correspondente; e no trace, vê exatamente qual span
+falhou e quanto tempo cada etapa consumiu. Sem essa correlação, a mesma
+investigação exigiria correlacionar manualmente timestamps entre três
+sistemas diferentes — inviável na velocidade que um incidente real
+exige.</p>
 
-                    "<h3>10. Alerting eficaz</h3>"
-                    "<ul>"
-                    "<li>Alerta deve ser <strong>actionable</strong>: alguém precisa fazer algo "
-                    "agora. Senão, vira ruído.</li>"
-                    "<li>Alerte em SLI/SLO, não em causas (CPU alto não é necessariamente "
-                    "incidente; latência percebida é).</li>"
-                    "<li>Multi-window multi-burn-rate (Google SRE Workbook): alerte rápido para "
-                    "queimadas grandes, devagar para pequenas.</li>"
-                    "<li>Cada alerta tem runbook em URL: 'o que fazer ao receber'.</li>"
-                    "</ul>"
+<h3>9. SLI, SLO e Error Budget: transformar "está funcionando bem?" numa pergunta numérica</h3>
+<p>Um <strong>SLI</strong> (Service Level Indicator) é uma métrica que
+mede a experiência real do usuário — "percentual de requisições abaixo
+de 500ms", por exemplo. Um <strong>SLO</strong> (Objective) é uma META
+numérica sobre esse indicador — "99,9% das requisições abaixo de 500ms
+numa janela de 30 dias". O <strong>Error Budget</strong> é o
+complemento aritmético do SLO: 100% menos 99,9% deixa 0,1% de margem
+para erro, que para uma janela de 30 dias equivale a cerca de 43 minutos
+de indisponibilidade TOLERADA por mês — e quando esse orçamento está
+sendo consumido rápido demais, a resposta operacional correta é
+CONGELAR novos deploys até a situação estabilizar, não continuar
+lançando mudanças que aumentam o risco. Um <strong>SLA</strong> é o
+compromisso CONTRATUAL com o cliente, tipicamente definido mais frouxo
+que o SLO interno de propósito — a folga entre os dois é o que permite à
+equipe detectar e corrigir um problema ANTES que ele viole o contrato
+formal com o cliente.</p>
 
-                    "<h3>11. Pipeline completo: coletor + backend</h3>"
-                    "<pre><code># otel-collector-config.yaml\n"
-                    "receivers:\n"
-                    "  otlp:\n"
-                    "    protocols:\n"
-                    "      grpc: {}\n"
-                    "      http: {}\n"
-                    "  prometheus:\n"
-                    "    config:\n"
-                    "      scrape_configs:\n"
-                    "      - job_name: app\n"
-                    "        kubernetes_sd_configs: [{role: pod}]\n"
-                    "\n"
-                    "processors:\n"
-                    "  batch: {}\n"
-                    "  resource:\n"
-                    "    attributes:\n"
-                    "    - key: env\n"
-                    "      value: prod\n"
-                    "      action: insert\n"
-                    "  tail_sampling: { ... }\n"
-                    "\n"
-                    "exporters:\n"
-                    "  otlp/tempo: { endpoint: tempo:4317 }\n"
-                    "  prometheus/mimir: { endpoint: 0.0.0.0:9090 }\n"
-                    "  loki: { endpoint: http://loki:3100/loki/api/v1/push }\n"
-                    "\n"
-                    "service:\n"
-                    "  pipelines:\n"
-                    "    traces: { receivers: [otlp], processors: [batch, tail_sampling], exporters: [otlp/tempo] }\n"
-                    "    metrics: { receivers: [otlp, prometheus], processors: [batch, resource], exporters: [prometheus/mimir] }\n"
-                    "    logs: { receivers: [otlp], processors: [batch], exporters: [loki] }</code></pre>"
+<h3>10. Alerting eficaz: o alerta que não gera ação é ruído, não sinal</h3>
+<p>Um alerta só se justifica quando é <strong>acionável</strong> — alguém
+precisa fazer algo AGORA ao recebê-lo; qualquer alerta que não atenda
+esse critério treina a equipe a ignorar o pager, o efeito exatamente
+oposto do pretendido. A regra prática é alertar em SLI/SLO — a
+experiência real do usuário — em vez de em CAUSAS intermediárias: CPU
+alta sozinha não é necessariamente um incidente (pode estar processando
+uma carga legítima sem afetar ninguém), mas latência percebida pelo
+usuário quase sempre é. A técnica de multi-window multi-burn-rate (do
+Google SRE Workbook) resolve uma tensão real: alertar rápido para uma
+queima GRANDE do error budget (algo está seriamente errado agora) mas
+mais devagar para queimas pequenas (pode ser ruído normal que se
+resolve sozinho) — um único limiar fixo não capturaria as duas situações
+adequadamente. E todo alerta deveria vir acompanhado de um link para um
+runbook específico dizendo o que fazer ao recebê-lo — sem isso, quem
+está de plantão às 3 da manhã precisa improvisar uma investigação do
+zero, sem contexto prévio nenhum.</p>
 
-                    "<h3>12. Service Map automático</h3>"
-                    "<p>De traces, ferramentas geram mapa de dependências do sistema: 'web "
-                    "chama auth e api; api chama postgres e redis'. Indispensável em "
-                    "incidentes ('auth está lento → todos os clientes downstream sofrem'). "
-                    "Disponível em Datadog, Honeycomb, Grafana Tempo, Jaeger.</p>"
+<h3>11. O pipeline completo: um coletor central roteando para múltiplos backends</h3>
+<pre><code># otel-collector-config.yaml
+receivers:
+  otlp:
+    protocols:
+      grpc: {}
+      http: {}
+  prometheus:
+    config:
+      scrape_configs:
+      - job_name: app
+        kubernetes_sd_configs: [{role: pod}]
 
-                    "<h3>13. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>Logs e métricas em silos sem correlation</strong>: investigação "
-                    "vira detetive cego.</li>"
-                    "<li><strong>Cardinalidade explosiva em métricas</strong>: derruba Prometheus.</li>"
-                    "<li><strong>100% sampling sem necessidade</strong>: storage caríssimo.</li>"
-                    "<li><strong>Alertas em causas, não sintomas</strong>: pager toca por nada "
-                    "ou nunca toca quando precisa.</li>"
-                    "<li><strong>Sem runbook por alerta</strong>: oncall acordado às 3am com "
-                    "'CPU alto' e zero contexto.</li>"
-                    "<li><strong>Trace só em alguns serviços</strong>: lacunas escondem o "
-                    "problema.</li>"
-                    "<li><strong>Sem instrumentação custom</strong>: auto-instrumentação capta "
-                    "HTTP, mas perde lógica de negócio.</li>"
-                    "</ul>"
+processors:
+  batch: {}
+  resource:
+    attributes:
+    - key: env
+      value: prod
+      action: insert
+  tail_sampling: { ... }
 
-                    "<h3>14. Custo</h3>"
-                    "<ul>"
-                    "<li>Storage de logs cresce linear com tráfego, retenção curta "
-                    "(7-30 dias 'quente', tier frio para arquivo).</li>"
-                    "<li>Métricas: cardinalidade controlada → custo controlado.</li>"
-                    "<li>Traces: sampling agressivo + tail-based para preservar erros.</li>"
-                    "<li>Vendor SaaS pode ficar caríssimo, calcule por GB ingerido + "
-                    "host monitorado.</li>"
-                    "</ul>"
+exporters:
+  otlp/tempo: { endpoint: tempo:4317 }
+  prometheus/mimir: { endpoint: 0.0.0.0:9090 }
+  loki: { endpoint: http://loki:3100/loki/api/v1/push }
+
+service:
+  pipelines:
+    traces: { receivers: [otlp], processors: [batch, tail_sampling], exporters: [otlp/tempo] }
+    metrics: { receivers: [otlp, prometheus], processors: [batch, resource], exporters: [prometheus/mimir] }
+    logs: { receivers: [otlp], processors: [batch], exporters: [loki] }</code></pre>
+<p>Ter um único coletor central, em vez de cada aplicação exportando
+diretamente para cada backend, é o que permite mudar de backend, ajustar
+sampling ou adicionar processamento (como o atributo <code>env: prod</code>
+inserido automaticamente aqui) sem tocar em nenhum código de
+aplicação — a mudança fica inteiramente na configuração do coletor.</p>
+
+<h3>12. Mapa de serviço automático: a topologia real, derivada dos próprios traces</h3>
+<p>A partir do volume de traces coletados, ferramentas de observabilidade
+constroem automaticamente um mapa mostrando quais serviços chamam quais
+outros — "web chama auth e api; api chama postgres e redis" — sem que
+ninguém precise manter esse diagrama manualmente atualizado (que
+inevitavelmente ficaria desatualizado assim que a arquitetura mudasse).
+Esse mapa é especialmente valioso durante incidentes: ver que "auth está
+lento" imediatamente sugere quais serviços DOWNSTREAM provavelmente
+também estão sofrendo, sem precisar perguntar a cada time individualmente
+quem depende de quem. Datadog, Honeycomb, Grafana Tempo e Jaeger geram
+essa visão automaticamente a partir dos mesmos dados de trace já
+coletados.</p>
+
+<h3>13. Sete anti-padrões que tornam observabilidade cara e ainda assim inútil</h3>
+<ul>
+<li><strong>Logs e métricas em silos, sem correlação</strong>: cada
+investigação vira trabalho de detetive cego, correlacionando timestamps
+manualmente entre sistemas diferentes.</li>
+<li><strong>Cardinalidade explosiva em métricas</strong>: derruba a
+própria infraestrutura de monitoramento, exatamente quando ela mais
+seria necessária.</li>
+<li><strong>100% de sampling sem necessidade real</strong>: custo de
+armazenamento desproporcional ao valor extraído do volume extra.</li>
+<li><strong>Alertas em causas em vez de sintomas</strong>: pager toca
+por nada relevante, ou pior, fica em silêncio justamente quando o
+usuário está sofrendo de verdade.</li>
+<li><strong>Sem runbook por trás de cada alerta</strong>: quem está de
+plantão é acordado com "CPU alta" e zero contexto sobre o que fazer a
+respeito.</li>
+<li><strong>Trace instrumentado só em alguns serviços</strong>: lacunas
+na cobertura escondem exatamente a parte do sistema onde o problema
+mora.</li>
+<li><strong>Sem instrumentação customizada além da automática</strong>:
+auto-instrumentação captura chamadas HTTP e de banco, mas nunca vê
+lógica de NEGÓCIO específica (um desconto aplicado errado, uma regra de
+elegibilidade), que só instrumentação manual revela.</li>
+</ul>
+
+<h3>14. Custo: onde cada pilar cresce, e como conter cada um</h3>
+<p>Armazenamento de log cresce linearmente com o volume de tráfego — a
+resposta operacional comum é reter pouco tempo "quente" (7 a 30 dias,
+onde a busca é rápida) e mover o resto para um tier "frio" de arquivo
+mais barato, mas com busca mais lenta. Métricas ficam sob controle
+principalmente através de controlar cardinalidade (seção 6) — o custo
+não é sobre volume de dados no tempo, é sobre número de séries
+diferentes mantidas simultaneamente. Traces se beneficiam de sampling
+agressivo combinado com tail-based (seção 7) para preservar justamente
+os casos raros e caros de perder (erros, lentidão) sem pagar o custo de
+guardar tudo. E para quem usa um fornecedor SaaS, o custo real costuma
+ser calculado por GB ingerido MAIS por host monitorado — um modelo de
+cobrança que pode escalar de forma surpreendente conforme a
+infraestrutura cresce, e vale projetar antes de se comprometer com uma
+plataforma específica.</p>"""
                 ),
                 "practical": (
                     "Instrumente uma app Python com <code>opentelemetry-instrument python "
