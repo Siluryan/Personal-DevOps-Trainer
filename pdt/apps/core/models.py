@@ -17,10 +17,20 @@ class GlossaryTerm(models.Model):
             "Sensível a maiúsculas/minúsculas."
         ),
     )
+    term_en = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text=(
+            "Grafia do termo como aparece no texto em inglês da aula, se for "
+            "diferente do português (siglas como RCE/IAM geralmente não mudam "
+            "e podem ficar em branco aqui)."
+        ),
+    )
     definition = models.CharField(
         max_length=300,
         help_text="Explicação breve (1-2 frases) mostrada na caixinha ao clicar no termo.",
     )
+    definition_en = models.CharField(max_length=300, blank=True)
     seed_managed = models.BooleanField(
         default=True,
         help_text="Gerenciado pelo seed automático. Editar pelo admin desliga isso e protege sua edição.",

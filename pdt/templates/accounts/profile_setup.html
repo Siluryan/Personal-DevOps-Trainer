@@ -1,13 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Configure seu perfil · PDT{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Configure seu perfil" %} · PDT{% endblock %}
 
 {% block content %}
 <section class="max-w-2xl mx-auto px-4 py-10">
-  <h1 class="text-2xl font-bold" style="color:#ddeeff">Conte um pouco sobre você</h1>
+  <h1 class="text-2xl font-bold" style="color:#ddeeff">{% trans "Conte um pouco sobre você" %}</h1>
   <p class="text-sm mt-2" style="color:#8bacc8;line-height:1.6">
-    O PDT pede LinkedIn e GitHub porque o objetivo é colocar quem se dedica em evidência
-    para o mercado de trabalho. A visibilidade desses dados para outras pessoas é controlada
-    pelas opções abaixo (ranking público e contato visível).
+    {% trans "O PDT pede LinkedIn e GitHub porque o objetivo é colocar quem se dedica em evidência para o mercado de trabalho. A visibilidade desses dados para outras pessoas é controlada pelas opções abaixo (ranking público e contato visível)." %}
   </p>
 
   <form method="post"
@@ -34,7 +33,7 @@
     <button style="background:#0891b2;color:#f0f9ff;font-weight:700;
                    padding:10px 22px;border-radius:8px;font-size:.9375rem;transition:background .15s"
             class="hover:bg-sky-500">
-      Salvar e continuar
+      {% trans "Salvar e continuar" %}
     </button>
   </form>
 </section>

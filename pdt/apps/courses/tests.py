@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 from django.urls import reverse
+from django.utils import translation
 
 from apps.courses.models import Choice, Lab, Lesson, Phase, Question, Topic
 from apps.courses.seed_data import PHASES
@@ -34,6 +35,77 @@ class TestPhaseAndTopicModels:
         Topic.objects.create(phase=phase, title="A", order=1)
         with pytest.raises(IntegrityError), transaction.atomic():
             Topic.objects.create(phase=phase, title="B", order=1)
+
+
+@pytest.mark.django_db
+class TestBilingualDisplayFields:
+    """`display_*` cai pro português até o campo `*_en` ser preenchido, e só
+    troca pro inglês quando o idioma ativo é 'en' E a tradução já existe."""
+
+    def test_topic_display_title_cai_pro_portugues_sem_traducao(self):
+        phase = Phase.objects.create(name="Fase Bi", order=10)
+        topic = Topic.objects.create(phase=phase, title="Hardening", order=1)
+        with translation.override("en"):
+            assert topic.display_title == "Hardening"
+
+    def test_topic_display_title_usa_ingles_quando_disponivel(self):
+        phase = Phase.objects.create(name="Fase Bi2", order=11)
+        topic = Topic.objects.create(
+            phase=phase, title="Hardening", title_en="Hardening", order=1
+        )
+        topic.summary = "Resumo em pt"
+        topic.summary_en = "Summary in en"
+        topic.save()
+        with translation.override("pt-br"):
+            assert topic.display_summary == "Resumo em pt"
+        with translation.override("en"):
+            assert topic.display_summary == "Summary in en"
+
+    def test_lesson_display_fields(self):
+        phase = Phase.objects.create(name="Fase Bi3", order=12)
+        topic = Topic.objects.create(phase=phase, title="T", order=1)
+        lesson = Lesson.objects.create(
+            topic=topic, body="corpo pt", body_en="body en"
+        )
+        with translation.override("en"):
+            assert lesson.display_body == "body en"
+        with translation.override("pt-br"):
+            assert lesson.display_body == "corpo pt"
+
+    def test_lab_display_spec_troca_json_inteiro(self):
+        phase = Phase.objects.create(name="Fase Bi4", order=13)
+        topic = Topic.objects.create(phase=phase, title="T2", order=1)
+        lab = Lab.objects.create(
+            topic=topic,
+            kind="terminal",
+            title="Lab",
+            spec={"scenario": "pt"},
+            spec_en={"scenario": "en"},
+        )
+        with translation.override("en"):
+            assert lab.display_spec == {"scenario": "en"}
+        with translation.override("pt-br"):
+            assert lab.display_spec == {"scenario": "pt"}
+
+    def test_lab_display_spec_sem_traducao_cai_pro_original(self):
+        phase = Phase.objects.create(name="Fase Bi5", order=14)
+        topic = Topic.objects.create(phase=phase, title="T3", order=1)
+        lab = Lab.objects.create(
+            topic=topic, kind="terminal", title="Lab", spec={"scenario": "pt"}
+        )
+        with translation.override("en"):
+            assert lab.display_spec == {"scenario": "pt"}
+
+
+@pytest.mark.django_db
+class TestLanguageSwitcher:
+    def test_set_language_view_alterna_idioma(self, client):
+        resp = client.post(
+            reverse("set_language"),
+            {"language": "en", "next": "/"},
+        )
+        assert resp.status_code == 302
+        assert client.cookies["django_language"].value == "en"
 
 
 class TestSeedDataIntegrity:

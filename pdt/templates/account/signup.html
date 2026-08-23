@@ -1,11 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Criar conta · PDT{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Criar conta" %} · PDT{% endblock %}
 
 {% block content %}
 <section class="max-w-md mx-auto px-4 py-12">
-  <h1 class="text-2xl font-bold mb-1" style="color:#ddeeff">Criar conta</h1>
+  <h1 class="text-2xl font-bold mb-1" style="color:#ddeeff">{% trans "Criar conta" %}</h1>
   <p class="text-sm mb-5" style="color:#5a7a9a">
-    Após o cadastro você completa o perfil profissional e faz o teste de admissão.
+    {% trans "Após o cadastro você completa o perfil profissional e faz o teste de admissão." %}
   </p>
 
   <form method="post" class="space-y-4">
@@ -30,7 +31,7 @@
     <button style="width:100%;background:#0891b2;color:#f0f9ff;font-weight:700;
                    padding:10px 0;border-radius:8px;font-size:.9375rem;transition:background .15s"
             class="hover:bg-sky-500">
-      Criar conta
+      {% trans "Criar conta" %}
     </button>
   </form>
 </section>

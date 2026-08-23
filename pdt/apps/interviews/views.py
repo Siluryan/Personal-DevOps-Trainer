@@ -17,6 +17,7 @@ from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from django.views.generic import TemplateView, View
 
 from apps.accounts.models import User as UserModel  # for type-only / nivel mapping
@@ -51,23 +52,23 @@ def _failure_message(score_percent: float) -> str:
     «Faltou pouco» só aparece quando faz sentido (≥ 70%); resultados mais baixos
     recebem um texto que reflete o trabalho real que ainda falta.
     """
-    rule = f"São necessários {PASS_PERCENT}% para subir de nível."
+    rule = _("São necessários %(pct)s%% para subir de nível.") % {"pct": PASS_PERCENT}
     if score_percent >= 70:
-        return f"Faltou pouco. {rule} Revise o gabarito e tente de novo."
+        return _("Faltou pouco. %(rule)s Revise o gabarito e tente de novo.") % {"rule": rule}
     if score_percent >= 50:
-        return (
-            f"Você está no caminho, mas ainda não passou. {rule} "
+        return _(
+            "Você está no caminho, mas ainda não passou. %(rule)s "
             "Estude os pontos onde errou no gabarito antes de refazer."
-        )
+        ) % {"rule": rule}
     if score_percent >= 30:
-        return (
-            f"Ainda há terreno a cobrir. {rule} "
+        return _(
+            "Ainda há terreno a cobrir. %(rule)s "
             "Use o gabarito como guia de estudos antes de tentar de novo."
-        )
-    return (
-        f"O resultado mostra que vale estudar o conteúdo antes de refazer. {rule} "
+        ) % {"rule": rule}
+    return _(
+        "O resultado mostra que vale estudar o conteúdo antes de refazer. %(rule)s "
         "Comece pelo gabarito e pelos tópicos relacionados na trilha."
-    )
+    ) % {"rule": rule}
 
 
 def _level_status(user, level: str) -> dict:
@@ -147,7 +148,7 @@ class StartView(LoginRequiredMixin, View):
         if not user.can_take_interview(level):
             messages.warning(
                 request,
-                "Você ainda não desbloqueou esse nível. Conclua o anterior com 80%+.",
+                _("Você ainda não desbloqueou esse nível. Conclua o anterior com 80%+."),
             )
             return redirect("interviews:index")
 
@@ -176,8 +177,8 @@ class StartView(LoginRequiredMixin, View):
         if len(ids) < QUESTIONS_PER_TEST:
             messages.error(
                 request,
-                f"Banco de questões incompleto para {level} "
-                f"({len(ids)}/{QUESTIONS_PER_TEST}). Avise o admin.",
+                _("Banco de questões incompleto para %(level)s (%(n)s/%(total)s). Avise o admin.")
+                % {"level": level, "n": len(ids), "total": QUESTIONS_PER_TEST},
             )
             return redirect("interviews:index")
 
@@ -280,7 +281,7 @@ class TakeView(LoginRequiredMixin, View):
         if action == "save_exit":
             messages.info(
                 request,
-                "Progresso salvo. Você pode retomar a qualquer momento.",
+                _("Progresso salvo. Você pode retomar a qualquer momento."),
             )
             return redirect("interviews:index")
         if action == "prev":
@@ -352,12 +353,13 @@ class FinishView(LoginRequiredMixin, View):
             if promoted:
                 messages.success(
                     request,
-                    f"Parabéns! Você foi promovido para {request.user.career_label}.",
+                    _("Parabéns! Você foi promovido para %(career)s.")
+                    % {"career": request.user.career_label},
                 )
             else:
                 messages.success(
                     request,
-                    "Você passou no teste. Continue praticando ou avance para o próximo nível.",
+                    _("Você passou no teste. Continue praticando ou avance para o próximo nível."),
                 )
         else:
             score_percent = (score / max(len(attempt.question_ids), 1)) * 100
@@ -414,5 +416,5 @@ class CancelView(LoginRequiredMixin, View):
             InterviewAttempt, pk=pk, user=request.user, finished_at__isnull=True
         )
         attempt.delete()
-        messages.info(request, "Tentativa descartada.")
+        messages.info(request, _("Tentativa descartada."))
         return redirect("interviews:index")

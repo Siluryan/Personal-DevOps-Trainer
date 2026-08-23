@@ -1,0 +1,15 @@
+{% load i18n %}
+{% get_current_language as CURRENT_LANG %}
+<form action="{% url 'set_language' %}" method="post" class="flex items-center" style="font-size:.75rem;gap:2px">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.path }}">
+  <button type="submit" name="language" value="pt-br"
+          style="padding:3px 6px;border-radius:5px;font-weight:{% if CURRENT_LANG == 'pt-br' %}700{% else %}400{% endif %};
+                 color:{% if CURRENT_LANG == 'pt-br' %}#38bdf8{% else %}#5a7a9a{% endif %}"
+          class="hover:text-sky-300 transition-colors" aria-label="Português" {% if CURRENT_LANG == 'pt-br' %}aria-current="true"{% endif %}>PT</button>
+  <span style="color:#1a2f50">/</span>
+  <button type="submit" name="language" value="en"
+          style="padding:3px 6px;border-radius:5px;font-weight:{% if CURRENT_LANG == 'en' %}700{% else %}400{% endif %};
+                 color:{% if CURRENT_LANG == 'en' %}#38bdf8{% else %}#5a7a9a{% endif %}"
+          class="hover:text-sky-300 transition-colors" aria-label="English" {% if CURRENT_LANG == 'en' %}aria-current="true"{% endif %}>EN</button>
+</form>

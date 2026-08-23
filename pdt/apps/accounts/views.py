@@ -2,6 +2,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.utils.translation import gettext as _
 from django.views.generic import DetailView, UpdateView
 
 from apps.gamification.services import build_radar_payload, total_score_for
@@ -23,7 +24,7 @@ class ProfileSetupView(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         messages.success(
             self.request,
-            "Perfil salvo. Agora faça o teste de admissão para liberar a plataforma.",
+            _("Perfil salvo. Agora faça o teste de admissão para liberar a plataforma."),
         )
         return super().form_valid(form)
 

@@ -1,15 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Respondendo · PDT{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Respondendo" %} · PDT{% endblock %}
 
 {% block content %}
 <section class="max-w-3xl mx-auto px-4 py-10">
   {% if not attempt %}
     <p style="color:#8bacc8">
-      Sessão de teste não iniciada.
-      <a style="color:#38bdf8" href="{% url 'assessments:start' %}">Voltar</a>.
+      {% trans "Sessão de teste não iniciada." %}
+      <a style="color:#38bdf8" href="{% url 'assessments:start' %}">{% trans "Voltar" %}</a>.
     </p>
   {% else %}
-    <h1 class="text-2xl font-bold mb-4" style="color:#ddeeff">Teste de admissão</h1>
+    <h1 class="text-2xl font-bold mb-4" style="color:#ddeeff">{% trans "Teste de admissão" %}</h1>
     <form method="post" class="space-y-6">
       {% csrf_token %}
       {% for q in questions %}
@@ -32,7 +33,7 @@
       <button style="background:#0891b2;color:#f0f9ff;font-weight:700;
                      padding:10px 22px;border-radius:8px;font-size:.9375rem;transition:background .15s"
               class="hover:bg-sky-500">
-        Enviar respostas
+        {% trans "Enviar respostas" %}
       </button>
     </form>
   {% endif %}

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Sala de ajuda · PDT{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Sala de ajuda · PDT" %}{% endblock %}
 
 {% block content %}
 <section class="max-w-4xl mx-auto px-4 py-6"
@@ -15,19 +16,19 @@
          @beforeunload.window="leave()">
 
   {% if forbidden %}
-    <p style="color:#f87171">Você não faz parte desta sala.</p>
+    <p style="color:#f87171">{% trans "Você não faz parte desta sala." %}</p>
   {% else %}
 
     <!-- cabeçalho da sala -->
     <header class="flex flex-wrap items-start justify-between gap-3 mb-5">
       <div>
         <h1 class="text-2xl font-bold" style="color:#ddeeff">
-          Sala de ajuda · {{ help_request.topic.title }}
+          {% blocktrans with topic_title=help_request.topic.title %}Sala de ajuda · {{ topic_title }}{% endblocktrans %}
         </h1>
         <p class="text-sm mt-1" style="color:#8bacc8">
-          Quem pediu: <strong style="color:#ddeeff">{{ help_request.requester.display_name }}</strong>
+          {% blocktrans with requester_name=help_request.requester.display_name %}Quem pediu: <strong style="color:#ddeeff">{{ requester_name }}</strong>{% endblocktrans %}
           {% if help_request.helper %}
-            · ajudando: <strong style="color:#ddeeff">{{ help_request.helper.display_name }}</strong>
+            {% blocktrans with helper_name=help_request.helper.display_name %}· ajudando: <strong style="color:#ddeeff">{{ helper_name }}</strong>{% endblocktrans %}
           {% endif %}
         </p>
       </div>
@@ -46,7 +47,7 @@
     {% if help_request.description %}
       <div style="background:#07122a;border:1px solid #1a2f50;border-radius:10px;padding:16px;margin-bottom:20px">
         <p style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#5a7a9a;margin-bottom:6px">
-          Descrição do pedido
+          {% trans "Descrição do pedido" %}
         </p>
         <p style="font-size:.9rem;color:#8bacc8;white-space:pre-line">{{ help_request.description }}</p>
       </div>
@@ -58,10 +59,9 @@
       <!-- painel de voz -->
       <div style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:16px;
                   display:flex;flex-direction:column;gap:12px">
-        <p style="font-size:.9rem;font-weight:700;color:#7dd3fc">Voz (WebRTC)</p>
+        <p style="font-size:.9rem;font-weight:700;color:#7dd3fc">{% trans "Voz (WebRTC)" %}</p>
         <p style="font-size:.75rem;color:#5a7a9a;line-height:1.5">
-          A voz roda direto entre os dois navegadores. O servidor apenas faz a sinalização
-          inicial, nenhum áudio é gravado.
+          {% trans "A voz roda direto entre os dois navegadores. O servidor apenas faz a sinalização inicial, nenhum áudio é gravado." %}
         </p>
 
         <div class="flex flex-wrap gap-2">
@@ -82,7 +82,7 @@
                   class="hover:bg-navy-700 disabled:opacity-50"
                   :disabled="roomClosed || !micActive || inCall"
                   @click="startCall()">
-            Chamar peer
+            {% trans "Chamar peer" %}
           </button>
 
           <button type="button"
@@ -91,7 +91,7 @@
                   class="hover:bg-navy-700 disabled:opacity-50"
                   :disabled="roomClosed || !inCall"
                   @click="hangUp()">
-            Encerrar
+            {% trans "Encerrar" %}
           </button>
 
           <span style="font-size:.75rem;color:#5a7a9a;display:flex;align-items:center;gap:6px;margin-left:auto">
@@ -108,7 +108,7 @@
       <!-- painel de chat -->
       <div style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:16px;
                   display:flex;flex-direction:column">
-        <p style="font-size:.9rem;font-weight:700;color:#7dd3fc;margin-bottom:8px">Chat</p>
+        <p style="font-size:.9rem;font-weight:700;color:#7dd3fc;margin-bottom:8px">{% trans "Chat" %}</p>
         <div x-ref="messages"
              style="flex:1;min-height:220px;max-height:360px;overflow-y:auto;padding-right:4px"
              class="space-y-2">
@@ -126,14 +126,14 @@
           <input type="text"
                  x-model="draft"
                  maxlength="2000"
-                 placeholder="Escreva uma mensagem..."
+                 placeholder="{% trans "Escreva uma mensagem..." %}"
                  style="flex:1;font-size:.875rem" />
           <button type="submit"
                   style="background:#0891b2;color:#f0f9ff;font-weight:700;
                          padding:8px 16px;border-radius:7px;font-size:.875rem;transition:background .15s"
                   class="hover:bg-sky-500 disabled:opacity-50"
                   :disabled="!draft.trim() || !connected">
-            Enviar
+            {% trans "Enviar" %}
           </button>
         </form>
       </div>
@@ -150,14 +150,14 @@
         <button style="background:#34d399;color:#04091c;font-weight:700;
                        padding:10px 22px;border-radius:8px;font-size:.9375rem;transition:background .15s"
                 class="hover:bg-emerald-300">
-          Marcar como resolvido
-          (concede +1 ponto a {{ help_request.helper.display_name|default:"quem ajudou" }})
+          {% blocktrans with helper_name=help_request.helper.display_name|default:"quem ajudou" %}Marcar como resolvido
+          (concede +1 ponto a {{ helper_name }}){% endblocktrans %}
         </button>
       </form>
     {% endif %}
 
     {% if help_request.status == 'resolved' %}
-      <p class="mt-6" style="color:#34d399;font-weight:600">Pedido resolvido. Bom estudo!</p>
+      <p class="mt-6" style="color:#34d399;font-weight:600">{% trans "Pedido resolvido. Bom estudo!" %}</p>
     {% endif %}
     <p class="mt-6" x-show="resolvedNotice" x-cloak style="color:#34d399;font-weight:600" x-text="resolvedNotice"></p>
 

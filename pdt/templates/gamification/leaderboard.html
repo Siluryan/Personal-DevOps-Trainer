@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Ranking · PDT{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Ranking · PDT" %}{% endblock %}
 
 {% block content %}
 <section class="max-w-3xl mx-auto px-4 py-8">
-  <h1 class="text-2xl font-bold" style="color:#ddeeff">Ranking público (Top 50)</h1>
-  <p class="text-sm mt-1" style="color:#5a7a9a">Apenas usuários que escolheram aparecer no ranking.</p>
+  <h1 class="text-2xl font-bold" style="color:#ddeeff">{% trans "Ranking público (Top 50)" %}</h1>
+  <p class="text-sm mt-1" style="color:#5a7a9a">{% trans "Apenas usuários que escolheram aparecer no ranking." %}</p>
 
   <ol class="mt-6 space-y-1">
     {% for u in users %}
@@ -38,11 +39,11 @@
             <a href="{{ u.github_url }}" target="_blank" rel="noopener"
                style="font-size:.75rem;color:#5a7a9a" class="hover:text-sky-300">GitHub</a>
           {% endif %}
-          <span style="color:#34d399;font-weight:700;font-size:.9rem">{{ u.total }} pts</span>
+          <span style="color:#34d399;font-weight:700;font-size:.9rem">{% blocktrans with total=u.total %}{{ total }} pts{% endblocktrans %}</span>
         </div>
       </li>
     {% empty %}
-      <li style="color:#5a7a9a;font-size:.875rem">Ninguém apareceu no ranking ainda.</li>
+      <li style="color:#5a7a9a;font-size:.875rem">{% trans "Ninguém apareceu no ranking ainda." %}</li>
     {% endfor %}
   </ol>
 </section>

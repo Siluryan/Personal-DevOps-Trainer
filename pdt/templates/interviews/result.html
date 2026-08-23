@@ -1,13 +1,14 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% load pdt_extras %}
-{% block title %}Resultado · {{ level_label }} · PDT{% endblock %}
+{% block title %}{% blocktrans %}Resultado · {{ level_label }} · PDT{% endblocktrans %}{% endblock %}
 
 {% block content %}
 <section class="max-w-3xl mx-auto px-4 py-8">
 
   <a href="{% url 'interviews:index' %}"
      style="color:#8bacc8;font-size:.85rem"
-     class="hover:text-sky-300 transition-colors">← Voltar ao simulador</a>
+     class="hover:text-sky-300 transition-colors">{% trans "← Voltar ao simulador" %}</a>
 
   <div style="background:#07122a;border:1px solid
               {% if attempt.passed %}rgba(52,211,153,.45){% else %}rgba(244,63,94,.45){% endif %};
@@ -15,7 +16,7 @@
 
     <p style="color:#5a7a9a;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;
               margin-bottom:6px">
-      Entrevista {{ level_label }}
+      {% blocktrans %}Entrevista {{ level_label }}{% endblocktrans %}
     </p>
 
     <div class="flex flex-wrap items-end gap-4 mb-4">
@@ -24,14 +25,14 @@
         {{ score_percent }}%
       </div>
       <div class="text-lg" style="color:#bae6fd">
-        {{ correct_count }}/{{ total }} corretas
+        {% blocktrans %}{{ correct_count }}/{{ total }} corretas{% endblocktrans %}
       </div>
     </div>
 
     {% if attempt.passed %}
       <p style="color:#6ee7b7;line-height:1.55">
-        Você atingiu <strong>{{ pass_percent }}%</strong> e está aprovado nesse nível.
-        Veja o gabarito abaixo para fixar os pontos.
+        {% blocktrans %}Você atingiu <strong>{{ pass_percent }}%</strong> e está aprovado nesse nível.
+        Veja o gabarito abaixo para fixar os pontos.{% endblocktrans %}
       </p>
     {% else %}
       <p style="color:#fde68a;line-height:1.55">
@@ -41,7 +42,7 @@
   </div>
 
   <h2 class="text-lg font-bold mt-8 mb-3" style="color:#ddeeff">
-    Gabarito
+    {% trans "Gabarito" %}
   </h2>
 
   <div class="space-y-3">
@@ -79,7 +80,7 @@
           </ul>
           {% if row.question.explanation %}
             <p style="margin-top:8px;font-size:.85rem;line-height:1.55;color:#a5b8cc">
-              <strong style="color:#bae6fd">Por quê:</strong> {{ row.question.explanation|bold_ticks }}
+              <strong style="color:#bae6fd">{% trans "Por quê:" %}</strong> {{ row.question.explanation|bold_ticks }}
             </p>
           {% endif %}
         </div>

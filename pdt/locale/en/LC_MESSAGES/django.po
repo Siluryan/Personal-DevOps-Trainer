@@ -1,0 +1,1161 @@
+# English translation catalog for Personal DevOps Trainer.
+msgid ""
+msgstr ""
+"Project-Id-Version: PDT\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-23 19:40-0300\n"
+"PO-Revision-Date: 2026-08-23 00:00+0000\n"
+"Last-Translator: PDT\n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: apps/accounts/views.py:27
+msgid "Perfil salvo. Agora faça o teste de admissão para liberar a plataforma."
+msgstr "Profile saved. Now take the admission test to unlock the platform."
+
+#: apps/assessments/models.py:16
+msgid "Linux"
+msgstr "Linux"
+
+#: apps/assessments/models.py:16
+msgid "Redes"
+msgstr "Networking"
+
+#: apps/assessments/views.py:74
+msgid ""
+"Você precisa aguardar antes de tentar novamente. Aproveite para revisar "
+"Linux e redes."
+msgstr ""
+"You need to wait before trying again. Use the time to review Linux and "
+"networking."
+
+#: apps/assessments/views.py:82
+msgid "Banco de questões incompleto. Avise o administrador."
+msgstr "Question bank incomplete. Let the administrator know."
+
+#: apps/assessments/views.py:156
+msgid "Você foi aprovado. Bem-vindo(a) ao PDT!"
+msgstr "You passed. Welcome to PDT!"
+
+#: apps/assessments/views.py:160
+msgid ""
+"Desempenho insuficiente. Reforce Linux e redes e tente novamente em algumas "
+"horas."
+msgstr ""
+"Not enough correct answers. Brush up on Linux and networking and try again "
+"in a few hours."
+
+#: apps/courses/models.py:86
+msgid "Artigo"
+msgstr "Article"
+
+#: apps/courses/models.py:87
+msgid "Vídeo"
+msgstr "Video"
+
+#: apps/courses/models.py:88
+msgid "Documentação oficial"
+msgstr "Official docs"
+
+#: apps/courses/models.py:89
+msgid "Livro/Capítulo"
+msgstr "Book/Chapter"
+
+#: apps/courses/models.py:90
+msgid "Curso"
+msgstr "Course"
+
+#: apps/courses/models.py:91
+msgid "Ferramenta"
+msgstr "Tool"
+
+#: apps/courses/models.py:225
+msgid "Terminal — montar comando tocando nos tokens"
+msgstr "Terminal — build the command by tapping tokens"
+
+#: apps/courses/models.py:226
+msgid "Caça-a-falha — tocar na linha vulnerável"
+msgstr "Bug hunt — tap the vulnerable line"
+
+#: apps/courses/models.py:227
+msgid "Ordenação — pôr as etapas na ordem certa"
+msgstr "Ordering — put the steps in the right order"
+
+#: apps/courses/models.py:228
+msgid "Lacunas — completar config escolhendo o valor"
+msgstr "Fill-in-the-blanks — complete the config by choosing the value"
+
+#: apps/courses/models.py:229
+msgid "Cenário — decidir e ver a consequência"
+msgstr "Scenario — decide and see the consequence"
+
+#: apps/courses/views.py:86 templates/courses/quiz.html:14
+msgid "Este tópico ainda não tem questões cadastradas."
+msgstr "This topic doesn't have any questions yet."
+
+#: apps/interviews/models.py:21
+msgid "Júnior"
+msgstr "Junior"
+
+#: apps/interviews/models.py:22
+msgid "Pleno"
+msgstr "Mid-level"
+
+#: apps/interviews/models.py:23
+msgid "Sênior"
+msgstr "Senior"
+
+#: apps/interviews/views.py:55
+#, python-format
+msgid "São necessários %(pct)s%% para subir de nível."
+msgstr "You need %(pct)s%% to level up."
+
+#: apps/interviews/views.py:57
+#, python-format
+msgid "Faltou pouco. %(rule)s Revise o gabarito e tente de novo."
+msgstr "So close. %(rule)s Review the answer key and try again."
+
+#: apps/interviews/views.py:60
+#, python-format
+msgid ""
+"Você está no caminho, mas ainda não passou. %(rule)s Estude os pontos onde "
+"errou no gabarito antes de refazer."
+msgstr ""
+"You're on the right track, but haven't passed yet. %(rule)s Study the points "
+"you missed in the answer key before retaking it."
+
+#: apps/interviews/views.py:65
+#, python-format
+msgid ""
+"Ainda há terreno a cobrir. %(rule)s Use o gabarito como guia de estudos "
+"antes de tentar de novo."
+msgstr ""
+"There's still ground to cover. %(rule)s Use the answer key as a study guide "
+"before trying again."
+
+#: apps/interviews/views.py:69
+#, python-format
+msgid ""
+"O resultado mostra que vale estudar o conteúdo antes de refazer. %(rule)s "
+"Comece pelo gabarito e pelos tópicos relacionados na trilha."
+msgstr ""
+"The result shows it's worth studying the material before retaking it. "
+"%(rule)s Start with the answer key and the related topics in the track."
+
+#: apps/interviews/views.py:151
+msgid "Você ainda não desbloqueou esse nível. Conclua o anterior com 80%+."
+msgstr ""
+"You haven't unlocked this level yet. Complete the previous one with 80%+."
+
+#: apps/interviews/views.py:180
+#, python-format
+msgid ""
+"Banco de questões incompleto para %(level)s (%(n)s/%(total)s). Avise o admin."
+msgstr ""
+"Question bank incomplete for %(level)s (%(n)s/%(total)s). Let the admin know."
+
+#: apps/interviews/views.py:284
+msgid "Progresso salvo. Você pode retomar a qualquer momento."
+msgstr "Progress saved. You can resume anytime."
+
+#: apps/interviews/views.py:356
+#, python-format
+msgid "Parabéns! Você foi promovido para %(career)s."
+msgstr "Congrats! You've been promoted to %(career)s."
+
+#: apps/interviews/views.py:362
+msgid ""
+"Você passou no teste. Continue praticando ou avance para o próximo nível."
+msgstr "You passed the test. Keep practicing or move on to the next level."
+
+#: apps/interviews/views.py:419
+msgid "Tentativa descartada."
+msgstr "Attempt discarded."
+
+#: templates/account/login.html:3 templates/account/login.html:7
+#: templates/account/login.html:32 templates/base.html:201
+msgid "Entrar"
+msgstr "Log in"
+
+#: templates/account/login.html:8
+msgid "Acesse sua trilha DevSecOps."
+msgstr "Access your DevSecOps track."
+
+#: templates/account/login.html:36
+msgid "Não tem conta?"
+msgstr "Don't have an account?"
+
+#: templates/account/login.html:37
+msgid "Cadastre-se"
+msgstr "Sign up"
+
+#: templates/account/logout.html:5 templates/base.html:197
+#: templates/base.html:261
+msgid "Sair"
+msgstr "Log out"
+
+#: templates/account/logout.html:6
+msgid "Confirme o logout."
+msgstr "Confirm logout."
+
+#: templates/account/logout.html:12
+msgid "Confirmar saída"
+msgstr "Confirm logout"
+
+#: templates/account/signup.html:3 templates/account/signup.html:7
+#: templates/account/signup.html:34 templates/base.html:205
+msgid "Criar conta"
+msgstr "Create account"
+
+#: templates/account/signup.html:9
+msgid ""
+"Após o cadastro você completa o perfil profissional e faz o teste de "
+"admissão."
+msgstr ""
+"After signing up you'll complete your professional profile and take the "
+"admission test."
+
+#: templates/accounts/profile_detail.html:38
+msgid "Você marcou para não exibir país, bio e links neste perfil público."
+msgstr ""
+"You've chosen not to show country, bio, and links on this public profile."
+
+#: templates/accounts/profile_detail.html:40
+#: templates/accounts/profile_edit.html:3 templates/core/dashboard.html:29
+msgid "Editar perfil"
+msgstr "Edit profile"
+
+#: templates/accounts/profile_detail.html:45
+#, python-format
+msgid "Radar · %(total_score)s pts"
+msgstr "Radar · %(total_score)s pts"
+
+#: templates/accounts/profile_setup.html:3
+msgid "Configure seu perfil"
+msgstr "Set up your profile"
+
+#: templates/accounts/profile_setup.html:7
+msgid "Conte um pouco sobre você"
+msgstr "Tell us a bit about yourself"
+
+#: templates/accounts/profile_setup.html:9
+msgid ""
+"O PDT pede LinkedIn e GitHub porque o objetivo é colocar quem se dedica em "
+"evidência para o mercado de trabalho. A visibilidade desses dados para "
+"outras pessoas é controlada pelas opções abaixo (ranking público e contato "
+"visível)."
+msgstr ""
+"PDT asks for LinkedIn and GitHub because the goal is to put people who put "
+"in the work in front of the job market. Visibility of this data to other "
+"people is controlled by the options below (public ranking and visible "
+"contact info)."
+
+#: templates/accounts/profile_setup.html:36
+msgid "Salvar e continuar"
+msgstr "Save and continue"
+
+#: templates/assessments/result.html:3 templates/assessments/result.html:7
+#: templates/courses/quiz_result.html:8
+msgid "Resultado"
+msgstr "Result"
+
+#: templates/assessments/result.html:16
+msgid "Você foi aprovado! Acesse o"
+msgstr "You passed! Go to the"
+
+#: templates/assessments/result.html:18
+msgid "e comece a trilha."
+msgstr "and start the track."
+
+#: templates/assessments/result.html:20
+#, python-format
+msgid ""
+"Pontuação mínima é %(pass_score)s. Estude Linux e redes (permissões, "
+"processos, TCP/IP, DNS, portas e SSH) e tente novamente"
+msgstr ""
+"Minimum score is %(pass_score)s. Study Linux and networking (permissions, "
+"processes, TCP/IP, DNS, ports, and SSH) and try again"
+
+#: templates/assessments/result.html:20
+#, python-format
+msgid "a partir de %(next_try)s"
+msgstr "starting %(next_try)s"
+
+#: templates/assessments/result.html:31
+msgid "Voltar para a página do teste"
+msgstr "Back to the test page"
+
+#: templates/assessments/start.html:3 templates/assessments/start.html:7
+#: templates/assessments/take.html:13 templates/core/landing.html:53
+msgid "Teste de admissão"
+msgstr "Admission test"
+
+#: templates/assessments/start.html:9
+#, python-format
+msgid ""
+"%(questions_total)s questões básicas de Linux e Redes. Aprovação a partir de "
+"<strong style=\"color:#bae6fd\">%(pass_score)s acertos</strong>. O objetivo "
+"é garantir que você tem o alicerce para acompanhar a trilha, não é uma prova "
+"difícil, mas é necessária."
+msgstr ""
+"%(questions_total)s basic Linux and networking questions. Passing requires "
+"<strong style=\"color:#bae6fd\">%(pass_score)s correct answers</strong>. The "
+"goal is to make sure you have the foundation to follow the track — it's not "
+"a hard test, but it is a necessary one."
+
+#: templates/assessments/start.html:15
+#, python-format
+msgid ""
+"Última tentativa: <strong style=\"color:#ddeeff\">%(last_attempt.score)s/10</"
+"strong>."
+msgstr ""
+"Last attempt: <strong style=\"color:#ddeeff\">%(last_attempt.score)s/10</"
+"strong>."
+
+#: templates/assessments/start.html:19
+#, python-format
+msgid "Você poderá refazer a partir de %(next_try)s."
+msgstr "You'll be able to retake it starting %(next_try)s."
+
+#: templates/assessments/start.html:32
+msgid "Iniciar teste"
+msgstr "Start test"
+
+#: templates/assessments/take.html:3
+msgid "Respondendo"
+msgstr "Answering"
+
+#: templates/assessments/take.html:9
+msgid "Sessão de teste não iniciada."
+msgstr "Test session not started."
+
+#: templates/assessments/take.html:10
+msgid "Voltar"
+msgstr "Back"
+
+#: templates/assessments/take.html:36 templates/courses/quiz.html:38
+msgid "Enviar respostas"
+msgstr "Submit answers"
+
+#: templates/base.html:152 templates/base.html:233
+msgid "Dashboard"
+msgstr "Dashboard"
+
+#: templates/base.html:155 templates/base.html:236
+#: templates/core/dashboard.html:189
+msgid "Trilha"
+msgstr "Track"
+
+#: templates/base.html:158
+msgid "Radar"
+msgstr "Radar"
+
+#: templates/base.html:161 templates/base.html:242
+msgid "Ranking"
+msgstr "Ranking"
+
+#: templates/base.html:164 templates/base.html:245
+#: templates/core/dashboard.html:194
+msgid "Mapa"
+msgstr "Map"
+
+#: templates/base.html:167 templates/base.html:248
+#: templates/core/dashboard.html:199
+msgid "Entrevistas"
+msgstr "Interviews"
+
+#: templates/base.html:211
+msgid "Menu"
+msgstr "Menu"
+
+#: templates/base.html:239
+msgid "Meu radar"
+msgstr "My radar"
+
+#: templates/base.html:305
+msgid "Personal DevOps Trainer, uso restrito, ver LICENSE."
+msgstr "Personal DevOps Trainer, restricted use, see LICENSE."
+
+#: templates/base.html:306
+msgid "Repositório"
+msgstr "Repository"
+
+#: templates/base.html:308
+msgid "Pagar um café"
+msgstr "Buy me a coffee"
+
+#: templates/core/dashboard.html:14
+#, python-format
+msgid "Bem-vindo(a), %(name)s"
+msgstr "Welcome, %(name)s"
+
+#: templates/core/dashboard.html:22
+msgid "Sua trilha DevSecOps em um só lugar."
+msgstr "Your DevSecOps track, all in one place."
+
+#: templates/core/dashboard.html:34
+msgid "Simulador"
+msgstr "Simulator"
+
+#: templates/core/dashboard.html:40
+msgid "Ver radar"
+msgstr "View radar"
+
+#: templates/core/dashboard.html:51
+msgid "Radar de competências (60 tópicos)"
+msgstr "Skills radar (60 topics)"
+
+#: templates/core/dashboard.html:63
+msgid "Top 10"
+msgstr "Top 10"
+
+#: templates/core/dashboard.html:65
+#, python-format
+msgid ""
+"Sua pontuação total: <span style=\"color:#34d399;font-"
+"weight:700\">%(my_total_score)s pts</span>"
+msgstr ""
+"Your total score: <span style=\"color:#34d399;font-"
+"weight:700\">%(my_total_score)s pts</span>"
+
+#: templates/core/dashboard.html:69
+msgid ""
+"Você está fora do ranking público porque a opção\n"
+"            <strong style=\"color:#8bacc8\">Aparecer no ranking</strong> "
+"está desativada no perfil."
+msgstr ""
+"You're not on the public ranking because the\n"
+"            <strong style=\"color:#8bacc8\">Show on ranking</strong> option "
+"is turned off in your profile."
+
+#: templates/core/dashboard.html:84
+msgid "Ninguém ainda. Seja o primeiro."
+msgstr "No one yet. Be the first."
+
+#: templates/core/dashboard.html:88
+msgid "Ver ranking completo →"
+msgstr "View full ranking →"
+
+#: templates/core/dashboard.html:103
+msgid "No Top 10 do ranking"
+msgstr "In the ranking's Top 10"
+
+#: templates/core/dashboard.html:116
+msgid ""
+"<span style=\"color:#bae6fd;font-weight:600\">Pontuação total</span> no "
+"ranking:\n"
+"              é a soma dos pontos em <span style=\"color:#bae6fd;font-"
+"weight:600\">cada tópico</span>\n"
+"              da trilha. Em cada tópico contam a melhor nota já feita no "
+"quiz daquele tema e,\n"
+"              se existir, o bônus por ajuda no mapa."
+msgstr ""
+"<span style=\"color:#bae6fd;font-weight:600\">Total score</span> on the "
+"ranking:\n"
+"              it's the sum of the points in <span style=\"color:#bae6fd;font-"
+"weight:600\">each topic</span>\n"
+"              of the track. Each topic counts your best quiz score for that "
+"topic and,\n"
+"              if any, the bonus for helping on the map."
+
+#: templates/core/dashboard.html:131
+msgid "Ver perfil público →"
+msgstr "View public profile →"
+
+#: templates/core/dashboard.html:137
+msgid "Este usuário optou por não exibir informações de contato."
+msgstr "This user chose not to show contact information."
+
+#: templates/core/dashboard.html:184
+msgid "Atalhos"
+msgstr "Shortcuts"
+
+#: templates/core/dashboard.html:209
+#, python-format
+msgid "Fases (%(topics_total)s tópicos)"
+msgstr "Phases (%(topics_total)s topics)"
+
+#: templates/core/landing.html:3 templates/courses/track.html:4
+#: templates/courses/track.html:8
+msgid "Trilha DevSecOps"
+msgstr "DevSecOps Track"
+
+#: templates/core/landing.html:8
+msgid "trilha DevSecOps voltada para o mercado"
+msgstr "DevSecOps track built for the job market"
+
+#: templates/core/landing.html:13
+msgid ""
+"Plataforma de estudo gamificada com 6 fases e 60 tópicos, do Linux ao "
+"hardening de Kubernetes,\n"
+"    passando por automação e Python aplicado a operações.\n"
+"    Ranking público opcional e mapa em tempo real para pedir ou oferecer "
+"ajuda.\n"
+"    DevSecOps é, antes de tudo, cultura colaborativa."
+msgstr ""
+"A gamified study platform with 6 phases and 60 topics, from Linux to "
+"Kubernetes hardening,\n"
+"    plus automation and Python applied to operations.\n"
+"    Optional public ranking and a real-time map to ask for or offer help.\n"
+"    DevSecOps is, above all, a culture of collaboration."
+
+#: templates/core/landing.html:25
+msgid "Continuar / Fazer teste de admissão"
+msgstr "Continue / Take admission test"
+
+#: templates/core/landing.html:32
+msgid "Começar agora"
+msgstr "Get started"
+
+#: templates/core/landing.html:38
+msgid "Já tenho conta"
+msgstr "I already have an account"
+
+#: templates/core/landing.html:55
+msgid ""
+"10 questões básicas de Linux e redes. Menos de 5 pontos: sem acesso.\n"
+"      A barra mínima é proposital; o objetivo é você acompanhar a trilha com "
+"seriedade."
+msgstr ""
+"10 basic Linux and networking questions. Below 5 points: no access.\n"
+"      The bar is intentionally low; the goal is for you to follow the track "
+"seriously."
+
+#: templates/core/landing.html:69
+msgid "Radar com 60 eixos"
+msgstr "Radar with 60 axes"
+
+#: templates/core/landing.html:71
+msgid ""
+"Cada tópico é um eixo no radar de competências. Acertou no quiz,\n"
+"      ajudou alguém no mapa: sua área cresce."
+msgstr ""
+"Each topic is an axis on the skills radar. Get a quiz question right,\n"
+"      help someone on the map: your area grows."
+
+#: templates/core/landing.html:83
+msgid "Mapa colaborativo"
+msgstr "Collaborative map"
+
+#: templates/core/landing.html:85
+msgid ""
+"Travou? Aperte o botão de ajuda e seu pino fica vermelho. Quem\n"
+"      passar pode entrar, te ajudar e ainda ganha pontos por isso."
+msgstr ""
+"Stuck? Hit the help button and your pin turns red. Anyone\n"
+"      passing by can join, help you out, and earn points for it."
+
+#: templates/courses/_lab.html:14
+msgid "Concluído (+5 pts)"
+msgstr "Completed (+5 pts)"
+
+#: templates/courses/_lab.html:24
+msgid "toque nos blocos abaixo para montar o comando…"
+msgstr "tap the blocks below to build the command…"
+
+#: templates/courses/_lab.html:36 templates/courses/_lab.html:93
+msgid "Desfazer"
+msgstr "Undo"
+
+#: templates/courses/_lab.html:37 templates/courses/_lab.html:64
+#: templates/courses/_lab.html:94 templates/courses/_lab.html:124
+msgid "Conferir"
+msgstr "Check"
+
+#: templates/courses/_lab.html:41 templates/courses/_lab.html:68
+#: templates/courses/_lab.html:98 templates/courses/_lab.html:128
+msgid "Certo!"
+msgstr "Correct!"
+
+#: templates/courses/_lab.html:41 templates/courses/_lab.html:68
+#: templates/courses/_lab.html:98 templates/courses/_lab.html:128
+msgid "Ainda não."
+msgstr "Not yet."
+
+#: templates/courses/_lab.html:112
+msgid "Preencha"
+msgstr "Fill in"
+
+#: templates/courses/_lab.html:152
+msgid "Tentar outra decisão"
+msgstr "Try another decision"
+
+#: templates/courses/quiz.html:10
+#, python-format
+msgid "%(total)s questões. Sua melhor pontuação compõe o radar."
+msgstr "%(total)s questions. Your best score counts toward the radar."
+
+#: templates/courses/quiz_result.html:4
+msgid "Resultado do quiz"
+msgstr "Quiz result"
+
+#: templates/courses/quiz_result.html:25
+msgid "Sua resposta:"
+msgstr "Your answer:"
+
+#: templates/courses/quiz_result.html:31
+msgid "em branco"
+msgstr "blank"
+
+#: templates/courses/quiz_result.html:38
+msgid "Correta:"
+msgstr "Correct answer:"
+
+#: templates/courses/quiz_result.html:57
+msgid "Voltar ao tópico"
+msgstr "Back to topic"
+
+#: templates/courses/quiz_result.html:63
+msgid "Tentar de novo"
+msgstr "Try again"
+
+#: templates/courses/topic_detail.html:79
+msgid "Fazer quiz (10 questões)"
+msgstr "Take quiz (10 questions)"
+
+#: templates/courses/topic_detail.html:84
+#, python-format
+msgid "Melhor: %(best)s/10 · %(pts)s pts radar"
+msgstr "Best: %(best)s/10 · %(pts)s radar pts"
+
+#: templates/courses/topic_detail.html:97
+msgid "Por que estudar este tópico"
+msgstr "Why study this topic"
+
+#: templates/courses/topic_detail.html:109
+msgid "Aula"
+msgstr "Lesson"
+
+#: templates/courses/topic_detail.html:116
+msgid "Anterior"
+msgstr "Previous"
+
+#: templates/courses/topic_detail.html:119
+#, python-format
+msgid "Página <span x-text=\"page + 1\"></span> de %(total)s"
+msgstr "Page <span x-text=\"page + 1\"></span> of %(total)s"
+
+#: templates/courses/topic_detail.html:122
+msgid "Próxima"
+msgstr "Next"
+
+#: templates/courses/topic_detail.html:139
+msgid "Exercício prático"
+msgstr "Practical exercise"
+
+#: templates/courses/topic_detail.html:148
+msgid "Nesta aula"
+msgstr "In this lesson"
+
+#: templates/courses/topic_detail.html:165
+#, python-format
+msgid "Materiais de apoio (%(count)s)"
+msgstr "Support materials (%(count)s)"
+
+#: templates/courses/topic_detail.html:181
+msgid "Nenhum material cadastrado ainda."
+msgstr "No materials added yet."
+
+#: templates/courses/topic_detail.html:189
+msgid "Suas últimas tentativas"
+msgstr "Your recent attempts"
+
+#: templates/courses/track.html:9
+msgid "6 fases · 60 tópicos · cada tópico é um eixo do seu radar."
+msgstr "6 phases · 60 topics · each topic is an axis on your radar."
+
+#: templates/courses/track.html:39
+#, python-format
+msgid "%(counter)s material"
+msgid_plural "%(counter)s materiais"
+msgstr[0] "%(counter)s material"
+msgstr[1] "%(counter)s materials"
+
+#: templates/courses/track.html:40
+#, python-format
+msgid "%(counter)s questão"
+msgid_plural "%(counter)s questões"
+msgstr[0] "%(counter)s question"
+msgstr[1] "%(counter)s questions"
+
+#: templates/donations/index.html:3
+msgid "Apoie o projeto · PDT"
+msgstr "Support the project · PDT"
+
+#: templates/donations/index.html:7
+msgid "Apoie o projeto"
+msgstr "Support the project"
+
+#: templates/donations/index.html:9
+msgid ""
+"O PDT é mantido por uma pessoa que paga café para conseguir continuar "
+"escrevendo aulas, curando materiais e arrumando bug em produção. Se a "
+"plataforma te ajudou, considere apoiar."
+msgstr ""
+"PDT is maintained by one person who pays for coffee to keep writing lessons, "
+"curating materials, and fixing bugs in production. If the platform has "
+"helped you, consider supporting it."
+
+#: templates/donations/index.html:19
+msgid "O administrador ainda não cadastrou um link de doação."
+msgstr "The administrator hasn't added a donation link yet."
+
+#: templates/gamification/leaderboard.html:3
+msgid "Ranking · PDT"
+msgstr "Ranking · PDT"
+
+#: templates/gamification/leaderboard.html:7
+msgid "Ranking público (Top 50)"
+msgstr "Public ranking (Top 50)"
+
+#: templates/gamification/leaderboard.html:8
+msgid "Apenas usuários que escolheram aparecer no ranking."
+msgstr "Only users who chose to appear on the ranking."
+
+#: templates/gamification/leaderboard.html:42
+#, python-format
+msgid "%(total)s pts"
+msgstr "%(total)s pts"
+
+#: templates/gamification/leaderboard.html:46
+msgid "Ninguém apareceu no ranking ainda."
+msgstr "No one has appeared on the ranking yet."
+
+#: templates/gamification/radar.html:4
+msgid "Meu radar · PDT"
+msgstr "My radar · PDT"
+
+#: templates/gamification/radar.html:10
+#, python-format
+msgid "Meu radar, %(total_score)s pts"
+msgstr "My radar, %(total_score)s pts"
+
+#: templates/gamification/radar.html:13
+msgid "Ver ranking →"
+msgstr "View ranking →"
+
+#: templates/interviews/finish_confirm.html:3
+msgid "Finalizar entrevista · PDT"
+msgstr "Finish interview · PDT"
+
+#: templates/interviews/finish_confirm.html:9
+#, python-format
+msgid "Finalizar entrevista %(level_label)s?"
+msgstr "Finish the %(level_label)s interview?"
+
+#: templates/interviews/finish_confirm.html:13
+#, python-format
+msgid ""
+"Você respondeu <strong style=\"color:#bae6fd\">%(answered_count)s</strong>\n"
+"    de <strong style=\"color:#bae6fd\">%(total)s</strong> questões."
+msgstr ""
+"You've answered <strong style=\"color:#bae6fd\">%(answered_count)s</strong>\n"
+"    of <strong style=\"color:#bae6fd\">%(total)s</strong> questions."
+
+#: templates/interviews/finish_confirm.html:16
+#, python-format
+msgid "Há <strong style=\"color:#fde68a\">%(unanswered)s</strong>"
+msgstr "There's <strong style=\"color:#fde68a\">%(unanswered)s</strong>"
+
+#: templates/interviews/finish_confirm.html:17
+msgid "sem resposta"
+msgstr "unanswered"
+
+#: templates/interviews/finish_confirm.html:18
+msgid "se você finalizar agora,"
+msgstr "if you finish now,"
+
+#: templates/interviews/finish_confirm.html:19
+msgid "ela será contada"
+msgstr "it will count"
+
+#: templates/interviews/finish_confirm.html:19
+msgid "elas serão contadas"
+msgstr "they will count"
+
+#: templates/interviews/finish_confirm.html:20
+msgid "como erro."
+msgstr "as wrong."
+
+#: templates/interviews/finish_confirm.html:22
+msgid "Tudo respondido. Bom trabalho!"
+msgstr "Everything answered. Great job!"
+
+#: templates/interviews/finish_confirm.html:30
+msgid "Pendentes (clique para ir até a questão):"
+msgstr "Pending (click to jump to the question):"
+
+#: templates/interviews/finish_confirm.html:40
+#, python-format
+msgid "Ir para a questão %(human_index)s"
+msgstr "Go to question %(human_index)s"
+
+#: templates/interviews/finish_confirm.html:53
+msgid "← Continuar respondendo"
+msgstr "← Keep answering"
+
+#: templates/interviews/finish_confirm.html:62
+msgid "Sim, finalizar e ver resultado"
+msgstr "Yes, finish and see result"
+
+#: templates/interviews/index.html:3
+msgid "Simulador de entrevistas · PDT"
+msgstr "Interview simulator · PDT"
+
+#: templates/interviews/index.html:10
+msgid "Simulador de entrevistas"
+msgstr "Interview simulator"
+
+#: templates/interviews/index.html:13
+#, python-format
+msgid ""
+"Cada nível tem <strong style=\"color:#bae6fd\">%(questions_total)s questões</"
+"strong>\n"
+"      cobrando o que aparece de fato em entrevistas de mercado. Você precisa "
+"de\n"
+"      <strong style=\"color:#bae6fd\">%(pass_percent)s%%</strong> de acerto "
+"para subir\n"
+"      de nível e desbloquear o próximo. As respostas são salvas "
+"automaticamente ,\n"
+"      pode pausar e retomar quando quiser."
+msgstr ""
+"Each level has <strong style=\"color:#bae6fd\">%(questions_total)s "
+"questions</strong>\n"
+"      covering what actually comes up in real job interviews. You need\n"
+"      <strong style=\"color:#bae6fd\">%(pass_percent)s%%</strong> correct to "
+"level up\n"
+"      and unlock the next one. Answers are saved automatically,\n"
+"      you can pause and resume whenever you want."
+
+#: templates/interviews/index.html:20
+msgid "Seu nível atual:"
+msgstr "Your current level:"
+
+#: templates/interviews/index.html:43
+msgid "conquistado"
+msgstr "unlocked"
+
+#: templates/interviews/index.html:48
+msgid "bloqueado"
+msgstr "locked"
+
+#: templates/interviews/index.html:58
+#, python-format
+msgid ""
+"Em andamento: %(answered)s/%(total_q)s\n"
+"            (%(pct)s%%)"
+msgstr ""
+"In progress: %(answered)s/%(total_q)s\n"
+"            (%(pct)s%%)"
+
+#: templates/interviews/index.html:64
+#, python-format
+msgid ""
+"Última tentativa:\n"
+"            <strong style=\"color:#ddeeff\">%(score)s/%(total_q)s</strong>\n"
+"            (%(pct)s%%)"
+msgstr ""
+"Last attempt:\n"
+"            <strong style=\"color:#ddeeff\">%(score)s/%(total_q)s</strong>\n"
+"            (%(pct)s%%)"
+
+#: templates/interviews/index.html:68
+msgid "aprovado"
+msgstr "passed"
+
+#: templates/interviews/index.html:70
+#, python-format
+msgid "não atingiu %(pass_percent)s%%"
+msgstr "didn't reach %(pass_percent)s%%"
+
+#: templates/interviews/index.html:82
+msgid "Continuar"
+msgstr "Continue"
+
+#: templates/interviews/index.html:82
+msgid "Começar"
+msgstr "Start"
+
+#: templates/interviews/index.html:93
+msgid "Descartar"
+msgstr "Discard"
+
+#: templates/interviews/index.html:99
+#, python-format
+msgid "Conclua o nível anterior com %(pass_percent)s%% para liberar."
+msgstr "Complete the previous level with %(pass_percent)s%% to unlock."
+
+#: templates/interviews/index.html:110
+msgid "Como funciona"
+msgstr "How it works"
+
+#: templates/interviews/index.html:112
+msgid ""
+"Você responde uma questão por vez. Cada resposta é salva automaticamente."
+msgstr "You answer one question at a time. Each answer is saved automatically."
+
+#: templates/interviews/index.html:113
+msgid ""
+"Pode sair, fechar o navegador e retomar depois, o progresso fica guardado."
+msgstr ""
+"You can leave, close the browser, and resume later — your progress is saved."
+
+#: templates/interviews/index.html:114
+#, python-format
+msgid ""
+"Ao final, o sistema calcula o percentual e, se ≥ %(pass_percent)s%%, sua "
+"promoção é registrada."
+msgstr ""
+"At the end, the system calculates your percentage and, if ≥ "
+"%(pass_percent)s%%, your promotion is recorded."
+
+#: templates/interviews/index.html:115
+msgid ""
+"O teste de Sênior é fortemente focado em arquitetura e decisões técnicas."
+msgstr ""
+"The Senior test is heavily focused on architecture and technical decisions."
+
+#: templates/interviews/result.html:4
+#, python-format
+msgid "Resultado · %(level_label)s · PDT"
+msgstr "Result · %(level_label)s · PDT"
+
+#: templates/interviews/result.html:11
+msgid "← Voltar ao simulador"
+msgstr "← Back to simulator"
+
+#: templates/interviews/result.html:19
+#, python-format
+msgid "Entrevista %(level_label)s"
+msgstr "%(level_label)s interview"
+
+#: templates/interviews/result.html:28
+#, python-format
+msgid "%(correct_count)s/%(total)s corretas"
+msgstr "%(correct_count)s/%(total)s correct"
+
+#: templates/interviews/result.html:34
+#, python-format
+msgid ""
+"Você atingiu <strong>%(pass_percent)s%%</strong> e está aprovado nesse "
+"nível.\n"
+"        Veja o gabarito abaixo para fixar os pontos."
+msgstr ""
+"You reached <strong>%(pass_percent)s%%</strong> and passed this level.\n"
+"        Check the answer key below to reinforce what you learned."
+
+#: templates/interviews/result.html:45
+msgid "Gabarito"
+msgstr "Answer key"
+
+#: templates/interviews/result.html:83
+msgid "Por quê:"
+msgstr "Why:"
+
+#: templates/interviews/take.html:4
+#, python-format
+msgid "Entrevista %(level_label)s · PDT"
+msgstr "%(level_label)s interview · PDT"
+
+#: templates/interviews/take.html:12
+#, python-format
+msgid "Simulador · %(level_label)s"
+msgstr "Simulator · %(level_label)s"
+
+#: templates/interviews/take.html:15
+#, python-format
+msgid "Questão %(human_index)s de %(total)s"
+msgstr "Question %(human_index)s of %(total)s"
+
+#: templates/interviews/take.html:20
+msgid "← Voltar à lista"
+msgstr "← Back to list"
+
+#: templates/interviews/take.html:55
+msgid ""
+"Cada opção mostra só o enunciado da alternativa. O texto completo (com "
+"explicações) aparece no gabarito depois que você finalizar."
+msgstr ""
+"Each option only shows the choice text. The full text (with explanations) "
+"appears in the answer key after you finish."
+
+#: templates/interviews/take.html:84
+msgid "← Anterior"
+msgstr "← Previous"
+
+#: templates/interviews/take.html:91
+msgid "Salvar e sair"
+msgstr "Save and exit"
+
+#: templates/interviews/take.html:101
+msgid "Próxima →"
+msgstr "Next →"
+
+#: templates/interviews/take.html:108
+msgid "Finalizar entrevista"
+msgstr "Finish interview"
+
+#: templates/interviews/take.html:115
+msgid "Revisar e finalizar"
+msgstr "Review and finish"
+
+#: templates/interviews/take.html:122
+#, python-format
+msgid ""
+"%(answered_count)s de %(total)s respondidas · suas respostas são salvas a "
+"cada avanço."
+msgstr ""
+"%(answered_count)s of %(total)s answered · your answers are saved as you go."
+
+#: templates/presence/help_room.html:3
+msgid "Sala de ajuda · PDT"
+msgstr "Help room · PDT"
+
+#: templates/presence/help_room.html:19
+msgid "Você não faz parte desta sala."
+msgstr "You're not part of this room."
+
+#: templates/presence/help_room.html:26
+#, python-format
+msgid "Sala de ajuda · %(topic_title)s"
+msgstr "Help room · %(topic_title)s"
+
+#: templates/presence/help_room.html:29
+#, python-format
+msgid "Quem pediu: <strong style=\"color:#ddeeff\">%(requester_name)s</strong>"
+msgstr ""
+"Requested by: <strong style=\"color:#ddeeff\">%(requester_name)s</strong>"
+
+#: templates/presence/help_room.html:31
+#, python-format
+msgid "· ajudando: <strong style=\"color:#ddeeff\">%(helper_name)s</strong>"
+msgstr "· helping: <strong style=\"color:#ddeeff\">%(helper_name)s</strong>"
+
+#: templates/presence/help_room.html:50
+msgid "Descrição do pedido"
+msgstr "Request description"
+
+#: templates/presence/help_room.html:62
+msgid "Voz (WebRTC)"
+msgstr "Voice (WebRTC)"
+
+#: templates/presence/help_room.html:64
+msgid ""
+"A voz roda direto entre os dois navegadores. O servidor apenas faz a "
+"sinalização inicial, nenhum áudio é gravado."
+msgstr ""
+"Voice runs directly between the two browsers. The server only handles the "
+"initial signaling — no audio is recorded."
+
+#: templates/presence/help_room.html:85
+msgid "Chamar peer"
+msgstr "Call peer"
+
+#: templates/presence/help_room.html:94
+msgid "Encerrar"
+msgstr "End"
+
+#: templates/presence/help_room.html:111
+msgid "Chat"
+msgstr "Chat"
+
+#: templates/presence/help_room.html:129
+msgid "Escreva uma mensagem..."
+msgstr "Write a message..."
+
+#: templates/presence/help_room.html:136
+msgid "Enviar"
+msgstr "Send"
+
+#: templates/presence/help_room.html:153
+#, python-format
+msgid ""
+"Marcar como resolvido\n"
+"          (concede +1 ponto a %(helper_name)s)"
+msgstr ""
+"Mark as resolved\n"
+"          (grants +1 point to %(helper_name)s)"
+
+#: templates/presence/help_room.html:160
+msgid "Pedido resolvido. Bom estudo!"
+msgstr "Request resolved. Happy studying!"
+
+#: templates/presence/map.html:4
+msgid "Mapa · PDT"
+msgstr "Map · PDT"
+
+#: templates/presence/map.html:90
+msgid "Mapa de presença"
+msgstr "Presence map"
+
+#: templates/presence/map.html:92
+msgid ""
+"Pins <span style=\"color:#0ea5e9;font-weight:600\">azuis</span> = "
+"disponíveis ·\n"
+"        pins <span style=\"color:#f43f5e;font-weight:600\">vermelhos</span> "
+"= pedindo ajuda.\n"
+"        Clique em um pin <span style=\"color:#f43f5e;font-"
+"weight:600\">vermelho</span> para oferecer ajuda e abrir a sala.\n"
+"        Se <strong style=\"color:#8bacc8\">você pediu ajuda</strong>, use o "
+"botão\n"
+"        <strong style=\"color:#fde68a\">«Entrar na sala»</strong> ao lado de "
+"«Pedido aberto» (chat e voz)."
+msgstr ""
+"<span style=\"color:#0ea5e9;font-weight:600\">Blue</span> pins = available "
+"·\n"
+"        <span style=\"color:#f43f5e;font-weight:600\">red</span> pins = "
+"asking for help.\n"
+"        Click a <span style=\"color:#f43f5e;font-weight:600\">red</span> pin "
+"to offer help and open the room.\n"
+"        If <strong style=\"color:#8bacc8\">you asked for help</strong>, use "
+"the\n"
+"        <strong style=\"color:#fde68a\">\"Join room\"</strong> button next "
+"to \"Open request\" (chat and voice)."
+
+#: templates/presence/map.html:107
+msgid "Pedido aberto:"
+msgstr "Open request:"
+
+#: templates/presence/map.html:114
+msgid "Entrar na sala →"
+msgstr "Join room →"
+
+#: templates/presence/map.html:120
+msgid "Marcar como resolvido"
+msgstr "Mark as resolved"
+
+#: templates/presence/map.html:131
+msgid "🆘 Pedir ajuda"
+msgstr "🆘 Ask for help"
+
+#: templates/presence/map.html:139
+msgid "Pedir ajuda"
+msgstr "Ask for help"
+
+#: templates/presence/map.html:147
+msgid "Tópico"
+msgstr "Topic"
+
+#: templates/presence/map.html:156
+msgid "Descreva sua dúvida (opcional)"
+msgstr "Describe your question (optional)"
+
+#: templates/presence/map.html:173
+msgid "Pedir ajuda exige aparecer no mapa"
+msgstr "Asking for help requires appearing on the map"
+
+#: templates/presence/map.html:175
+msgid ""
+"Com «Aparecer no mapa de presença» desligado, a plataforma não aceita novos "
+"pedidos de ajuda e você não aparece como pin para outras pessoas."
+msgstr ""
+"With \"Show on presence map\" turned off, the platform won't accept new help "
+"requests and you won't appear as a pin to other people."
+
+#: templates/presence/map.html:178
+msgid "Ativar no perfil →"
+msgstr "Turn on in profile →"

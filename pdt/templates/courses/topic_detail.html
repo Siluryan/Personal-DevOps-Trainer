@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% load static %}
 {% load pdt_extras %}
-{% block title %}{{ topic.title }} · PDT{% endblock %}
+{% load i18n %}
+{% block title %}{{ topic.display_title }} · PDT{% endblock %}
 
 {% block head_extra %}
   {% comment %}
@@ -61,10 +62,10 @@
 <section class="max-w-5xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
 
   <!-- fase / breadcrumb -->
-  <p class="text-sm font-mono" style="color:#38bdf8">// {{ topic.phase }}</p>
-  <h1 class="text-3xl font-bold mt-1" style="color:#ddeeff">{{ topic.title }}</h1>
+  <p class="text-sm font-mono" style="color:#38bdf8">// {{ topic.phase.display_name }}</p>
+  <h1 class="text-3xl font-bold mt-1" style="color:#ddeeff">{{ topic.display_title }}</h1>
   {% if topic.summary %}
-    <p class="mt-2" style="color:#8bacc8;font-size:1.0625rem">{{ topic.summary }}</p>
+    <p class="mt-2" style="color:#8bacc8;font-size:1.0625rem">{{ topic.display_summary }}</p>
   {% endif %}
 
   <!-- ações -->
@@ -74,12 +75,12 @@
               padding:8px 18px;border-radius:8px;font-size:.9rem;
               transition:background .15s"
        class="hover:bg-sky-500">
-      Fazer quiz (10 questões)
+      {% trans "Fazer quiz (10 questões)" %}
     </a>
     {% if score %}
       <span style="border:1px solid #1a2f50;padding:6px 14px;border-radius:8px;
                    font-size:.875rem;color:#7dd3fc;background:#07122a">
-        Melhor: {{ score.best_quiz_score }}/10 · {{ score.points }} pts radar
+        {% blocktrans with best=score.best_quiz_score pts=score.points %}Melhor: {{ best }}/10 · {{ pts }} pts radar{% endblocktrans %}
       </span>
     {% endif %}
   </div>
@@ -92,32 +93,32 @@
 
       {% if topic.lesson.intro %}
         <div class="lesson-body mb-2" style="border-bottom:none;border-radius:12px 12px 0 0">
-          <h2>Por que estudar este tópico</h2>
-          {{ topic.lesson.intro|render_lesson }}
+          <h2>{% trans "Por que estudar este tópico" %}</h2>
+          {{ topic.lesson.display_intro|render_lesson }}
         </div>
       {% endif %}
 
       {% if topic.lesson.body %}
-        {% with pages=topic.lesson.body|paginate_lesson_body %}
+        {% with pages=topic.lesson.display_body|paginate_lesson_body %}
         <div class="lesson-body mb-2"
              style="{% if topic.lesson.intro %}border-top:none;border-radius:0;{% else %}border-radius:12px 12px 0 0;{% endif %}
                     {% if not topic.lesson.practical and not labs %}border-radius:0 0 12px 12px;{% endif %}"
              x-data="{ page: 0, total: {{ pages|length }},
                         goToPage(n) { this.page = n; this.$refs.lessonTop.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }">
-          <h2 x-ref="lessonTop">Aula</h2>
+          <h2 x-ref="lessonTop">{% trans "Aula" %}</h2>
           {% for section in pages %}
             <div x-show="page === {{ forloop.counter0 }}" x-cloak>{{ section }}</div>
           {% endfor %}
           {% if pages|length > 1 %}
             <div class="lesson-pagination">
               <button type="button" @click="goToPage(Math.max(0, page - 1))" :disabled="page === 0">
-                ← Anterior
+                ← {% trans "Anterior" %}
               </button>
               <span class="lesson-page-indicator">
-                Página <span x-text="page + 1"></span> de {{ pages|length }}
+                {% blocktrans with total=pages|length %}Página <span x-text="page + 1"></span> de {{ total }}{% endblocktrans %}
               </span>
               <button type="button" @click="goToPage(Math.min(total - 1, page + 1))" :disabled="page === total - 1">
-                Próxima →
+                {% trans "Próxima" %} →
               </button>
             </div>
           {% endif %}
@@ -134,8 +135,8 @@
              style="{% if not labs %}border-top:none;{% endif %}
                     border-radius:{% if labs %}12px;{% else %}0 0 12px 12px;{% endif %}
                     background:rgba(14,165,233,.04)">
-          <h2 style="color:#34d399">Exercício prático</h2>
-          {{ topic.lesson.practical|render_lesson }}
+          <h2 style="color:#34d399">{% trans "Exercício prático" %}</h2>
+          {{ topic.lesson.display_practical|render_lesson }}
         </div>
       {% endif %}
 
@@ -143,7 +144,7 @@
 
      {% if glossary_sidebar_terms %}
        <aside class="lesson-glossary-sidebar">
-         <h3>Nesta aula</h3>
+         <h3>{% trans "Nesta aula" %}</h3>
          <dl>
            {% for item in glossary_sidebar_terms %}
              <div class="lesson-glossary-sidebar-item">
@@ -160,7 +161,7 @@
   <!-- ── MATERIAIS ──────────────────────────────────────────────────────── -->
   <div class="mt-8">
     <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">
-      Materiais de apoio ({{ topic.materials.count }})
+      {% blocktrans with count=topic.materials.count %}Materiais de apoio ({{ count }}){% endblocktrans %}
     </h2>
     <ul class="space-y-2">
       {% for m in topic.materials.all %}
@@ -168,15 +169,15 @@
           <a href="{{ m.url }}" target="_blank" rel="noopener"
              style="color:#38bdf8;font-weight:600;text-decoration:underline;text-underline-offset:2px"
              class="hover:text-sky-200">
-            {{ m.title }}
+            {{ m.display_title }}
           </a>
           <span style="font-size:.75rem;color:#5a7a9a;margin-left:8px">[{{ m.get_kind_display }}]</span>
           {% if m.description %}
-            <p style="font-size:.875rem;color:#8bacc8;margin-top:4px">{{ m.description }}</p>
+            <p style="font-size:.875rem;color:#8bacc8;margin-top:4px">{{ m.display_description }}</p>
           {% endif %}
         </li>
       {% empty %}
-        <li style="color:#5a7a9a;font-size:.875rem">Nenhum material cadastrado ainda.</li>
+        <li style="color:#5a7a9a;font-size:.875rem">{% trans "Nenhum material cadastrado ainda." %}</li>
       {% endfor %}
     </ul>
   </div>
@@ -184,7 +185,7 @@
   <!-- ── HISTÓRICO DE TENTATIVAS ─────────────────────────────────────────── -->
   {% if recent_attempts %}
     <div class="mt-8">
-      <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">Suas últimas tentativas</h2>
+      <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">{% trans "Suas últimas tentativas" %}</h2>
       <ul class="space-y-1" style="font-size:.875rem;color:#8bacc8">
         {% for a in recent_attempts %}
           <li style="display:flex;gap:12px;align-items:center">

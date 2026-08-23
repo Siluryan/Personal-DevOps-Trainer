@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Entrar · PDT{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Entrar" %} · PDT{% endblock %}
 
 {% block content %}
 <section class="max-w-md mx-auto px-4 py-12">
-  <h1 class="text-2xl font-bold mb-1" style="color:#ddeeff">Entrar</h1>
-  <p class="text-sm mb-5" style="color:#5a7a9a">Acesse sua trilha DevSecOps.</p>
+  <h1 class="text-2xl font-bold mb-1" style="color:#ddeeff">{% trans "Entrar" %}</h1>
+  <p class="text-sm mb-5" style="color:#5a7a9a">{% trans "Acesse sua trilha DevSecOps." %}</p>
 
   <form method="post" class="space-y-4">
     {% csrf_token %}
@@ -28,12 +29,12 @@
     <button style="width:100%;background:#0891b2;color:#f0f9ff;font-weight:700;
                    padding:10px 0;border-radius:8px;font-size:.9375rem;transition:background .15s"
             class="hover:bg-sky-500">
-      Entrar
+      {% trans "Entrar" %}
     </button>
   </form>
   <p class="text-sm mt-4" style="color:#5a7a9a">
-    Não tem conta?
-    <a style="color:#38bdf8" href="{% url 'account_signup' %}" class="hover:text-sky-200">Cadastre-se</a>.
+    {% trans "Não tem conta?" %}
+    <a style="color:#38bdf8" href="{% url 'account_signup' %}" class="hover:text-sky-200">{% trans "Cadastre-se" %}</a>.
   </p>
 </section>
 {% endblock %}

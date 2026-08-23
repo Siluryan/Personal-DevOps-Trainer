@@ -1,6 +1,7 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% load pdt_extras %}
-{% block title %}Entrevista {{ level_label }} · PDT{% endblock %}
+{% block title %}{% blocktrans %}Entrevista {{ level_label }} · PDT{% endblocktrans %}{% endblock %}
 
 {% block content %}
 <section class="max-w-3xl mx-auto px-4 py-8">
@@ -8,15 +9,15 @@
   <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
     <div>
       <p style="color:#5a7a9a;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase">
-        Simulador · {{ level_label }}
+        {% blocktrans %}Simulador · {{ level_label }}{% endblocktrans %}
       </p>
       <h1 class="text-xl sm:text-2xl font-bold" style="color:#ddeeff">
-        Questão {{ human_index }} de {{ total }}
+        {% blocktrans %}Questão {{ human_index }} de {{ total }}{% endblocktrans %}
       </h1>
     </div>
     <a href="{% url 'interviews:index' %}"
        style="color:#8bacc8;font-size:.85rem"
-       class="hover:text-sky-300 transition-colors">← Voltar à lista</a>
+       class="hover:text-sky-300 transition-colors">{% trans "← Voltar à lista" %}</a>
   </div>
 
   <div style="background:#04091c;border:1px solid #1a2f50;border-radius:999px;
@@ -51,8 +52,7 @@
     </p>
 
     <p style="font-size:.75rem;color:#5a7a9a;margin:-6px 0 10px;line-height:1.45">
-      Cada opção mostra só o enunciado da alternativa. O texto completo (com explicações)
-      aparece no gabarito depois que você finalizar.
+      {% trans "Cada opção mostra só o enunciado da alternativa. O texto completo (com explicações) aparece no gabarito depois que você finalizar." %}
     </p>
     <div style="display:flex;flex-direction:column;gap:10px">
       {% for choice_text in question.choices %}
@@ -81,14 +81,14 @@
                   style="background:transparent;border:1px solid #1a2f50;
                          color:#94a3b8;padding:8px 14px;border-radius:8px;font-size:.85rem"
                   class="hover:text-sky-300 hover:border-sky-400/40 transition-colors">
-            ← Anterior
+            {% trans "← Anterior" %}
           </button>
         {% endif %}
         <button type="submit" name="action" value="save_exit"
                 style="background:transparent;border:1px solid #1a2f50;
                        color:#94a3b8;padding:8px 14px;border-radius:8px;font-size:.85rem"
                 class="hover:text-amber-300 hover:border-amber-400/40 transition-colors">
-          Salvar e sair
+          {% trans "Salvar e sair" %}
         </button>
       </div>
 
@@ -98,28 +98,28 @@
                   style="background:#0891b2;color:#f0f9ff;font-weight:600;
                          padding:8px 18px;border-radius:8px;font-size:.875rem"
                   class="hover:bg-sky-500 transition-colors">
-            Próxima →
+            {% trans "Próxima →" %}
           </button>
         {% else %}
           <button type="submit" name="action" value="finish"
                   style="background:#22c55e;color:#04091c;font-weight:700;
                          padding:8px 18px;border-radius:8px;font-size:.875rem"
                   class="hover:bg-emerald-400 transition-colors">
-            Finalizar entrevista
+            {% trans "Finalizar entrevista" %}
           </button>
         {% endif %}
         <a href="{% url 'interviews:finish' attempt.pk %}"
            style="background:transparent;border:1px solid #1a2f50;color:#94a3b8;
                   padding:8px 14px;border-radius:8px;font-size:.875rem;text-decoration:none"
            class="hover:text-emerald-300 hover:border-emerald-400/40 transition-colors">
-          Revisar e finalizar
+          {% trans "Revisar e finalizar" %}
         </a>
       </div>
     </div>
   </form>
 
   <p class="mt-3 text-center" style="color:#5a7a9a;font-size:.78rem">
-    {{ answered_count }} de {{ total }} respondidas · suas respostas são salvas a cada avanço.
+    {% blocktrans %}{{ answered_count }} de {{ total }} respondidas · suas respostas são salvas a cada avanço.{% endblocktrans %}
   </p>
 
 </section>

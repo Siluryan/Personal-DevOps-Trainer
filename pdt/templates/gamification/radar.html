@@ -1,15 +1,16 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% load static %}
-{% block title %}Meu radar · PDT{% endblock %}
+{% block title %}{% trans "Meu radar · PDT" %}{% endblock %}
 
 {% block content %}
 <section class="max-w-5xl mx-auto px-4 py-8">
   <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
     <h1 class="text-2xl font-bold" style="color:#ddeeff">
-      Meu radar, {{ total_score }} pts
+      {% blocktrans %}Meu radar, {{ total_score }} pts{% endblocktrans %}
     </h1>
     <a style="font-size:.875rem;color:#38bdf8" href="{% url 'gamification:leaderboard' %}">
-      Ver ranking →
+      {% trans "Ver ranking →" %}
     </a>
   </div>
   <div style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:20px">

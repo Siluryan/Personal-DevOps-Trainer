@@ -184,7 +184,7 @@ def lesson_glossary_sidebar(lesson, limit=12) -> list[dict[str, str]]:
     """
     if lesson is None:
         return []
-    parts = [lesson.intro, lesson.body, lesson.practical]
+    parts = [lesson.display_intro, lesson.display_body, lesson.display_practical]
     return _lesson_glossary_sidebar(parts, get_glossary_terms(), limit=limit)
 
 

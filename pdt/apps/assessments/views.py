@@ -17,6 +17,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from django.views.generic import TemplateView, View
 
 from .models import AdmissionAttempt, AdmissionChoice, AdmissionQuestion
@@ -69,14 +70,16 @@ class StartView(LoginRequiredMixin, TemplateView):
         ):
             messages.warning(
                 request,
-                "Você precisa aguardar antes de tentar novamente. "
-                "Aproveite para revisar Linux e redes.",
+                _(
+                    "Você precisa aguardar antes de tentar novamente. "
+                    "Aproveite para revisar Linux e redes."
+                ),
             )
             return redirect("assessments:start")
 
         question_ids = _build_question_set()
         if len(question_ids) < QUESTIONS_PER_TEST:
-            messages.error(request, "Banco de questões incompleto. Avise o administrador.")
+            messages.error(request, _("Banco de questões incompleto. Avise o administrador."))
             return redirect("core:landing")
 
         attempt = AdmissionAttempt.objects.create(
@@ -150,11 +153,11 @@ class TakeView(LoginRequiredMixin, TemplateView):
             user.admission_passed = True
             user.admission_score = score
             user.save(update_fields=["admission_passed", "admission_score"])
-            messages.success(request, "Você foi aprovado. Bem-vindo(a) ao PDT!")
+            messages.success(request, _("Você foi aprovado. Bem-vindo(a) ao PDT!"))
         else:
             messages.error(
                 request,
-                "Desempenho insuficiente. Reforce Linux e redes e tente novamente em algumas horas.",
+                _("Desempenho insuficiente. Reforce Linux e redes e tente novamente em algumas horas."),
             )
 
         return redirect("assessments:result", pk=attempt.pk)

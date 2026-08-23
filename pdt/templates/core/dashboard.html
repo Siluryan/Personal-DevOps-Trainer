@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% load l10n %}
+{% load i18n %}
 {% block title %}Dashboard · PDT{% endblock %}
 
 {% block content %}
@@ -10,7 +11,7 @@
   <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
     <div>
       <h1 class="text-2xl font-bold" style="color:#ddeeff">
-        Bem-vindo(a), {{ user.display_name }}
+        {% blocktrans with name=user.display_name %}Bem-vindo(a), {{ name }}{% endblocktrans %}
       </h1>
       <p class="text-sm mt-1" style="color:#5a7a9a">
         <span style="background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.4);
@@ -18,25 +19,25 @@
                      font-weight:600;letter-spacing:.02em;margin-right:6px">
           {{ user.career_label }}
         </span>
-        Sua trilha DevSecOps em um só lugar.
+        {% trans "Sua trilha DevSecOps em um só lugar." %}
       </p>
     </div>
     <div class="flex gap-2 text-sm">
       <a href="{% url 'accounts:profile_edit' %}"
          style="border:1px solid #1a2f50;color:#8bacc8;padding:6px 14px;border-radius:7px;transition:border-color .15s"
          class="hover:border-sky-500/40 hover:text-sky-300">
-        Editar perfil
+        {% trans "Editar perfil" %}
       </a>
       <a href="{% url 'interviews:index' %}"
          style="border:1px solid #1a2f50;color:#8bacc8;padding:6px 14px;border-radius:7px;transition:border-color .15s"
          class="hover:border-sky-500/40 hover:text-sky-300">
-        Simulador
+        {% trans "Simulador" %}
       </a>
       <a href="{% url 'gamification:radar' %}"
          style="background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.3);
                 color:#bae6fd;padding:6px 14px;border-radius:7px;transition:background .15s"
          class="hover:bg-sky-500/20">
-        Ver radar
+        {% trans "Ver radar" %}
       </a>
     </div>
   </div>
@@ -47,7 +48,7 @@
     <div style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:20px"
          class="lg:col-span-2">
       <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">
-        Radar de competências (60 tópicos)
+        {% trans "Radar de competências (60 tópicos)" %}
       </h2>
       <!-- altura adapta ao viewport: menor em telas pequenas -->
       <div style="position:relative" id="radar-wrap"></div>
@@ -59,14 +60,14 @@
       <div style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:20px"
            x-data="leaderboardPanel()"
            x-init="init()">
-        <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">Top 10</h2>
+        <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">{% trans "Top 10" %}</h2>
         <p style="font-size:.8rem;color:#8bacc8;margin:0 0 8px">
-          Sua pontuação total: <span style="color:#34d399;font-weight:700">{{ my_total_score }} pts</span>
+          {% blocktrans %}Sua pontuação total: <span style="color:#34d399;font-weight:700">{{ my_total_score }} pts</span>{% endblocktrans %}
         </p>
         {% if not user.show_in_leaderboard %}
           <p style="font-size:.78rem;color:#5a7a9a;margin:0 0 10px">
-            Você está fora do ranking público porque a opção
-            <strong style="color:#8bacc8">Aparecer no ranking</strong> está desativada no perfil.
+            {% blocktrans %}Você está fora do ranking público porque a opção
+            <strong style="color:#8bacc8">Aparecer no ranking</strong> está desativada no perfil.{% endblocktrans %}
           </p>
         {% endif %}
         <ol class="space-y-1 text-sm">
@@ -80,11 +81,11 @@
               <span style="color:#34d399;font-weight:700">{{ u.total }} pts</span>
             </li>
           {% empty %}
-            <li style="color:#5a7a9a">Ninguém ainda. Seja o primeiro.</li>
+            <li style="color:#5a7a9a">{% trans "Ninguém ainda. Seja o primeiro." %}</li>
           {% endfor %}
         </ol>
         <a class="text-sm mt-3 inline-block" style="color:#38bdf8"
-           href="{% url 'gamification:leaderboard' %}">Ver ranking completo →</a>
+           href="{% url 'gamification:leaderboard' %}">{% trans "Ver ranking completo →" %}</a>
 
         <!-- painel de detalhes -->
         <div x-show="selected" x-cloak x-transition
@@ -99,7 +100,7 @@
 
           <p style="font-size:.68rem;color:#5a7a9a;text-transform:uppercase;
                     letter-spacing:.04em;margin:0 0 8px;padding-right:20px">
-            No Top 10 do ranking
+            {% trans "No Top 10 do ranking" %}
           </p>
           <p style="font-weight:700;font-size:1rem;color:#ddeeff;padding-right:20px;line-height:1.35;margin:0"
              x-text="selected?.name || '—'"></p>
@@ -112,10 +113,10 @@
           <div style="margin-top:12px;padding:11px 12px;background:rgba(14,165,233,.06);
                       border:1px solid rgba(14,165,233,.22);border-radius:9px">
             <p style="margin:0 0 6px;font-size:.72rem;color:#8bacc8;line-height:1.45">
-              <span style="color:#bae6fd;font-weight:600">Pontuação total</span> no ranking:
+              {% blocktrans %}<span style="color:#bae6fd;font-weight:600">Pontuação total</span> no ranking:
               é a soma dos pontos em <span style="color:#bae6fd;font-weight:600">cada tópico</span>
               da trilha. Em cada tópico contam a melhor nota já feita no quiz daquele tema e,
-              se existir, o bônus por ajuda no mapa.
+              se existir, o bônus por ajuda no mapa.{% endblocktrans %}
             </p>
             <p style="margin:0;font-size:1.05rem;color:#34d399;font-weight:700">
               <span x-text="selected?.total ?? 0"></span><span style="font-weight:600;font-size:.85rem"> pts</span>
@@ -127,13 +128,13 @@
              style="display:inline-block;margin-top:12px;font-size:.8125rem;font-weight:600;
                     color:#38bdf8;text-decoration:none"
              class="hover:text-sky-200">
-            Ver perfil público →
+            {% trans "Ver perfil público →" %}
           </a>
 
           <!-- sem permissão para exibir contato -->
           <template x-if="selected && !selected.show_contact">
             <p style="margin-top:10px;font-size:.8125rem;color:#5a7a9a;font-style:italic">
-              Este usuário optou por não exibir informações de contato.
+              {% trans "Este usuário optou por não exibir informações de contato." %}
             </p>
           </template>
 
@@ -180,22 +181,22 @@
 
       <!-- atalhos -->
       <div style="background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:20px">
-        <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">Atalhos</h2>
+        <h2 class="text-lg font-semibold mb-3" style="color:#7dd3fc">{% trans "Atalhos" %}</h2>
         <div class="flex flex-wrap gap-2 text-sm">
           <a href="{% url 'courses:track' %}"
              style="border:1px solid #1a2f50;color:#8bacc8;padding:5px 12px;border-radius:6px;transition:border-color .15s"
              class="hover:border-sky-500/40 hover:text-sky-300">
-            Trilha
+            {% trans "Trilha" %}
           </a>
           <a href="{% url 'presence:map' %}"
              style="border:1px solid #1a2f50;color:#8bacc8;padding:5px 12px;border-radius:6px;transition:border-color .15s"
              class="hover:border-sky-500/40 hover:text-sky-300">
-            Mapa
+            {% trans "Mapa" %}
           </a>
           <a href="{% url 'interviews:index' %}"
              style="border:1px solid #1a2f50;color:#8bacc8;padding:5px 12px;border-radius:6px;transition:border-color .15s"
              class="hover:border-sky-500/40 hover:text-sky-300">
-            Entrevistas
+            {% trans "Entrevistas" %}
           </a>
         </div>
       </div>
@@ -205,19 +206,21 @@
   <!-- fases -->
   <div class="mt-10">
     <h2 class="text-xl font-semibold mb-4" style="color:#ddeeff">
-      Fases ({{ topics_total }} tópicos)
+      {% blocktrans %}Fases ({{ topics_total }} tópicos){% endblocktrans %}
     </h2>
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
       {% for phase in phases %}
         <div style="background:#07122a;border:1px solid #1a2f50;border-radius:10px;padding:16px">
-          <h3 class="font-semibold mb-2" style="color:#93c5fd">{{ phase }}</h3>
+          <h3 class="font-semibold mb-2" style="color:#93c5fd">
+            {{ phase.display_name }}
+          </h3>
           <ul class="text-sm space-y-1">
             {% for t in phase.topics.all %}
               <li class="truncate">
                 <a href="{{ t.get_absolute_url }}"
                    style="color:#8bacc8;text-decoration:none"
                    class="hover:text-sky-300 transition-colors">
-                  · {{ t.title }}
+                  · {{ t.display_title }}
                 </a>
               </li>
             {% endfor %}

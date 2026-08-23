@@ -186,16 +186,31 @@ def lesson_glossary_sidebar(html_parts: list[str], terms: dict[str, str], limit:
 
 
 def get_glossary_terms() -> dict[str, str]:
-    """Termo -> definição de todo `GlossaryTerm`, cacheado (ver `_CACHE_TTL`)."""
-    terms = cache.get(_CACHE_KEY)
+    """Termo -> definição de todo `GlossaryTerm`, cacheado (ver `_CACHE_TTL`).
+
+    Uma entrada por idioma ativo: em inglês, a CHAVE também precisa virar
+    `term_en` (ou ficar em `term` se a sigla não muda, tipo RCE/IAM), porque
+    o texto que o `_GlossaryAnnotator` varre é o `Lesson.display_body`, que
+    já está em inglês — procurar pela grafia em português nunca bateria.
+    """
+    from django.utils.translation import get_language
+
+    lang = get_language()
+    cache_key = f"{_CACHE_KEY}:{lang}"
+    terms = cache.get(cache_key)
     if terms is None:
         from .models import GlossaryTerm
 
-        terms = dict(GlossaryTerm.objects.values_list("term", "definition"))
-        cache.set(_CACHE_KEY, terms, _CACHE_TTL)
+        rows = GlossaryTerm.objects.values_list("term", "term_en", "definition", "definition_en")
+        if lang == "en":
+            terms = {(en or pt): (def_en or pt_def) for pt, en, pt_def, def_en in rows}
+        else:
+            terms = {pt: pt_def for pt, _en, pt_def, _def_en in rows}
+        cache.set(cache_key, terms, _CACHE_TTL)
     return terms
 
 
 def invalidate_glossary_cache(*args, **kwargs) -> None:
     """Conectado a post_save/post_delete de GlossaryTerm em CoreConfig.ready()."""
-    cache.delete(_CACHE_KEY)
+    cache.delete(f"{_CACHE_KEY}:pt-br")
+    cache.delete(f"{_CACHE_KEY}:en")

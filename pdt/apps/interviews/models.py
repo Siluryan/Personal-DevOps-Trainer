@@ -9,15 +9,18 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+from apps.core.i18n import localized
 
 
 LEVEL_JUNIOR = "junior"
 LEVEL_PLENO = "pleno"
 LEVEL_SENIOR = "senior"
 LEVEL_CHOICES = [
-    (LEVEL_JUNIOR, "Júnior"),
-    (LEVEL_PLENO, "Pleno"),
-    (LEVEL_SENIOR, "Sênior"),
+    (LEVEL_JUNIOR, _("Júnior")),
+    (LEVEL_PLENO, _("Pleno")),
+    (LEVEL_SENIOR, _("Sênior")),
 ]
 PASS_PERCENT = 80  # 80% para promover
 
@@ -30,12 +33,19 @@ class InterviewQuestion(models.Model):
     level = models.CharField(max_length=12, choices=LEVEL_CHOICES)
     category = models.CharField(max_length=80, blank=True)
     statement = models.TextField()
+    statement_en = models.TextField(blank=True)
     choices = models.JSONField(
         default=list,
         help_text="Lista de strings com as alternativas, em ordem.",
     )
+    choices_en = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Versão em inglês de `choices`: lista completa, mesma ordem, não um diff.",
+    )
     correct_index = models.PositiveSmallIntegerField()
     explanation = models.TextField(blank=True)
+    explanation_en = models.TextField(blank=True)
     order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 
@@ -47,6 +57,18 @@ class InterviewQuestion(models.Model):
 
     def __str__(self) -> str:
         return f"[{self.level}] {self.statement[:60]}"
+
+    @property
+    def display_statement(self) -> str:
+        return localized(self.statement, self.statement_en)
+
+    @property
+    def display_choices(self):
+        return localized(self.choices, self.choices_en)
+
+    @property
+    def display_explanation(self) -> str:
+        return localized(self.explanation, self.explanation_en)
 
 
 class InterviewAttempt(models.Model):

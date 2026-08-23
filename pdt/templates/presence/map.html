@@ -1,6 +1,7 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% load static %}
-{% block title %}Mapa · PDT{% endblock %}
+{% block title %}{% trans "Mapa · PDT" %}{% endblock %}
 
 {% block head_extra %}
 {# Leaflet 1.9.4 + markercluster 1.5.3, servidos do próprio host (static/vendor/). #}
@@ -86,13 +87,13 @@
 <section class="max-w-7xl mx-auto px-4 py-6">
   <div class="flex items-start justify-between flex-wrap gap-4">
     <div>
-      <h1 class="text-2xl font-bold" style="color:#ddeeff">Mapa de presença</h1>
+      <h1 class="text-2xl font-bold" style="color:#ddeeff">{% trans "Mapa de presença" %}</h1>
       <p class="text-sm mt-1" style="color:#5a7a9a">
-        Pins <span style="color:#0ea5e9;font-weight:600">azuis</span> = disponíveis ·
+        {% blocktrans %}Pins <span style="color:#0ea5e9;font-weight:600">azuis</span> = disponíveis ·
         pins <span style="color:#f43f5e;font-weight:600">vermelhos</span> = pedindo ajuda.
         Clique em um pin <span style="color:#f43f5e;font-weight:600">vermelho</span> para oferecer ajuda e abrir a sala.
         Se <strong style="color:#8bacc8">você pediu ajuda</strong>, use o botão
-        <strong style="color:#fde68a">«Entrar na sala»</strong> ao lado de «Pedido aberto» (chat e voz).
+        <strong style="color:#fde68a">«Entrar na sala»</strong> ao lado de «Pedido aberto» (chat e voz).{% endblocktrans %}
       </p>
     </div>
 
@@ -103,20 +104,20 @@
       <div x-show="hasOpen" x-cloak class="flex flex-wrap gap-2 items-center justify-end">
         <span style="border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);
                      color:#fca5a5;padding:6px 12px;border-radius:7px;font-size:.8125rem">
-          Pedido aberto: <span x-text="openTopic"></span>
+          {% trans "Pedido aberto:" %} <span x-text="openTopic"></span>
         </span>
         <a :href="openRoomUrl"
            style="background:#0891b2;color:#f0f9ff;font-weight:700;
                   padding:6px 14px;border-radius:7px;font-size:.8125rem;text-decoration:none;
                   display:inline-block;transition:background .15s"
            class="hover:bg-sky-500">
-          Entrar na sala →
+          {% trans "Entrar na sala →" %}
         </a>
         <button @click="resolve()" :disabled="busy"
                 style="background:#34d399;color:#04091c;font-weight:700;
                        padding:6px 14px;border-radius:7px;font-size:.8125rem;transition:background .15s"
                 class="hover:bg-emerald-300 disabled:opacity-50">
-          Marcar como resolvido
+          {% trans "Marcar como resolvido" %}
         </button>
       </div>
 
@@ -127,7 +128,7 @@
                 style="background:#f43f5e;color:#fff;font-weight:700;
                        padding:8px 18px;border-radius:8px;font-size:.875rem;transition:background .15s"
                 class="hover:bg-rose-400">
-          🆘 Pedir ajuda
+          {% trans "🆘 Pedir ajuda" %}
         </button>
         <div x-show="open" x-cloak @click="open = false" class="help-request-backdrop"></div>
         <div x-show="open" x-cloak
@@ -135,7 +136,7 @@
              class="help-request-panel shadow-2xl"
              style="z-index:1310;background:#07122a;border:1px solid #1a2f50;border-radius:12px;padding:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <p style="font-size:.9rem;font-weight:700;color:#ddeeff;margin:0">Pedir ajuda</p>
+            <p style="font-size:.9rem;font-weight:700;color:#ddeeff;margin:0">{% trans "Pedir ajuda" %}</p>
             <button @click="open = false" type="button"
                     style="background:transparent;border:0;color:#8bacc8;font-size:1.1rem;line-height:1;cursor:pointer;padding:2px 6px">
               ×
@@ -143,7 +144,7 @@
           </div>
           <div class="space-y-3">
             <div>
-              <label style="display:block;font-size:.75rem;color:#8bacc8;margin-bottom:4px">Tópico</label>
+              <label style="display:block;font-size:.75rem;color:#8bacc8;margin-bottom:4px">{% trans "Tópico" %}</label>
               <select x-model="topicId"
                       @change="topicId = $event.target.value"
                       style="font-size:.875rem">
@@ -152,7 +153,7 @@
             </div>
             <div>
               <label style="display:block;font-size:.75rem;color:#8bacc8;margin-bottom:4px">
-                Descreva sua dúvida (opcional)
+                {% trans "Descreva sua dúvida (opcional)" %}
               </label>
               <textarea x-model="desc" rows="3" style="font-size:.875rem;resize:none"></textarea>
             </div>
@@ -169,13 +170,12 @@
         <div class="max-w-sm text-right"
              style="border:1px solid rgba(14,165,233,.35);background:rgba(14,165,233,.08);
                     padding:10px 14px;border-radius:10px;font-size:.8125rem;line-height:1.45;color:#8bacc8">
-          <p style="color:#ddeeff;font-weight:600;margin:0 0 6px">Pedir ajuda exige aparecer no mapa</p>
+          <p style="color:#ddeeff;font-weight:600;margin:0 0 6px">{% trans "Pedir ajuda exige aparecer no mapa" %}</p>
           <p style="margin:0 0 8px">
-            Com «Aparecer no mapa de presença» desligado, a plataforma não aceita novos pedidos de ajuda
-            e você não aparece como pin para outras pessoas.
+            {% trans "Com «Aparecer no mapa de presença» desligado, a plataforma não aceita novos pedidos de ajuda e você não aparece como pin para outras pessoas." %}
           </p>
           <a href="{% url 'accounts:profile_edit' %}"
-             style="color:#38bdf8;font-weight:600;text-decoration:underline">Ativar no perfil →</a>
+             style="color:#38bdf8;font-weight:600;text-decoration:underline">{% trans "Ativar no perfil →" %}</a>
         </div>
         {% endif %}
       </div>

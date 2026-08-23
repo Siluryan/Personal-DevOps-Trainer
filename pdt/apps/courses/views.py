@@ -6,6 +6,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from django.views import View
 from django.views.generic import DetailView, TemplateView
 
@@ -82,7 +83,7 @@ class QuizView(LoginRequiredMixin, TemplateView):
         topic = self._get_topic(slug)
         questions = list(topic.questions.filter(is_active=True).prefetch_related("choices")[:10])
         if not questions:
-            messages.warning(request, "Este tópico ainda não tem questões cadastradas.")
+            messages.warning(request, _("Este tópico ainda não tem questões cadastradas."))
             return redirect("courses:topic_detail", slug=slug)
 
         attempt = TopicAttempt.objects.create(

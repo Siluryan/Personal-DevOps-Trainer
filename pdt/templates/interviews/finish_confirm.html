@@ -1,24 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Finalizar entrevista · PDT{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Finalizar entrevista · PDT" %}{% endblock %}
 
 {% block content %}
 <section class="max-w-2xl mx-auto px-4 py-12">
 
   <h1 class="text-2xl font-bold mb-3" style="color:#ddeeff">
-    Finalizar entrevista {{ level_label }}?
+    {% blocktrans %}Finalizar entrevista {{ level_label }}?{% endblocktrans %}
   </h1>
 
   <p style="color:#8bacc8;line-height:1.6">
-    Você respondeu <strong style="color:#bae6fd">{{ attempt.answered_count }}</strong>
-    de <strong style="color:#bae6fd">{{ total }}</strong> questões.
+    {% blocktrans with answered_count=attempt.answered_count %}Você respondeu <strong style="color:#bae6fd">{{ answered_count }}</strong>
+    de <strong style="color:#bae6fd">{{ total }}</strong> questões.{% endblocktrans %}
     {% if unanswered > 0 %}
-      Há <strong style="color:#fde68a">{{ unanswered }}</strong>
-      {% if unanswered == 1 %}sem resposta{% else %}sem resposta{% endif %};
-      se você finalizar agora,
-      {% if unanswered == 1 %}ela será contada{% else %}elas serão contadas{% endif %}
-      como erro.
+      {% blocktrans %}Há <strong style="color:#fde68a">{{ unanswered }}</strong>{% endblocktrans %}
+      {% if unanswered == 1 %}{% trans "sem resposta" %}{% else %}{% trans "sem resposta" %}{% endif %};
+      {% trans "se você finalizar agora," %}
+      {% if unanswered == 1 %}{% trans "ela será contada" %}{% else %}{% trans "elas serão contadas" %}{% endif %}
+      {% trans "como erro." %}
     {% else %}
-      Tudo respondido. Bom trabalho!
+      {% trans "Tudo respondido. Bom trabalho!" %}
     {% endif %}
   </p>
 
@@ -26,7 +27,7 @@
     <div style="margin-top:18px;background:#0b1830;border:1px solid #1a2f50;
                 border-radius:12px;padding:14px 16px">
       <p style="color:#bcd2e8;font-size:.85rem;margin-bottom:8px">
-        Pendentes (clique para ir até a questão):
+        {% trans "Pendentes (clique para ir até a questão):" %}
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         {% for item in unanswered_items %}
@@ -36,7 +37,7 @@
                     font-size:.8rem;font-variant-numeric:tabular-nums;
                     text-decoration:none"
              class="hover:border-amber-400/60 hover:text-amber-200 transition-colors"
-             title="Ir para a questão {{ item.human_index }}">
+             title="{% blocktrans with human_index=item.human_index %}Ir para a questão {{ human_index }}{% endblocktrans %}">
             #{{ item.human_index }}
           </a>
         {% endfor %}
@@ -49,7 +50,7 @@
        style="background:transparent;border:1px solid #1a2f50;color:#94a3b8;
               padding:8px 16px;border-radius:8px;font-size:.875rem;text-decoration:none"
        class="hover:text-sky-300 hover:border-sky-400/40 transition-colors">
-      ← Continuar respondendo
+      {% trans "← Continuar respondendo" %}
     </a>
 
     <form method="post" action="{% url 'interviews:finish' attempt.pk %}">
@@ -58,7 +59,7 @@
               style="background:#22c55e;color:#04091c;font-weight:700;
                      padding:8px 18px;border-radius:8px;font-size:.875rem"
               class="hover:bg-emerald-400 transition-colors">
-        Sim, finalizar e ver resultado
+        {% trans "Sim, finalizar e ver resultado" %}
       </button>
     </form>
   </div>

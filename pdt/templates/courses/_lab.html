@@ -1,6 +1,7 @@
 {% load static %}
+{% load i18n %}
 {# Um card por lab. lab.elid e lab.is_done vêm anotados na view (TopicDetailView). #}
-{{ lab.spec|json_script:lab.elid }}
+{{ lab.display_spec|json_script:lab.elid }}
 <div class="lab-card"
      x-data="labState(
         {{ lab.id }},
@@ -10,9 +11,9 @@
         '{% url 'courses:lab_complete' lab.id %}'
      )">
   <template x-if="done">
-    <span class="lab-done-badge">✓ Concluído (+5 pts)</span>
+    <span class="lab-done-badge">✓ {% trans "Concluído (+5 pts)" %}</span>
   </template>
-  <h3>🧪 {{ lab.title }}</h3>
+  <h3>🧪 {{ lab.display_title }}</h3>
 
   {# ── terminal: monta o comando tocando nos tokens ──────────────────── #}
   <template x-if="kind === 'terminal'">
@@ -20,7 +21,7 @@
       <p class="lab-scenario-text" x-text="spec.scenario"></p>
       <div class="lab-command-line">
         <template x-if="!chosen.length">
-          <span class="lab-placeholder">toque nos blocos abaixo para montar o comando…</span>
+          <span class="lab-placeholder">{% trans "toque nos blocos abaixo para montar o comando…" %}</span>
         </template>
         <template x-for="(tok, i) in chosen" :key="'c'+i">
           <span x-text="tok"></span>
@@ -32,12 +33,12 @@
         </template>
       </div>
       <div class="lab-actions">
-        <button type="button" class="lab-undo-btn" @click="undo()" :disabled="!chosen.length">← Desfazer</button>
-        <button type="button" class="lab-check-btn" @click="check()" :disabled="!pool.length && checked && correct">Conferir</button>
+        <button type="button" class="lab-undo-btn" @click="undo()" :disabled="!chosen.length">← {% trans "Desfazer" %}</button>
+        <button type="button" class="lab-check-btn" @click="check()" :disabled="!pool.length && checked && correct">{% trans "Conferir" %}</button>
       </div>
       <template x-if="checked">
         <p class="lab-explanation" :class="!correct && 'lab-explanation-pending'">
-          <strong x-text="correct ? 'Certo! ' : 'Ainda não. '"></strong>
+          <strong x-text="correct ? '{% trans "Certo!" %} ' : '{% trans "Ainda não." %} '"></strong>
           <span x-text="spec.explanation"></span>
         </p>
       </template>
@@ -60,11 +61,11 @@
         </template>
       </div>
       <div class="lab-actions">
-        <button type="button" class="lab-check-btn" @click="check()" :disabled="selected === null || (checked && correct)">Conferir</button>
+        <button type="button" class="lab-check-btn" @click="check()" :disabled="selected === null || (checked && correct)">{% trans "Conferir" %}</button>
       </div>
       <template x-if="checked">
         <p class="lab-explanation" :class="!correct && 'lab-explanation-pending'">
-          <strong x-text="correct ? 'Certo! ' : 'Ainda não. '"></strong>
+          <strong x-text="correct ? '{% trans "Certo!" %} ' : '{% trans "Ainda não." %} '"></strong>
           <span x-text="spec.explanation"></span>
         </p>
       </template>
@@ -89,12 +90,12 @@
         </template>
       </div>
       <div class="lab-actions">
-        <button type="button" class="lab-undo-btn" @click="undo()" :disabled="!chosen.length">← Desfazer</button>
-        <button type="button" class="lab-check-btn" @click="check()" :disabled="remaining.length || (checked && correct)">Conferir</button>
+        <button type="button" class="lab-undo-btn" @click="undo()" :disabled="!chosen.length">← {% trans "Desfazer" %}</button>
+        <button type="button" class="lab-check-btn" @click="check()" :disabled="remaining.length || (checked && correct)">{% trans "Conferir" %}</button>
       </div>
       <template x-if="checked">
         <p class="lab-explanation" :class="!correct && 'lab-explanation-pending'">
-          <strong x-text="correct ? 'Certo! ' : 'Ainda não. '"></strong>
+          <strong x-text="correct ? '{% trans "Certo!" %} ' : '{% trans "Ainda não." %} '"></strong>
           <span x-text="spec.explanation"></span>
         </p>
       </template>
@@ -108,7 +109,7 @@
       <div class="lab-code-block" x-text="renderedTemplate"></div>
       <template x-for="key in blankKeys" :key="key">
         <div class="lab-blank-group">
-          <p class="lab-blank-label" x-text="'Preencha ' + key + ':'"></p>
+          <p class="lab-blank-label" x-text="'{% trans "Preencha" %} ' + key + ':'"></p>
           <div class="lab-choice-chips">
             <template x-for="opt in spec.blanks[key].options" :key="opt">
               <button type="button" class="lab-token"
@@ -120,11 +121,11 @@
       </template>
       <div class="lab-actions">
         <button type="button" class="lab-check-btn" @click="check()"
-                :disabled="blankKeys.some(k => !answers[k]) || (checked && correct)">Conferir</button>
+                :disabled="blankKeys.some(k => !answers[k]) || (checked && correct)">{% trans "Conferir" %}</button>
       </div>
       <template x-if="checked">
         <p class="lab-explanation" :class="!correct && 'lab-explanation-pending'">
-          <strong x-text="correct ? 'Certo! ' : 'Ainda não. '"></strong>
+          <strong x-text="correct ? '{% trans "Certo!" %} ' : '{% trans "Ainda não." %} '"></strong>
           <span x-text="spec.explanation"></span>
         </p>
       </template>
@@ -148,7 +149,7 @@
           <p class="lab-outcome" x-text="spec.choices[chosenIndex].outcome"></p>
           <template x-if="!correct">
             <div class="lab-actions" style="margin-top:.75rem">
-              <button type="button" class="lab-undo-btn" @click="tryAgain()">Tentar outra decisão</button>
+              <button type="button" class="lab-undo-btn" @click="tryAgain()">{% trans "Tentar outra decisão" %}</button>
             </div>
           </template>
           <template x-if="correct">

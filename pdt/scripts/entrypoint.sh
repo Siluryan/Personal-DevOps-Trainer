@@ -25,6 +25,9 @@ PY
 echo ">> Aplicando migrações..."
 python manage.py migrate --noinput
 
+echo ">> Compilando traduções (locale/en)..."
+python manage.py compilemessages
+
 echo ">> Coletando estáticos..."
 python manage.py collectstatic --noinput
 
