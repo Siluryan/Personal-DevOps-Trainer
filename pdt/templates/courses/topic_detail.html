@@ -45,20 +45,21 @@
         <div class="lesson-body mb-2"
              style="{% if topic.lesson.intro %}border-top:none;border-radius:0;{% else %}border-radius:12px 12px 0 0;{% endif %}
                     {% if not topic.lesson.practical %}border-radius:0 0 12px 12px;{% endif %}"
-             x-data="{ page: 0, total: {{ pages|length }} }">
-          <h2>Aula</h2>
+             x-data="{ page: 0, total: {{ pages|length }},
+                        goToPage(n) { this.page = n; this.$refs.lessonTop.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }">
+          <h2 x-ref="lessonTop">Aula</h2>
           {% for section in pages %}
             <div x-show="page === {{ forloop.counter0 }}" x-cloak>{{ section }}</div>
           {% endfor %}
           {% if pages|length > 1 %}
             <div class="lesson-pagination">
-              <button type="button" @click="page = Math.max(0, page - 1)" :disabled="page === 0">
+              <button type="button" @click="goToPage(Math.max(0, page - 1))" :disabled="page === 0">
                 ← Anterior
               </button>
               <span class="lesson-page-indicator">
                 Página <span x-text="page + 1"></span> de {{ pages|length }}
               </span>
-              <button type="button" @click="page = Math.min(total - 1, page + 1)" :disabled="page === total - 1">
+              <button type="button" @click="goToPage(Math.min(total - 1, page + 1))" :disabled="page === total - 1">
                 Próxima →
               </button>
             </div>

@@ -314,8 +314,10 @@ html { scroll-behavior: smooth; }
   box-shadow: none;
 }
 .lesson-pagination .lesson-page-indicator {
-  display: inline-flex;
-  align-items: center;
+  /* display: inline-block (não flex!): num container flex, o texto solto
+     ("Página " / " de X") vira anonymous flex item e o Chromium engole os
+     espaços em volta do <span> do meio — fica "Página1de6". */
+  display: inline-block;
   background: var(--pdt-surface);
   border: 1px solid var(--pdt-border);
   border-radius: 999px;
