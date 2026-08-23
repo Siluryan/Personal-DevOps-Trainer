@@ -463,235 +463,288 @@ que existem.</li>
                     "comuns que viram CVE."
                 ),
                 "body": (
-                    "<h3>1. Princípio: minimalismo radical</h3>"
-                    "<p>Toda biblioteca que você inclui é potencial bug. Toda binário "
-                    "extra é potencial exploit. <em>Reduzir é segurança</em>. Imagem "
-                    "Ubuntu padrão: ~28MB de pacotes + dezenas de daemons inativos + "
-                    "shell + utilitários (apt, find, vim...). Imagem distroless: ~20MB "
-                    "só com runtime + libs essenciais, sem shell, sem apt.</p>"
-                    "<p>Espectro de bases (do maior ao menor):</p>"
-                    "<table>"
-                    "<tr><th>Base</th><th>Tamanho típico</th><th>Trade-off</th></tr>"
-                    "<tr><td>ubuntu:22.04</td><td>~80MB</td><td>Familiar; muito que vc não usa.</td></tr>"
-                    "<tr><td>debian:12</td><td>~120MB</td><td>Pacotes maduros.</td></tr>"
-                    "<tr><td>debian:12-slim</td><td>~75MB</td><td>Sem doc, sem locales extras.</td></tr>"
-                    "<tr><td>python:3.12-slim</td><td>~150MB</td><td>Slim + Python.</td></tr>"
-                    "<tr><td>alpine:3.19</td><td>~7MB</td><td>musl libc; pode quebrar wheels Python.</td></tr>"
-                    "<tr><td>wolfi-base (Chainguard)</td><td>~10MB</td><td>glibc, SBOM nativo, patches diários.</td></tr>"
-                    "<tr><td>distroless/static</td><td>~2MB</td><td>Só libs. Sem shell. Bom para Go/Rust.</td></tr>"
-                    "<tr><td>distroless/python</td><td>~50MB</td><td>Python runtime. Sem pip, sem shell.</td></tr>"
-                    "<tr><td>scratch</td><td>0MB</td><td>Vazia. Você adiciona binário estático.</td></tr>"
-                    "</table>"
-                    "<h4>Distroless: o equilíbrio</h4>"
-                    "<p>Imagens Google distroless contêm <em>apenas</em> a app e suas "
-                    "dependências runtime. Sem <code>sh</code>, sem <code>apt</code>, "
-                    "sem <code>cat</code>. Atacante que escapa do app não tem onde "
-                    "rodar comando.</p>"
-                    "<pre><code>FROM golang:1.22 AS builder\n"
-                    "RUN CGO_ENABLED=0 go build -o /app ./cmd/app\n"
-                    "\n"
-                    "FROM gcr.io/distroless/static-debian12:nonroot\n"
-                    "COPY --from=builder /app /app\n"
-                    "ENTRYPOINT [\"/app\"]</code></pre>"
-                    "<p>Trade-off: debug é menos confortável. Use <code>:debug</code> "
-                    "tag em dev, <code>:nonroot</code> em prod.</p>"
-                    "<h4>Wolfi e Chainguard</h4>"
-                    "<p>Distro 'undistro' otimizada para containers: pacotes "
-                    "assinados, glibc-based (compatível com mais ecossistemas que "
-                    "alpine), SBOM gerado automaticamente, builds reprodutíveis. "
-                    "Imagens Chainguard são patcheadas diariamente, você quase nunca "
-                    "vê CVE 'velho' em base.</p>"
+                """<h3>1. Minimalismo radical: cada byte extra é superfície de ataque potencial</h3>
+<p>Toda biblioteca incluída numa imagem é um bug em potencial; todo
+binário extra é um exploit em potencial. Reduzir o que está presente na
+imagem NÃO é otimização de espaço em disco — é uma medida de segurança
+direta. Uma imagem Ubuntu padrão carrega dezenas de megabytes de
+pacotes, incluindo daemons inativos, um shell completo e utilitários
+como <code>apt</code>, <code>find</code> e <code>vim</code> — nenhum
+deles necessário para a APLICAÇÃO rodar, mas todos disponíveis para um
+atacante que consiga executar código dentro do container. Uma imagem
+distroless carrega só o runtime e as bibliotecas essenciais, sem shell,
+sem gerenciador de pacotes algum. O espectro de bases disponíveis varia
+enormemente:</p>
+<table>
+<tr><th>Base</th><th>Tamanho típico</th><th>Trade-off</th></tr>
+<tr><td>ubuntu:22.04</td><td>~80MB</td><td>Familiar; muito que vc não usa.</td></tr>
+<tr><td>debian:12</td><td>~120MB</td><td>Pacotes maduros.</td></tr>
+<tr><td>debian:12-slim</td><td>~75MB</td><td>Sem doc, sem locales extras.</td></tr>
+<tr><td>python:3.12-slim</td><td>~150MB</td><td>Slim + Python.</td></tr>
+<tr><td>alpine:3.19</td><td>~7MB</td><td>musl libc; pode quebrar wheels Python.</td></tr>
+<tr><td>wolfi-base (Chainguard)</td><td>~10MB</td><td>glibc, SBOM nativo, patches diários.</td></tr>
+<tr><td>distroless/static</td><td>~2MB</td><td>Só libs. Sem shell. Bom para Go/Rust.</td></tr>
+<tr><td>distroless/python</td><td>~50MB</td><td>Python runtime. Sem pip, sem shell.</td></tr>
+<tr><td>scratch</td><td>0MB</td><td>Vazia. Você adiciona binário estático.</td></tr>
+</table>
+<p>As imagens distroless do Google representam um bom ponto de
+equilíbrio: contêm APENAS a aplicação e as dependências de runtime que
+ela precisa — sem <code>sh</code>, sem <code>apt</code>, sem
+<code>cat</code>. Um atacante que consiga executar código arbitrário
+dentro da aplicação não tem sequer um shell disponível para rodar o
+próximo comando:</p>
+<pre><code>FROM golang:1.22 AS builder
+RUN CGO_ENABLED=0 go build -o /app ./cmd/app
 
-                    "<h3>2. Pin por digest, não só por tag</h3>"
-                    "<p>Tag é mutável. <code>python:3.12-slim</code> hoje pode ser "
-                    "outro digest amanhã (mantenedor republica). Pin por digest "
-                    "garante reprodutibilidade absoluta:</p>"
-                    "<pre><code>FROM python:3.12-slim@sha256:f0a1b2c3d4e5f6...\n"
-                    "# Não:\n"
-                    "# FROM python:3.12-slim\n"
-                    "# FROM python:latest</code></pre>"
-                    "<p>Renove digests com Renovate quando houver patch:</p>"
-                    "<pre><code># renovate.json\n"
-                    "{\n"
-                    "  \"docker\": {\n"
-                    "    \"pinDigests\": true,\n"
-                    "    \"enabled\": true\n"
-                    "  }\n"
-                    "}</code></pre>"
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=builder /app /app
+ENTRYPOINT ["/app"]</code></pre>
+<p>O trade-off inevitável é conforto de debug: sem shell, um
+<code>docker exec -it ... sh</code> simplesmente não funciona — a
+variante <code>:debug</code> da imagem distroless existe justamente para
+esse cenário em desenvolvimento, mantendo <code>:nonroot</code> em
+produção. Wolfi (mantida pela Chainguard) resolve uma limitação real do
+Alpine: por usar glibc em vez de musl, é compatível com uma gama muito
+maior de pacotes pré-compilados (muitos wheels Python, por exemplo,
+assumem glibc e simplesmente falham em Alpine). Imagens Chainguard
+adicionam SBOM gerado automaticamente, builds reprodutíveis, e patches
+de segurança aplicados diariamente — na prática, você raramente vê uma
+CVE "velha e conhecida" persistindo na base por semanas.</p>
 
-                    "<h3>3. USER não-root + capabilities reduzidas</h3>"
-                    "<p>Imagens Docker rodam como root por default. Se atacante "
-                    "explora app, está como root <em>no namespace</em>, e em "
-                    "configs sem user namespace mapping, é root no host.</p>"
-                    "<pre><code>FROM python:3.12-slim\n"
-                    "RUN groupadd -g 1000 app && useradd -u 1000 -g 1000 -m app\n"
-                    "WORKDIR /app\n"
-                    "COPY --chown=app:app . .\n"
-                    "USER 1000:1000   # numérico funciona em K8s securityContext\n"
-                    "CMD [\"python\", \"main.py\"]</code></pre>"
-                    "<p>Em runtime, reduza capabilities:</p>"
-                    "<pre><code># Docker\n"
-                    "docker run \\\n"
-                    "  --read-only \\\n"
-                    "  --tmpfs /tmp \\\n"
-                    "  --cap-drop=ALL \\\n"
-                    "  --cap-add=NET_BIND_SERVICE \\\n"
-                    "  --security-opt=no-new-privileges \\\n"
-                    "  --user 1000:1000 \\\n"
-                    "  myapp\n"
-                    "\n"
-                    "# Kubernetes securityContext\n"
-                    "spec:\n"
-                    "  securityContext:\n"
-                    "    runAsNonRoot: true\n"
-                    "    runAsUser: 1000\n"
-                    "    fsGroup: 1000\n"
-                    "    seccompProfile: { type: RuntimeDefault }\n"
-                    "  containers:\n"
-                    "    - name: app\n"
-                    "      securityContext:\n"
-                    "        readOnlyRootFilesystem: true\n"
-                    "        allowPrivilegeEscalation: false\n"
-                    "        capabilities:\n"
-                    "          drop: [\"ALL\"]\n"
-                    "          add: [\"NET_BIND_SERVICE\"]</code></pre>"
-                    "<p>Se app não precisa bind em &lt;1024, sequer adicione "
-                    "<code>NET_BIND_SERVICE</code>. Use porta 8080+.</p>"
+<h3>2. Pin por digest: a única forma de garantir que a imagem de hoje é a de amanhã</h3>
+<p>Uma tag como <code>python:3.12-slim</code> é apenas um APELIDO
+mutável — o mantenedor da imagem pode republicá-la apontando para um
+conteúdo diferente a qualquer momento, sem aviso. Fixar pelo DIGEST
+(o hash sha256 do conteúdo exato) garante reprodutibilidade absoluta:</p>
+<pre><code>FROM python:3.12-slim@sha256:f0a1b2c3d4e5f6...
+# Não:
+# FROM python:3.12-slim
+# FROM python:latest</code></pre>
+<p>O custo óbvio dessa prática é que um digest fixo NUNCA recebe patch
+de segurança automaticamente — uma ferramenta como Renovate resolve isso
+monitorando a tag original e abrindo PR automaticamente quando um novo
+digest com patch de segurança é publicado, mantendo o controle explícito
+sobre CADA atualização (revisável, testável) em vez de puxar mudança
+silenciosa a cada build:</p>
+<pre><code># renovate.json
+{
+  "docker": {
+    "pinDigests": true,
+    "enabled": true
+  }
+}</code></pre>
 
-                    "<h3>4. Scanning de vulnerabilidades</h3>"
-                    "<p>Imagem inclui pacotes do SO (glibc, openssl) e libs da app "
-                    "(django, lodash). Cada um tem CVEs conhecidos. Scanners cruzam "
-                    "SBOM com NVD/OSV.</p>"
-                    "<p>Ferramentas:</p>"
-                    "<ul>"
-                    "<li><strong>Trivy</strong>: gratuito, rápido, multi-target.</li>"
-                    "<li><strong>Grype</strong>: pareado com Syft.</li>"
-                    "<li><strong>Snyk</strong>: comercial freemium; sugere fix.</li>"
-                    "<li><strong>Docker Scout</strong>: integrado ao Docker Desktop.</li>"
-                    "<li><strong>ECR Enhanced/Inspector</strong>, <strong>Harbor</strong>: scan no registry.</li>"
-                    "</ul>"
-                    "<pre><code># CI: falha se CVE crítico\n"
-                    "$ trivy image --severity CRITICAL --exit-code 1 myapp:dev\n"
-                    "\n"
-                    "# Re-scan periódico no registry detecta CVEs novos\n"
-                    "$ trivy image --severity HIGH,CRITICAL myapp:v1.4.2\n"
-                    "\n"
-                    "# Ignorar específicos com motivo\n"
-                    "$ cat .trivyignore\n"
-                    "CVE-2024-12345  # não exploitable em nosso uso, ver ADR-42\n"
-                    "\n"
-                    "# Gerar SBOM\n"
-                    "$ trivy image --format cyclonedx --output sbom.json myapp:dev</code></pre>"
-                    "<p>Política de bloqueio típica:</p>"
-                    "<ul>"
-                    "<li>CRITICAL: bloqueia.</li>"
-                    "<li>HIGH com fix disponível: bloqueia.</li>"
-                    "<li>HIGH sem fix: ticket, prazo SLA.</li>"
-                    "<li>MEDIUM/LOW: backlog.</li>"
-                    "</ul>"
+<h3>3. Usuário não-root e capabilities reduzidas: o mínimo aceitável, não um extra</h3>
+<p>Uma imagem Docker roda como root por padrão — se um atacante
+explorar a aplicação, ele herda esse root DENTRO do namespace do
+container, e em configurações sem mapeamento de user namespace, esse
+root equivale a root no HOST:</p>
+<pre><code>FROM python:3.12-slim
+RUN groupadd -g 1000 app && useradd -u 1000 -g 1000 -m app
+WORKDIR /app
+COPY --chown=app:app . .
+USER 1000:1000   # numérico funciona em K8s securityContext
+CMD ["python", "main.py"]</code></pre>
+<p>Usar o UID NUMÉRICO (em vez do nome) garante compatibilidade direta
+com o <code>securityContext</code> do Kubernetes, que referencia UID
+numérico. Em runtime, reduzir capabilities do Linux ao mínimo
+estritamente necessário fecha ainda mais a superfície:</p>
+<pre><code># Docker
+docker run \\
+  --read-only \\
+  --tmpfs /tmp \\
+  --cap-drop=ALL \\
+  --cap-add=NET_BIND_SERVICE \\
+  --security-opt=no-new-privileges \\
+  --user 1000:1000 \\
+  myapp
 
-                    "<h3>5. Assinatura: Cosign + Sigstore</h3>"
-                    "<p>Sem assinatura, atacante que comprometa o registry pode trocar "
-                    "imagem. Cosign assina (com chave ou OIDC keyless), Rekor (Sigstore) "
-                    "registra em transparency log público.</p>"
-                    "<pre><code># Sign no CI (OIDC keyless, sem chave armazenada)\n"
-                    "$ cosign sign --yes ghcr.io/empresa/app@$DIGEST\n"
-                    "\n"
-                    "# Verify\n"
-                    "$ cosign verify ghcr.io/empresa/app:v1.4.2 \\\n"
-                    "    --certificate-identity ci@empresa.com \\\n"
-                    "    --certificate-oidc-issuer https://token.actions.githubusercontent.com</code></pre>"
-                    "<p>Em K8s, admission controller (Kyverno, Connaisseur, Sigstore "
-                    "Policy Controller) rejeita imagens não assinadas:</p>"
-                    "<pre><code>apiVersion: kyverno.io/v1\n"
-                    "kind: ClusterPolicy\n"
-                    "metadata: { name: signed-images-only }\n"
-                    "spec:\n"
-                    "  validationFailureAction: Enforce\n"
-                    "  rules:\n"
-                    "    - name: verify-signature\n"
-                    "      match:\n"
-                    "        any: [{ resources: { kinds: [Pod] } }]\n"
-                    "      verifyImages:\n"
-                    "        - imageReferences: ['ghcr.io/empresa/*']\n"
-                    "          attestors:\n"
-                    "            - keyless: { subject: ci@empresa.com }</code></pre>"
+# Kubernetes securityContext
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: app
+      securityContext:
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+          add: ["NET_BIND_SERVICE"]</code></pre>
+<p>Se a aplicação nunca precisa escutar numa porta abaixo de 1024, nem
+mesmo <code>NET_BIND_SERVICE</code> deveria ser adicionado de volta —
+use uma porta acima de 8000 e mantenha o descarte total de capabilities
+sem exceção nenhuma.</p>
 
-                    "<h3>6. SBOM e atestados (provenance)</h3>"
-                    "<p>SBOM = ingredientes da imagem. Anexe ao registry como "
-                    "<code>referrer</code>:</p>"
-                    "<pre><code>$ syft myapp:dev -o cyclonedx-json &gt; sbom.json\n"
-                    "$ cosign attach sbom --sbom sbom.json myapp:dev\n"
-                    "$ cosign attest --predicate sbom.json --type cyclonedx myapp:dev</code></pre>"
-                    "<p>Quando próxima Log4Shell aparecer, você consulta SBOM por "
-                    "imagem e sabe em segundos se tem o pacote vulnerável.</p>"
-                    "<p>SLSA provenance: atestado de como foi construído. Github "
-                    "Actions com slsa-framework gera nível 3 (builder confiável):</p>"
-                    "<pre><code>jobs:\n"
-                    "  build:\n"
-                    "    uses: slsa-framework/slsa-github-generator/.github/workflows/builder_container_slsa3.yml@v1.10.0\n"
-                    "    with:\n"
-                    "      image: ghcr.io/empresa/app\n"
-                    "      digest: ${{ needs.build.outputs.digest }}</code></pre>"
+<h3>4. Scanning: cruzar o que está na imagem contra o que já é vulnerabilidade conhecida</h3>
+<p>Toda imagem carrega pacotes do sistema operacional (glibc, openssl) e
+bibliotecas da aplicação (Django, lodash) — cada um com histórico
+próprio de CVEs conhecidas. Um scanner cruza o SBOM da imagem (aula
+anterior) contra bases como NVD e OSV, sinalizando cada correspondência.
+Trivy é gratuito, rápido e cobre múltiplos tipos de alvo (imagem,
+sistema de arquivos, repositório Git) numa única ferramenta; Grype
+trabalha em par com Syft; Snyk é comercial (com camada gratuita) e se
+diferencia sugerindo a CORREÇÃO específica, não só apontando o problema;
+Docker Scout vem integrado ao Docker Desktop; e ECR Enhanced Scanning ou
+Harbor fazem a varredura diretamente dentro do próprio registry, sem
+depender de uma etapa separada de CI:</p>
+<pre><code># CI: falha se CVE crítico
+$ trivy image --severity CRITICAL --exit-code 1 myapp:dev
 
-                    "<h3>7. Dockerfile securo: checklist</h3>"
-                    "<pre><code># 1. Base mínima e pinada por digest\n"
-                    "FROM python:3.12-slim@sha256:abc123...\n"
-                    "\n"
-                    "# 2. Não cachear apt; clean lists\n"
-                    "RUN apt-get update && apt-get install -y --no-install-recommends \\\n"
-                    "      libpq5 && \\\n"
-                    "    rm -rf /var/lib/apt/lists/*\n"
-                    "\n"
-                    "# 3. Diretórios e usuário\n"
-                    "RUN groupadd -g 1000 app && useradd -u 1000 -g 1000 -m app\n"
-                    "WORKDIR /app\n"
-                    "\n"
-                    "# 4. Deps primeiro (camada cacheada)\n"
-                    "COPY requirements.txt .\n"
-                    "RUN pip install --no-cache-dir -r requirements.txt\n"
-                    "\n"
-                    "# 5. Código com ownership correto\n"
-                    "COPY --chown=app:app . .\n"
-                    "\n"
-                    "# 6. Switch USER antes do CMD\n"
-                    "USER 1000:1000\n"
-                    "\n"
-                    "# 7. Healthcheck\n"
-                    "HEALTHCHECK --interval=30s CMD python -c \"import requests; requests.get('http://localhost:8000/health').raise_for_status()\"\n"
-                    "\n"
-                    "# 8. CMD em JSON form\n"
-                    "CMD [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"app.wsgi\"]</code></pre>"
+# Re-scan periódico no registry detecta CVEs novos
+$ trivy image --severity HIGH,CRITICAL myapp:v1.4.2
 
-                    "<h3>8. Caso real: xz-utils backdoor (CVE-2024-3094)</h3>"
-                    "<p>Em março de 2024, descobriu-se backdoor no xz-utils 5.6.0/5.6.1, "
-                    "resultado de social engineering de mantenedor por &gt;2 anos. "
-                    "Imagens 'rolling' (Debian testing, Fedora rawhide, alpine edge) já "
-                    "tinham o pacote. Quem detectou primeiro? Devs com SBOMs e "
-                    "monitoring de pacotes em uso. Quem foi pego cego? Quem usava "
-                    "<code>FROM ubuntu:latest</code> sem SBOM.</p>"
-                    "<p>Lições:</p>"
-                    "<ul>"
-                    "<li>Pin específico, evite <code>:latest</code> em prod.</li>"
-                    "<li>SBOM permite resposta rápida a 'qual imagem tem isso?'.</li>"
-                    "<li>Re-scan periódico em registry pega CVE pós-push.</li>"
-                    "<li>Distros 'lentas' (Debian stable) raramente tinham as versões "
-                    "vulneráveis, trade-off de fast vs stable.</li>"
-                    "</ul>"
+# Ignorar específicos com motivo
+$ cat .trivyignore
+CVE-2024-12345  # não exploitable em nosso uso, ver ADR-42
 
-                    "<h3>9. Anti-patterns clássicos</h3>"
-                    "<ul>"
-                    "<li><strong>FROM ubuntu:18.04</strong> (EOL): sem patches.</li>"
-                    "<li><strong>RUN curl ... | bash</strong>: sem verify; supply chain risk.</li>"
-                    "<li><strong>USER root</strong> 'porque é mais fácil'.</li>"
-                    "<li><strong>Senha em ENV</strong> no Dockerfile.</li>"
-                    "<li><strong>Imagem com 200 CVEs</strong> de pacotes não-usados.</li>"
-                    "<li><strong>chmod 777</strong> em diretórios.</li>"
-                    "<li><strong>Bind mount de <code>/var/run/docker.sock</code></strong> no container.</li>"
-                    "<li><strong>--privileged</strong> sem necessidade real.</li>"
-                    "<li><strong>Imagens não-assinadas</strong> em produção.</li>"
-                    "<li><strong>Sem retenção</strong>: registry cheio de imagens vulneráveis antigas.</li>"
-                    "</ul>"
+# Gerar SBOM
+$ trivy image --format cyclonedx --output sbom.json myapp:dev</code></pre>
+<p>Uma política de bloqueio típica escalona a resposta pela severidade:
+CRITICAL bloqueia o build sempre; HIGH com correção já disponível também
+bloqueia (não há motivo para esperar); HIGH sem correção disponível
+ainda vira ticket com prazo de acompanhamento, mas não trava o pipeline
+imediatamente; e MEDIUM/LOW entram no backlog geral, sem urgência de
+bloqueio.</p>
+
+<h3>5. Assinatura de imagem: provar que ninguém trocou o conteúdo depois do build</h3>
+<p>Sem assinatura, um atacante que comprometa o REGISTRY (não a
+aplicação, o registry em si) pode trocar silenciosamente a imagem por
+uma versão maliciosa mantendo o mesmo nome e tag — ninguém puxando essa
+imagem teria como perceber a substituição. Cosign assina a imagem (com
+chave própria, ou "keyless" via OIDC — provando identidade através do
+próprio workflow de CI, sem gerenciar chave nenhuma manualmente), e o
+Rekor do projeto Sigstore registra essa assinatura num transparency log
+público e auditável:</p>
+<pre><code># Sign no CI (OIDC keyless, sem chave armazenada)
+$ cosign sign --yes ghcr.io/empresa/app@$DIGEST
+
+# Verify
+$ cosign verify ghcr.io/empresa/app:v1.4.2 \\
+    --certificate-identity ci@empresa.com \\
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com</code></pre>
+<p>Em Kubernetes, um admission controller (Kyverno, Connaisseur, ou o
+Sigstore Policy Controller) pode REJEITAR qualquer imagem não assinada
+antes mesmo de criar o pod:</p>
+<pre><code>apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: signed-images-only }
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: verify-signature
+      match:
+        any: [{ resources: { kinds: [Pod] } }]
+      verifyImages:
+        - imageReferences: ['ghcr.io/empresa/*']
+          attestors:
+            - keyless: { subject: ci@empresa.com }</code></pre>
+
+<h3>6. SBOM e proveniência: saber em segundos o que cada imagem contém</h3>
+<p>O SBOM (detalhado na aula anterior) é a lista de ingredientes da
+imagem — anexá-lo diretamente ao registry como um "referrer" garante que
+ele viaja junto com a imagem, não fica separado num arquivo qualquer:</p>
+<pre><code>$ syft myapp:dev -o cyclonedx-json &gt; sbom.json
+$ cosign attach sbom --sbom sbom.json myapp:dev
+$ cosign attest --predicate sbom.json --type cyclonedx myapp:dev</code></pre>
+<p>Quando a próxima Log4Shell inevitavelmente aparecer, consultar o
+SBOM de cada imagem responde em segundos "temos esse pacote vulnerável
+em produção?" — sem essa infraestrutura pronta, a mesma pergunta exige
+investigação manual, potencialmente por dias. A proveniência SLSA vai um
+passo além do SBOM: em vez de só listar O QUE está na imagem, atesta
+COMO ela foi construída — qual pipeline, qual commit exato, sob quais
+condições. GitHub Actions com o framework SLSA consegue gerar atestado
+de nível 3 (indicando um builder confiável e isolado):</p>
+<pre><code>jobs:
+  build:
+    uses: slsa-framework/slsa-github-generator/.github/workflows/builder_container_slsa3.yml@v1.10.0
+    with:
+      image: ghcr.io/empresa/app
+      digest: ${{ needs.build.outputs.digest }}</code></pre>
+
+<h3>7. Um Dockerfile seguro, do início ao fim</h3>
+<pre><code># 1. Base mínima e pinada por digest
+FROM python:3.12-slim@sha256:abc123...
+
+# 2. Não cachear apt; clean lists
+RUN apt-get update && apt-get install -y --no-install-recommends \\
+      libpq5 && \\
+    rm -rf /var/lib/apt/lists/*
+
+# 3. Diretórios e usuário
+RUN groupadd -g 1000 app && useradd -u 1000 -g 1000 -m app
+WORKDIR /app
+
+# 4. Deps primeiro (camada cacheada)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 5. Código com ownership correto
+COPY --chown=app:app . .
+
+# 6. Switch USER antes do CMD
+USER 1000:1000
+
+# 7. Healthcheck
+HEALTHCHECK --interval=30s CMD python -c "import requests; requests.get('http://localhost:8000/health').raise_for_status()"
+
+# 8. CMD em JSON form
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app.wsgi"]</code></pre>
+<p>Cada numeração aqui corresponde a uma decisão específica das seções
+anteriores — este checklist é literalmente a síntese prática da aula
+inteira aplicada num único arquivo.</p>
+
+<h3>8. Caso real: o backdoor do xz-utils, e por que quem tinha SBOM viu primeiro</h3>
+<p>Em março de 2024, foi descoberto um backdoor deliberadamente inserido
+no xz-utils 5.6.0/5.6.1 — resultado de um esquema de engenharia social
+contra o mantenedor do projeto, sustentado por MAIS DE DOIS ANOS até a
+inserção final acontecer. Distribuições "rolling" (Debian testing,
+Fedora rawhide, Alpine edge) já tinham o pacote comprometido em
+produção assim que ele foi publicado. Quem detectou o problema primeiro
+nas próprias organizações? Times que já tinham SBOM gerado
+automaticamente e monitoramento contínuo de pacote em uso — uma consulta
+simples respondeu "temos essa versão específica?" em minutos. Quem foi
+pego completamente às cegas? Quem usava algo como
+<code>FROM ubuntu:latest</code> sem nenhum SBOM, sem saber ao certo o
+que estava rodando até investigar manualmente. As lições diretas: pin
+específico evita puxar uma versão comprometida sem perceber, SBOM
+transforma "qual imagem tem isso?" numa consulta de segundos em vez de
+uma investigação de dias, re-scan periódico no registry pega uma CVE
+publicada DEPOIS que a imagem já tinha sido enviada, e distribuições
+mais "lentas" e conservadoras (Debian stable) raramente tinham as
+versões vulneráveis instaladas — um trade-off real entre adotar pacote
+recente rapidamente e a exposição a esse tipo de ataque de supply
+chain.</p>
+
+<h3>9. Dez anti-padrões que, somados, explicam a maioria das CVEs evitáveis</h3>
+<ul>
+<li><strong><code>FROM ubuntu:18.04</code></strong> (fim de suporte):
+sem patch de segurança novo chegando.</li>
+<li><strong><code>RUN curl ... | bash</code></strong>: executa
+conteúdo remoto sem nenhuma verificação, um risco direto de supply
+chain.</li>
+<li><strong><code>USER root</code></strong> só "porque é mais fácil"
+durante o desenvolvimento, e nunca revertido antes de produção.</li>
+<li><strong>Senha em `ENV` no Dockerfile</strong>: permanece gravada
+permanentemente na imagem.</li>
+<li><strong>Imagem com 200 CVEs</strong> de pacotes que a aplicação
+nem usa, só presentes porque a base nunca foi enxugada.</li>
+<li><strong><code>chmod 777</code></strong> em diretórios "para
+resolver permissão rápido".</li>
+<li><strong>Bind mount de `/var/run/docker.sock`</strong> dentro do
+container: dá controle total sobre o daemon do host.</li>
+<li><strong><code>--privileged</code></strong> sem necessidade real
+comprovada — quase sempre existe uma capability específica que resolve
+sem conceder privilégio total.</li>
+<li><strong>Imagem não assinada</strong> em produção: nenhuma garantia
+de proveniência.</li>
+<li><strong>Sem política de retenção</strong>: o registry acumula
+imagens antigas e vulneráveis indefinidamente, aumentando a superfície
+de ataque de tudo que ainda está tecnicamente disponível para deploy.</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -782,200 +835,243 @@ que existem.</li>
                     "GitOps com webhooks."
                 ),
                 "body": (
-                    "<h3>1. Opções principais</h3>"
-                    "<table>"
-                    "<tr><th>Registry</th><th>Modelo</th><th>Notas</th></tr>"
-                    "<tr><td>Docker Hub</td><td>SaaS público</td><td>Free com limites; bom para imagens base públicas. Em prod privado, pago.</td></tr>"
-                    "<tr><td>AWS ECR</td><td>SaaS/IAM</td><td>Nativo AWS; integra com IAM, scan, lifecycle.</td></tr>"
-                    "<tr><td>Google Artifact Registry (GAR)</td><td>SaaS/IAM</td><td>Multi-formato (Docker, Maven, npm, PyPI...).</td></tr>"
-                    "<tr><td>Azure ACR</td><td>SaaS/IAM</td><td>Nativo Azure; tasks built-in para build.</td></tr>"
-                    "<tr><td>GHCR</td><td>SaaS</td><td>Integrado a GitHub Actions (token automático). Free para públicos.</td></tr>"
-                    "<tr><td>GitLab Registry</td><td>SaaS/Self</td><td>Integrado a GitLab CI.</td></tr>"
-                    "<tr><td>Harbor</td><td>Self-hosted</td><td>OSS, RBAC, scan, replicação. Padrão K8s on-prem.</td></tr>"
-                    "<tr><td>JFrog Artifactory</td><td>Self/SaaS</td><td>Multi-formato; veterano, caro.</td></tr>"
-                    "<tr><td>Sonatype Nexus</td><td>Self/SaaS</td><td>OSS edition; multi-formato.</td></tr>"
-                    "<tr><td>Quay (Red Hat)</td><td>SaaS/Self</td><td>Comercial; Project Quay open source.</td></tr>"
-                    "</table>"
+                """<h3>1. As opções principais, e o que cada uma resolve melhor</h3>
+<table>
+<tr><th>Registry</th><th>Modelo</th><th>Notas</th></tr>
+<tr><td>Docker Hub</td><td>SaaS público</td><td>Free com limites; bom para imagens base públicas. Em prod privado, pago.</td></tr>
+<tr><td>AWS ECR</td><td>SaaS/IAM</td><td>Nativo AWS; integra com IAM, scan, lifecycle.</td></tr>
+<tr><td>Google Artifact Registry (GAR)</td><td>SaaS/IAM</td><td>Multi-formato (Docker, Maven, npm, PyPI...).</td></tr>
+<tr><td>Azure ACR</td><td>SaaS/IAM</td><td>Nativo Azure; tasks built-in para build.</td></tr>
+<tr><td>GHCR</td><td>SaaS</td><td>Integrado a GitHub Actions (token automático). Free para públicos.</td></tr>
+<tr><td>GitLab Registry</td><td>SaaS/Self</td><td>Integrado a GitLab CI.</td></tr>
+<tr><td>Harbor</td><td>Self-hosted</td><td>OSS, RBAC, scan, replicação. Padrão K8s on-prem.</td></tr>
+<tr><td>JFrog Artifactory</td><td>Self/SaaS</td><td>Multi-formato; veterano, caro.</td></tr>
+<tr><td>Sonatype Nexus</td><td>Self/SaaS</td><td>OSS edition; multi-formato.</td></tr>
+<tr><td>Quay (Red Hat)</td><td>SaaS/Self</td><td>Comercial; Project Quay open source.</td></tr>
+</table>
+<p>A escolha raramente é neutra: registries nativos de nuvem (ECR, GAR,
+ACR) ganham em integração direta com IAM e scan já embutido, mas
+amarram você àquele provedor; GHCR e GitLab Registry ganham em
+simplicidade quando o código já vive naquela plataforma, com
+autenticação de CI praticamente automática; Harbor é a escolha
+dominante para quem opera Kubernetes on-premise e precisa de RBAC,
+scan e replicação sem depender de nuvem nenhuma; e Artifactory/Nexus se
+justificam quando a organização já precisa de um registro multi-formato
+cobrindo não só imagem de container, mas também artefato Maven, pacote
+npm, entre outros, numa única plataforma.</p>
 
-                    "<h3>2. Autenticação moderna</h3>"
-                    "<p>Tokens estáticos (PAT, robot account) vazam. Prefira sempre "
-                    "que possível:</p>"
-                    "<h4>2.1 OIDC para CI</h4>"
-                    "<pre><code># GitHub Actions → AWS ECR via OIDC (sem chave armazenada)\n"
-                    "permissions:\n"
-                    "  id-token: write\n"
-                    "  contents: read\n"
-                    "jobs:\n"
-                    "  push:\n"
-                    "    runs-on: ubuntu-latest\n"
-                    "    steps:\n"
-                    "      - uses: actions/checkout@v4\n"
-                    "      - uses: aws-actions/configure-aws-credentials@v4\n"
-                    "        with:\n"
-                    "          role-to-assume: arn:aws:iam::111:role/gh-pusher\n"
-                    "          aws-region: us-east-1\n"
-                    "      - uses: aws-actions/amazon-ecr-login@v2\n"
-                    "      - run: |\n"
-                    "          docker build -t $ECR/myapp:$SHA .\n"
-                    "          docker push $ECR/myapp:$SHA</code></pre>"
-                    "<h4>2.2 Workload Identity em K8s</h4>"
-                    "<p>Pod assume role IAM via service account, sem chave montada. "
-                    "ECR/GAR/ACR helpers fazem auth automaticamente.</p>"
-                    "<h4>2.3 Image pull secret</h4>"
-                    "<p>Para registry privado puxar em K8s, crie Secret tipo "
-                    "<code>kubernetes.io/dockerconfigjson</code>:</p>"
-                    "<pre><code>kubectl create secret docker-registry regcred \\\n"
-                    "  --docker-server=ghcr.io \\\n"
-                    "  --docker-username=ci-bot \\\n"
-                    "  --docker-password=$TOKEN\n"
-                    "\n"
-                    "# Pod\n"
-                    "spec:\n"
-                    "  imagePullSecrets:\n"
-                    "    - name: regcred\n"
-                    "  containers:\n"
-                    "    - name: app\n"
-                    "      image: ghcr.io/empresa/myapp:v1.4.2</code></pre>"
-                    "<p>Em escala, prefira External Secrets Operator que rotaciona "
-                    "automaticamente.</p>"
+<h3>2. Autenticação moderna: por que um token estático é sempre o elo mais fraco</h3>
+<p>Um Personal Access Token (PAT) ou conta de robô com credencial fixa
+vaza mais cedo ou mais tarde — commitado por engano, exposto num log,
+copiado para um lugar errado. A alternativa preferível sempre que
+disponível é OIDC: o CI PROVA sua identidade através de um token de
+curta duração emitido pelo próprio provedor de CI, sem NENHUM segredo
+persistente armazenado em lugar nenhum:</p>
+<pre><code># GitHub Actions → AWS ECR via OIDC (sem chave armazenada)
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::111:role/gh-pusher
+          aws-region: us-east-1
+      - uses: aws-actions/amazon-ecr-login@v2
+      - run: |
+          docker build -t $ECR/myapp:$SHA .
+          docker push $ECR/myapp:$SHA</code></pre>
+<p>Dentro de um cluster Kubernetes, o equivalente é Workload Identity —
+um pod assume uma role IAM diretamente através da sua ServiceAccount,
+sem nenhuma chave montada como Secret; os helpers de autenticação de
+ECR/GAR/ACR resolvem essa troca automaticamente. Quando o registry é
+privado e o cluster precisa PUXAR (não só publicar) imagens, o
+mecanismo padrão é um Secret do tipo
+<code>kubernetes.io/dockerconfigjson</code>:</p>
+<pre><code>kubectl create secret docker-registry regcred \\
+  --docker-server=ghcr.io \\
+  --docker-username=ci-bot \\
+  --docker-password=$TOKEN
 
-                    "<h3>3. Tagging e imutabilidade</h3>"
-                    "<h4>3.1 Estratégia de tags</h4>"
-                    "<pre><code># Bom, múltiplas tags úteis para mesma imagem\n"
-                    "ghcr.io/empresa/app:abc1234              # commit SHA (imutável de fato)\n"
-                    "ghcr.io/empresa/app:v1.4.2               # semver (não sobrescreva!)\n"
-                    "ghcr.io/empresa/app:v1.4                 # rolling, ok em dev\n"
-                    "ghcr.io/empresa/app:dev                  # tip de branch dev\n"
-                    "ghcr.io/empresa/app@sha256:f0a1b2...     # digest absoluto, gold standard</code></pre>"
-                    "<p>Em prod, use SHA ou digest. <code>latest</code>/<code>dev</code> "
-                    "tags <em>nunca</em> em manifests de prod.</p>"
-                    "<h4>3.2 Habilitar tag immutability</h4>"
-                    "<p>Configure no registry, uma tag não pode ser sobrescrita após "
-                    "push. Evita 'alguém republicou v1.4.2 com fix' (e o cluster "
-                    "rodando v1.4.2 antigo).</p>"
-                    "<pre><code># ECR\n"
-                    "aws ecr put-image-tag-mutability \\\n"
-                    "  --repository-name myapp \\\n"
-                    "  --image-tag-mutability IMMUTABLE\n"
-                    "\n"
-                    "# Harbor: project settings → Tag Immutability Rules\n"
-                    "# ACR: az acr config repository --name myapp --immutability enabled</code></pre>"
+# Pod
+spec:
+  imagePullSecrets:
+    - name: regcred
+  containers:
+    - name: app
+      image: ghcr.io/empresa/myapp:v1.4.2</code></pre>
+<p>Em escala, gerenciar esse Secret manualmente (e rotacioná-lo antes de
+expirar) se torna trabalho operacional real — um External Secrets
+Operator resolve isso automaticamente, sincronizando e rotacionando sem
+intervenção manual.</p>
 
-                    "<h3>4. Retenção: o destino dos GBs</h3>"
-                    "<p>Sem política, GBs viram TBs. Cada PR build é uma imagem; "
-                    "retenção infinita inflaciona custo e mantém versões vulneráveis "
-                    "antigas acessíveis.</p>"
-                    "<pre><code># ECR lifecycle\n"
-                    "{\n"
-                    "  \"rules\": [\n"
-                    "    {\n"
-                    "      \"rulePriority\": 1,\n"
-                    "      \"description\": \"Manter últimas 30 imagens semver\",\n"
-                    "      \"selection\": {\n"
-                    "        \"tagStatus\": \"tagged\",\n"
-                    "        \"tagPrefixList\": [\"v\"],\n"
-                    "        \"countType\": \"imageCountMoreThan\",\n"
-                    "        \"countNumber\": 30\n"
-                    "      },\n"
-                    "      \"action\": { \"type\": \"expire\" }\n"
-                    "    },\n"
-                    "    {\n"
-                    "      \"rulePriority\": 2,\n"
-                    "      \"description\": \"Apagar untagged após 7d\",\n"
-                    "      \"selection\": {\n"
-                    "        \"tagStatus\": \"untagged\",\n"
-                    "        \"countType\": \"sinceImagePushed\",\n"
-                    "        \"countUnit\": \"days\",\n"
-                    "        \"countNumber\": 7\n"
-                    "      },\n"
-                    "      \"action\": { \"type\": \"expire\" }\n"
-                    "    }\n"
-                    "  ]\n"
-                    "}</code></pre>"
+<h3>3. Tags e imutabilidade: por que "a mesma tag" não significa "o mesmo conteúdo"</h3>
+<p>Uma imagem publicada com várias tags simultâneas serve propósitos
+diferentes — nem toda tag tem a mesma garantia de estabilidade:</p>
+<pre><code># Bom, múltiplas tags úteis para mesma imagem
+ghcr.io/empresa/app:abc1234              # commit SHA (imutável de fato)
+ghcr.io/empresa/app:v1.4.2               # semver (não sobrescreva!)
+ghcr.io/empresa/app:v1.4                 # rolling, ok em dev
+ghcr.io/empresa/app:dev                  # tip de branch dev
+ghcr.io/empresa/app@sha256:f0a1b2...     # digest absoluto, gold standard</code></pre>
+<p>Em produção, use o SHA do commit ou o digest absoluto — tags como
+<code>latest</code> ou <code>dev</code> NUNCA deveriam aparecer num
+manifesto de produção, porque seu conteúdo pode mudar sem que o
+manifesto em si tenha sido tocado. Habilitar imutabilidade de tag
+diretamente no registry fecha essa brecha de vez: uma vez publicada,
+aquela tag específica não pode ser sobrescrita por um push posterior —
+prevenindo exatamente o cenário "alguém republicou v1.4.2 com um fix" e
+um cluster que já estava rodando a v1.4.2 ANTIGA continuar achando que
+está na versão corrigida:</p>
+<pre><code># ECR
+aws ecr put-image-tag-mutability \\
+  --repository-name myapp \\
+  --image-tag-mutability IMMUTABLE
 
-                    "<h3>5. Pull-through cache: rate-limit do Docker Hub</h3>"
-                    "<p>Docker Hub limita 100 pulls/6h por IP anônimo, 200 para "
-                    "autenticados free. Em CI corporativo com múltiplos jobs "
-                    "simultâneos, isso paralisa.</p>"
-                    "<p>Solução: configure registry interno como pull-through cache:</p>"
-                    "<ul>"
-                    "<li><strong>Harbor proxy cache</strong>: project como proxy de "
-                    "Docker Hub/Quay/GHCR.</li>"
-                    "<li><strong>ECR pull-through</strong>: configurável para Docker "
-                    "Hub, Quay, GHCR, GitLab, Microsoft Container Registry, Kubernetes "
-                    "registry.</li>"
-                    "<li><strong>Artifactory remote</strong>: remote repo cacheia.</li>"
-                    "</ul>"
-                    "<p>Vantagens:</p>"
-                    "<ul>"
-                    "<li>Acelera builds (cache local).</li>"
-                    "<li>Sobrevive a outage do upstream.</li>"
-                    "<li>Auditoria: tudo passa por seu registry.</li>"
-                    "<li>Possibilidade de scan/quarentena de imagens externas.</li>"
-                    "</ul>"
+# Harbor: project settings → Tag Immutability Rules
+# ACR: az acr config repository --name myapp --immutability enabled</code></pre>
 
-                    "<h3>6. Scan contínuo</h3>"
-                    "<p>Scan no push é insuficiente: CVEs novos aparecem depois. "
-                    "Configure re-scan periódico:</p>"
-                    "<ul>"
-                    "<li><strong>Harbor</strong>: scan schedule diário.</li>"
-                    "<li><strong>ECR Enhanced Scanning</strong> (Inspector): contínuo.</li>"
-                    "<li><strong>Trivy operator</strong> em K8s: escaneia imagens em "
-                    "uso e cria CRDs com achados.</li>"
-                    "</ul>"
-                    "<p>Webhook → Slack quando imagem em produção fica vulnerável "
-                    "por CVE recém-descoberta.</p>"
+<h3>4. Retenção: cada build de PR é uma imagem, e imagens acumulam rápido</h3>
+<p>Sem política de retenção explícita, o volume de armazenamento cresce
+de gigabytes para terabytes silenciosamente — cada build de Pull Request
+gera uma imagem nova, e sem limpeza automática essas imagens (muitas
+delas nunca mais usadas) permanecem indefinidamente, inflando custo e
+mantendo versões antigas e potencialmente vulneráveis tecnicamente
+disponíveis para deploy:</p>
+<pre><code># ECR lifecycle
+{
+  "rules": [
+    {
+      "rulePriority": 1,
+      "description": "Manter últimas 30 imagens semver",
+      "selection": {
+        "tagStatus": "tagged",
+        "tagPrefixList": ["v"],
+        "countType": "imageCountMoreThan",
+        "countNumber": 30
+      },
+      "action": { "type": "expire" }
+    },
+    {
+      "rulePriority": 2,
+      "description": "Apagar untagged após 7d",
+      "selection": {
+        "tagStatus": "untagged",
+        "countType": "sinceImagePushed",
+        "countUnit": "days",
+        "countNumber": 7
+      },
+      "action": { "type": "expire" }
+    }
+  ]
+}</code></pre>
 
-                    "<h3>7. RBAC e segregação</h3>"
-                    "<ul>"
-                    "<li><strong>Write apenas CI</strong>, nunca dev direto.</li>"
-                    "<li><strong>Read scoped</strong>: por equipe/produto.</li>"
-                    "<li><strong>Multi-tenant</strong>: namespaces ou projetos.</li>"
-                    "<li><strong>Pull em prod</strong>: pull-secret específico, não "
-                    "credencial humana.</li>"
-                    "<li><strong>OIDC &gt; tokens estáticos</strong>.</li>"
-                    "<li><strong>Audit logs</strong>: registry registra quem puxou o "
-                    "quê e quando. Vital em incidente.</li>"
-                    "</ul>"
+<h3>5. Pull-through cache: contornar o rate limit do Docker Hub antes que ele pare seu CI</h3>
+<p>O Docker Hub limita pulls anônimos a 100 a cada 6 horas por IP, e 200
+para contas autenticadas gratuitas — um limite que um CI corporativo com
+múltiplos jobs simultâneos consumindo a mesma base de imagem estoura
+rapidamente, resultando em builds falhando por "too many requests", não
+por bug nenhum de código. A solução é configurar um registry interno
+como PULL-THROUGH CACHE: Harbor pode operar um projeto como proxy do
+Docker Hub, Quay ou GHCR; ECR tem pull-through nativo configurável para
+os mesmos destinos; e o Artifactory resolve com repositórios remotos que
+cacheiam automaticamente. Os benefícios vão além de só evitar o rate
+limit: builds ficam mais rápidos (cache local, sem round-trip externo a
+cada pull), o pipeline sobrevive a uma instabilidade momentânea do
+upstream, toda imagem externa passa a ter trilha de auditoria pelo seu
+próprio registry, e abre a possibilidade de escanear ou colocar em
+quarentena uma imagem externa ANTES dela chegar a qualquer pipeline
+interno.</p>
 
-                    "<h3>8. Webhooks e GitOps</h3>"
-                    "<p>Registry pode disparar webhook em push. Ferramentas:</p>"
-                    "<ul>"
-                    "<li><strong>Argo CD Image Updater</strong>: detecta nova versão e "
-                    "atualiza manifest no Git automaticamente.</li>"
-                    "<li><strong>Flux Image Automation</strong>: similar, parte do "
-                    "Flux.</li>"
-                    "<li><strong>Keel</strong>: específico para K8s.</li>"
-                    "</ul>"
-                    "<pre><code># Argo CD Image Updater annotations no manifest\n"
-                    "metadata:\n"
-                    "  annotations:\n"
-                    "    argocd-image-updater.argoproj.io/image-list: app=ghcr.io/empresa/app\n"
-                    "    argocd-image-updater.argoproj.io/app.update-strategy: semver\n"
-                    "    argocd-image-updater.argoproj.io/app.allow-tags: regexp:^v[0-9]+\\.[0-9]+\\.[0-9]+$</code></pre>"
+<h3>6. Scan contínuo: uma checagem no push não é o fim da história</h3>
+<p>Escanear no momento do push só captura vulnerabilidades JÁ conhecidas
+naquele instante — uma CVE publicada dias ou semanas depois, afetando
+uma imagem que já estava tranquilamente em produção, nunca dispara
+alerta se não houver re-scan periódico. Harbor permite agendar scan
+diário; ECR Enhanced Scanning (via Inspector) opera continuamente sem
+configuração manual de agenda; e o Trivy Operator, rodando dentro de um
+cluster Kubernetes, escaneia especificamente as imagens EM USO
+(não todo o registry, só o que está de fato rodando) e registra os
+achados como CRDs consultáveis. Um webhook disparando notificação no
+Slack quando uma imagem já em produção se torna vulnerável por uma CVE
+recém-descoberta fecha o ciclo entre detecção e ação humana.</p>
 
-                    "<h3>9. Multi-arch e manifest list</h3>"
-                    "<pre><code>$ docker buildx create --use\n"
-                    "$ docker buildx build \\\n"
-                    "    --platform linux/amd64,linux/arm64 \\\n"
-                    "    --tag ghcr.io/empresa/app:v1.4.2 \\\n"
-                    "    --push .</code></pre>"
-                    "<p>Resultado: manifest list (índice multi-arch). Quando ARM "
-                    "puxa, recebe arm64; AMD64 recebe amd64. Indispensável hoje "
-                    "(Graviton, Apple Silicon, Raspberry Pi).</p>"
+<h3>7. RBAC: quem publica, quem só consulta, e por que humano nunca deveria fazer push direto</h3>
+<p>A prática recomendada segrega estritamente por função: apenas o CI
+tem permissão de ESCRITA no registry — nenhum desenvolvedor faz push
+manual diretamente, porque isso elimina a trilha de auditoria que o
+pipeline automaticamente gera. Leitura é escopada por time ou produto,
+não um acesso amplo genérico para todo mundo. Ambientes multi-tenant se
+beneficiam de namespaces ou projetos separados por time. Em produção,
+o pull usa um secret ESPECÍFICO para essa finalidade, nunca uma
+credencial pessoal de um humano. E como na seção 2, OIDC é preferível a
+token estático sempre que a plataforma suportar. Logs de auditoria do
+próprio registry — quem puxou o quê e quando — são um dos primeiros
+lugares a consultar durante um incidente envolvendo possível
+comprometimento de imagem.</p>
 
-                    "<h3>10. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>Tags mutáveis em prod</strong>: <code>latest</code>, "
-                    "<code>main</code>, <code>dev</code>.</li>"
-                    "<li><strong>Build em prod</strong>: 'rebuild lá' ≠ artefato testado.</li>"
-                    "<li><strong>PAT eterno</strong> em CI: vaza, atacante puxa tudo. Use OIDC.</li>"
-                    "<li><strong>Sem scan</strong>: imagens vulneráveis em produção sem alarme.</li>"
-                    "<li><strong>Sem retenção</strong>: TBs acumulando, custo escalando.</li>"
-                    "<li><strong>Imagens sem assinatura</strong>: supply chain fraca.</li>"
-                    "<li><strong>Push direto humano</strong>: sem auditoria, sem trilha. Tudo via CI.</li>"
-                    "<li><strong>Mistura prod e dev</strong> no mesmo namespace: blast radius alto.</li>"
-                    "</ul>"
+<h3>8. Webhooks e GitOps: do push da imagem à atualização automática do manifesto</h3>
+<p>Um registry pode disparar um webhook a cada push — o gatilho que
+conecta "nova imagem publicada" a "manifesto do cluster atualizado
+automaticamente", sem intervenção manual. Argo CD Image Updater detecta
+uma nova versão e atualiza o manifesto correspondente diretamente no
+Git (mantendo o fluxo GitOps intacto, visto na aula de Introdução ao
+Kubernetes); Flux Image Automation resolve o mesmo problema dentro do
+ecossistema Flux; e Keel é uma alternativa mais simples e focada
+especificamente nesse caso de uso:</p>
+<pre><code># Argo CD Image Updater annotations no manifest
+metadata:
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: app=ghcr.io/empresa/app
+    argocd-image-updater.argoproj.io/app.update-strategy: semver
+    argocd-image-updater.argoproj.io/app.allow-tags: regexp:^v[0-9]+\\.[0-9]+\\.[0-9]+$</code></pre>
+<p>A anotação <code>allow-tags</code> com uma expressão regular restrita
+a versionamento semântico é o que impede o Image Updater de puxar
+acidentalmente uma tag <code>dev</code> ou <code>latest</code> — só
+versões que seguem o padrão esperado disparam a atualização automática.</p>
+
+<h3>9. Multi-arquitetura: uma tag, várias plataformas de CPU por trás</h3>
+<pre><code>$ docker buildx create --use
+$ docker buildx build \\
+    --platform linux/amd64,linux/arm64 \\
+    --tag ghcr.io/empresa/app:v1.4.2 \\
+    --push .</code></pre>
+<p>O resultado desse build não é uma única imagem — é uma "manifest
+list", um índice que aponta para uma imagem por arquitetura. Quando um
+node ARM (Graviton na AWS, um Apple Silicon local, um Raspberry Pi)
+puxa <code>app:v1.4.2</code>, o registry resolve automaticamente para o
+manifest arm64 correspondente; um node amd64 recebe a variante amd64 —
+a MESMA tag, resolvida de forma transparente conforme a arquitetura de
+quem pede. Essa capacidade deixou de ser nicho: com Graviton
+consolidado na AWS e Apple Silicon dominando o desenvolvimento local,
+build multi-arch é hoje expectativa padrão, não recurso avançado
+opcional.</p>
+
+<h3>10. Oito anti-padrões que comprometem segurança, custo ou confiabilidade do registry</h3>
+<ul>
+<li><strong>Tags mutáveis em produção</strong>: <code>latest</code>,
+<code>main</code>, <code>dev</code> nunca deveriam aparecer num
+manifesto real.</li>
+<li><strong>Build direto em produção</strong>: "reconstrua lá" nunca é
+o mesmo artefato que passou por teste — é um artefato NOVO, não
+validado.</li>
+<li><strong>PAT eterno no CI</strong>: se vazar, um atacante consegue
+puxar (ou publicar) qualquer coisa indefinidamente — use OIDC.</li>
+<li><strong>Sem scan configurado</strong>: imagem vulnerável circula em
+produção sem nenhum alarme disparando.</li>
+<li><strong>Sem política de retenção</strong>: terabytes acumulando e
+custo crescendo sem correspondência de valor real (seção 4).</li>
+<li><strong>Imagens sem assinatura</strong>: cadeia de supply chain
+fraca, sem prova de proveniência.</li>
+<li><strong>Push direto por humano</strong>: sem auditoria, sem trilha
+— tudo deveria passar pelo CI (seção 7).</li>
+<li><strong>Produção e desenvolvimento no mesmo namespace do
+registry</strong>: um comprometimento em qualquer um dos dois afeta o
+raio de impacto do outro, sem segmentação nenhuma entre eles.</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -1474,237 +1570,287 @@ de condicionais dentro de um único YAML.</li>
                     "ataques de supply chain."
                 ),
                 "body": (
-                    "<h3>1. O que é SBOM</h3>"
-                    "<p>SBOM (Software Bill of Materials) é a lista detalhada de "
-                    "<em>todos</em> os componentes que compõem um artefato:</p>"
-                    "<ul>"
-                    "<li>Nome e versão de cada dependência (direta e transitiva).</li>"
-                    "<li>Hash do conteúdo (verificação de integridade).</li>"
-                    "<li>Licença (compliance).</li>"
-                    "<li>Supplier/origem.</li>"
-                    "<li>Relacionamentos (X depende de Y).</li>"
-                    "</ul>"
-                    "<p>Mínimo viável definido pela NTIA (National Telecommunications "
-                    "and Information Administration):</p>"
-                    "<ul>"
-                    "<li>Supplier name</li>"
-                    "<li>Component name</li>"
-                    "<li>Version</li>"
-                    "<li>Other unique identifiers (PURL, CPE)</li>"
-                    "<li>Dependency relationships</li>"
-                    "<li>Author of SBOM data</li>"
-                    "<li>Timestamp</li>"
-                    "</ul>"
+                """<h3>1. O que é SBOM, e por que Log4Shell mudou a conversa sobre isso</h3>
+<p>SBOM (Software Bill of Materials) é a lista detalhada de TODOS os
+componentes que compõem um artefato — nome e versão de cada dependência
+(direta e transitiva), hash de conteúdo para verificação de integridade,
+licença de cada componente, o fornecedor de origem, e o relacionamento
+entre eles ("X depende de Y"). Antes de dezembro de 2021, ter isso
+mapeado com precisão era considerado boa prática opcional. Quando
+Log4Shell (CVE-2021-44228) explodiu, a pergunta que toda organização
+precisou responder rapidamente foi simplesmente "temos Log4j? Em qual
+versão? Em quais sistemas?" — e quem já tinha SBOM gerado automaticamente
+consultou essa resposta em SEGUNDOS; quem não tinha, passou dias fazendo
+o equivalente a perícia forense em planilhas e memória institucional. O
+Executive Order 14028 (governo americano, 2021) consolidou SBOM como
+exigência formal para fornecedores federais, e desde então setores como
+automotivo, médico e financeiro convergiram para o mesmo padrão — não
+por burocracia, mas porque é literalmente o pré-requisito para responder
+rápido tanto a uma CVE nova quanto a um ataque de supply chain. A NTIA
+(National Telecommunications and Information Administration) define o
+mínimo viável de campos que um SBOM precisa ter: nome do fornecedor,
+nome do componente, versão, identificador único adicional (PURL ou CPE),
+relacionamento de dependência, autor dos dados do SBOM, e timestamp de
+geração.</p>
 
-                    "<h3>2. Formatos</h3>"
-                    "<table>"
-                    "<tr><th>Formato</th><th>Origem</th><th>Foco</th></tr>"
-                    "<tr><td>CycloneDX</td><td>OWASP</td><td>Segurança (vuln, VEX, attestations).</td></tr>"
-                    "<tr><td>SPDX</td><td>Linux Foundation</td><td>Compliance/licenças. Padrão ISO/IEC 5962.</td></tr>"
-                    "<tr><td>SWID</td><td>NIST</td><td>Identificação de software.</td></tr>"
-                    "</table>"
-                    "<p>Ambos CycloneDX e SPDX em JSON, XML, YAML, protobuf. "
-                    "Conversores existem (SPDX ↔ CycloneDX).</p>"
-                    "<p>Exemplo CycloneDX simplificado:</p>"
-                    "<pre><code>{\n"
-                    "  \"bomFormat\": \"CycloneDX\",\n"
-                    "  \"specVersion\": \"1.5\",\n"
-                    "  \"serialNumber\": \"urn:uuid:abc-123\",\n"
-                    "  \"version\": 1,\n"
-                    "  \"metadata\": {\n"
-                    "    \"timestamp\": \"2025-04-25T16:30:00Z\",\n"
-                    "    \"tools\": [{\"name\": \"syft\", \"version\": \"1.0.0\"}],\n"
-                    "    \"component\": {\n"
-                    "      \"type\": \"container\",\n"
-                    "      \"name\": \"empresa/app\",\n"
-                    "      \"version\": \"v1.4.2\"\n"
-                    "    }\n"
-                    "  },\n"
-                    "  \"components\": [\n"
-                    "    {\n"
-                    "      \"type\": \"library\",\n"
-                    "      \"name\": \"django\",\n"
-                    "      \"version\": \"5.1.4\",\n"
-                    "      \"purl\": \"pkg:pypi/django@5.1.4\",\n"
-                    "      \"licenses\": [{\"license\": {\"id\": \"BSD-3-Clause\"}}],\n"
-                    "      \"hashes\": [{\"alg\": \"SHA-256\", \"content\": \"...\"}]\n"
-                    "    }\n"
-                    "  ]\n"
-                    "}</code></pre>"
+<h3>2. Formatos: CycloneDX para segurança, SPDX para compliance de licença</h3>
+<table>
+<tr><th>Formato</th><th>Origem</th><th>Foco</th></tr>
+<tr><td>CycloneDX</td><td>OWASP</td><td>Segurança (vuln, VEX, attestations).</td></tr>
+<tr><td>SPDX</td><td>Linux Foundation</td><td>Compliance/licenças. Padrão ISO/IEC 5962.</td></tr>
+<tr><td>SWID</td><td>NIST</td><td>Identificação de software.</td></tr>
+</table>
+<p>CycloneDX nasceu com foco explícito em segurança (integra
+naturalmente com VEX, seção 5) enquanto SPDX nasceu com foco em
+compliance de licença, sendo inclusive padronizado como norma ISO/IEC —
+na prática, muitas organizações geram os dois, já que existem
+conversores entre eles e cada um serve uma auditoria diferente. Ambos
+suportam serialização em JSON, XML, YAML ou protobuf. Um SBOM CycloneDX
+simplificado ilustra a estrutura:</p>
+<pre><code>{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:abc-123",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2025-04-25T16:30:00Z",
+    "tools": [{"name": "syft", "version": "1.0.0"}],
+    "component": {
+      "type": "container",
+      "name": "empresa/app",
+      "version": "v1.4.2"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "django",
+      "version": "5.1.4",
+      "purl": "pkg:pypi/django@5.1.4",
+      "licenses": [{"license": {"id": "BSD-3-Clause"}}],
+      "hashes": [{"alg": "SHA-256", "content": "..."}]
+    }
+  ]
+}</code></pre>
+<p>O campo <code>purl</code> (Package URL) é o que permite cruzar esse
+componente automaticamente contra bases de vulnerabilidade — um
+identificador padronizado e sem ambiguidade, diferente de "django versão
+5.1.4" em texto livre, que diferentes ferramentas poderiam interpretar
+de formas ligeiramente distintas.</p>
 
-                    "<h3>3. Geração: nunca à mão</h3>"
-                    "<p>Gere SBOM no build, automaticamente:</p>"
-                    "<h4>3.1 Syft (Anchore)</h4>"
-                    "<p>O canivete suíço. Suporta dezenas de ecossistemas:</p>"
-                    "<pre><code># De diretório\n"
-                    "$ syft dir:. -o cyclonedx-json &gt; sbom.json\n"
-                    "\n"
-                    "# De imagem (sem rodar)\n"
-                    "$ syft ghcr.io/empresa/app:v1.4.2 -o spdx-json &gt; sbom.spdx.json\n"
-                    "\n"
-                    "# De binário Go\n"
-                    "$ syft ./bin/app -o cyclonedx-json\n"
-                    "\n"
-                    "# Saída tabular (humano)\n"
-                    "$ syft myapp:dev\n"
-                    "NAME              VERSION    TYPE\n"
-                    "django            5.1.4      python\n"
-                    "asgiref           3.8.1      python\n"
-                    "openssl           3.1.5      deb\n"
-                    "...</code></pre>"
-                    "<h4>3.2 Trivy</h4>"
-                    "<p>Gera SBOM enquanto faz vuln scan:</p>"
-                    "<pre><code>$ trivy image --format cyclonedx --output sbom.json myapp:v1.4.2\n"
-                    "$ trivy fs --format spdx-json --output sbom-source.json .</code></pre>"
-                    "<h4>3.3 Tooling nativo de cada ecossistema</h4>"
-                    "<pre><code>$ npm sbom --sbom-format=cyclonedx                # npm 10+\n"
-                    "$ cargo cyclonedx                                 # Rust\n"
-                    "$ mvn cyclonedx:makeAggregateBom                  # Java\n"
-                    "$ python -m cyclonedx_py environment              # Python</code></pre>"
-                    "<h4>3.4 cdxgen (OWASP)</h4>"
-                    "<p>Suporta ecossistemas obscuros (PHP composer, .NET, GraalVM).</p>"
+<h3>3. Geração: sempre automatizada, nunca manual</h3>
+<p>Um SBOM criado à mão está desatualizado no momento em que a primeira
+dependência muda — a única prática viável é gerar automaticamente a
+cada build. <strong>Syft</strong> (Anchore) é o "canivete suíço" desse
+espaço, suportando dezenas de ecossistemas de linguagem numa única
+ferramenta:</p>
+<pre><code># De diretório
+$ syft dir:. -o cyclonedx-json &gt; sbom.json
 
-                    "<h3>4. Distribuição: SBOM viaja com o artefato</h3>"
-                    "<h4>4.1 Anexar como referrer no registry OCI</h4>"
-                    "<pre><code>$ syft myapp:v1.4.2 -o cyclonedx-json &gt; sbom.json\n"
-                    "$ cosign attach sbom --sbom sbom.json myapp:v1.4.2\n"
-                    "\n"
-                    "# Como atestado assinado (mais robusto)\n"
-                    "$ cosign attest --predicate sbom.json --type cyclonedx myapp:v1.4.2\n"
-                    "\n"
-                    "# Verificar atestados\n"
-                    "$ cosign verify-attestation --type cyclonedx myapp:v1.4.2 \\\n"
-                    "    --certificate-identity ci@empresa.com \\\n"
-                    "    --certificate-oidc-issuer https://token.actions.githubusercontent.com</code></pre>"
-                    "<h4>4.2 Como asset do release</h4>"
-                    "<p>GitHub Release / GitLab Release com SBOM anexado. Útil para "
-                    "binários standalone.</p>"
-                    "<h4>4.3 Em compras públicas dos EUA</h4>"
-                    "<p>Fornecedores federais devem entregar SBOM como parte do "
-                    "Software Acquisition Process (SP 800-218 / SSDF). Outros "
-                    "setores convergem.</p>"
+# De imagem (sem rodar)
+$ syft ghcr.io/empresa/app:v1.4.2 -o spdx-json &gt; sbom.spdx.json
 
-                    "<h3>5. VEX (Vulnerability Exploitability eXchange)</h3>"
-                    "<p>SBOM diz 'lib X versão Y está aqui'. Cruzar com NVD diz "
-                    "'CVE existe'. Mas existe ≠ explorável. VEX é declaração assinada "
-                    "que expressa exploitability:</p>"
-                    "<pre><code>{\n"
-                    "  \"vulnerabilities\": [\n"
-                    "    {\n"
-                    "      \"id\": \"CVE-2024-12345\",\n"
-                    "      \"analysis\": {\n"
-                    "        \"state\": \"not_affected\",\n"
-                    "        \"justification\": \"vulnerable_code_not_in_execute_path\",\n"
-                    "        \"detail\": \"Função vulnerável só é chamada com input "
-                    "interno controlado, never user-supplied.\"\n"
-                    "      },\n"
-                    "      \"affects\": [{\"ref\": \"pkg:pypi/lib-x@1.2.3\"}]\n"
-                    "    }\n"
-                    "  ]\n"
-                    "}</code></pre>"
-                    "<p>Estados possíveis:</p>"
-                    "<ul>"
-                    "<li><code>not_affected</code>: explica por que.</li>"
-                    "<li><code>affected</code>: trabalho em andamento.</li>"
-                    "<li><code>fixed</code>: corrigido em versão X.</li>"
-                    "<li><code>under_investigation</code>: em análise.</li>"
-                    "</ul>"
-                    "<p>Reduz fadiga de alertas. Padrões: CSAF (OASIS), CycloneDX VEX.</p>"
+# De binário Go
+$ syft ./bin/app -o cyclonedx-json
 
-                    "<h3>6. Operacionalização: Dependency-Track</h3>"
-                    "<p>SBOM por imagem é dado bruto. Operacionalizar exige plataforma "
-                    "central que ingere SBOMs de todos os builds, cruza continuamente "
-                    "com NVD/OSV/EPSS, alerta em CVEs novos e mostra dashboards.</p>"
-                    "<p>Exemplo: <strong>Dependency-Track</strong> (OWASP, OSS):</p>"
-                    "<ul>"
-                    "<li>Recebe SBOMs via API.</li>"
-                    "<li>Re-cruza periodicamente com bases de CVE.</li>"
-                    "<li>Notifica em mudanças (CVE nova surge para projeto X).</li>"
-                    "<li>Suporta VEX para reduzir ruído.</li>"
-                    "<li>Métricas: vulnerabilidades por projeto, por severity.</li>"
-                    "</ul>"
-                    "<pre><code># CI: enviar SBOM ao Dependency-Track\n"
-                    "$ curl -X POST https://dt.empresa.com/api/v1/bom \\\n"
-                    "    -H \"X-Api-Key: $DT_TOKEN\" \\\n"
-                    "    -F project=$PROJECT_UUID \\\n"
-                    "    -F bom=@sbom.json</code></pre>"
+# Saída tabular (humano)
+$ syft myapp:dev
+NAME              VERSION    TYPE
+django            5.1.4      python
+asgiref           3.8.1      python
+openssl           3.1.5      deb
+...</code></pre>
+<p><strong>Trivy</strong> gera SBOM ao mesmo tempo que já faz scan de
+vulnerabilidade, unindo as duas tarefas numa chamada:</p>
+<pre><code>$ trivy image --format cyclonedx --output sbom.json myapp:v1.4.2
+$ trivy fs --format spdx-json --output sbom-source.json .</code></pre>
+<p>Muitos ecossistemas de linguagem já embutem geração nativa de SBOM em
+suas próprias ferramentas de build — npm 10+, Cargo (Rust), Maven
+(Java) e um plugin dedicado para Python:</p>
+<pre><code>$ npm sbom --sbom-format=cyclonedx                # npm 10+
+$ cargo cyclonedx                                 # Rust
+$ mvn cyclonedx:makeAggregateBom                  # Java
+$ python -m cyclonedx_py environment              # Python</code></pre>
+<p>Para ecossistemas menos comuns (PHP Composer, .NET, GraalVM),
+<strong>cdxgen</strong> (também um projeto OWASP) preenche lacunas que
+as outras ferramentas ainda não cobrem.</p>
 
-                    "<h3>7. SBOM em código vs SBOM em build</h3>"
-                    "<p>Diferenças:</p>"
-                    "<ul>"
-                    "<li><strong>Source SBOM</strong>: dependências do "
-                    "<code>package.json</code>/<code>requirements.txt</code>. Não vê "
-                    "linkagem estática, libs do SO.</li>"
-                    "<li><strong>Build SBOM</strong>: extraído do binário/imagem. Vê "
-                    "tudo. Mais completo.</li>"
-                    "</ul>"
-                    "<p>Boa prática: gere ambos. Source SBOM para shift-left (PR "
-                    "valida deps); build SBOM para inventário em produção.</p>"
+<h3>4. Distribuição: o SBOM precisa viajar JUNTO com o artefato, não numa pasta separada</h3>
+<p>Um SBOM gerado e guardado num diretório qualquer, desconectado da
+imagem que descreve, perde valor rapidamente — a distribuição correta
+ancora o SBOM diretamente ao artefato no próprio registry:</p>
+<pre><code>$ syft myapp:v1.4.2 -o cyclonedx-json &gt; sbom.json
+$ cosign attach sbom --sbom sbom.json myapp:v1.4.2
 
-                    "<h3>8. Limitações de SBOM</h3>"
-                    "<ul>"
-                    "<li><strong>Compilação estática</strong>: Go binário pode "
-                    "incluir lib sem registrar. Use <code>-buildvcs</code> e "
-                    "ferramentas Go-aware.</li>"
-                    "<li><strong>Minified JS</strong>: dependências obscurecidas; "
-                    "use SBOM de pre-minify.</li>"
-                    "<li><strong>Containers multi-stage</strong>: ferramentas "
-                    "modernas inspecionam o resultado final.</li>"
-                    "<li><strong>Linkagem dinâmica</strong> (libc, openssl): "
-                    "Syft/Trivy detectam pacotes do SO.</li>"
-                    "<li><strong>Forks com mods</strong>: aparece como o original; "
-                    "scanner não sabe que vc patcheu localmente.</li>"
-                    "</ul>"
+# Como atestado assinado (mais robusto)
+$ cosign attest --predicate sbom.json --type cyclonedx myapp:v1.4.2
 
-                    "<h3>9. Pipeline com SBOM completo</h3>"
-                    "<pre><code>name: build-sbom-sign\n"
-                    "jobs:\n"
-                    "  build:\n"
-                    "    permissions: { id-token: write, contents: read, packages: write }\n"
-                    "    outputs:\n"
-                    "      digest: ${{ steps.push.outputs.digest }}\n"
-                    "    steps:\n"
-                    "      - uses: actions/checkout@v4\n"
-                    "      - uses: docker/setup-buildx-action@v3\n"
-                    "      - uses: docker/login-action@v3\n"
-                    "        with: { registry: ghcr.io, username: ${{ github.actor }}, password: ${{ secrets.GITHUB_TOKEN }} }\n"
-                    "      - id: push\n"
-                    "        uses: docker/build-push-action@v5\n"
-                    "        with:\n"
-                    "          push: true\n"
-                    "          tags: ghcr.io/empresa/app:${{ github.sha }}\n"
-                    "      - name: Generate SBOM\n"
-                    "        uses: anchore/sbom-action@v0\n"
-                    "        with:\n"
-                    "          image: ghcr.io/empresa/app@${{ steps.push.outputs.digest }}\n"
-                    "          format: cyclonedx-json\n"
-                    "          output-file: sbom.json\n"
-                    "      - uses: sigstore/cosign-installer@v3\n"
-                    "      - name: Sign image + attach SBOM as attestation\n"
-                    "        run: |\n"
-                    "          cosign sign --yes ghcr.io/empresa/app@${{ steps.push.outputs.digest }}\n"
-                    "          cosign attest --yes --predicate sbom.json --type cyclonedx \\\n"
-                    "            ghcr.io/empresa/app@${{ steps.push.outputs.digest }}\n"
-                    "      - name: Send SBOM to Dependency-Track\n"
-                    "        run: |\n"
-                    "          curl -X POST https://dt.empresa.com/api/v1/bom \\\n"
-                    "            -H \"X-Api-Key: $DT_API_KEY\" \\\n"
-                    "            -F \"projectName=app\" \\\n"
-                    "            -F \"projectVersion=${{ github.sha }}\" \\\n"
-                    "            -F \"autoCreate=true\" \\\n"
-                    "            -F \"bom=@sbom.json\"\n"
-                    "        env: { DT_API_KEY: ${{ secrets.DT_API_KEY }} }</code></pre>"
+# Verificar atestados
+$ cosign verify-attestation --type cyclonedx myapp:v1.4.2 \\
+    --certificate-identity ci@empresa.com \\
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com</code></pre>
+<p>Anexar como ATESTADO ASSINADO (não só um arquivo solto) prova que o
+SBOM foi de fato gerado por um pipeline autorizado, não adicionado
+depois por alguém tentando forjar conformidade — a mesma lógica de
+proveniência vista na verificação de assinatura de imagem (aula de
+Admission Controllers). Também é possível anexar como asset de um
+release do GitHub/GitLab, útil especialmente para binários standalone
+distribuídos fora de um registry de container. E para fornecedores
+federais americanos, entregar SBOM já é parte formal do processo de
+aquisição de software (SP 800-218/SSDF) — outros setores regulados vêm
+convergindo para a mesma exigência.</p>
 
-                    "<h3>10. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>SBOM manual</strong>: desatualizado em horas.</li>"
-                    "<li><strong>SBOM sem distribuição</strong>: arquivo em pasta morta.</li>"
-                    "<li><strong>SBOM sem operacionalização</strong>: nunca consultado.</li>"
-                    "<li><strong>SBOM apenas em build, não em uso</strong>: incidente "
-                    "exige saber 'quem TEM isso rodando'.</li>"
-                    "<li><strong>Sem VEX</strong>: alertas crescem até serem ignorados.</li>"
-                    "<li><strong>Formato proprietário</strong>: prefira CycloneDX/SPDX.</li>"
-                    "</ul>"
+<h3>5. VEX: separar "a vulnerabilidade existe no componente" de "ela me afeta de verdade"</h3>
+<p>Um SBOM diz "a biblioteca X versão Y está presente"; cruzar isso com o
+NVD diz "existe uma CVE registrada para essa versão". Mas EXISTIR não é
+o mesmo que ser EXPLORÁVEL no seu contexto específico — uma função
+vulnerável que nunca é chamada com input controlável pelo usuário
+representa risco teórico, não risco prático. VEX (Vulnerability
+Exploitability eXchange) é uma declaração ASSINADA que expressa essa
+distinção explicitamente:</p>
+<pre><code>{
+  "vulnerabilities": [
+    {
+      "id": "CVE-2024-12345",
+      "analysis": {
+        "state": "not_affected",
+        "justification": "vulnerable_code_not_in_execute_path",
+        "detail": "Função vulnerável só é chamada com input interno controlado, never user-supplied."
+      },
+      "affects": [{"ref": "pkg:pypi/lib-x@1.2.3"}]
+    }
+  ]
+}</code></pre>
+<p>Os quatro estados possíveis cobrem o ciclo de vida completo de uma
+descoberta: <code>not_affected</code> explica formalmente por que a
+vulnerabilidade não se aplica; <code>affected</code> reconhece que sim,
+afeta, e trabalho de correção está em andamento; <code>fixed</code>
+confirma que já foi corrigido numa versão específica; e
+<code>under_investigation</code> sinaliza análise ainda em curso. O
+ganho prático de VEX é reduzir FADIGA de alerta: sem ele, todo scanner
+de segurança dispara alarme para toda CVE teoricamente presente,
+inclusive as centenas que nunca seriam exploráveis no contexto real da
+aplicação — VEX permite ao time de segurança triar isso uma vez e
+documentar a decisão, em vez de reavaliar manualmente o mesmo alerta
+repetidamente a cada scan. CSAF (OASIS) e a extensão VEX do próprio
+CycloneDX são os padrões mais usados para expressar isso.</p>
+
+<h3>6. Operacionalizar SBOM: de arquivo estático a plataforma que alerta sozinha</h3>
+<p>Um SBOM por imagem, isolado, é dado bruto — o valor real aparece
+quando uma plataforma CENTRAL ingere SBOMs de TODOS os builds, cruza
+CONTINUAMENTE com bases de CVE (NVD, OSV, EPSS) e alerta automaticamente
+quando uma vulnerabilidade nova é publicada para um componente já
+presente em produção. <strong>Dependency-Track</strong> (projeto OWASP,
+open-source) é a implementação de referência dessa ideia: recebe SBOMs
+via API, re-cruza periodicamente contra as bases de CVE mesmo para
+projetos que não tiveram build novo, notifica quando uma CVE nova surge
+para um componente já catalogado, suporta VEX para reduzir ruído (seção
+5), e mantém dashboards de vulnerabilidade por projeto e por
+severidade:</p>
+<pre><code># CI: enviar SBOM ao Dependency-Track
+$ curl -X POST https://dt.empresa.com/api/v1/bom \\
+    -H "X-Api-Key: $DT_TOKEN" \\
+    -F project=$PROJECT_UUID \\
+    -F bom=@sbom.json</code></pre>
+<p>O detalhe importante aqui é "re-cruza PERIODICAMENTE, mesmo sem build
+novo" — uma CVE publicada hoje para uma biblioteca que você usa desde o
+ano passado, sem nenhuma mudança de código sua, ainda precisa ser
+detectada; sem esse recruzamento contínuo, você só descobriria no
+próximo build, que pode nunca acontecer se aquele projeto estiver
+estável.</p>
+
+<h3>7. SBOM de código-fonte vs. SBOM de build: visões diferentes, completude diferente</h3>
+<p>Um <strong>SBOM de fonte</strong> extrai dependências declaradas em
+<code>package.json</code> ou <code>requirements.txt</code> — mas não
+enxerga linkagem estática nem bibliotecas do sistema operacional que
+acabam embutidas no artefato final. Um <strong>SBOM de build</strong>,
+extraído diretamente do binário ou da imagem já construída, vê TUDO que
+de fato compõe o artefato final, incluindo o que a análise de código-fonte
+sozinha jamais capturaria. A prática recomendada é gerar os DOIS: o SBOM
+de fonte serve para "shift-left" — validar dependências ainda no Pull
+Request, antes mesmo de construir qualquer coisa — enquanto o SBOM de
+build serve como inventário definitivo do que está de fato rodando em
+produção.</p>
+
+<h3>8. Cinco limitações honestas do SBOM, mesmo bem implementado</h3>
+<p>Compilação estática (típica em Go) pode incluir uma biblioteca sem
+que ela apareça de forma óbvia no binário final — ferramentas
+"Go-aware" e a flag <code>-buildvcs</code> ajudam a capturar isso
+corretamente, mas exige atenção específica. JavaScript minificado
+obscurece dependências no artefato final — gerar o SBOM a partir do
+código PRÉ-minificação evita essa perda de informação. Containers
+multi-stage, felizmente, são bem tratados por ferramentas modernas, que
+inspecionam o resultado FINAL do build, não os estágios intermediários
+descartados. Linkagem dinâmica contra bibliotecas do sistema (libc,
+openssl) é capturada corretamente por Syft e Trivy, que detectam
+pacotes do próprio SO instalados na imagem. E o caso mais sutil: um fork
+com modificação local aparece no SBOM como se fosse o pacote ORIGINAL —
+o scanner não tem como saber que você aplicou um patch próprio por cima,
+então uma CVE já corrigida no seu fork ainda apareceria como presente,
+ou o inverso, uma modificação sua introduzindo um problema novo não
+apareceria em nenhuma base pública.</p>
+
+<h3>9. Um pipeline completo: build, SBOM, assinatura e envio, tudo automatizado</h3>
+<pre><code>name: build-sbom-sign
+jobs:
+  build:
+    permissions: { id-token: write, contents: read, packages: write }
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: ${{ github.actor }}, password: ${{ secrets.GITHUB_TOKEN }} }
+      - id: push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: ghcr.io/empresa/app:${{ github.sha }}
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/empresa/app@${{ steps.push.outputs.digest }}
+          format: cyclonedx-json
+          output-file: sbom.json
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign image + attach SBOM as attestation
+        run: |
+          cosign sign --yes ghcr.io/empresa/app@${{ steps.push.outputs.digest }}
+          cosign attest --yes --predicate sbom.json --type cyclonedx \\
+            ghcr.io/empresa/app@${{ steps.push.outputs.digest }}
+      - name: Send SBOM to Dependency-Track
+        run: |
+          curl -X POST https://dt.empresa.com/api/v1/bom \\
+            -H "X-Api-Key: $DT_API_KEY" \\
+            -F "projectName=app" \\
+            -F "projectVersion=${{ github.sha }}" \\
+            -F "autoCreate=true" \\
+            -F "bom=@sbom.json"
+        env: { DT_API_KEY: ${{ secrets.DT_API_KEY }} }</code></pre>
+<p>Este pipeline conecta cada peça vista nas seções anteriores numa
+sequência única: constrói e publica a imagem, gera o SBOM sobre o
+DIGEST específico (não a tag mutável), assina a imagem e anexa o SBOM
+como atestado verificável, e envia uma cópia para a plataforma central
+que vai monitorar continuamente por CVE nova.</p>
+
+<h3>10. Seis anti-padrões que tornam SBOM um exercício de checklist sem valor real</h3>
+<ul>
+<li><strong>SBOM gerado manualmente</strong>: desatualizado em horas,
+pelo simples fato de dependências mudarem constantemente.</li>
+<li><strong>SBOM sem distribuição</strong>: um arquivo esquecido numa
+pasta, nunca anexado ao artefato que descreve.</li>
+<li><strong>SBOM sem operacionalização</strong>: gerado, mas nunca
+efetivamente consultado por ninguém nem cruzado com CVE nova.</li>
+<li><strong>SBOM só no momento do build, nunca sobre o que está EM
+USO</strong>: um incidente real exige saber quem TEM aquele componente
+rodando agora, não só quem o teve num build passado.</li>
+<li><strong>Sem VEX</strong>: alertas crescem até o time simplesmente
+parar de olhar para eles, o efeito exato que VEX existe para prevenir.</li>
+<li><strong>Formato proprietário</strong>: prefira CycloneDX ou SPDX —
+formatos abertos e amplamente suportados por ferramentas de terceiros,
+em vez de um formato que só a sua própria plataforma entende.</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -1797,230 +1943,262 @@ de condicionais dentro de um único YAML.</li>
                     "armadilhas mais comuns."
                 ),
                 "body": (
-                    "<h3>1. Por que IDP existe</h3>"
-                    "<p>Empresa cresce. Cada time decide individualmente:</p>"
-                    "<ul>"
-                    "<li>Como fazer pipeline?</li>"
-                    "<li>Como configurar logs/metrics?</li>"
-                    "<li>Qual padrão de service mesh?</li>"
-                    "<li>Como provisionar DB/bucket/queue?</li>"
-                    "<li>Quem revisa segurança?</li>"
-                    "</ul>"
-                    "<p>Resultado: 50 jeitos diferentes. Manutenção explode. Onboarding "
-                    "vira 3 meses. Segurança cobre uns 30%. Visibilidade zero entre "
-                    "times.</p>"
-                    "<p>Com IDP:</p>"
-                    "<ul>"
-                    "<li><strong>Golden paths</strong>: 'jeito recomendado' com "
-                    "tudo pronto.</li>"
-                    "<li><strong>Self-service</strong>: dev provisiona DB sem "
-                    "ticket → 4 dias.</li>"
-                    "<li><strong>Guard-rails embutidos</strong>: você não precisa "
-                    "lembrar de habilitar encryption, já vem.</li>"
-                    "<li><strong>Catálogo unificado</strong>: 'qual time é dono "
-                    "do serviço X?' → 1 clique.</li>"
-                    "<li><strong>Observability default</strong>: cada serviço novo "
-                    "ganha dashboards e SLOs gratuitos.</li>"
-                    "</ul>"
+                """<h3>1. Por que uma IDP existe: cada time reinventando a roda, multiplicado por dezenas</h3>
+<p>Numa organização que cresce, cada time novo acaba decidindo
+individualmente como montar seu próprio pipeline, como configurar log e
+métrica, qual padrão de service mesh seguir, como provisionar banco ou
+fila, e quem exatamente revisa segurança daquele serviço específico. O
+resultado, multiplicado por dezenas de times, é uma organização com
+dezenas de formas diferentes de resolver o MESMO problema — manutenção
+explode (cada variação precisa de suporte próprio), onboarding de um
+engenheiro novo vira meses (cada time tem seu jeito único de fazer
+deploy), a cobertura real de segurança fica inconsistente entre times, e
+não há visibilidade nenhuma sobre o que times diferentes estão fazendo.
+Uma Internal Developer Platform ataca isso oferecendo um "caminho de
+ouro" (golden path) — o jeito recomendado, já pronto, para as tarefas
+comuns; self-service real, onde provisionar um banco vira uma ação
+imediata em vez de um ticket esperando dias por resposta humana;
+guard-rails EMBUTIDOS, onde o desenvolvedor não precisa lembrar de
+habilitar encryption porque ela já vem ligada por padrão; um catálogo
+unificado que responde "quem é dono do serviço X?" em um clique, não uma
+busca em planilha desatualizada; e observabilidade padrão, onde todo
+serviço novo já nasce com dashboard e SLO configurados, sem trabalho
+manual extra.</p>
 
-                    "<h3>2. Componentes típicos de uma IDP</h3>"
-                    "<table>"
-                    "<tr><th>Componente</th><th>O que faz</th><th>Ferramentas</th></tr>"
-                    "<tr><td>Portal</td><td>UI única para devs</td><td>Backstage, Port, OpsLevel</td></tr>"
-                    "<tr><td>Catálogo</td><td>Inventário de serviços/teams/APIs</td><td>Backstage Software Catalog</td></tr>"
-                    "<tr><td>Templates/Scaffolder</td><td>Bootstrap padronizado de novos serviços</td><td>Backstage Scaffolder, Cookiecutter, Yeoman</td></tr>"
-                    "<tr><td>Self-service infra</td><td>Provisão sem ticket</td><td>Crossplane, Humanitec, Terraform via TFC</td></tr>"
-                    "<tr><td>Pipeline padrão</td><td>CI/CD reutilizável</td><td>GitHub Actions reusable workflows, GitLab include</td></tr>"
-                    "<tr><td>Observability default</td><td>Dashboards/SLOs auto</td><td>Datadog APIs, Grafana provisioning</td></tr>"
-                    "<tr><td>Docs/TechDocs</td><td>Docs as code</td><td>Backstage TechDocs, Docusaurus</td></tr>"
-                    "<tr><td>Compliance/Policy</td><td>Guard-rails</td><td>OPA/Conftest, Kyverno, Sentinel</td></tr>"
-                    "</table>"
+<h3>2. Os componentes que compõem uma plataforma completa</h3>
+<table>
+<tr><th>Componente</th><th>O que faz</th><th>Ferramentas</th></tr>
+<tr><td>Portal</td><td>UI única para devs</td><td>Backstage, Port, OpsLevel</td></tr>
+<tr><td>Catálogo</td><td>Inventário de serviços/teams/APIs</td><td>Backstage Software Catalog</td></tr>
+<tr><td>Templates/Scaffolder</td><td>Bootstrap padronizado de novos serviços</td><td>Backstage Scaffolder, Cookiecutter, Yeoman</td></tr>
+<tr><td>Self-service infra</td><td>Provisão sem ticket</td><td>Crossplane, Humanitec, Terraform via TFC</td></tr>
+<tr><td>Pipeline padrão</td><td>CI/CD reutilizável</td><td>GitHub Actions reusable workflows, GitLab include</td></tr>
+<tr><td>Observability default</td><td>Dashboards/SLOs auto</td><td>Datadog APIs, Grafana provisioning</td></tr>
+<tr><td>Docs/TechDocs</td><td>Docs as code</td><td>Backstage TechDocs, Docusaurus</td></tr>
+<tr><td>Compliance/Policy</td><td>Guard-rails</td><td>OPA/Conftest, Kyverno, Sentinel</td></tr>
+</table>
+<p>Nenhuma organização precisa de TODOS esses componentes desde o
+primeiro dia — a maioria dos programas de plataforma bem-sucedidos
+começa com portal e templates (as dores mais visíveis) e adiciona
+self-service de infraestrutura e observabilidade automática conforme o
+programa amadurece e ganha confiança dos times.</p>
 
-                    "<h3>3. Backstage: o portal de fato</h3>"
-                    "<p>Backstage é OSS criado pelo Spotify (2020), agora hosted pela "
-                    "CNCF. Plugins para tudo: Kubernetes, GitHub, GitLab, Datadog, "
-                    "Sentry, PagerDuty, Argo CD, Sonar, Jenkins, AWS, GCP, Azure...</p>"
-                    "<h4>3.1 Software Catalog</h4>"
-                    "<p>Modelo de entidades: Component, API, System, Resource, "
-                    "Domain, Group, User. Relações: Component <em>ownedBy</em> Group, "
-                    "<em>consumes</em> API, <em>partOf</em> System.</p>"
-                    "<pre><code># catalog-info.yaml (no repo do serviço)\n"
-                    "apiVersion: backstage.io/v1alpha1\n"
-                    "kind: Component\n"
-                    "metadata:\n"
-                    "  name: orders-api\n"
-                    "  description: API de pedidos\n"
-                    "  annotations:\n"
-                    "    backstage.io/techdocs-ref: dir:.\n"
-                    "    github.com/project-slug: empresa/orders-api\n"
-                    "    pagerduty.com/service-id: PXYZ123\n"
-                    "    sentry.io/project-slug: orders-api\n"
-                    "    grafana/dashboard-selector: \"folderTitle = 'Orders'\"\n"
-                    "spec:\n"
-                    "  type: service\n"
-                    "  lifecycle: production\n"
-                    "  owner: payments-team\n"
-                    "  system: payments\n"
-                    "  consumesApis:\n"
-                    "    - users-api\n"
-                    "  providesApis:\n"
-                    "    - orders-api</code></pre>"
-                    "<h4>3.2 Scaffolder (templates)</h4>"
-                    "<p>Dev escolhe 'Criar novo microsserviço Python', preenche "
-                    "form (nome, owner, dependências). Backstage:</p>"
-                    "<ol>"
-                    "<li>Cria repo no GitHub a partir de template.</li>"
-                    "<li>Aplica Dockerfile, CI, observability, docs padrão.</li>"
-                    "<li>Registra como Component no catalog.</li>"
-                    "<li>Cria PagerDuty service.</li>"
-                    "<li>Configura Sentry/Datadog.</li>"
-                    "<li>Provisiona DB via Crossplane (opcional).</li>"
-                    "</ol>"
-                    "<pre><code># template.yaml\n"
-                    "apiVersion: scaffolder.backstage.io/v1beta3\n"
-                    "kind: Template\n"
-                    "metadata: { name: python-service }\n"
-                    "spec:\n"
-                    "  parameters:\n"
-                    "    - title: Service info\n"
-                    "      properties:\n"
-                    "        name: { title: Name, type: string }\n"
-                    "        owner: { title: Owner, type: string, ui:field: OwnerPicker }\n"
-                    "  steps:\n"
-                    "    - id: fetch\n"
-                    "      action: fetch:template\n"
-                    "      input:\n"
-                    "        url: ./skeleton\n"
-                    "        values: { name: ${{ parameters.name }} }\n"
-                    "    - id: publish\n"
-                    "      action: publish:github\n"
-                    "      input:\n"
-                    "        repoUrl: github.com?owner=empresa&repo=${{ parameters.name }}\n"
-                    "        defaultBranch: main\n"
-                    "    - id: register\n"
-                    "      action: catalog:register\n"
-                    "      input:\n"
-                    "        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}</code></pre>"
-                    "<h4>3.3 TechDocs</h4>"
-                    "<p>Docs em Markdown no próprio repo, renderizados em Backstage. "
-                    "Sempre próximo ao código, atualizados em PR.</p>"
+<h3>3. Backstage: o portal que virou referência do setor</h3>
+<p>Backstage é open-source, criado pelo Spotify em 2020 e hoje hospedado
+pela CNCF, com plugins cobrindo praticamente toda ferramenta comum de
+engenharia — Kubernetes, GitHub, GitLab, Datadog, Sentry, PagerDuty,
+Argo CD, entre dezenas de outros. O Software Catalog modela o mundo em
+entidades — Component, API, System, Resource, Domain, Group, User — e as
+relações entre elas (um Component é "owned by" um Group, "consumes" uma
+API, "part of" um System) constroem um grafo de dependência e
+propriedade navegável:</p>
+<pre><code># catalog-info.yaml (no repo do serviço)
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: orders-api
+  description: API de pedidos
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    github.com/project-slug: empresa/orders-api
+    pagerduty.com/service-id: PXYZ123
+    sentry.io/project-slug: orders-api
+    grafana/dashboard-selector: "folderTitle = 'Orders'"
+spec:
+  type: service
+  lifecycle: production
+  owner: payments-team
+  system: payments
+  consumesApis:
+    - users-api
+  providesApis:
+    - orders-api</code></pre>
+<p>O Scaffolder automatiza o nascimento de um serviço novo: o
+desenvolvedor escolhe "Criar novo microsserviço Python", preenche um
+formulário simples (nome, dono, dependências), e a plataforma executa,
+em sequência, a criação do repositório a partir de um template já
+aprovado, aplica Dockerfile/CI/observabilidade/docs padrão, registra o
+serviço automaticamente no catálogo, cria o serviço correspondente no
+PagerDuty, configura Sentry e Datadog, e opcionalmente já provisiona um
+banco de dados via Crossplane — tudo o que antes exigia dias de
+configuração manual e conhecimento tribal de "como fazemos as coisas
+aqui" vira minutos, de forma consistente para todo serviço novo:</p>
+<pre><code># template.yaml
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata: { name: python-service }
+spec:
+  parameters:
+    - title: Service info
+      properties:
+        name: { title: Name, type: string }
+        owner: { title: Owner, type: string, ui:field: OwnerPicker }
+  steps:
+    - id: fetch
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values: { name: ${{ parameters.name }} }
+    - id: publish
+      action: publish:github
+      input:
+        repoUrl: github.com?owner=empresa&repo=${{ parameters.name }}
+        defaultBranch: main
+    - id: register
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}</code></pre>
+<p>TechDocs mantém a documentação como Markdown DENTRO do próprio
+repositório do serviço, renderizada automaticamente no Backstage — o
+efeito prático é que a documentação fica próxima do código e tende a ser
+atualizada no mesmo PR que muda o comportamento, em vez de viver
+desconectada num wiki que ninguém lembra de sincronizar.</p>
 
-                    "<h3>4. Self-service de infra</h3>"
-                    "<h4>4.1 Crossplane (K8s-native)</h4>"
-                    "<p>Você define <em>Composite Resources</em> (XRD) e Composições "
-                    "que abstraem cloud:</p>"
-                    "<pre><code># XRD: API de alto nível 'Database'\n"
-                    "apiVersion: apiextensions.crossplane.io/v1\n"
-                    "kind: CompositeResourceDefinition\n"
-                    "metadata: { name: xdatabases.platform.empresa.com }\n"
-                    "spec:\n"
-                    "  group: platform.empresa.com\n"
-                    "  names: { kind: XDatabase, plural: xdatabases }\n"
-                    "  claimNames: { kind: Database, plural: databases }\n"
-                    "  versions:\n"
-                    "    - name: v1\n"
-                    "      schema:\n"
-                    "        openAPIV3Schema:\n"
-                    "          properties:\n"
-                    "            spec:\n"
-                    "              properties:\n"
-                    "                size: { enum: [small, medium, large] }\n"
-                    "                env: { enum: [dev, staging, prod] }\n"
-                    "\n"
-                    "# Composition: como traduzir para AWS RDS\n"
-                    "# (omitido aqui, em prática, mapeia size→instance class etc.)\n"
-                    "\n"
-                    "# Dev consome:\n"
-                    "apiVersion: platform.empresa.com/v1\n"
-                    "kind: Database\n"
-                    "metadata: { name: orders-db, namespace: payments }\n"
-                    "spec:\n"
-                    "  size: medium\n"
-                    "  env: prod</code></pre>"
-                    "<p>Dev viu 'small/medium/large + dev/staging/prod' e ganhou RDS "
-                    "com encryption + backup + multi-AZ + VPC + secret manager + "
-                    "monitoring tudo configurado.</p>"
-                    "<h4>4.2 Humanitec</h4>"
-                    "<p>SaaS comercial; 'workload definitions' YAML que dev escreve, "
-                    "plataforma traduz para K8s/cloud específico. Trade-off: rápido "
-                    "para começar, lock-in moderado.</p>"
-                    "<h4>4.3 Terraform via TFC/Spacelift</h4>"
-                    "<p>Para times Terraform-heavy: módulos da empresa expostos via "
-                    "Terraform Cloud workspaces; dev preenche variables na UI, TFC "
-                    "aplica. Backstage Scaffolder pode disparar.</p>"
+<h3>4. Self-service de infraestrutura: abstrair a nuvem atrás de uma API simples</h3>
+<p>Crossplane traz essa ideia para dentro do próprio Kubernetes: você
+define Composite Resource Definitions (XRDs) e Composições que abstraem
+detalhes de nuvem específicos atrás de uma API de alto nível:</p>
+<pre><code># XRD: API de alto nível 'Database'
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata: { name: xdatabases.platform.empresa.com }
+spec:
+  group: platform.empresa.com
+  names: { kind: XDatabase, plural: xdatabases }
+  claimNames: { kind: Database, plural: databases }
+  versions:
+    - name: v1
+      schema:
+        openAPIV3Schema:
+          properties:
+            spec:
+              properties:
+                size: { enum: [small, medium, large] }
+                env: { enum: [dev, staging, prod] }
 
-                    "<h3>5. Team Topologies: organização que sustenta IDP</h3>"
-                    "<p>Padrão de Manuel Pais e Matthew Skelton. 4 tipos de time:</p>"
-                    "<ul>"
-                    "<li><strong>Stream-aligned</strong>: time de produto, dono de "
-                    "uma capability/jornada/cliente. Foca em delivery.</li>"
-                    "<li><strong>Platform</strong>: constrói a IDP como produto "
-                    "<em>interno</em>. Tem PM, UX, roadmap. Cliente é o stream-aligned "
-                    "team.</li>"
-                    "<li><strong>Enabling</strong>: consultoria interna. Ajuda "
-                    "stream-aligned em dor temporária (ex.: novo paradigma de ML).</li>"
-                    "<li><strong>Complicated subsystem</strong>: squad para problema "
-                    "intrinsecamente complicado (engine, ML core, blockchain).</li>"
-                    "</ul>"
-                    "<p>Plataforma <em>como produto</em> é vital. Sem PM/UX, vira "
-                    "ticket factory ou wrapper sem valor.</p>"
+# Composition: como traduzir para AWS RDS
+# (omitido aqui, em prática, mapeia size→instance class etc.)
 
-                    "<h3>6. Métricas de sucesso</h3>"
-                    "<ul>"
-                    "<li><strong>Time-to-first-deploy</strong> de novo serviço: "
-                    "horas, não meses.</li>"
-                    "<li><strong>% de novos serviços usando templates</strong>: alta "
-                    "adoção indica produto desejável.</li>"
-                    "<li><strong>NPS interno</strong> (devs satisfeitos com plataforma).</li>"
-                    "<li><strong>Tickets para SRE</strong>: tendência decrescente.</li>"
-                    "<li><strong>DORA metrics</strong>: melhoria pós-IDP.</li>"
-                    "<li><strong>Time-to-restore</strong> em incidente: catálogo + "
-                    "runbooks reduzem.</li>"
-                    "</ul>"
+# Dev consome:
+apiVersion: platform.empresa.com/v1
+kind: Database
+metadata: { name: orders-db, namespace: payments }
+spec:
+  size: medium
+  env: prod</code></pre>
+<p>O desenvolvedor só escolhe entre "small/medium/large" e
+"dev/staging/prod" — por trás dessa escolha simples, a Composição já
+traduz automaticamente para um RDS completo, com encryption habilitada,
+backup configurado, multi-AZ para alta disponibilidade, VPC correta e
+integração com o gerenciador de segredos, tudo já certo por padrão sem o
+desenvolvedor precisar conhecer nenhum desses detalhes. Humanitec resolve
+o mesmo problema como SaaS comercial, onde o desenvolvedor escreve
+"workload definitions" em YAML e a plataforma traduz para o cluster e
+nuvem específicos — mais rápido para começar, com algum nível de
+dependência do fornecedor como trade-off. E para times já fortemente
+investidos em Terraform, expor módulos internos via Terraform Cloud ou
+Spacelift permite ao desenvolvedor preencher variáveis numa interface
+simples enquanto o Scaffolder do Backstage dispara a execução por trás.</p>
 
-                    "<h3>7. Anti-patterns clássicos</h3>"
-                    "<ul>"
-                    "<li><strong>Plataforma sem demanda</strong>: time constrói o que "
-                    "ninguém usa. Resolve com discovery, MVPs.</li>"
-                    "<li><strong>Plataforma controle-freak</strong>: bloqueia tudo, "
-                    "vira gargalo. Devs criam shadow-IT em paralelo.</li>"
-                    "<li><strong>Wrapper bonito sem valor</strong>: portal só esconde "
-                    "clicar no console. Adicione abstração real.</li>"
-                    "<li><strong>Sem ownership</strong>: ninguém mantém templates. "
-                    "Trate plataforma como produto com PM dedicado.</li>"
-                    "<li><strong>Tudo obrigatório</strong>: golden path sem escapes "
-                    "para casos especiais frustra times maduros.</li>"
-                    "<li><strong>Sem comunidade</strong>: plataforma é entrega "
-                    "unilateral. Construa com guilds, office hours, RFCs.</li>"
-                    "<li><strong>Métricas de vaidade</strong>: 'temos 50 plugins!' "
-                    "sem medir adoção real.</li>"
-                    "</ul>"
+<h3>5. Team Topologies: a estrutura organizacional que faz a plataforma funcionar de verdade</h3>
+<p>O modelo de Manuel Pais e Matthew Skelton define quatro tipos de time
+com responsabilidades bem distintas. O time <strong>stream-aligned</strong>
+é o time de produto, dono de uma capacidade ou jornada de cliente
+específica, focado em entregar valor de negócio. O time
+<strong>platform</strong> constrói a IDP como um PRODUTO INTERNO de
+verdade — com product manager, design de experiência e roadmap próprio
+— cujo cliente é justamente o time stream-aligned. O time
+<strong>enabling</strong> funciona como consultoria interna temporária,
+ajudando um time stream-aligned a superar uma dor específica e passageira
+(adotar um paradigma novo de machine learning, por exemplo) sem virar
+dependência permanente. E o time de <strong>subsistema complicado</strong>
+existe para um problema intrinsecamente difícil e isolado — um motor de
+física, o núcleo de um sistema de ML, algo que exige especialização
+profunda e concentrada. O ponto central desse modelo, e o mais fácil de
+negligenciar: tratar a plataforma como PRODUTO exige investimento real
+em product management e experiência de uso — sem isso, ela tende a
+degradar para uma fábrica de tickets ou um wrapper decorativo sem valor
+real agregado.</p>
 
-                    "<h3>8. Caso real: Spotify Backstage</h3>"
-                    "<p>Spotify, ~6000 engenheiros. Tinha 4 portais internos diferentes. "
-                    "Construiu Backstage internamente para unificar. Resultados:</p>"
-                    "<ul>"
-                    "<li>Onboarding: meses → semanas.</li>"
-                    "<li>Time-to-first-deploy: 60d → 1d.</li>"
-                    "<li>Adoção interna &gt;90% em 3 anos.</li>"
-                    "<li>Open-source em 2020; CNCF incubation.</li>"
-                    "</ul>"
-                    "<p>Hoje: Netflix, American Airlines, HBO, Wayfair, Box rodam "
-                    "Backstage internamente.</p>"
+<h3>6. Métricas de sucesso: como provar que a plataforma está funcionando, não só existindo</h3>
+<p>Time-to-first-deploy de um serviço novo — medido em horas em vez de
+meses — é o indicador mais direto de impacto. O percentual de serviços
+novos que de fato adotam os templates oferecidos revela se a plataforma
+é um produto DESEJÁVEL, não só disponível. NPS interno mede satisfação
+real dos desenvolvedores usando a plataforma no dia a dia. Uma tendência
+DECRESCENTE de tickets abertos para o time de SRE indica que problemas
+comuns estão sendo resolvidos pela plataforma antes de precisar de
+intervenção humana. Métricas DORA melhorando depois da adoção da IDP
+conectam o investimento em plataforma a resultado de engenharia
+mensurável. E tempo de recuperação (time-to-restore) durante incidente
+tende a cair quando o catálogo e os runbooks associados já estão
+prontos e acessíveis — em vez de alguém precisar descobrir na hora quem
+é dono de qual serviço.</p>
 
-                    "<h3>9. Por onde começar</h3>"
-                    "<ol>"
-                    "<li>Identifique 3 dores reais dos devs (entrevistas).</li>"
-                    "<li>Escolha 1: ex.: 'criar novo serviço leva 2 semanas'.</li>"
-                    "<li>MVP: template + scaffolder + CI básico + dashboard padrão.</li>"
-                    "<li>Adote em 1-2 squads piloto, meça.</li>"
-                    "<li>Itere: ouve feedback, melhora.</li>"
-                    "<li>Escale para outros squads.</li>"
-                    "<li>Adicione novo recurso (self-service DB) só após o anterior "
-                    "ser bem usado.</li>"
-                    "</ol>"
-                    "<p>Não tente construir 'a plataforma definitiva' em 1 ano. "
-                    "Comece pequeno, prove valor, expanda.</p>"
+<h3>7. Sete anti-padrões que explicam a maioria dos programas de plataforma que fracassam</h3>
+<ul>
+<li><strong>Plataforma sem demanda real</strong>: o time constrói o que
+ACHA que os desenvolvedores precisam, sem validar antes — a correção é
+descoberta ativa (entrevistas) e MVPs pequenos testados cedo.</li>
+<li><strong>Plataforma "controle-freak"</strong>: bloqueia toda
+flexibilidade e vira gargalo por si só — desenvolvedores acabam criando
+"shadow IT" paralelo só para contornar a própria plataforma que deveria
+ajudá-los.</li>
+<li><strong>Wrapper bonito sem valor real</strong>: um portal que só
+esconde visualmente um clique no console da nuvem, sem adicionar
+abstração ou automação de verdade por trás.</li>
+<li><strong>Sem ownership definido</strong>: templates e ferramentas
+ficam sem manutenção contínua — tratar a plataforma como produto exige um
+dono de produto dedicado, não um projeto lateral de alguém.</li>
+<li><strong>Tudo obrigatório, sem escape hatch</strong>: um golden path
+sem exceção nenhuma para casos legitimamente especiais frustra times
+mais experientes que têm uma necessidade real fora do padrão comum.</li>
+<li><strong>Sem comunidade em volta</strong>: a plataforma vira uma
+entrega unilateral de cima para baixo — construir com guildas, horários
+de atendimento abertos e RFCs colaborativos gera adoção genuína em vez
+de resistência.</li>
+<li><strong>Métricas de vaidade</strong>: "temos 50 plugins instalados"
+não mede nada de valor real — meça adoção efetiva e impacto, não volume
+de recurso disponível.</li>
+</ul>
+
+<h3>8. Caso real: como o Backstage nasceu de um problema concreto no Spotify</h3>
+<p>O Spotify, com cerca de 6 mil engenheiros, chegou a operar QUATRO
+portais internos diferentes e desconectados antes de construir o
+Backstage para unificá-los. Os resultados documentados foram
+substanciais: onboarding de um novo engenheiro caiu de meses para
+semanas; time-to-first-deploy de um serviço novo caiu de 60 dias para 1
+dia; adoção interna ultrapassou 90% em três anos. O projeto foi
+open-sourced em 2020 e hoje está em incubação na CNCF — e desde então
+Netflix, American Airlines, HBO, Wayfair e Box, entre muitas outras,
+rodam Backstage internamente como sua própria plataforma de
+desenvolvedor.</p>
+
+<h3>9. Por onde começar, sem tentar construir a plataforma perfeita no primeiro ano</h3>
+<ol>
+<li>Identifique três dores REAIS através de entrevista direta com
+desenvolvedores — não suposição do time de plataforma sobre o que eles
+precisariam.</li>
+<li>Escolha UMA delas para atacar primeiro (por exemplo, "criar um
+serviço novo leva duas semanas").</li>
+<li>Construa um MVP mínimo: um template, um scaffolder básico, CI
+simples, dashboard padrão — o suficiente para provar o conceito, não a
+solução completa.</li>
+<li>Adote com um ou dois times piloto, e MEÇA o resultado real, não a
+impressão subjetiva de sucesso.</li>
+<li>Itere com base no feedback recebido antes de expandir mais.</li>
+<li>Escale gradualmente para outros squads conforme a confiança
+cresce.</li>
+<li>Só adicione a próxima capacidade (self-service de banco de dados,
+por exemplo) depois que a anterior já estiver bem adotada e estável —
+empilhar funcionalidade nova sobre uma base ainda instável multiplica
+risco sem necessidade.</li>
+</ol>
+<p>O erro mais caro em iniciativas de plataforma é tentar construir "a
+plataforma definitiva" de uma vez, num único grande esforço de um ano —
+começar pequeno, provar valor mensurável, e expandir a partir de sucesso
+real é o padrão que consistentemente funciona nos casos documentados de
+sucesso.</p>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -2499,193 +2677,262 @@ exatamente para esse cenário.</li>
                     "automatizado e pentest humano."
                 ),
                 "body": (
-                    "<h3>1. Filosofia: as 4 abordagens</h3>"
-                    "<table>"
-                    "<tr><th>Abordagem</th><th>Acesso</th><th>Foco</th><th>Limitação</th></tr>"
-                    "<tr><td>SAST (white-box)</td><td>Código</td><td>Lógica, sinks</td><td>Não vê runtime</td></tr>"
-                    "<tr><td>DAST (black-box)</td><td>App rodando</td><td>HTTP/runtime</td><td>Não vê código</td></tr>"
-                    "<tr><td>IAST (gray-box)</td><td>Agente em runtime</td><td>Combina os dois</td><td>Adiciona overhead</td></tr>"
-                    "<tr><td>RASP</td><td>Agente em runtime (defesa)</td><td>Bloqueia em produção</td><td>Pode degradar perf</td></tr>"
-                    "</table>"
-                    "<p>Use vários, pegam coisas diferentes. DAST passivo (baseline "
-                    "scan) é barato e captura headers, redirects, defaults. "
-                    "DAST ativo (full scan) faz fuzzing e ataques reais, não rode "
-                    "contra produção sem autorização.</p>"
+                """<h3>1. Quatro abordagens de teste, e por que nenhuma sozinha basta</h3>
+<table>
+<tr><th>Abordagem</th><th>Acesso</th><th>Foco</th><th>Limitação</th></tr>
+<tr><td>SAST (white-box)</td><td>Código</td><td>Lógica, sinks</td><td>Não vê runtime</td></tr>
+<tr><td>DAST (black-box)</td><td>App rodando</td><td>HTTP/runtime</td><td>Não vê código</td></tr>
+<tr><td>IAST (gray-box)</td><td>Agente em runtime</td><td>Combina os dois</td><td>Adiciona overhead</td></tr>
+<tr><td>RASP</td><td>Agente em runtime (defesa)</td><td>Bloqueia em produção</td><td>Pode degradar perf</td></tr>
+</table>
+<p>SAST analisa o CÓDIGO sem nunca executá-lo — enxerga a lógica interna
+e onde um dado perigoso poderia fluir (um "sink"), mas nunca vê o
+comportamento real em runtime: um header ausente, um redirect aberto, um
+CORS mal configurado, um default inseguro do próprio servidor web —
+nada disso aparece analisando código-fonte estático. DAST inverte
+completamente essa perspectiva: ataca a aplicação RODANDO, como um
+atacante real faria pela rede, sem nenhum acesso ao código — pega
+exatamente as falhas que SAST nunca veria, ao custo de nunca enxergar a
+lógica interna que produziu o comportamento observado. IAST tenta o
+melhor dos dois mundos, com um agente instrumentando a aplicação em
+runtime enquanto ainda tem acesso ao contexto de código — mais completo,
+ao custo de overhead de performance real. E RASP não é bem um método de
+TESTE, é uma camada de DEFESA ativa: um agente rodando em produção que
+bloqueia comportamento malicioso detectado em tempo real, com o mesmo
+trade-off de possível degradação de performance. Um DAST "passivo" (scan
+de baseline) é barato e só captura o que já está visível sem tentar
+explorar nada — headers, redirects, defaults expostos. Um DAST "ativo"
+(full scan) faz fuzzing de verdade e tenta ataques reais — nunca rode
+isso contra produção sem autorização explícita, dado o potencial de
+causar dano real.</p>
 
-                    "<h3>2. OWASP ZAP: o canivete suíço gratuito</h3>"
-                    "<p>Open source, multiplataforma, modos baseline/full/spider/"
-                    "active scan. Útil em CI.</p>"
-                    "<h4>2.1 Baseline scan</h4>"
-                    "<pre><code># Baseline: scan passivo, ~5min, quase sem risco\n"
-                    "$ docker run --rm -v $(pwd)/zap:/zap/wrk owasp/zap2docker-stable \\\n"
-                    "    zap-baseline.py -t https://staging.exemplo.com \\\n"
-                    "    -r baseline-report.html\n"
-                    "\n"
-                    "# Em CI\n"
-                    "- name: ZAP Baseline\n"
-                    "  uses: zaproxy/action-baseline@v0.10.0\n"
-                    "  with:\n"
-                    "    target: https://staging.exemplo.com\n"
-                    "    fail_action: true   # falha CI se High</code></pre>"
-                    "<h4>2.2 Full scan (ativo)</h4>"
-                    "<p>Faz fuzz de inputs, tenta SQLi, XSS, path traversal. Demora "
-                    "horas. Roda contra ambiente isolado com dados sintéticos.</p>"
-                    "<pre><code>$ zap-full-scan.py -t https://staging.exemplo.com</code></pre>"
-                    "<h4>2.3 Auth context</h4>"
-                    "<p>DAST cego só vê pages públicas. Configure authentication para "
-                    "cobrir rotas autenticadas:</p>"
-                    "<pre><code># context.xml em ZAP\n"
-                    "&lt;context&gt;\n"
-                    "  &lt;authentication&gt;\n"
-                    "    &lt;type&gt;form-based&lt;/type&gt;\n"
-                    "    &lt;loginUrl&gt;https://app/login&lt;/loginUrl&gt;\n"
-                    "    &lt;loginRequestData&gt;username={%username%}&password={%password%}&lt;/loginRequestData&gt;\n"
-                    "  &lt;/authentication&gt;\n"
-                    "  &lt;users&gt;\n"
-                    "    &lt;user&gt;{ name: alice, credentials: {...} }&lt;/user&gt;\n"
-                    "  &lt;/users&gt;\n"
-                    "&lt;/context&gt;</code></pre>"
+<h3>2. OWASP ZAP: o canivete suíço gratuito, do scan mais leve ao mais agressivo</h3>
+<p>OWASP ZAP é open source, multiplataforma, e opera em modos com
+intensidade crescente. O scan de <strong>baseline</strong> é passivo —
+não tenta explorar nada, só observa o tráfego e sinaliza problema óbvio
+(header ausente, cookie mal configurado) — leva minutos e o risco de
+causar qualquer efeito colateral é praticamente nulo:</p>
+<pre><code># Baseline: scan passivo, ~5min, quase sem risco
+$ docker run --rm -v $(pwd)/zap:/zap/wrk owasp/zap2docker-stable \\
+    zap-baseline.py -t https://staging.exemplo.com \\
+    -r baseline-report.html
 
-                    "<h3>3. Burp Suite: padrão da indústria</h3>"
-                    "<p>Comercial (Pro). Proxy interativo + scanner. Padrão entre "
-                    "pentesters profissionais.</p>"
-                    "<ul>"
-                    "<li><strong>Proxy</strong>: intercepta requests do browser; "
-                    "permite editar/repetir.</li>"
-                    "<li><strong>Repeater</strong>: enviar mesma request com "
-                    "variações.</li>"
-                    "<li><strong>Intruder</strong>: fuzz com payloads.</li>"
-                    "<li><strong>Scanner</strong>: ataques automáticos (Pro).</li>"
-                    "<li><strong>Decoder/Comparer</strong>: utilitários.</li>"
-                    "<li><strong>Extensions</strong>: ecossistema rico (BApp Store).</li>"
-                    "</ul>"
+# Em CI
+- name: ZAP Baseline
+  uses: zaproxy/action-baseline@v0.10.0
+  with:
+    target: https://staging.exemplo.com
+    fail_action: true   # falha CI se High</code></pre>
+<p>O <strong>full scan</strong> (ativo) faz fuzzing de verdade,
+tentando SQL injection, XSS, path traversal — demora horas e SÓ deve
+rodar contra ambiente isolado com dados sintéticos, nunca contra dado
+real de produção:</p>
+<pre><code>$ zap-full-scan.py -t https://staging.exemplo.com</code></pre>
+<p>Um DAST "cego" (sem autenticação configurada) só enxerga páginas
+públicas — as rotas mais interessantes de uma aplicação real, aquelas
+que exigem login, ficam completamente fora do alcance sem configurar um
+contexto de autenticação explícito:</p>
+<pre><code># context.xml em ZAP
+&lt;context&gt;
+  &lt;authentication&gt;
+    &lt;type&gt;form-based&lt;/type&gt;
+    &lt;loginUrl&gt;https://app/login&lt;/loginUrl&gt;
+    &lt;loginRequestData&gt;username={%username%}&password={%password%}&lt;/loginRequestData&gt;
+  &lt;/authentication&gt;
+  &lt;users&gt;
+    &lt;user&gt;{ name: alice, credentials: {...} }&lt;/user&gt;
+  &lt;/users&gt;
+&lt;/context&gt;</code></pre>
 
-                    "<h3>4. Nuclei: detecção rápida</h3>"
-                    "<p>Templates declarativos para detectar CVEs, misconfigurations, "
-                    "tokens expostos. Rápido e preciso:</p>"
-                    "<pre><code>$ nuclei -u https://staging.exemplo.com \\\n"
-                    "    -t http/cves/ \\\n"
-                    "    -t http/exposures/ \\\n"
-                    "    -severity high,critical\n"
-                    "\n"
-                    "[2024-CVE-XXXX] [http] [high] https://staging.exemplo.com/.git/config\n"
-                    "[exposed-tokens] [http] [critical] https://staging.exemplo.com/.env</code></pre>"
+<h3>3. Burp Suite: o padrão que pentester profissional usa todo dia</h3>
+<p>Comercial (na versão Pro), Burp Suite combina um proxy interativo com
+um scanner automatizado, e é o padrão de fato entre pentesters
+profissionais. O <strong>Proxy</strong> intercepta cada requisição saindo
+do navegador, permitindo editar e reenviar manualmente. O
+<strong>Repeater</strong> facilita enviar a mesma requisição com
+pequenas variações repetidamente, útil para testar manualmente hipóteses
+específicas. O <strong>Intruder</strong> automatiza fuzzing com listas de
+payload configuráveis. O <strong>Scanner</strong> (só na versão Pro)
+automatiza ataques comuns sem intervenção manual constante.
+<strong>Decoder</strong> e <strong>Comparer</strong> são utilitários de
+apoio para manipular e comparar dados codificados. E um ecossistema rico
+de extensões (BApp Store) estende a ferramenta para casos específicos
+que o núcleo não cobre nativamente.</p>
 
-                    "<h3>5. Em CI: pipeline com DAST</h3>"
-                    "<pre><code>name: dast\n"
-                    "on:\n"
-                    "  pull_request: {}\n"
-                    "  schedule: [{ cron: '0 2 * * *' }]   # nightly\n"
-                    "jobs:\n"
-                    "  zap:\n"
-                    "    runs-on: ubuntu-latest\n"
-                    "    services:\n"
-                    "      app:\n"
-                    "        image: ghcr.io/empresa/app:${{ github.sha }}\n"
-                    "        ports: [8000:8000]\n"
-                    "      db:\n"
-                    "        image: postgres:16\n"
-                    "        env: { POSTGRES_PASSWORD: dast }\n"
-                    "    steps:\n"
-                    "      - run: ./scripts/wait-for-app.sh http://localhost:8000\n"
-                    "      - run: ./scripts/seed-test-data.sh\n"
-                    "      - uses: zaproxy/action-baseline@v0.10.0\n"
-                    "        with:\n"
-                    "          target: http://localhost:8000\n"
-                    "          rules_file_name: .zap/rules.tsv\n"
-                    "          cmd_options: '-z \"-config api.disablekey=true\"'\n"
-                    "      - run: nuclei -u http://localhost:8000 -severity critical -ec\n"
-                    "      - if: failure()\n"
-                    "        uses: actions/upload-artifact@v4\n"
-                    "        with: { name: dast-report, path: report_html.html }</code></pre>"
+<h3>4. Nuclei: detecção rápida via template declarativo</h3>
+<p>Nuclei usa templates declarativos (não código imperativo) para
+detectar CVEs conhecidas, misconfigurações comuns e tokens expostos
+acidentalmente — rápido e preciso justamente por focar em padrões JÁ
+conhecidos, em vez de tentar descobrir algo novo:</p>
+<pre><code>$ nuclei -u https://staging.exemplo.com \\
+    -t http/cves/ \\
+    -t http/exposures/ \\
+    -severity high,critical
 
-                    "<h3>6. OWASP Top 10 (2021): o que DAST detecta</h3>"
-                    "<table>"
-                    "<tr><th>Categoria</th><th>O que DAST detecta</th></tr>"
-                    "<tr><td>A01: Broken Access Control</td><td>IDOR via fuzz, paths não autorizados, BOLA</td></tr>"
-                    "<tr><td>A02: Cryptographic Failures</td><td>TLS fraco, mixed content, sem HSTS</td></tr>"
-                    "<tr><td>A03: Injection</td><td>SQLi, NoSQLi, command injection, XSS, LDAPi</td></tr>"
-                    "<tr><td>A04: Insecure Design</td><td>Limitado, DAST não 'pensa' como humano</td></tr>"
-                    "<tr><td>A05: Security Misconfiguration</td><td>Headers, debug=true, defaults expostos</td></tr>"
-                    "<tr><td>A06: Vulnerable Components</td><td>Detecta versões antigas</td></tr>"
-                    "<tr><td>A07: Auth Failures</td><td>Brute force, sessão fraca, credenciais default</td></tr>"
-                    "<tr><td>A08: Software/Data Integrity</td><td>Limitado</td></tr>"
-                    "<tr><td>A09: Logging/Monitoring</td><td>Não detecta diretamente</td></tr>"
-                    "<tr><td>A10: SSRF</td><td>Fuzz de URL parameters</td></tr>"
-                    "</table>"
+[2024-CVE-XXXX] [http] [high] https://staging.exemplo.com/.git/config
+[exposed-tokens] [http] [critical] https://staging.exemplo.com/.env</code></pre>
+<p>Encontrar um <code>.git/config</code> ou <code>.env</code> exposto
+publicamente é surpreendentemente comum — arquivos que nunca deveriam
+estar acessíveis via HTTP, mas que uma configuração de servidor web
+descuidada acaba servindo como se fossem estáticos comuns.</p>
 
-                    "<h3>7. Headers de segurança</h3>"
-                    "<p>DAST checa que app retorna headers apropriados:</p>"
-                    "<pre><code>Strict-Transport-Security: max-age=31536000; includeSubDomains; preload\n"
-                    "Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-abc123'\n"
-                    "X-Content-Type-Options: nosniff\n"
-                    "X-Frame-Options: DENY\n"
-                    "Referrer-Policy: strict-origin-when-cross-origin\n"
-                    "Permissions-Policy: geolocation=(), camera=()\n"
-                    "Cross-Origin-Opener-Policy: same-origin\n"
-                    "Cross-Origin-Embedder-Policy: require-corp</code></pre>"
-                    "<p>Mozilla Observatory dá score A+/F para sua url e sugere "
-                    "headers faltando.</p>"
+<h3>5. Um pipeline de CI que roda DAST contra o próprio build, não contra produção</h3>
+<pre><code>name: dast
+on:
+  pull_request: {}
+  schedule: [{ cron: '0 2 * * *' }]   # nightly
+jobs:
+  zap:
+    runs-on: ubuntu-latest
+    services:
+      app:
+        image: ghcr.io/empresa/app:${{ github.sha }}
+        ports: [8000:8000]
+      db:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: dast }
+    steps:
+      - run: ./scripts/wait-for-app.sh http://localhost:8000
+      - run: ./scripts/seed-test-data.sh
+      - uses: zaproxy/action-baseline@v0.10.0
+        with:
+          target: http://localhost:8000
+          rules_file_name: .zap/rules.tsv
+          cmd_options: '-z "-config api.disablekey=true"'
+      - run: nuclei -u http://localhost:8000 -severity critical -ec
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: dast-report, path: report_html.html }</code></pre>
+<p>Subir a aplicação como um "service container" EFÊMERO dentro do
+próprio job de CI, com dado sintético semeado especificamente para o
+teste, resolve o dilema de "onde rodar DAST sem risco": o alvo é
+descartado ao final do job, nunca chegando perto de dado real.</p>
 
-                    "<h3>8. CORS comum errado</h3>"
-                    "<p>API com CORS permissivo permite frontend malicioso fazer "
-                    "request com cookies de sessão:</p>"
-                    "<pre><code># RUIM\n"
-                    "Access-Control-Allow-Origin: *\n"
-                    "Access-Control-Allow-Credentials: true   # browser ignora isso, mas...\n"
-                    "\n"
-                    "# RUIM (reflete origin sem validar)\n"
-                    "Access-Control-Allow-Origin: $REQUEST_ORIGIN\n"
-                    "\n"
-                    "# BOM: allow-list explícito\n"
-                    "if origin in ALLOWED_ORIGINS:\n"
-                    "    Access-Control-Allow-Origin: origin</code></pre>"
+<h3>6. OWASP Top 10: onde DAST é forte, e onde ele simplesmente não alcança</h3>
+<table>
+<tr><th>Categoria</th><th>O que DAST detecta</th></tr>
+<tr><td>A01: Broken Access Control</td><td>IDOR via fuzz, paths não autorizados, BOLA</td></tr>
+<tr><td>A02: Cryptographic Failures</td><td>TLS fraco, mixed content, sem HSTS</td></tr>
+<tr><td>A03: Injection</td><td>SQLi, NoSQLi, command injection, XSS, LDAPi</td></tr>
+<tr><td>A04: Insecure Design</td><td>Limitado, DAST não 'pensa' como humano</td></tr>
+<tr><td>A05: Security Misconfiguration</td><td>Headers, debug=true, defaults expostos</td></tr>
+<tr><td>A06: Vulnerable Components</td><td>Detecta versões antigas</td></tr>
+<tr><td>A07: Auth Failures</td><td>Brute force, sessão fraca, credenciais default</td></tr>
+<tr><td>A08: Software/Data Integrity</td><td>Limitado</td></tr>
+<tr><td>A09: Logging/Monitoring</td><td>Não detecta diretamente</td></tr>
+<tr><td>A10: SSRF</td><td>Fuzz de URL parameters</td></tr>
+</table>
+<p>O padrão que emerge dessa tabela é revelador: DAST é forte
+justamente onde o problema se manifesta de forma OBSERVÁVEL pela rede —
+injeção, configuração exposta, autenticação fraca. É fraco ou cego onde
+o problema é de DESIGN ou de PROCESSO (design inseguro, integridade de
+dado, monitoramento ausente) — categorias que exigem julgamento humano
+sobre "isso deveria funcionar assim?", não um scanner automatizado
+seguindo um padrão conhecido.</p>
 
-                    "<h3>9. SSRF (Server-Side Request Forgery)</h3>"
-                    "<p>App faz request HTTP para URL fornecida pelo usuário. "
-                    "Atacante envia <code>http://169.254.169.254/latest/meta-data/</code> "
-                    "(metadata service AWS) e exfiltra credenciais.</p>"
-                    "<p>Mitigação:</p>"
-                    "<ul>"
-                    "<li>Allow-list de domínios.</li>"
-                    "<li>Bloqueio de IPs privados (10.x, 192.168.x, 169.254.x).</li>"
-                    "<li>IMDSv2 obrigatório no AWS.</li>"
-                    "<li>Egress restrito por NACL/Security Group.</li>"
-                    "</ul>"
+<h3>7. Cabeçalhos de segurança: pequenas linhas de configuração, redução real de risco</h3>
+<pre><code>Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-abc123'
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: geolocation=(), camera=()
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp</code></pre>
+<p>Cada um desses cabeçalhos fecha um vetor específico: HSTS impede
+downgrade para HTTP mesmo que alguém tente forçar; CSP restringe de onde
+script pode ser carregado, mitigando XSS mesmo se uma injeção
+acontecer; <code>X-Frame-Options</code> impede que sua página seja
+embutida num iframe malicioso (clickjacking); e os cabeçalhos de
+isolamento cross-origin mais recentes fecham vetores de vazamento entre
+abas do navegador. Ferramentas como o Mozilla Observatory avaliam uma
+URL pública e devolvem uma nota (A+ a F) junto com a lista exata de
+cabeçalhos faltando — uma forma rápida de auditar sem rodar nenhuma
+ferramenta local.</p>
 
-                    "<h3>10. DAST vs Pentest vs Bug Bounty</h3>"
-                    "<table>"
-                    "<tr><th>Tipo</th><th>Quando</th><th>Cobertura</th><th>Custo</th></tr>"
-                    "<tr><td>DAST (CI)</td><td>A cada PR</td><td>Padrões conhecidos automatizados</td><td>~$0</td></tr>"
-                    "<tr><td>Pentest</td><td>Anual ou pré-launch</td><td>Profundo, criatividade humana</td><td>$$$</td></tr>"
-                    "<tr><td>Bug Bounty</td><td>Contínuo</td><td>Crowd-sourced, qualidade variada</td><td>$ por bug encontrado</td></tr>"
-                    "<tr><td>Red Team</td><td>1-2x ano</td><td>Simula ataque real, full-scope</td><td>$$$$</td></tr>"
-                    "</table>"
-                    "<p>Estratégia madura: DAST contínuo + pentest anual (ou em "
-                    "release major) + bug bounty para coverage extra.</p>"
+<h3>8. CORS: o erro que parece proteção mas na prática abre a porta</h3>
+<pre><code># RUIM
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true   # browser ignora isso, mas...
 
-                    "<h3>11. Aviso legal</h3>"
-                    "<p>Escaneamento de sistema sem autorização expressa pode ser "
-                    "crime (Marco Civil BR, CFAA EUA, GDPR EU). Use somente:</p>"
-                    "<ul>"
-                    "<li>Sistemas próprios.</li>"
-                    "<li>Ambientes contratados (pentest).</li>"
-                    "<li>Bug bounty programs com escopo definido.</li>"
-                    "<li>Plataformas de prática (HackTheBox, TryHackMe, "
-                    "PortSwigger Academy).</li>"
-                    "</ul>"
+# RUIM (reflete origin sem validar)
+Access-Control-Allow-Origin: $REQUEST_ORIGIN
 
-                    "<h3>12. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>DAST contra produção sem autorização</strong>: "
-                    "potencial DoS + crime.</li>"
-                    "<li><strong>Sem auth context</strong>: vc só escaneia tela de login.</li>"
-                    "<li><strong>Mil falsos positivos</strong>: configure tuning, "
-                    "exclude paths.</li>"
-                    "<li><strong>Sem SLA de remediação</strong>: achados acumulam.</li>"
-                    "<li><strong>DAST sozinho</strong>: complementa SAST e pentest, "
-                    "não substitui.</li>"
-                    "</ul>"
+# BOM: allow-list explícito
+if origin in ALLOWED_ORIGINS:
+    Access-Control-Allow-Origin: origin</code></pre>
+<p>Um erro comum é achar que "refletir o Origin da requisição de volta"
+é uma configuração dinâmica inofensiva — na prática, isso permite
+QUALQUER site (incluindo um malicioso) fazer requisição autenticada com
+os cookies de sessão do usuário, porque o servidor aceita de volta
+exatamente a origem que o próprio atacante controla. A correção correta
+é uma allow-list EXPLÍCITA de origens confiáveis, verificada no
+servidor antes de ecoar de volta qualquer valor.</p>
+
+<h3>9. SSRF: quando a própria aplicação vira o proxy do atacante</h3>
+<p>Quando uma aplicação faz uma requisição HTTP para uma URL fornecida
+pelo próprio usuário (buscar uma imagem de um link, validar um webhook),
+um atacante pode fornecer
+<code>http://169.254.169.254/latest/meta-data/</code> — o endereço do
+serviço de metadados da AWS, acessível apenas de DENTRO da própria
+infraestrutura — e fazer a APLICAÇÃO (não o atacante diretamente) buscar
+credenciais internas da instância e devolvê-las na resposta. A mitigação
+combina várias camadas: uma allow-list explícita de domínios permitidos
+para essas requisições; bloqueio ativo de faixas de IP privado (10.x,
+192.168.x, e especificamente 169.254.x, onde vive o serviço de
+metadados); IMDSv2 obrigatório na AWS, que exige um token de sessão
+prévio dificultando exatamente esse tipo de exploração; e restrição de
+egress via NACL ou Security Group, limitando para onde a própria
+instância consegue iniciar conexão.</p>
+
+<h3>10. DAST, Pentest e Bug Bounty: métodos complementares, não substitutos</h3>
+<table>
+<tr><th>Tipo</th><th>Quando</th><th>Cobertura</th><th>Custo</th></tr>
+<tr><td>DAST (CI)</td><td>A cada PR</td><td>Padrões conhecidos automatizados</td><td>~$0</td></tr>
+<tr><td>Pentest</td><td>Anual ou pré-launch</td><td>Profundo, criatividade humana</td><td>$$$</td></tr>
+<tr><td>Bug Bounty</td><td>Contínuo</td><td>Crowd-sourced, qualidade variada</td><td>$ por bug encontrado</td></tr>
+<tr><td>Red Team</td><td>1-2x ano</td><td>Simula ataque real, full-scope</td><td>$$$$</td></tr>
+</table>
+<p>A diferença central entre DAST e pentest não é só profundidade — é
+CRIATIVIDADE: um pentester humano encadeia várias falhas de severidade
+baixa individualmente para produzir um comprometimento sério, um
+raciocínio que nenhuma ferramenta automatizada replica de forma
+confiável ainda. Uma estratégia madura combina as camadas: DAST contínuo
+pega regressão rápida e barata a cada mudança de código; pentest anual
+(ou antes de um lançamento importante) traz profundidade humana
+periódica; e um programa de bug bounty adiciona cobertura contínua de
+uma comunidade externa diversa, com custo proporcional ao que
+efetivamente encontrarem.</p>
+
+<h3>11. O aviso legal que precede qualquer scan: autorização não é opcional</h3>
+<p>Escanear um sistema sem autorização EXPRESSA pode configurar crime em
+várias jurisdições (Marco Civil da Internet no Brasil, CFAA nos EUA,
+regulamentações equivalentes na União Europeia) — mesmo com intenção
+puramente educativa ou "só para testar". Use DAST ativo apenas contra
+sistemas próprios, ambientes explicitamente contratados para pentest,
+programas de bug bounty com escopo formalmente definido, ou plataformas
+de prática desenhadas exatamente para esse fim (HackTheBox, TryHackMe,
+PortSwigger Web Security Academy) — nunca contra um alvo de terceiro sem
+permissão documentada.</p>
+
+<h3>12. Cinco anti-padrões que tornam DAST inútil ou perigoso</h3>
+<ul>
+<li><strong>DAST ativo contra produção sem autorização</strong>: risco
+real de causar negação de serviço, além da questão legal da seção
+11.</li>
+<li><strong>Sem contexto de autenticação</strong>: o scan só alcança a
+tela de login, deixando toda a superfície autenticada — normalmente a
+maior parte de uma aplicação real — completamente fora de cobertura.</li>
+<li><strong>Mil falsos positivos sem afinamento</strong>: sem
+configurar exclusões e ajustar regras, o time aprende a ignorar o
+relatório inteiro, inclusive os achados reais.</li>
+<li><strong>Sem SLA de remediação para o que é encontrado</strong>:
+achados acumulam indefinidamente sem correção, tornando o próprio scan
+um exercício sem efeito prático.</li>
+<li><strong>DAST como única linha de defesa</strong>: complementa SAST e
+pentest humano — nunca substitui nenhum dos dois, dado que cada método
+enxerga uma fatia diferente do problema (seção 1).</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -3228,217 +3475,271 @@ configuração incorreta ainda consegue contornar.</li>
                     "três pilares da observabilidade."
                 ),
                 "body": (
-                    "<h3>1. Pilhas comuns</h3>"
-                    "<table>"
-                    "<tr><th>Stack</th><th>Componentes</th><th>Notas</th></tr>"
-                    "<tr><td>ELK</td><td>Elasticsearch + Logstash + Kibana</td><td>Maduro, poderoso. Caro em escala (RAM-hungry).</td></tr>"
-                    "<tr><td>EFK</td><td>Elasticsearch + Fluentd/Bit + Kibana</td><td>Logstash → Fluent (mais leve).</td></tr>"
-                    "<tr><td>OpenSearch</td><td>Fork ASL2 do ES</td><td>Após mudança de licença ES (2021).</td></tr>"
-                    "<tr><td>Grafana Loki</td><td>Loki + Promtail/Vector + Grafana</td><td>Indexa só labels. Custo &lt;&lt; ELK.</td></tr>"
-                    "<tr><td>Datadog/Splunk/New Relic</td><td>SaaS</td><td>UX top, $ alto, retenção limitada.</td></tr>"
-                    "<tr><td>VictoriaLogs</td><td>OSS, eficiente</td><td>Performance forte, ainda jovem.</td></tr>"
-                    "</table>"
+                """<h3>1. Pilhas comuns: cada uma resolve o mesmo problema com um trade-off diferente</h3>
+<table>
+<tr><th>Stack</th><th>Componentes</th><th>Notas</th></tr>
+<tr><td>ELK</td><td>Elasticsearch + Logstash + Kibana</td><td>Maduro, poderoso. Caro em escala (RAM-hungry).</td></tr>
+<tr><td>EFK</td><td>Elasticsearch + Fluentd/Bit + Kibana</td><td>Logstash → Fluent (mais leve).</td></tr>
+<tr><td>OpenSearch</td><td>Fork ASL2 do ES</td><td>Após mudança de licença ES (2021).</td></tr>
+<tr><td>Grafana Loki</td><td>Loki + Promtail/Vector + Grafana</td><td>Indexa só labels. Custo &lt;&lt; ELK.</td></tr>
+<tr><td>Datadog/Splunk/New Relic</td><td>SaaS</td><td>UX top, $ alto, retenção limitada.</td></tr>
+<tr><td>VictoriaLogs</td><td>OSS, eficiente</td><td>Performance forte, ainda jovem.</td></tr>
+</table>
+<p>A escolha entre elas raramente é sobre qual é "melhor" em abstrato —
+é sobre onde o time quer pagar o custo. ELK/EFK entregam busca de texto
+completo poderosa, ao preço de indexar TUDO (caro em RAM e disco em
+volume alto). Loki inverte essa troca radicalmente (detalhado na seção
+4), indexando só metadados e comprimindo o resto — muito mais barato,
+mas com busca de conteúdo mais lenta. OpenSearch existe especificamente
+porque a Elastic mudou a licença do Elasticsearch em 2021 para uma menos
+permissiva, e a comunidade fez um fork sob licença Apache 2.0 aberta
+para preservar a opção open-source de verdade. E as opções SaaS
+(Datadog, Splunk, New Relic) trocam operação própria por assinatura —
+UX geralmente superior, mas custo que escala rápido com volume, e
+retenção padrão frequentemente mais curta do que uma solução self-hosted
+permitiria pelo mesmo orçamento.</p>
 
-                    "<h3>2. Logs estruturados (JSON)</h3>"
-                    "<p>Texto livre é ilegível por máquina. JSON em uma linha "
-                    "(NDJSON) permite query por campo:</p>"
-                    "<pre><code># RUIM\n"
-                    "[2024-04-25 10:30:15] INFO User 123 placed order 456 for $99.50\n"
-                    "\n"
-                    "# BOM\n"
-                    "{\"ts\":\"2024-04-25T10:30:15Z\",\"level\":\"info\",\"service\":\"orders\",\n"
-                    " \"event\":\"order_placed\",\"user_id\":\"u_123\",\"order_id\":\"o_456\",\n"
-                    " \"amount\":99.50,\"currency\":\"USD\",\"trace_id\":\"abc-123\",\n"
-                    " \"span_id\":\"span-xyz\"}</code></pre>"
-                    "<p>Campos padrão recomendados:</p>"
-                    "<ul>"
-                    "<li><code>ts</code>: ISO 8601 UTC com timezone.</li>"
-                    "<li><code>level</code>: debug/info/warn/error/fatal.</li>"
-                    "<li><code>service</code>: nome do app.</li>"
-                    "<li><code>env</code>: prod/staging/dev.</li>"
-                    "<li><code>version</code>: SHA do build.</li>"
-                    "<li><code>trace_id</code>, <code>span_id</code>: correlação "
-                    "com tracing (OpenTelemetry).</li>"
-                    "<li><code>user_id</code> hash (sem PII direto), "
-                    "<code>request_id</code>.</li>"
-                    "<li><code>event</code>: nome semântico do evento.</li>"
-                    "<li><code>message</code>: descrição humana opcional.</li>"
-                    "</ul>"
-                    "<p>Em Python:</p>"
-                    "<pre><code>import structlog\n"
-                    "structlog.configure(\n"
-                    "    processors=[\n"
-                    "        structlog.processors.add_log_level,\n"
-                    "        structlog.processors.TimeStamper(fmt='iso'),\n"
-                    "        structlog.contextvars.merge_contextvars,\n"
-                    "        structlog.processors.JSONRenderer(),\n"
-                    "    ],\n"
-                    ")\n"
-                    "log = structlog.get_logger()\n"
-                    "\n"
-                    "log.info('order_placed', user_id=user.id_hash, order_id=order.id, amount=99.50)\n"
-                    "# {\"event\":\"order_placed\",\"timestamp\":\"...\",\"level\":\"info\",...}</code></pre>"
+<h3>2. Log estruturado: texto livre é para humano ler, JSON é para máquina consultar</h3>
+<p>Um log em texto livre é fácil de escrever e ilegível para uma
+ferramenta buscar por campo específico — a única forma de "consultar"
+é grep por substring, frágil a qualquer mudança de formato:</p>
+<pre><code># RUIM
+[2024-04-25 10:30:15] INFO User 123 placed order 456 for $99.50
 
-                    "<h3>3. Coleta: app → coletor → backend</h3>"
-                    "<p>App escreve em stdout (12-factor). Coletor (DaemonSet em K8s, "
-                    "agent no host) lê e envia.</p>"
-                    "<table>"
-                    "<tr><th>Coletor</th><th>Linguagem</th><th>Notas</th></tr>"
-                    "<tr><td>Fluentd</td><td>Ruby</td><td>Veterano, plugins ricos.</td></tr>"
-                    "<tr><td>Fluent Bit</td><td>C</td><td>Mais leve; default em K8s.</td></tr>"
-                    "<tr><td>Vector</td><td>Rust</td><td>Performant, VRL para transformações.</td></tr>"
-                    "<tr><td>Promtail</td><td>Go</td><td>Específico para Loki.</td></tr>"
-                    "<tr><td>OTel Collector</td><td>Go</td><td>Multi-signal (logs+metrics+traces).</td></tr>"
-                    "<tr><td>Logstash</td><td>JVM</td><td>Pesado; legado.</td></tr>"
-                    "</table>"
-                    "<pre><code># Fluent Bit em K8s (DaemonSet), config\n"
-                    "[INPUT]\n"
-                    "    Name              tail\n"
-                    "    Path              /var/log/containers/*.log\n"
-                    "    Parser            docker\n"
-                    "    DB                /var/log/flb_kube.db\n"
-                    "    Tag               kube.*\n"
-                    "[FILTER]\n"
-                    "    Name              kubernetes\n"
-                    "    Match             kube.*\n"
-                    "    Merge_Log         On\n"
-                    "[FILTER]\n"
-                    "    Name              modify\n"
-                    "    Match             kube.*\n"
-                    "    Remove            stream\n"
-                    "[OUTPUT]\n"
-                    "    Name              loki\n"
-                    "    Match             kube.*\n"
-                    "    Host              loki.observability\n"
-                    "    Labels            $kubernetes['namespace_name'],$kubernetes['pod_name']</code></pre>"
+# BOM
+{"ts":"2024-04-25T10:30:15Z","level":"info","service":"orders",
+ "event":"order_placed","user_id":"u_123","order_id":"o_456",
+ "amount":99.50,"currency":"USD","trace_id":"abc-123",
+ "span_id":"span-xyz"}</code></pre>
+<p>Com JSON em uma linha (NDJSON), consultar "todas as ordens acima de
+$100 que falharam no serviço de pagamento" vira uma query estruturada
+por campo, não uma expressão regular tentando adivinhar onde o valor
+está na string. Um conjunto de campos padrão vale adotar
+consistentemente em toda a organização: <code>ts</code> em ISO 8601 UTC
+com timezone explícito; <code>level</code> seguindo a escala
+debug/info/warn/error/fatal; <code>service</code> e <code>env</code>
+identificando de onde veio; <code>version</code> (o SHA do build)
+permitindo correlacionar um comportamento com uma versão específica;
+<code>trace_id</code>/<code>span_id</code> para correlação com tracing
+distribuído (seção 8); um hash de <code>user_id</code> (nunca o valor
+direto se for sensível) mais <code>request_id</code>; um
+<code>event</code> semântico nomeando o que aconteceu; e opcionalmente
+uma <code>message</code> legível por humano complementando os campos
+estruturados. Em Python, uma biblioteca como structlog automatiza essa
+estrutura sem exigir montar o JSON manualmente a cada chamada de log:</p>
+<pre><code>import structlog
+structlog.configure(
+    processors=[
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt='iso'),
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.JSONRenderer(),
+    ],
+)
+log = structlog.get_logger()
 
-                    "<h3>4. Loki: low-cost via labels</h3>"
-                    "<p>Diferente de Elasticsearch, Loki <em>não indexa o conteúdo</em>. "
-                    "Indexa só labels (chave-valor). Conteúdo bruto é comprimido e "
-                    "lido sob demanda. Custo &lt;&lt; ELK.</p>"
-                    "<p>Trade-off: queries por substring varrem todos os logs (mais "
-                    "lento). Queries por label (<code>{namespace=\"prod\", "
-                    "service=\"api\", level=\"error\"}</code>) são rápidas.</p>"
-                    "<p>LogQL (linguagem de query Loki):</p>"
-                    "<pre><code># Filtro por labels + texto\n"
-                    "{namespace=\"prod\", service=\"api\"} |= \"error\" | json | status &gt;= 500\n"
-                    "\n"
-                    "# Métricas a partir de logs\n"
-                    "rate({namespace=\"prod\"} |= \"error\" [5m])\n"
-                    "\n"
-                    "# p99 latency dos logs\n"
-                    "quantile_over_time(0.99, {service=\"api\"} | json | unwrap latency_ms [5m])</code></pre>"
-                    "<p>Cuidado com cardinalidade: <em>nunca</em> use ID único "
-                    "(user_id, request_id) como label, explode índice.</p>"
+log.info('order_placed', user_id=user.id_hash, order_id=order.id, amount=99.50)
+# {"event":"order_placed","timestamp":"...","level":"info",...}</code></pre>
 
-                    "<h3>5. Retenção, custo e tiering</h3>"
-                    "<p>Logs crescem rápido (TBs/mês). Política por categoria:</p>"
-                    "<table>"
-                    "<tr><th>Categoria</th><th>Retenção típica</th></tr>"
-                    "<tr><td>Debug app</td><td>3-7 dias</td></tr>"
-                    "<tr><td>Info app</td><td>14-30 dias</td></tr>"
-                    "<tr><td>Error app</td><td>30-90 dias</td></tr>"
-                    "<tr><td>Audit (auth, perm change)</td><td>1-7 anos (compliance)</td></tr>"
-                    "<tr><td>Payment/PCI</td><td>1+ ano</td></tr>"
-                    "<tr><td>HIPAA</td><td>6 anos</td></tr>"
-                    "</table>"
-                    "<p>Tiering hot/warm/cold:</p>"
-                    "<ul>"
-                    "<li><strong>Hot</strong> (SSD, busca rápida): últimos 7d.</li>"
-                    "<li><strong>Warm</strong> (HDD, busca mais lenta): 7-30d.</li>"
-                    "<li><strong>Cold</strong> (S3 Glacier): 30d+.</li>"
-                    "</ul>"
-                    "<p>Em ELK: ILM (Index Lifecycle Management) automatiza.</p>"
+<h3>3. Coleta: da aplicação ao backend, passando por um agente dedicado</h3>
+<p>Seguindo o princípio 12-factor (aula de Docker Fundamentals), a
+aplicação escreve em stdout, e é responsabilidade de um COLETOR separado
+(rodando como DaemonSet em Kubernetes, ou agente no host) ler esse
+stream e encaminhar para o backend de armazenamento. Cada coletor tem um
+perfil de trade-off diferente:</p>
+<table>
+<tr><th>Coletor</th><th>Linguagem</th><th>Notas</th></tr>
+<tr><td>Fluentd</td><td>Ruby</td><td>Veterano, plugins ricos.</td></tr>
+<tr><td>Fluent Bit</td><td>C</td><td>Mais leve; default em K8s.</td></tr>
+<tr><td>Vector</td><td>Rust</td><td>Performant, VRL para transformações.</td></tr>
+<tr><td>Promtail</td><td>Go</td><td>Específico para Loki.</td></tr>
+<tr><td>OTel Collector</td><td>Go</td><td>Multi-signal (logs+metrics+traces).</td></tr>
+<tr><td>Logstash</td><td>JVM</td><td>Pesado; legado.</td></tr>
+</table>
+<p>Fluent Bit se tornou o padrão de fato em Kubernetes justamente por
+rodar em C — footprint de memória pequeno o suficiente para rodar como
+DaemonSet em TODO node sem competir por recurso com as cargas de
+trabalho reais. Uma configuração típica lê os arquivos de log de
+container, enriquece com metadados do Kubernetes (namespace, nome do
+pod), e encaminha para um backend como Loki:</p>
+<pre><code># Fluent Bit em K8s (DaemonSet), config
+[INPUT]
+    Name              tail
+    Path              /var/log/containers/*.log
+    Parser            docker
+    DB                /var/log/flb_kube.db
+    Tag               kube.*
+[FILTER]
+    Name              kubernetes
+    Match             kube.*
+    Merge_Log         On
+[FILTER]
+    Name              modify
+    Match             kube.*
+    Remove            stream
+[OUTPUT]
+    Name              loki
+    Match             kube.*
+    Host              loki.observability
+    Labels            $kubernetes['namespace_name'],$kubernetes['pod_name']</code></pre>
 
-                    "<h3>6. PII em logs: o pesadelo legal</h3>"
-                    "<p>Log com CPF/email/token vira problema:</p>"
-                    "<ul>"
-                    "<li>LGPD/GDPR: pode constituir vazamento.</li>"
-                    "<li>SIEM/Datadog: dados em terceiro.</li>"
-                    "<li>Backups: dado replicado em múltiplos lugares.</li>"
-                    "<li>Once logged, forever logged.</li>"
-                    "</ul>"
-                    "<p>Sanitize em camadas:</p>"
-                    "<ol>"
-                    "<li><strong>App</strong>: nunca log direto. Use "
-                    "<code>mask_email()</code>, <code>hash_user_id()</code>.</li>"
-                    "<li><strong>Coletor</strong>: filtros que apagam padrões "
-                    "(regex CPF, cartão).</li>"
-                    "<li><strong>Pré-ingest</strong>: Vector VRL transforma.</li>"
-                    "</ol>"
-                    "<pre><code># Vector VRL para sanitize\n"
-                    "transforms.sanitize_pii:\n"
-                    "  type: remap\n"
-                    "  inputs: [logs_in]\n"
-                    "  source: |\n"
-                    "    .message = redact(.message, filters: [\\\n"
-                    "      {\"type\": \"pattern\", \"patterns\": [r'\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}']},\\\n"
-                    "      {\"type\": \"pattern\", \"patterns\": [r'\\d{16}']}\\\n"
-                    "    ])\n"
-                    "    if exists(.user.email) {\n"
-                    "      .user.email_hash = sha2(string!(.user.email), \"SHA-256\")\n"
-                    "      del(.user.email)\n"
-                    "    }</code></pre>"
-                    "<p>Lista do que <strong>nunca</strong> logar:</p>"
-                    "<ul>"
-                    "<li>Senhas, tokens, secrets.</li>"
-                    "<li>Cartão de crédito, CVV.</li>"
-                    "<li>CPF/SSN/RG sem mask.</li>"
-                    "<li>JWT, session cookie.</li>"
-                    "<li>Headers de auth (<code>Authorization</code>).</li>"
-                    "<li>Body de request com PII em rotas sensíveis.</li>"
-                    "</ul>"
+<h3>4. Loki: barato porque indexa só o rótulo, não o conteúdo</h3>
+<p>A diferença estrutural de Loki para Elasticsearch é a decisão central
+de design: Loki NÃO indexa o conteúdo do log — indexa só os LABELS
+(pares chave-valor), enquanto o conteúdo bruto é comprimido e lido sob
+demanda quando uma query específica precisa dele. Essa escolha é o que
+torna o custo de operação de Loki drasticamente menor que ELK em volumes
+altos — o índice fica pequeno mesmo com terabytes de log bruto
+armazenado. O trade-off correspondente: uma busca por SUBSTRING dentro
+do conteúdo precisa varrer todos os logs que casam com o filtro de
+label (mais lenta), enquanto uma busca por LABEL específico
+(<code>{namespace="prod", service="api", level="error"}</code>) é
+rápida, porque só toca o índice, não o conteúdo bruto. LogQL, a
+linguagem de query do Loki, combina os dois:</p>
+<pre><code># Filtro por labels + texto
+{namespace="prod", service="api"} |= "error" | json | status &gt;= 500
 
-                    "<h3>7. Sampling: reduz volume mantendo sinal</h3>"
-                    "<ul>"
-                    "<li><strong>Em logs DEBUG</strong>: 1-10% sampling. ERROR sempre 100%.</li>"
-                    "<li><strong>Em traces</strong>: head sampling 1%; tail sampling "
-                    "100% para errors/slow.</li>"
-                    "<li><strong>Cost-based</strong>: dynamic sampling.</li>"
-                    "</ul>"
+# Métricas a partir de logs
+rate({namespace="prod"} |= "error" [5m])
 
-                    "<h3>8. Os três pilares da observabilidade</h3>"
-                    "<table>"
-                    "<tr><th>Sinal</th><th>Responde</th><th>Custo típico</th></tr>"
-                    "<tr><td>Logs</td><td>O que aconteceu (eventos)</td><td>Alto (volume)</td></tr>"
-                    "<tr><td>Métricas</td><td>Quanto/com que frequência</td><td>Baixo (agregação)</td></tr>"
-                    "<tr><td>Traces</td><td>Qual fluxo (entre serviços)</td><td>Médio (com sampling)</td></tr>"
-                    "</table>"
-                    "<p>Correlation id (<code>trace_id</code>) permite saltar entre "
-                    "os três. OpenTelemetry padroniza em coleta única.</p>"
-                    "<pre><code># Em log\n"
-                    "{\"event\":\"order_placed\",\"trace_id\":\"abc-123\",...}\n"
-                    "\n"
-                    "# Em métrica (exemplar do Prometheus)\n"
-                    "http_request_duration_seconds_bucket{...} 0.42 # exemplar trace_id=abc-123\n"
-                    "\n"
-                    "# Em trace\n"
-                    "trace_id=abc-123 → vê spans dos serviços envolvidos</code></pre>"
+# p99 latency dos logs
+quantile_over_time(0.99, {service="api"} | json | unwrap latency_ms [5m])</code></pre>
+<p>O cuidado mais crítico ao operar Loki: NUNCA usar um identificador
+com alta cardinalidade (<code>user_id</code>, <code>request_id</code>)
+como label — cada valor distinto de label vira uma série de índice
+separada, e um identificador único por requisição explode o índice para
+um tamanho tão grande quanto o problema que Loki foi escolhido
+especificamente para evitar.</p>
 
-                    "<h3>9. Stack moderna recomendada</h3>"
-                    "<ul>"
-                    "<li><strong>Logs</strong>: Loki (custo) ou OpenSearch (search rico).</li>"
-                    "<li><strong>Métricas</strong>: Prometheus + Grafana.</li>"
-                    "<li><strong>Traces</strong>: Jaeger ou Tempo + OpenTelemetry.</li>"
-                    "<li><strong>Coleta</strong>: OTel Collector ou Vector.</li>"
-                    "<li><strong>Visualização única</strong>: Grafana (logs, "
-                    "metrics, traces na mesma interface).</li>"
-                    "<li><strong>Alertas</strong>: Alertmanager + PagerDuty/"
-                    "Opsgenie.</li>"
-                    "</ul>"
+<h3>5. Retenção e tiering: nem todo log merece o mesmo tempo de vida</h3>
+<p>Log cresce rápido — facilmente terabytes por mês numa aplicação de
+tráfego médio — e reter tudo indefinidamente no mesmo tier de
+armazenamento caro é desperdício. Uma política sensata varia por
+categoria: log de DEBUG raramente precisa de mais que alguns dias (3 a
+7); log de INFO tipicamente 14 a 30 dias; log de ERROR merece um pouco
+mais, 30 a 90 dias, por servir de evidência de incidentes recentes; e
+log de AUDITORIA (autenticação, mudança de permissão) frequentemente
+precisa de 1 a 7 ANOS por exigência regulatória — pagamento sob PCI DSS
+exige pelo menos 1 ano, e dado de saúde sob HIPAA exige 6 anos. A
+estratégia de "tiering" reflete essa diferença de urgência de acesso:
+armazenamento HOT (SSD, busca rápida) para os últimos 7 dias, WARM (HDD,
+busca mais lenta) para 7 a 30 dias, e COLD (algo como S3 Glacier) para
+qualquer coisa além de 30 dias — dado raramente consultado não precisa
+pagar o preço de armazenamento de acesso rápido. No ELK, o ILM (Index
+Lifecycle Management) automatiza essa transição entre tiers sem
+intervenção manual contínua.</p>
 
-                    "<h3>10. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>Log em arquivo dentro do container</strong>: ninguém vê.</li>"
-                    "<li><strong>Texto livre não-estruturado</strong>: ilegível por máquina.</li>"
-                    "<li><strong>PII em log</strong>: bomba-relógio legal.</li>"
-                    "<li><strong>Cardinalidade alta em labels</strong>: explode índice.</li>"
-                    "<li><strong>Retenção 'para sempre'</strong>: custo descontrolado.</li>"
-                    "<li><strong>Sem correlation id</strong>: incidente vira detetive.</li>"
-                    "<li><strong>print() em vez de logger</strong>: sem level, sem JSON.</li>"
-                    "<li><strong>Logar tudo em DEBUG em prod</strong>: ruído + custo.</li>"
-                    "<li><strong>Stack trace para usuário</strong>: leak de info.</li>"
-                    "</ul>"
+<h3>6. PII em log: um vazamento que já aconteceu no momento em que a linha foi escrita</h3>
+<p>Um log contendo CPF, e-mail em claro ou token de acesso não é só um
+risco de segurança abstrato — é um problema concreto em várias frentes
+simultâneas: sob LGPD/GDPR, pode constituir um vazamento de dado pessoal
+por si só; se o log é enviado a um SIEM ou plataforma SaaS de terceiro
+(Datadog, Splunk), o dado sensível agora está fisicamente presente em
+infraestrutura de outra empresa; backups replicam esse dado sensível em
+múltiplos lugares adicionais, cada um uma superfície de exposição extra;
+e o princípio mais desconfortável de todos: uma vez logado, o dado
+permanece logado — apagar retroativamente de todos os sistemas
+downstream (backup, réplica, cache) raramente é trivial. A sanitização
+precisa acontecer em CAMADAS: na aplicação, nunca logar o valor sensível
+diretamente — usar funções dedicadas como <code>mask_email()</code> ou
+<code>hash_user_id()</code> antes mesmo de chamar o logger; no coletor,
+filtros que detectam e removem padrões conhecidos (regex de CPF, de
+número de cartão) como uma segunda linha de defesa; e no estágio de
+pré-ingestão, uma ferramenta como Vector com sua linguagem VRL pode
+transformar o dado antes dele chegar ao armazenamento definitivo:</p>
+<pre><code># Vector VRL para sanitize
+transforms.sanitize_pii:
+  type: remap
+  inputs: [logs_in]
+  source: |
+    .message = redact(.message, filters: [\\
+      {"type": "pattern", "patterns": [r'\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}']},\\
+      {"type": "pattern", "patterns": [r'\\d{16}']}\\
+    ])
+    if exists(.user.email) {
+      .user.email_hash = sha2(string!(.user.email), "SHA-256")
+      del(.user.email)
+    }</code></pre>
+<p>Uma lista curta do que NUNCA deveria aparecer em log, sob nenhuma
+circunstância: senha, token ou segredo de qualquer natureza; número de
+cartão de crédito ou CVV; CPF/SSN/RG sem mascaramento; JWT ou cookie de
+sessão; o cabeçalho <code>Authorization</code> completo; e o corpo
+inteiro de uma requisição em rotas que lidam com dado sensível.</p>
+
+<h3>7. Sampling: manter o sinal relevante, descartar o volume que não agrega</h3>
+<p>Em log de nível DEBUG, amostrar 1% a 10% do volume total costuma
+preservar sinal suficiente para debug, mantendo custo de armazenamento
+controlado — enquanto log de ERROR deveria ser preservado a 100%, já que
+cada ocorrência individual pode ser o único registro de um incidente
+específico. Em traces (detalhado na aula de Observabilidade Avançada), o
+mesmo princípio se aplica com nuance: "head sampling" de 1% do tráfego
+total, combinado com "tail sampling" garantindo 100% de captura para
+erros e requisições lentas especificamente — o padrão que prioriza
+justamente os casos raros e caros de perder. Sampling dinâmico baseado
+em custo ajusta essa taxa automaticamente conforme o orçamento de
+observabilidade disponível.</p>
+
+<h3>8. Os três pilares, e por que log sozinho não conta a história inteira</h3>
+<table>
+<tr><th>Sinal</th><th>Responde</th><th>Custo típico</th></tr>
+<tr><td>Logs</td><td>O que aconteceu (eventos)</td><td>Alto (volume)</td></tr>
+<tr><td>Métricas</td><td>Quanto/com que frequência</td><td>Baixo (agregação)</td></tr>
+<tr><td>Traces</td><td>Qual fluxo (entre serviços)</td><td>Médio (com sampling)</td></tr>
+</table>
+<p>Um <code>trace_id</code> compartilhado entre os três sinais é o que
+permite SALTAR de um para o outro durante uma investigação — ver um pico
+de erro numa métrica, filtrar os logs daquele intervalo específico pelo
+mesmo <code>trace_id</code>, e de lá pular direto para a árvore de spans
+que mostra exatamente onde o tempo foi gasto ou onde a falha ocorreu.
+OpenTelemetry padroniza essa correlação numa coleta única, em vez de
+cada sinal vivendo em ferramentas isoladas sem conexão entre si:</p>
+<pre><code># Em log
+{"event":"order_placed","trace_id":"abc-123",...}
+
+# Em métrica (exemplar do Prometheus)
+http_request_duration_seconds_bucket{...} 0.42 # exemplar trace_id=abc-123
+
+# Em trace
+trace_id=abc-123 → vê spans dos serviços envolvidos</code></pre>
+
+<h3>9. Uma stack moderna recomendada, peça por peça</h3>
+<p>Para logs, Loki quando custo é a prioridade, ou OpenSearch quando
+busca rica de texto importa mais que economia. Para métricas, Prometheus
+com Grafana como visualização, o par mais estabelecido do ecossistema
+cloud-native. Para traces, Jaeger ou Tempo alimentados por
+instrumentação OpenTelemetry. Para coleta, o OTel Collector (multi-sinal
+nativo) ou Vector (mais flexível para transformação complexa via VRL).
+Grafana como camada de visualização ÚNICA permite consultar logs,
+métricas e traces na mesma interface, sem alternar entre ferramentas
+diferentes durante uma investigação. E Alertmanager integrado a
+PagerDuty ou Opsgenie fecha o ciclo, transformando uma condição
+detectada em notificação para um humano responder.</p>
+
+<h3>10. Nove anti-padrões que aparecem repetidamente em operações de log mal desenhadas</h3>
+<ul>
+<li><strong>Log em arquivo dentro do container</strong>: nenhuma
+ferramenta de coleta externa o vê por padrão.</li>
+<li><strong>Texto livre não-estruturado</strong>: ilegível por máquina,
+força busca frágil por substring.</li>
+<li><strong>PII em log</strong>: um risco legal e de segurança
+concreto, detalhado na seção 6.</li>
+<li><strong>Cardinalidade alta em labels do Loki</strong>: explode o
+índice exatamente como descrito na seção 4.</li>
+<li><strong>Retenção "para sempre" sem categorização</strong>: custo de
+armazenamento cresce sem limite e sem justificativa proporcional ao
+valor do dado retido.</li>
+<li><strong>Sem ID de correlação</strong>: investigar um incidente
+distribuído vira trabalho de detetive sem nenhuma pista compartilhada
+entre serviços.</li>
+<li><strong>`print()` em vez de logger estruturado</strong>: sem nível,
+sem JSON, sem nenhum dos campos padrão da seção 2.</li>
+<li><strong>Logar tudo em nível DEBUG em produção</strong>: ruído
+excessivo mascarando o que realmente importa, além do custo direto de
+armazenamento desnecessário.</li>
+<li><strong>Stack trace completo devolvido ao usuário final</strong>:
+vaza detalhe interno de implementação, o mesmo problema abordado na aula
+de API Security.</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
