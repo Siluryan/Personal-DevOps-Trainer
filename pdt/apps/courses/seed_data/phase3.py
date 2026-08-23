@@ -1513,254 +1513,291 @@ mesmo incidente.</p>"""
                     "do processo (DORA metrics)."
                 ),
                 "body": (
-                    "<h3>1. CI vs CD vs CD: três conceitos, duas siglas</h3>"
-                    "<p><strong>CI (Continuous Integration)</strong>: a cada commit, código "
-                    "é mergeado e validado, build, lint, testes unitários, SAST, SCA. "
-                    "Objetivo: encontrar problema em minutos, não dias. Se o build quebra, "
-                    "<em>todo o time para</em> até consertar.</p>"
-                    "<p><strong>CD (Continuous Delivery)</strong>: artefato sempre pronto "
-                    "para deploy a qualquer momento, mas <em>humano aperta o botão</em>. "
-                    "Comum em times que ainda querem aprovação humana.</p>"
-                    "<p><strong>CD (Continuous Deployment)</strong>: cada commit que passa "
-                    "no pipeline vai automaticamente para produção. Maturidade alta. "
-                    "Requer testes e telemetria muito bons.</p>"
+                """<h3>1. CI vs CD vs CD: três conceitos, duas siglas</h3>
+<p><strong>CI (Continuous Integration)</strong> significa que a cada
+commit, o código é mergeado e validado imediatamente — build, lint,
+teste unitário, SAST, SCA — com o objetivo de encontrar problema em
+minutos, não dias depois quando já está enterrado sob outras mudanças.
+A regra que sustenta isso é: se o build quebra, TODO o time para até
+consertar, em vez de continuar empilhando trabalho em cima de uma base
+quebrada. <strong>CD (Continuous Delivery)</strong> vai um passo além:
+o artefato fica sempre pronto para deploy a qualquer momento, mas um
+HUMANO ainda aperta o botão final — comum em times que preferem manter
+essa aprovação explícita. E <strong>CD (Continuous Deployment)</strong>
+remove até esse último passo manual: todo commit que passa pelo
+pipeline inteiro vai automaticamente para produção, sem intervenção —
+um nível de maturidade que exige teste e telemetria muito robustos antes
+de fazer sentido.</p>
 
-                    "<h3>2. Pipeline mínimo de qualidade</h3>"
-                    "<pre><code>commit → lint → unit tests → build → security scans →\n"
-                    "         push artefato → deploy dev → integration tests →\n"
-                    "         deploy staging → smoke + e2e → [approval] → deploy prod</code></pre>"
-                    "<p>Cada etapa deve <strong>falhar rápido</strong>: lint em segundos, "
-                    "unit em &lt;5min, integration em &lt;15min. Pipeline lento é pipeline "
-                    "ignorado.</p>"
+<h3>2. Pipeline mínimo de qualidade</h3>
+<pre><code>commit → lint → unit tests → build → security scans →
+         push artefato → deploy dev → integration tests →
+         deploy staging → smoke + e2e → [approval] → deploy prod</code></pre>
+<p>Cada etapa precisa <strong>falhar rápido</strong> — lint em
+segundos, unit test em menos de 5 minutos, integration test em menos de
+15 — porque um pipeline lento é um pipeline que o time aprende a
+ignorar ou pular, na prática anulando todo o propósito de tê-lo.</p>
 
-                    "<h3>3. GitHub Actions: pipeline completo de exemplo</h3>"
-                    "<pre><code>name: ci-cd\n"
-                    "on:\n"
-                    "  push: { branches: [main] }\n"
-                    "  pull_request: {}\n"
-                    "permissions:\n"
-                    "  contents: read\n"
-                    "  packages: write\n"
-                    "  id-token: write\n"
-                    "  security-events: write\n"
-                    "concurrency:\n"
-                    "  group: ${{ github.workflow }}-${{ github.ref }}\n"
-                    "  cancel-in-progress: true\n"
-                    "jobs:\n"
-                    "  lint:\n"
-                    "    runs-on: ubuntu-latest\n"
-                    "    steps:\n"
-                    "      - uses: actions/checkout@v4\n"
-                    "      - uses: actions/setup-python@v5\n"
-                    "        with: { python-version: '3.12', cache: 'pip' }\n"
-                    "      - run: pip install -r requirements-dev.txt\n"
-                    "      - run: ruff check .\n"
-                    "      - run: ruff format --check .\n"
-                    "      - run: mypy app\n"
-                    "  test:\n"
-                    "    needs: lint\n"
-                    "    runs-on: ubuntu-latest\n"
-                    "    services:\n"
-                    "      postgres:\n"
-                    "        image: postgres:16\n"
-                    "        env: { POSTGRES_PASSWORD: ci }\n"
-                    "        options: --health-cmd pg_isready\n"
-                    "    steps:\n"
-                    "      - uses: actions/checkout@v4\n"
-                    "      - uses: actions/setup-python@v5\n"
-                    "        with: { python-version: '3.12' }\n"
-                    "      - run: pip install -r requirements-dev.txt\n"
-                    "      - run: pytest --cov=app --cov-report=xml\n"
-                    "      - uses: codecov/codecov-action@v4\n"
-                    "  security:\n"
-                    "    needs: lint\n"
-                    "    runs-on: ubuntu-latest\n"
-                    "    steps:\n"
-                    "      - uses: actions/checkout@v4\n"
-                    "      - uses: aquasecurity/trivy-action@master\n"
-                    "        with:\n"
-                    "          scan-type: fs\n"
-                    "          severity: 'CRITICAL,HIGH'\n"
-                    "          exit-code: '1'\n"
-                    "      - uses: returntocorp/semgrep-action@v1\n"
-                    "        with: { config: p/owasp-top-ten }\n"
-                    "      - uses: gitleaks/gitleaks-action@v2\n"
-                    "  build:\n"
-                    "    needs: [test, security]\n"
-                    "    runs-on: ubuntu-latest\n"
-                    "    outputs:\n"
-                    "      digest: ${{ steps.push.outputs.digest }}\n"
-                    "    steps:\n"
-                    "      - uses: actions/checkout@v4\n"
-                    "      - uses: docker/setup-buildx-action@v3\n"
-                    "      - uses: docker/login-action@v3\n"
-                    "        with:\n"
-                    "          registry: ghcr.io\n"
-                    "          username: ${{ github.actor }}\n"
-                    "          password: ${{ secrets.GITHUB_TOKEN }}\n"
-                    "      - id: push\n"
-                    "        uses: docker/build-push-action@v5\n"
-                    "        with:\n"
-                    "          push: true\n"
-                    "          tags: |\n"
-                    "            ghcr.io/empresa/app:${{ github.sha }}\n"
-                    "            ghcr.io/empresa/app:latest\n"
-                    "          cache-from: type=gha\n"
-                    "          cache-to: type=gha,mode=max\n"
-                    "      - uses: aquasecurity/trivy-action@master\n"
-                    "        with:\n"
-                    "          image-ref: ghcr.io/empresa/app:${{ github.sha }}\n"
-                    "          severity: 'CRITICAL'\n"
-                    "          exit-code: '1'\n"
-                    "      - uses: sigstore/cosign-installer@v3\n"
-                    "      - run: cosign sign --yes ghcr.io/empresa/app@${{ steps.push.outputs.digest }}\n"
-                    "  deploy-staging:\n"
-                    "    needs: build\n"
-                    "    if: github.ref == 'refs/heads/main'\n"
-                    "    environment: staging\n"
-                    "    runs-on: ubuntu-latest\n"
-                    "    steps:\n"
-                    "      - uses: aws-actions/configure-aws-credentials@v4\n"
-                    "        with:\n"
-                    "          role-to-assume: arn:aws:iam::111:role/deployer\n"
-                    "          aws-region: us-east-1\n"
-                    "      - run: ./scripts/deploy.sh staging ${{ github.sha }}\n"
-                    "      - run: ./scripts/smoke-tests.sh https://staging.app\n"
-                    "  deploy-prod:\n"
-                    "    needs: deploy-staging\n"
-                    "    environment: production   # gate manual\n"
-                    "    runs-on: ubuntu-latest\n"
-                    "    steps:\n"
-                    "      - run: ./scripts/deploy.sh prod ${{ github.sha }}</code></pre>"
-                    "<p>Pontos importantes:</p>"
-                    "<ul>"
-                    "<li><code>concurrency</code>: cancela runs antigos do mesmo branch.</li>"
-                    "<li><code>permissions</code>: princípio do menor privilégio (write só "
-                    "onde precisa).</li>"
-                    "<li>OIDC para AWS sem armazenar keys.</li>"
-                    "<li><code>environment: production</code>: gate manual; mais "
-                    "secrets/wait timer/required reviewers configurados na UI.</li>"
-                    "<li>Cosign assina imagem; admission controller K8s pode verificar.</li>"
-                    "</ul>"
+<h3>3. GitHub Actions: pipeline completo de exemplo</h3>
+<pre><code>name: ci-cd
+on:
+  push: { branches: [main] }
+  pull_request: {}
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  security-events: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12', cache: 'pip' }
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy app
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: ci }
+        options: --health-cmd pg_isready
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r requirements-dev.txt
+      - run: pytest --cov=app --cov-report=xml
+      - uses: codecov/codecov-action@v4
+  security:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+      - uses: returntocorp/semgrep-action@v1
+        with: { config: p/owasp-top-ten }
+      - uses: gitleaks/gitleaks-action@v2
+  build:
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: |
+            ghcr.io/empresa/app:${{ github.sha }}
+            ghcr.io/empresa/app:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/empresa/app:${{ github.sha }}
+          severity: 'CRITICAL'
+          exit-code: '1'
+      - uses: sigstore/cosign-installer@v3
+      - run: cosign sign --yes ghcr.io/empresa/app@${{ steps.push.outputs.digest }}
+  deploy-staging:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::111:role/deployer
+          aws-region: us-east-1
+      - run: ./scripts/deploy.sh staging ${{ github.sha }}
+      - run: ./scripts/smoke-tests.sh https://staging.app
+  deploy-prod:
+    needs: deploy-staging
+    environment: production   # gate manual
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./scripts/deploy.sh prod ${{ github.sha }}</code></pre>
+<p>Vale destacar cinco detalhes desse pipeline que não são acidente:
+<code>concurrency</code> cancela execução antiga do mesmo branch quando
+um push novo chega, evitando gastar minuto de CI num commit já
+obsoleto; <code>permissions</code> segue o princípio do menor
+privilégio, concedendo write apenas onde realmente é necessário;
+OIDC autentica na AWS sem nenhuma chave de longa duração armazenada;
+<code>environment: production</code> implementa o gate manual — com
+secret adicional, timer de espera ou reviewer obrigatório configurável
+diretamente na UI do GitHub; e a assinatura via Cosign na etapa de
+build permite que um admission controller no Kubernetes verifique a
+integridade da imagem antes de rodá-la.</p>
 
-                    "<h3>4. Estratégias de deploy</h3>"
-                    "<h4>4.1 Recriação (recreate)</h4>"
-                    "<p>Para ambiente novo. Mata todos os pods antigos, sobe novos. Causa "
-                    "downtime. Bom para dev/QA, ruim para prod.</p>"
-                    "<h4>4.2 Rolling</h4>"
-                    "<p>Substitui réplicas aos poucos. Padrão em K8s. Não tem downtime se "
-                    "app suporta múltiplas versões coexistindo. Rollback é rolar de volta "
-                    "(lento).</p>"
-                    "<pre><code>spec:\n"
-                    "  strategy:\n"
-                    "    type: RollingUpdate\n"
-                    "    rollingUpdate:\n"
-                    "      maxSurge: 25%\n"
-                    "      maxUnavailable: 0</code></pre>"
-                    "<h4>4.3 Blue-Green</h4>"
-                    "<p>Dois ambientes idênticos: blue (atual) e green (novo). Você "
-                    "mantém os dois rodando, faz deploy no green, valida, troca o tráfego "
-                    "do load balancer. Rollback é trocar de volta, segundos.</p>"
-                    "<p>Custo: dobrado durante a transição. Bom para sistemas que toleram "
-                    "duplicação de recursos por algumas horas.</p>"
-                    "<h4>4.4 Canary</h4>"
-                    "<p>Libera nova versão para X% dos usuários (ex.: 5%), monitora "
-                    "métricas (errors, latency, business KPIs). Se ok, aumenta para 25%, "
-                    "50%, 100%. Se ruim, rollback.</p>"
-                    "<p>Origem: canários em mina de carvão, morriam antes dos humanos como "
-                    "alarme. Aqui, % pequeno de tráfego sente o problema antes da maioria.</p>"
-                    "<p>Argo Rollouts e Flagger automatizam canary com promoção baseada "
-                    "em Prometheus/Datadog metrics.</p>"
-                    "<h4>4.5 Feature flags</h4>"
-                    "<p>Deploy desacoplado de release. Código vai para prod desligado, "
-                    "ativa-se gradualmente por flag. LaunchDarkly, Unleash, OpenFeature, "
-                    "ConfigCat. Permite A/B test, kill switch, rollback instantâneo "
-                    "sem redeploy.</p>"
-                    "<pre><code>if (flags.isEnabled('new-checkout-flow', user)) {\n"
-                    "    return newCheckout(req);\n"
-                    "}\n"
-                    "return oldCheckout(req);</code></pre>"
+<h3>4. Estratégias de deploy</h3>
+<h4>4.1 Recriação (recreate)</h4>
+<p>A estratégia mais simples: mata todos os pods antigos e sobe os
+novos em seguida. Causa downtime real durante a transição — aceitável
+em dev/QA, praticamente inaceitável em produção.</p>
+<h4>4.2 Rolling</h4>
+<p>Substitui réplica por réplica gradualmente, o padrão default no
+Kubernetes. Não causa downtime SE a aplicação suporta múltiplas versões
+coexistindo ao mesmo tempo durante a transição — o rollback, porém, é
+literalmente rolar o processo de volta, e por isso é relativamente
+lento:</p>
+<pre><code>spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0</code></pre>
+<h4>4.3 Blue-Green</h4>
+<p>Mantém dois ambientes idênticos rodando ao mesmo tempo — blue (a
+versão atual) e green (a nova). O deploy acontece no green, é validado
+isoladamente, e só então o load balancer troca o tráfego de um lado
+para o outro de uma vez. Isso torna o rollback quase instantâneo — basta
+trocar de volta — ao custo de manter recurso dobrado durante toda a
+janela de transição, algo aceitável para sistema que tolera essa
+duplicação por algumas horas.</p>
+<h4>4.4 Canary</h4>
+<p>Libera a versão nova para uma fração pequena dos usuários (5%, por
+exemplo), monitora métrica real (erro, latência, KPI de negócio), e só
+então aumenta gradualmente para 25%, 50%, 100% — ou reverte
+imediatamente se algo sair errado. O nome vem do canário usado em minas
+de carvão: o pássaro morria antes do gás afetar os mineiros, servindo
+como alarme antecipado — aqui, a pequena fração de tráfego sente o
+problema antes que ele afete a maioria dos usuários. Argo Rollouts e
+Flagger automatizam esse processo, promovendo a versão automaticamente
+com base em métrica do Prometheus ou Datadog.</p>
+<h4>4.5 Feature flags</h4>
+<p>Desacopla completamente deploy de release: o código chega em
+produção já DESLIGADO, e é ativado gradualmente depois, controlado por
+flag — não por um novo deploy. LaunchDarkly, Unleash, OpenFeature e
+ConfigCat são as ferramentas dominantes desse padrão, que viabiliza A/B
+test, kill switch instantâneo, e rollback sem precisar de nenhum
+redeploy:</p>
+<pre><code>if (flags.isEnabled('new-checkout-flow', user)) {
+    return newCheckout(req);
+}
+return oldCheckout(req);</code></pre>
 
-                    "<h3>5. Artefatos imutáveis</h3>"
-                    "<p>Princípio: o mesmo binário/imagem que passou em staging vai para "
-                    "prod, identificado por hash/SHA. Nada de 'rebuild para prod', você "
-                    "está testando outra coisa.</p>"
-                    "<p>Isso significa:</p>"
-                    "<ul>"
-                    "<li>Tag por commit SHA (<code>app:abc1234</code>) ou versão semver "
-                    "(<code>app:v1.4.2</code>).</li>"
-                    "<li>Evite <code>latest</code> em produção, não é rastreável.</li>"
-                    "<li>Build uma vez, promova entre ambientes.</li>"
-                    "<li>Configurações injetadas via env vars / secrets externos, não no "
-                    "build.</li>"
-                    "<li>Assinatura (Cosign) garante integridade.</li>"
-                    "</ul>"
+<h3>5. Artefatos imutáveis</h3>
+<p>O princípio central: o MESMO binário ou imagem que passou em
+staging é exatamente o que vai para produção, identificado por hash ou
+SHA — nunca um "rebuild para produção", porque rebuildar significa
+testar uma coisa e rodar outra ligeiramente diferente. Na prática isso
+exige tag por commit SHA (<code>app:abc1234</code>) ou versão semver
+(<code>app:v1.4.2</code>), nunca <code>latest</code> em produção — essa
+tag não é rastreável a nenhum commit específico; build uma vez só,
+promovendo o mesmo artefato entre ambientes em vez de reconstruir a
+cada estágio; configuração injetada via variável de ambiente ou segredo
+externo, nunca embutida durante o build; e assinatura via Cosign
+garantindo que o artefato não foi adulterado entre a construção e a
+execução.</p>
 
-                    "<h3>6. Pipeline-as-code</h3>"
-                    "<p>O pipeline mora no repo: <code>.github/workflows/</code>, "
-                    "<code>.gitlab-ci.yml</code>, <code>Jenkinsfile</code>, "
-                    "<code>buildspec.yml</code>. Versionado, revisado em PR, auditável. "
-                    "<em>Nunca</em> mais 'só admin sabe o que existe no Jenkins clássico'.</p>"
+<h3>6. Pipeline-as-code</h3>
+<p>O pipeline vive dentro do próprio repositório —
+<code>.github/workflows/</code>, <code>.gitlab-ci.yml</code>,
+<code>Jenkinsfile</code>, <code>buildspec.yml</code> — versionado,
+revisado em PR como qualquer outro código, e totalmente auditável.
+Isso elimina de vez o cenário clássico do Jenkins configurado
+manualmente pela UI, onde só um administrador específico sabe o que
+realmente existe configurado no servidor.</p>
 
-                    "<h3>7. Métricas DORA</h3>"
-                    "<p>Pesquisa do Google (DORA) por anos correlacionou alta performance "
-                    "de engenharia com 4 métricas:</p>"
-                    "<ul>"
-                    "<li><strong>Deployment Frequency</strong>: quantas vezes por dia/"
-                    "semana/mês você deploya. Elite: várias por dia.</li>"
-                    "<li><strong>Lead Time for Changes</strong>: do commit ao deploy em "
-                    "prod. Elite: &lt;1h.</li>"
-                    "<li><strong>Mean Time to Restore (MTTR)</strong>: tempo para "
-                    "recuperar de incidente. Elite: &lt;1h.</li>"
-                    "<li><strong>Change Failure Rate</strong>: % de deploys que causam "
-                    "incidente. Elite: 0-15%.</li>"
-                    "</ul>"
-                    "<p>Times elite têm todas altas, não trade-off entre velocidade e "
-                    "estabilidade. O que viabiliza: testes automatizados, deploy automatizado, "
-                    "trunk-based, observabilidade.</p>"
+<h3>7. Métricas DORA</h3>
+<p>Uma pesquisa de longo prazo do Google (o time DORA) correlacionou
+alta performance de engenharia com quatro métricas específicas, não com
+intuição subjetiva de "esse time é rápido". O <strong>Deployment
+Frequency</strong> mede quantas vezes por dia, semana ou mês a equipe
+faz deploy — um time elite deploya várias vezes ao dia. O
+<strong>Lead Time for Changes</strong> mede o tempo do commit até
+chegar em produção — elite fica abaixo de uma hora. O
+<strong>Mean Time to Restore</strong> (MTTR) mede quanto tempo leva
+para recuperar de um incidente — elite também abaixo de uma hora. E o
+<strong>Change Failure Rate</strong> mede a porcentagem de deploys que
+causam incidente — elite fica entre 0% e 15%. O achado mais
+contraintuitivo dessa pesquisa é que times elite têm as QUATRO métricas
+altas ao mesmo tempo — não existe trade-off real entre velocidade e
+estabilidade quando o processo é bom o suficiente. O que viabiliza isso
+é justamente teste automatizado, deploy automatizado, trunk-based
+development e observabilidade — as peças descritas nas seções
+anteriores desta aula.</p>
 
-                    "<h3>8. Cache, matrix e otimização</h3>"
-                    "<ul>"
-                    "<li><strong>Cache</strong> de dependências (Python pip, npm, Go modules, "
-                    "Docker layers). Chave por lockfile hash, não por branch.</li>"
-                    "<li><strong>Matrix builds</strong>: Python 3.10/3.11/3.12 × Linux/macOS, "
-                    "paralelo. Roda em ~tempo de uma execução.</li>"
-                    "<li><strong>Reusable workflows</strong> (GitHub) ou "
-                    "<code>include</code> (GitLab): DRY entre repos.</li>"
-                    "<li><strong>Self-hosted runners</strong>: para builds pesados ou "
-                    "necessidade de hardware específico (GPU).</li>"
-                    "</ul>"
+<h3>8. Cache, matrix e otimização</h3>
+<p>Cache de dependência (pip, npm, Go modules, camada de imagem
+Docker) deve ter chave baseada no hash do lockfile, não no nome do
+branch — assim o cache é reaproveitado entre branches diferentes que
+compartilham as mesmas dependências, em vez de recriar tudo do zero a
+cada PR novo. Matrix builds rodam múltiplas combinações em paralelo —
+Python 3.10/3.11/3.12 cruzado com Linux/macOS, por exemplo — no
+tempo aproximado de UMA única execução, não da soma de todas. Workflows
+reutilizáveis (o recurso nativo do GitHub) ou <code>include</code> no
+GitLab evitam duplicar a mesma configuração de pipeline entre múltiplos
+repositórios. E runner self-hosted faz sentido especificamente para
+build pesado ou que exige hardware específico, como GPU, que o runner
+padrão hospedado não oferece.</p>
 
-                    "<h3>9. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>Deploy manual em prod</strong>: erro humano frequente.</li>"
-                    "<li><strong>Pipeline sem testes</strong>: 'deploy direto' = roleta russa.</li>"
-                    "<li><strong>Test escape rate alto</strong>: bugs chegam em prod com CI verde, sinal de testes ruins.</li>"
-                    "<li><strong>Pipeline lento (1h+)</strong>: ninguém espera, todos pulam.</li>"
-                    "<li><strong>Flaky tests</strong>: testes intermitentes corroem confiança.</li>"
-                    "<li><strong>Build em prod</strong>: 'só recompilei lá' = bug específico que ninguém reproduz.</li>"
-                    "<li><strong>Apenas main testado</strong>: PRs sem CI = problemas só aparecem após merge.</li>"
-                    "</ul>"
+<h3>9. Anti-patterns</h3>
+<ul>
+<li><strong>Deploy manual em produção</strong>: abre espaço para erro
+humano recorrente, exatamente o que a automação existe para
+eliminar.</li>
+<li><strong>Pipeline sem teste real</strong>: "deploy direto" vira
+roleta russa disfarçada de processo.</li>
+<li><strong>Taxa alta de bug escapando com CI verde</strong>: sinal
+direto de que os testes existentes não cobrem o que realmente
+importa.</li>
+<li><strong>Pipeline lento (1h ou mais)</strong>: ninguém espera de
+verdade, e o time aprende a pular etapa (seção 2).</li>
+<li><strong>Teste "flaky" (intermitente)</strong>: corrói a confiança
+no próprio sinal do CI — depois de algumas falhas aleatórias, o time
+para de confiar em falha real também.</li>
+<li><strong>Build feito "manualmente" direto em produção</strong>: "só
+recompilei lá" vira exatamente o tipo de bug específico que ninguém
+mais consegue reproduzir depois.</li>
+<li><strong>Só a branch main é testada</strong>: sem CI rodando em PR,
+problema só aparece DEPOIS do merge, quando já é mais caro reverter.</li>
+</ul>
 
-                    "<h3>10. GitOps</h3>"
-                    "<p>Padrão: repo Git é a fonte da verdade do estado desejado do "
-                    "cluster. Argo CD ou Flux observa o repo; quando muda, reconcilia. "
-                    "Sem <code>kubectl apply</code> manual.</p>"
-                    "<pre><code># cluster/applications/app.yaml\n"
-                    "apiVersion: argoproj.io/v1alpha1\n"
-                    "kind: Application\n"
-                    "metadata: { name: app, namespace: argocd }\n"
-                    "spec:\n"
-                    "  source:\n"
-                    "    repoURL: https://github.com/empresa/k8s-config\n"
-                    "    path: apps/app/overlays/prod\n"
-                    "  destination:\n"
-                    "    server: https://kubernetes.default.svc\n"
-                    "    namespace: prod\n"
-                    "  syncPolicy:\n"
-                    "    automated: { prune: true, selfHeal: true }</code></pre>"
-                    "<p>Vantagens: rollback = revert no Git; auditoria = git log; "
-                    "drift detection nativo.</p>"
+<h3>10. GitOps</h3>
+<p>O princípio do GitOps: o repositório Git é a fonte da verdade do
+estado DESEJADO do cluster, não um histórico de comando aplicado
+manualmente. O Argo CD ou o Flux observam continuamente o repositório
+e reconciliam o cluster real contra o que está declarado — sem nenhum
+<code>kubectl apply</code> manual no meio do caminho:</p>
+<pre><code># cluster/applications/app.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: { name: app, namespace: argocd }
+spec:
+  source:
+    repoURL: https://github.com/empresa/k8s-config
+    path: apps/app/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }</code></pre>
+<p>As vantagens seguem diretamente do modelo: rollback vira um simples
+<code>git revert</code>, auditoria vira <code>git log</code>, e a
+detecção de drift é nativa — qualquer mudança manual feita fora do
+Git é automaticamente revertida pelo <code>selfHeal</code> na próxima
+reconciliação.</p>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -2999,212 +3036,231 @@ longo tende a gerar mal-entendido que só piora por escrito.</li>
                     "tudo no pipeline."
                 ),
                 "body": (
-                    "<h3>1. Tipos de registries</h3>"
-                    "<h4>1.1 Container registries</h4>"
-                    "<ul>"
-                    "<li><strong>AWS ECR</strong>: nativo AWS, IAM-based, scan integrado.</li>"
-                    "<li><strong>GCP Artifact Registry (GAR)</strong>: substitui o GCR antigo. "
-                    "Multi-formato (Docker, Maven, npm, etc.).</li>"
-                    "<li><strong>Azure Container Registry (ACR)</strong>: nativo Azure.</li>"
-                    "<li><strong>GitHub Container Registry (GHCR)</strong>: integrado a "
-                    "GitHub Actions (token automático).</li>"
-                    "<li><strong>Docker Hub</strong>: público, free com limites; pago para "
-                    "ilimitado.</li>"
-                    "<li><strong>Harbor</strong>: open source, self-hosted, RBAC, vuln scan, "
-                    "replicação. Padrão em times K8s on-prem.</li>"
-                    "<li><strong>Quay (Red Hat)</strong>: comercial; bom em ecossistema "
-                    "OpenShift.</li>"
-                    "</ul>"
-                    "<h4>1.2 Generic / linguagens</h4>"
-                    "<ul>"
-                    "<li><strong>JFrog Artifactory</strong>: o veterano. Multi-formato "
-                    "(Docker, Maven, npm, NuGet, PyPI, RPM, ...). Caro mas robusto.</li>"
-                    "<li><strong>Sonatype Nexus</strong>: similar; OSS edition gratuita.</li>"
-                    "<li><strong>GitHub Packages</strong>: integrado, multi-formato.</li>"
-                    "<li><strong>GitLab Package Registry</strong>: idem.</li>"
-                    "<li><strong>Cloudsmith</strong>: SaaS multi-formato.</li>"
-                    "</ul>"
-                    "<h4>1.3 Helm Charts</h4>"
-                    "<p>Helm 3+ suporta OCI nativo, qualquer registry OCI (ECR, GHCR, "
-                    "Harbor) guarda Helm chart. <code>ChartMuseum</code> ainda existe "
-                    "para legacy.</p>"
+                """<h3>1. Tipos de registries</h3>
+<h4>1.1 Container registries</h4>
+<p>Cada nuvem oferece seu registry nativo: <strong>AWS ECR</strong> com
+controle de acesso via IAM e scan de vulnerabilidade integrado,
+<strong>GCP Artifact Registry</strong> (que substituiu o GCR antigo,
+com suporte multi-formato para Docker, Maven, npm), e <strong>Azure
+Container Registry</strong>. O <strong>GitHub Container Registry</strong>
+se destaca por integração automática com GitHub Actions — o token de
+autenticação já vem pronto, sem configuração extra. O <strong>Docker
+Hub</strong> continua público e gratuito com limite de taxa, pago para
+uso ilimitado. O <strong>Harbor</strong>, open source e self-hosted, com
+RBAC, scan de vulnerabilidade e replicação nativos, virou o padrão em
+times que rodam Kubernetes on-premise. E o <strong>Quay</strong> (Red
+Hat) é forte especificamente no ecossistema OpenShift.</p>
+<h4>1.2 Generic / linguagens</h4>
+<p>Para artefato que não é imagem de container, o <strong>JFrog
+Artifactory</strong> é o veterano do mercado — multi-formato (Docker,
+Maven, npm, NuGet, PyPI, RPM), caro mas robusto. O <strong>Sonatype
+Nexus</strong> cobre um espaço similar, com edição open source
+gratuita. <strong>GitHub Packages</strong> e o <strong>GitLab Package
+Registry</strong> vêm integrados nativamente às respectivas
+plataformas. E o <strong>Cloudsmith</strong> é uma opção SaaS
+multi-formato dedicada.</p>
+<h4>1.3 Helm Charts</h4>
+<p>A partir do Helm 3, o suporte a OCI nativo significa que qualquer
+registry OCI comum (ECR, GHCR, Harbor) já consegue guardar um Helm
+chart diretamente, sem precisar de infraestrutura dedicada. O
+<code>ChartMuseum</code> ainda existe para quem mantém setup legado.</p>
 
-                    "<h3>2. Padrões essenciais</h3>"
-                    "<h4>2.1 Tags imutáveis</h4>"
-                    "<p>Use <strong>SHA do commit</strong> ou <strong>versão semver</strong>. "
-                    "<em>Nunca</em> em produção: <code>latest</code>, <code>main</code>, "
-                    "<code>dev</code>, tags móveis.</p>"
-                    "<pre><code># Bom\n"
-                    "ghcr.io/empresa/app:v1.4.2\n"
-                    "ghcr.io/empresa/app:abc1234   # commit SHA\n"
-                    "ghcr.io/empresa/app@sha256:f0a1b2...   # digest absoluto\n"
-                    "\n"
-                    "# Ruim em prod\n"
-                    "ghcr.io/empresa/app:latest\n"
-                    "ghcr.io/empresa/app:dev</code></pre>"
-                    "<p>Por digest é o ouro: <code>sha256:</code> é imutável e único, "
-                    "mesmo se alguém republicar a tag.</p>"
-                    "<p>Habilite <strong>tag immutability</strong> no registry "
-                    "(ECR, Harbor, ACR), uma tag não pode ser sobrescrita.</p>"
-                    "<h4>2.2 Assinatura com Cosign (Sigstore)</h4>"
-                    "<p>Sem assinatura, atacante que comprometa o registry pode trocar "
-                    "imagem. Com Cosign:</p>"
-                    "<pre><code>$ cosign sign --yes ghcr.io/empresa/app:v1.4.2\n"
-                    "Generating ephemeral keys... [OIDC: 'ci@empresa.com']\n"
-                    "tlog entry written: rekor.sigstore.dev\n"
-                    "\n"
-                    "$ cosign verify ghcr.io/empresa/app:v1.4.2 \\\n"
-                    "    --certificate-identity ci@empresa.com \\\n"
-                    "    --certificate-oidc-issuer https://token.actions.githubusercontent.com\n"
-                    "Verification for ghcr.io/empresa/app:v1.4.2 --\n"
-                    "The following checks were performed on each of these signatures:\n"
-                    "  - Signature was verified\n"
-                    "  - Identity matched expectation</code></pre>"
-                    "<p>Combine com admission controller K8s (<strong>Sigstore Policy "
-                    "Controller</strong>, <strong>Kyverno</strong>) que rejeita imagens não "
-                    "assinadas:</p>"
-                    "<pre><code>apiVersion: kyverno.io/v1\n"
-                    "kind: ClusterPolicy\n"
-                    "metadata: { name: require-signed-images }\n"
-                    "spec:\n"
-                    "  validationFailureAction: Enforce\n"
-                    "  rules:\n"
-                    "    - name: check-signature\n"
-                    "      match:\n"
-                    "        any:\n"
-                    "          - resources: { kinds: [Pod] }\n"
-                    "      verifyImages:\n"
-                    "        - imageReferences: ['ghcr.io/empresa/*']\n"
-                    "          attestors:\n"
-                    "            - keyless:\n"
-                    "                subject: ci@empresa.com\n"
-                    "                issuer: https://token.actions.githubusercontent.com</code></pre>"
-                    "<h4>2.3 SBOM atrelado</h4>"
-                    "<p>Anexe SBOM como referrer no registry OCI:</p>"
-                    "<pre><code>$ syft ghcr.io/empresa/app:v1.4.2 -o cyclonedx-json &gt; sbom.json\n"
-                    "$ cosign attach sbom --sbom sbom.json ghcr.io/empresa/app:v1.4.2\n"
-                    "$ cosign attest --predicate sbom.json --type cyclonedx \\\n"
-                    "    ghcr.io/empresa/app:v1.4.2</code></pre>"
-                    "<p>Quando incident response precisar 'quem usa log4j 2.14?', você tem "
-                    "SBOM por imagem.</p>"
-                    "<h4>2.4 Provenance / SLSA</h4>"
-                    "<p>Atestado de como foi construído. SLSA L3+ exige builder confiável. "
-                    "GitHub Actions tem template oficial para gerar:</p>"
-                    "<pre><code>- uses: slsa-framework/slsa-github-generator/.github/workflows/builder_container_slsa3.yml@v1.10.0</code></pre>"
-                    "<p>Resultado: imagem vem com <code>provenance.intoto.jsonl</code> "
-                    "verificável.</p>"
+<h3>2. Padrões essenciais</h3>
+<h4>2.1 Tags imutáveis</h4>
+<p>Use SHA do commit ou versão semver como tag — nunca
+<code>latest</code>, <code>main</code>, <code>dev</code> ou qualquer
+tag "móvel" que pode apontar para conteúdo diferente amanhã sem
+aviso:</p>
+<pre><code># Bom
+ghcr.io/empresa/app:v1.4.2
+ghcr.io/empresa/app:abc1234   # commit SHA
+ghcr.io/empresa/app@sha256:f0a1b2...   # digest absoluto
 
-                    "<h3>3. RBAC e segregação</h3>"
-                    "<ul>"
-                    "<li><strong>Write apenas para CI</strong>: nenhum dev faz push direto. "
-                    "Token de CI (OIDC, idealmente).</li>"
-                    "<li><strong>Read scoped</strong>: por equipe/produto. Multi-tenant "
-                    "usa namespaces.</li>"
-                    "<li><strong>Pull em prod</strong>: pull-secret específico do cluster, "
-                    "ao invés de credencial humana.</li>"
-                    "<li><strong>Tokens curtos</strong>: OIDC com STS &gt; tokens "
-                    "estáticos.</li>"
-                    "<li><strong>Auditoria</strong>: registry log de quem puxou o quê e "
-                    "quando. Útil em incidente.</li>"
-                    "</ul>"
+# Ruim em prod
+ghcr.io/empresa/app:latest
+ghcr.io/empresa/app:dev</code></pre>
+<p>Referenciar por digest (<code>sha256:...</code>) é o padrão-ouro:
+esse identificador é imutável e único por definição, mesmo se alguém
+republicar a MESMA tag com conteúdo diferente depois. Habilitar
+<strong>tag immutability</strong> no registry (disponível em ECR,
+Harbor, ACR) reforça isso estruturalmente — a tag simplesmente não pode
+ser sobrescrita, mesmo por acidente.</p>
+<h4>2.2 Assinatura com Cosign (Sigstore)</h4>
+<p>Sem assinatura, um atacante que comprometa o registry pode trocar a
+imagem por outra maliciosa sem que ninguém perceba — o nome e a tag
+continuam os mesmos, só o conteúdo mudou. O Cosign fecha essa lacuna:</p>
+<pre><code>$ cosign sign --yes ghcr.io/empresa/app:v1.4.2
+Generating ephemeral keys... [OIDC: 'ci@empresa.com']
+tlog entry written: rekor.sigstore.dev
 
-                    "<h3>4. Retenção e custo</h3>"
-                    "<p>Sem política, registries acumulam GBs/TBs:</p>"
-                    "<ul>"
-                    "<li>Cada PR gera imagem (ABA-feature-test).</li>"
-                    "<li>Builds antigos têm CVEs novos a cada semana.</li>"
-                    "<li>Custo escala com storage.</li>"
-                    "</ul>"
-                    "<p>Política de retenção:</p>"
-                    "<pre><code># Exemplo ECR lifecycle\n"
-                    "{\n"
-                    "  \"rules\": [\n"
-                    "    {\n"
-                    "      \"rulePriority\": 1,\n"
-                    "      \"description\": \"Manter últimas 30 imagens semver\",\n"
-                    "      \"selection\": {\n"
-                    "        \"tagStatus\": \"tagged\",\n"
-                    "        \"tagPrefixList\": [\"v\"],\n"
-                    "        \"countType\": \"imageCountMoreThan\",\n"
-                    "        \"countNumber\": 30\n"
-                    "      },\n"
-                    "      \"action\": { \"type\": \"expire\" }\n"
-                    "    },\n"
-                    "    {\n"
-                    "      \"rulePriority\": 2,\n"
-                    "      \"description\": \"Apagar untagged após 7d\",\n"
-                    "      \"selection\": {\n"
-                    "        \"tagStatus\": \"untagged\",\n"
-                    "        \"countType\": \"sinceImagePushed\",\n"
-                    "        \"countUnit\": \"days\",\n"
-                    "        \"countNumber\": 7\n"
-                    "      },\n"
-                    "      \"action\": { \"type\": \"expire\" }\n"
-                    "    }\n"
-                    "  ]\n"
-                    "}</code></pre>"
-                    "<p>Reduz fatura e diminui superfície (atacante puxar imagem antiga "
-                    "vulnerável).</p>"
+$ cosign verify ghcr.io/empresa/app:v1.4.2 \\
+    --certificate-identity ci@empresa.com \\
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+Verification for ghcr.io/empresa/app:v1.4.2 --
+The following checks were performed on each of these signatures:
+  - Signature was verified
+  - Identity matched expectation</code></pre>
+<p>Combinar isso com um admission controller no Kubernetes (Sigstore
+Policy Controller, Kyverno) fecha o ciclo completo: o cluster rejeita
+qualquer imagem que não tenha assinatura válida, tornando a verificação
+obrigatória, não opcional:</p>
+<pre><code>apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: require-signed-images }
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: check-signature
+      match:
+        any:
+          - resources: { kinds: [Pod] }
+      verifyImages:
+        - imageReferences: ['ghcr.io/empresa/*']
+          attestors:
+            - keyless:
+                subject: ci@empresa.com
+                issuer: https://token.actions.githubusercontent.com</code></pre>
+<h4>2.3 SBOM atrelado</h4>
+<p>Anexar o SBOM diretamente como referrer no próprio registry OCI
+mantém a lista de dependências junto do artefato que ela descreve, em
+vez de num documento separado que pode desatualizar:</p>
+<pre><code>$ syft ghcr.io/empresa/app:v1.4.2 -o cyclonedx-json &gt; sbom.json
+$ cosign attach sbom --sbom sbom.json ghcr.io/empresa/app:v1.4.2
+$ cosign attest --predicate sbom.json --type cyclonedx \\
+    ghcr.io/empresa/app:v1.4.2</code></pre>
+<p>Quando um incidente exigir responder rapidamente "quem está usando
+log4j 2.14?", ter o SBOM atrelado a cada imagem específica transforma
+essa pergunta de investigação manual em uma consulta direta.</p>
+<h4>2.4 Provenance / SLSA</h4>
+<p>Um atestado de proveniência documenta COMO o artefato foi
+construído, não só o que ele contém — o nível SLSA L3 ou superior exige
+que esse atestado venha de um builder confiável, não de qualquer
+máquina arbitrária. O GitHub Actions já tem um template oficial para
+gerar isso automaticamente:</p>
+<pre><code>- uses: slsa-framework/slsa-github-generator/.github/workflows/builder_container_slsa3.yml@v1.10.0</code></pre>
+<p>O resultado é a imagem acompanhada de um
+<code>provenance.intoto.jsonl</code> verificável, provando de onde
+exatamente ela veio.</p>
 
-                    "<h3>5. Pull-through cache</h3>"
-                    "<p>Em vez de cada pipeline puxar do Docker Hub (rate limit gigante "
-                    "no plano free), use registry interno como cache:</p>"
-                    "<ul>"
-                    "<li>Harbor proxy cache.</li>"
-                    "<li>ECR pull-through (configurável para Docker Hub, Quay, GHCR).</li>"
-                    "<li>Artifactory remote repository.</li>"
-                    "</ul>"
-                    "<p>Vantagens:</p>"
-                    "<ul>"
-                    "<li>Acelera builds (cache local).</li>"
-                    "<li>Sobrevive a outage do upstream.</li>"
-                    "<li>Auditoria de o que vem de fora.</li>"
-                    "<li>Possibilidade de scan/quarentena antes de uso.</li>"
-                    "</ul>"
+<h3>3. RBAC e segregação</h3>
+<p>Cinco práticas de controle de acesso separam um registry bem
+governado de um em risco. Escrita (push) deve ficar restrita
+exclusivamente ao CI — nenhum desenvolvedor faz push direto, usando
+idealmente token OIDC de curta duração em vez de credencial estática.
+Leitura deve ser escopada por equipe ou produto, com ambiente
+multi-tenant usando namespace separado por time. Em produção, o pull
+deve usar um pull-secret específico do próprio cluster, nunca uma
+credencial humana reaproveitada. Tokens de curta duração via OIDC+STS
+são preferíveis a token estático em qualquer cenário onde isso é
+viável. E um log de auditoria do registry — quem puxou o quê e quando —
+se torna essencial no meio de qualquer investigação de incidente.</p>
 
-                    "<h3>6. Vulnerability scanning contínuo</h3>"
-                    "<p>Scan no push é útil, mas insuficiente, CVEs novos aparecem "
-                    "depois. Configure:</p>"
-                    "<ul>"
-                    "<li>Re-scan periódico (Harbor schedule, Trivy operator no K8s, "
-                    "ECR Enhanced Scanning).</li>"
-                    "<li>Notificação quando imagem em produção fica vulnerável "
-                    "(webhook → Slack).</li>"
-                    "<li>Bloqueio de imagens com CVEs críticas em prod (admission policy).</li>"
-                    "</ul>"
+<h3>4. Retenção e custo</h3>
+<p>Sem política de retenção, um registry acumula gigabyte após
+gigabyte silenciosamente: cada PR gera sua própria imagem de teste, e
+build antigo acumula CVE nova a cada semana que passa, mesmo sem
+ninguém tocar nele — o custo de storage escala proporcionalmente a essa
+acumulação:</p>
+<pre><code># Exemplo ECR lifecycle
+{
+  "rules": [
+    {
+      "rulePriority": 1,
+      "description": "Manter últimas 30 imagens semver",
+      "selection": {
+        "tagStatus": "tagged",
+        "tagPrefixList": ["v"],
+        "countType": "imageCountMoreThan",
+        "countNumber": 30
+      },
+      "action": { "type": "expire" }
+    },
+    {
+      "rulePriority": 2,
+      "description": "Apagar untagged após 7d",
+      "selection": {
+        "tagStatus": "untagged",
+        "countType": "sinceImagePushed",
+        "countUnit": "days",
+        "countNumber": 7
+      },
+      "action": { "type": "expire" }
+    }
+  ]
+}</code></pre>
+<p>Além de reduzir a fatura, essa limpeza reduz a superfície de
+ataque: uma imagem antiga esquecida no registry, com vulnerabilidade
+conhecida, é exatamente o tipo de alvo fácil que um atacante procura
+antes de tentar algo mais sofisticado.</p>
 
-                    "<h3>7. Multi-arch images</h3>"
-                    "<p>Hoje, ARM (Graviton, Apple Silicon) e AMD64 coexistem. "
-                    "Build multi-arch:</p>"
-                    "<pre><code>docker buildx build --platform linux/amd64,linux/arm64 \\\n"
-                    "  --tag ghcr.io/empresa/app:v1.4.2 \\\n"
-                    "  --push .</code></pre>"
-                    "<p>Resultado: manifest list (multi-arch). Pull seleciona arch "
-                    "automaticamente.</p>"
+<h3>5. Pull-through cache</h3>
+<p>Fazer cada execução de pipeline puxar direto do Docker Hub esbarra
+rápido no rate limit generoso, mas finito, do plano gratuito — a
+alternativa é usar o registry interno como camada de cache
+intermediária, via Harbor proxy cache, ECR pull-through (configurável
+para Docker Hub, Quay, GHCR) ou um repositório remoto do Artifactory.
+Isso acelera o build com cache local, mantém o pipeline funcionando
+mesmo durante uma indisponibilidade do registry upstream, gera
+auditoria do que efetivamente vem de fora, e abre espaço para
+scan ou quarentena antes de qualquer imagem externa ser de fato
+usada.</p>
 
-                    "<h3>8. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>Apenas <code>latest</code> em prod</strong>: sem "
-                    "rastreabilidade.</li>"
-                    "<li><strong>Sem retenção</strong>: GBs/TBs acumulando.</li>"
-                    "<li><strong>Push sem assinar</strong>: supply chain vulnerável.</li>"
-                    "<li><strong>Token estático em registry</strong>: vaza, atacante puxa "
-                    "tudo.</li>"
-                    "<li><strong>Imagem em registry público</strong> sem scan/auditoria.</li>"
-                    "<li><strong>Build em prod</strong>: 'só rebuildei lá' = artefato "
-                    "diferente do testado.</li>"
-                    "<li><strong>Não usar pull-through cache</strong>: rate limit em "
-                    "horário de pico paralisa CI.</li>"
-                    "</ul>"
+<h3>6. Vulnerability scanning contínuo</h3>
+<p>Escanear apenas no momento do push é insuficiente por natureza —
+uma CVE nova pode ser descoberta semanas depois, numa imagem que já
+estava limpa quando publicada. A resposta é configurar re-scan
+periódico (agendamento no Harbor, Trivy Operator no Kubernetes, ECR
+Enhanced Scanning), notificação automática quando uma imagem já em
+produção passa a ser considerada vulnerável (webhook disparando para
+Slack), e uma política de admissão que bloqueia ativamente qualquer
+imagem com CVE crítica de rodar em produção, mesmo que já tenha sido
+aprovada no passado.</p>
 
-                    "<h3>9. Caso real: SolarWinds (2020)</h3>"
-                    "<p>Atacantes comprometeram o pipeline de build da SolarWinds, "
-                    "injetando código no Orion antes de ser assinado. Centenas de "
-                    "empresas (incluindo agências US) baixaram a imagem 'oficial' com "
-                    "backdoor.</p>"
-                    "<p>Lições: não basta assinar, o build precisa ser confiável "
-                    "(SLSA L3+). Idealmente, builds reproducíveis (mesmo input gera mesma "
-                    "saída) permitem que múltiplas partes verifiquem.</p>"
+<h3>7. Multi-arch images</h3>
+<p>Com ARM (Graviton na AWS, Apple Silicon localmente) coexistindo com
+AMD64 no dia a dia, o build precisa produzir as duas arquiteturas de
+uma vez:</p>
+<pre><code>docker buildx build --platform linux/amd64,linux/arm64 \\
+  --tag ghcr.io/empresa/app:v1.4.2 \\
+  --push .</code></pre>
+<p>O resultado é um manifest list — uma referência única que aponta
+para as duas variantes de arquitetura ao mesmo tempo — e o pull
+seleciona automaticamente a arquitetura correta para a máquina que está
+puxando, sem nenhuma configuração adicional do lado do cliente.</p>
+
+<h3>8. Anti-patterns</h3>
+<ul>
+<li><strong>Usar apenas <code>latest</code> em produção</strong>: zero
+rastreabilidade sobre qual código está de fato rodando (seção 2.1).</li>
+<li><strong>Nenhuma política de retenção</strong>: gigabyte acumulando
+sem controle (seção 4).</li>
+<li><strong>Push sem assinar</strong>: deixa a cadeia de suprimentos
+vulnerável a troca silenciosa de imagem (seção 2.2).</li>
+<li><strong>Token estático no registry</strong>: se vazar, o atacante
+consegue puxar tudo sem limite de tempo.</li>
+<li><strong>Imagem publicada em registry público sem scan ou
+auditoria</strong>: qualquer um pode puxar código não verificado.</li>
+<li><strong>Rebuild direto em produção</strong>: "só recompilei lá"
+produz um artefato literalmente diferente do que passou pelos
+testes.</li>
+<li><strong>Não usar pull-through cache</strong>: rate limit batendo em
+horário de pico paralisa o CI inteiro sem aviso (seção 5).</li>
+</ul>
+
+<h3>9. Caso real: SolarWinds (2020)</h3>
+<p>Atacantes comprometeram diretamente o pipeline de BUILD da
+SolarWinds, injetando código malicioso no produto Orion ANTES da etapa
+de assinatura acontecer — o que significa que a imagem "oficial"
+assinada já saía comprometida de fábrica. Centenas de empresas,
+incluindo agências do governo americano, baixaram essa versão
+"oficial" com backdoor embutido, confiando exatamente na assinatura que
+deveria garantir integridade. A lição central: assinar não basta se o
+PROCESSO de build em si não é confiável — daí a exigência de SLSA nível
+3 ou superior (seção 2.4), que valida a cadeia de build, não só o
+artefato final. Idealmente, um build reprodutível (o mesmo input sempre
+produz exatamente a mesma saída) permite que múltiplas partes
+independentes verifiquem o resultado sem precisar confiar cegamente
+numa única infraestrutura de build.</p>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
