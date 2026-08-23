@@ -6,7 +6,7 @@ from django.forms.models import BaseInlineFormSet
 
 from apps.core.admin_mixins import SeedLockingAdminMixin
 
-from .models import Choice, Lesson, Material, Phase, Question, Topic
+from .models import Choice, Lab, Lesson, Material, Phase, Question, Topic
 
 
 class TopicInline(admin.TabularInline):
@@ -96,3 +96,10 @@ class QuestionAdmin(SeedLockingAdminMixin, admin.ModelAdmin):
     list_filter = ("topic__phase", "is_active", "seed_managed")
     search_fields = ("statement",)
     inlines = [ChoiceInline]
+
+
+@admin.register(Lab)
+class LabAdmin(SeedLockingAdminMixin, admin.ModelAdmin):
+    list_display = ("topic", "title", "kind", "order", "is_active", "seed_managed")
+    list_filter = ("kind", "is_active", "seed_managed", "topic__phase")
+    search_fields = ("title", "topic__title")

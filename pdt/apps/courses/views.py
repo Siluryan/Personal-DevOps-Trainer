@@ -3,13 +3,15 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
+from django.views import View
 from django.views.generic import DetailView, TemplateView
 
-from apps.gamification.models import TopicAttempt, TopicAttemptAnswer, TopicScore
+from apps.gamification.models import LabCompletion, TopicAttempt, TopicAttemptAnswer, TopicScore
 
-from .models import Choice, Phase, Question, Topic
+from .models import Choice, Lab, Phase, Question, Topic
 
 
 class TrackView(LoginRequiredMixin, TemplateView):
@@ -35,7 +37,9 @@ class TopicDetailView(LoginRequiredMixin, DetailView):
     context_object_name = "topic"
 
     def get_queryset(self):
-        return Topic.objects.select_related("phase", "lesson").prefetch_related("materials")
+        return Topic.objects.select_related("phase", "lesson").prefetch_related(
+            "materials", "labs"
+        )
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -45,6 +49,16 @@ class TopicDetailView(LoginRequiredMixin, DetailView):
         ctx["recent_attempts"] = TopicAttempt.objects.filter(
             user=self.request.user, topic=self.object
         )[:5]
+        labs = list(self.object.labs.filter(is_active=True))
+        completed_ids = set(
+            LabCompletion.objects.filter(
+                user=self.request.user, lab__topic=self.object
+            ).values_list("lab_id", flat=True)
+        )
+        for lab in labs:
+            lab.elid = f"lab-spec-{lab.id}"
+            lab.is_done = lab.id in completed_ids
+        ctx["labs"] = labs
         return ctx
 
 
@@ -118,3 +132,19 @@ class QuizResultView(LoginRequiredMixin, TemplateView):
         ctx["attempt"] = attempt
         ctx["answers"] = attempt.answers.select_related("question", "choice").all()
         return ctx
+
+
+class LabCompleteView(LoginRequiredMixin, View):
+    """Registra a conclusão de um lab e resincroniza o bônus do tópico.
+
+    POST simples (fetch do Alpine.js), não HTMX: a interação do lab inteira
+    é client-side (monta comando, ordena passo, etc.); isso só persiste o
+    resultado final quando o aluno acerta. Idempotente — refazer não soma
+    ponto de novo, `TopicScore.sync_lab_bonus` recomputa do zero.
+    """
+
+    def post(self, request, lab_id):
+        lab = get_object_or_404(Lab, id=lab_id, is_active=True)
+        LabCompletion.objects.get_or_create(user=request.user, lab=lab)
+        score = TopicScore.sync_lab_bonus(user=request.user, topic=lab.topic)
+        return JsonResponse({"points": score.points, "lab_bonus": score.lab_bonus})

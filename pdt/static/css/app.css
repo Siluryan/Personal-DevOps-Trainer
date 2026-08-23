@@ -430,6 +430,217 @@ html { scroll-behavior: smooth; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+   LABORATÓRIO PRÁTICO: 5 formatos por toque (terminal, find_flaw, order,
+   blanks, scenario), todos client-side — ver apps.courses.models.Lab e
+   static/js/lab.js. Tudo pensado pra caber num toque no celular, sem
+   arrastar e sem teclado.
+   ══════════════════════════════════════════════════════════════════════════ */
+.lab-card {
+  background: var(--pdt-surface);
+  border: 1px solid var(--pdt-border);
+  border-radius: 12px;
+  padding: 1.5rem 1.75rem;
+  margin: 1.5rem 0;
+}
+.lab-card h3 {
+  color: #7dd3fc;
+  font-size: 1.0625rem;
+  margin: 0 0 .5rem;
+}
+.lab-done-badge {
+  display: inline-block;
+  background: rgba(34, 197, 94, .15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, .4);
+  border-radius: 999px;
+  padding: .25rem .75rem;
+  font-size: .8125rem;
+  font-weight: 600;
+  margin-bottom: .75rem;
+}
+.lab-scenario-text {
+  color: var(--pdt-text2);
+  font-size: .9375rem;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+.lab-command-line,
+.lab-code-block {
+  background: #04091c;
+  border: 1px solid var(--pdt-border);
+  border-radius: 8px;
+  padding: .75rem 1rem;
+  min-height: 2.75rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: .8125rem;
+  color: #cce5ff;
+  margin-bottom: 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.lab-command-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  align-items: center;
+  white-space: normal;
+}
+.lab-command-line .lab-placeholder { color: #5a7a9a; }
+.lab-token-pool,
+.lab-choice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+.lab-token {
+  background: var(--pdt-surface2);
+  border: 1px solid var(--pdt-border2);
+  border-radius: 8px;
+  padding: .5rem .9rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: .8125rem;
+  color: var(--pdt-text);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.lab-token:hover {
+  border-color: var(--pdt-accent);
+  color: var(--pdt-accent-h);
+}
+.lab-lines,
+.lab-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+.lab-line {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: #04091c;
+  border: 1px solid var(--pdt-border);
+  border-left: 4px solid transparent;
+  border-radius: 6px;
+  padding: .6rem .9rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: .8125rem;
+  color: #cce5ff;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.lab-line:hover { border-left-color: var(--pdt-accent2, #253d5e); }
+.lab-line.lab-selected { border-left-color: var(--pdt-accent); background: rgba(14, 165, 233, .08); }
+.lab-line.lab-correct { border-left-color: #4ade80; background: rgba(34, 197, 94, .1); }
+.lab-line.lab-wrong { border-left-color: #f87171; background: rgba(248, 113, 113, .1); }
+.lab-order-item {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  background: var(--pdt-surface2);
+  border: 1px solid var(--pdt-border2);
+  border-radius: 8px;
+  padding: .5rem .9rem;
+  font-size: .875rem;
+  color: var(--pdt-text);
+}
+.lab-order-num {
+  background: var(--pdt-accent);
+  color: #04091c;
+  font-weight: 700;
+  border-radius: 999px;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .75rem;
+  flex-shrink: 0;
+}
+.lab-blank-group {
+  margin-bottom: 1rem;
+}
+.lab-blank-label {
+  color: var(--pdt-text2);
+  font-size: .8125rem;
+  margin-bottom: .4rem;
+}
+.lab-scenario-situation {
+  color: var(--pdt-text);
+  font-size: .9375rem;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+.lab-scenario-choice {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--pdt-surface2);
+  border: 1px solid var(--pdt-border2);
+  border-radius: 8px;
+  padding: .75rem 1rem;
+  margin-bottom: .5rem;
+  color: var(--pdt-text);
+  cursor: pointer;
+  font-size: .9375rem;
+  transition: border-color .15s;
+}
+.lab-scenario-choice:hover { border-color: var(--pdt-accent); }
+.lab-scenario-choice.lab-choice-good { border-color: #4ade80; background: rgba(34, 197, 94, .08); }
+.lab-scenario-choice.lab-choice-bad { border-color: #f87171; background: rgba(248, 113, 113, .08); }
+.lab-outcome {
+  background: var(--pdt-surface2);
+  border-left: 4px solid var(--pdt-accent);
+  border-radius: 6px;
+  padding: .75rem 1rem;
+  margin-top: .75rem;
+  font-size: .875rem;
+  color: var(--pdt-text2);
+}
+.lab-explanation {
+  background: rgba(34, 197, 94, .06);
+  border: 1px solid rgba(34, 197, 94, .3);
+  border-radius: 8px;
+  padding: .75rem 1rem;
+  margin-top: 1rem;
+  font-size: .875rem;
+  color: var(--pdt-text2);
+}
+.lab-explanation.lab-explanation-pending {
+  background: rgba(248, 113, 113, .06);
+  border-color: rgba(248, 113, 113, .3);
+}
+.lab-actions {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.lab-check-btn {
+  background: #0891b2;
+  color: #f0f9ff;
+  font-weight: 600;
+  padding: .55rem 1.25rem;
+  border-radius: 8px;
+  font-size: .875rem;
+  border: none;
+  cursor: pointer;
+}
+.lab-check-btn:disabled { opacity: .35; cursor: not-allowed; }
+.lab-check-btn:hover:not(:disabled) { background: #0ea5e9; }
+.lab-undo-btn {
+  background: transparent;
+  border: 1px solid var(--pdt-border2);
+  color: var(--pdt-text2);
+  padding: .55rem 1rem;
+  border-radius: 8px;
+  font-size: .8125rem;
+  cursor: pointer;
+}
+.lab-undo-btn:hover { border-color: var(--pdt-accent); color: var(--pdt-accent-h); }
+
+/* ══════════════════════════════════════════════════════════════════════════
    SISTEMA LEGADO (prose-invert), mantido para compatibilidade
    ══════════════════════════════════════════════════════════════════════════ */
 .prose-invert h1,

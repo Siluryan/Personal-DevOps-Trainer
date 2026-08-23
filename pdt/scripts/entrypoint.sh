@@ -45,6 +45,7 @@ if [ "${PDT_RUN_SEED:-0}" = "1" ]; then
   python manage.py seed_admission_test
   python manage.py seed_interviews
   python manage.py seed_glossary
+  python manage.py seed_labs
 else
   echo ">> Seeds ignorados (defina PDT_RUN_SEED=1 para aplicá-los)."
 fi

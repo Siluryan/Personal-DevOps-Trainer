@@ -1,4 +1,4 @@
-"""Pontuação por tópico, tentativas de quiz e bonus por ajuda concedida."""
+"""Pontuação por tópico: tentativas de quiz, bônus por ajuda e labs concluídos."""
 from __future__ import annotations
 
 from django.conf import settings
@@ -59,8 +59,9 @@ class TopicAttemptAnswer(models.Model):
 class TopicScore(models.Model):
     """Snapshot do melhor desempenho do usuário em cada tópico.
 
-    `points` agrega tanto a melhor pontuação de quiz quanto bônus por ajuda
-    concedida no mapa, para representar bem o eixo no radar.
+    `points` agrega a melhor pontuação de quiz, bônus por ajuda concedida no
+    mapa e bônus por laboratório concluído, para representar bem o eixo no
+    radar.
     """
 
     user = models.ForeignKey(
@@ -71,6 +72,7 @@ class TopicScore(models.Model):
     )
     best_quiz_score = models.PositiveSmallIntegerField(default=0)
     help_bonus = models.PositiveSmallIntegerField(default=0)
+    lab_bonus = models.PositiveSmallIntegerField(default=0)
     points = models.PositiveSmallIntegerField(default=0)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -82,7 +84,7 @@ class TopicScore(models.Model):
         return f"{self.user} · {self.topic} · {self.points} pts"
 
     def recompute(self) -> None:
-        self.points = self.best_quiz_score + self.help_bonus
+        self.points = self.best_quiz_score + self.help_bonus + self.lab_bonus
         self.save(update_fields=["points", "updated_at"])
 
     @classmethod
@@ -91,7 +93,25 @@ class TopicScore(models.Model):
         score, _ = cls.objects.get_or_create(user=attempt.user, topic=attempt.topic)
         if attempt.score > score.best_quiz_score:
             score.best_quiz_score = attempt.score
-        score.points = score.best_quiz_score + score.help_bonus
+        score.points = score.best_quiz_score + score.help_bonus + score.lab_bonus
+        score.save()
+        return score
+
+    @classmethod
+    @transaction.atomic
+    def sync_lab_bonus(cls, *, user, topic) -> "TopicScore":
+        """Recalcula `lab_bonus` a partir dos labs concluídos no tópico.
+
+        Recomputa do zero em vez de incrementar: refazer um lab já concluído
+        não deve render ponto de novo, e um lab desativado depois deixa de
+        contar sozinho.
+        """
+        score, _ = cls.objects.get_or_create(user=user, topic=topic)
+        done = LabCompletion.objects.filter(
+            user=user, lab__topic=topic, lab__is_active=True
+        ).count()
+        score.lab_bonus = done * LAB_POINTS
+        score.points = score.best_quiz_score + score.help_bonus + score.lab_bonus
         score.save()
         return score
 
@@ -100,6 +120,40 @@ class TopicScore(models.Model):
     def add_help_bonus(cls, *, user, topic, amount: int = 1) -> "TopicScore":
         score, _ = cls.objects.get_or_create(user=user, topic=topic)
         score.help_bonus = (score.help_bonus or 0) + amount
-        score.points = score.best_quiz_score + score.help_bonus
+        score.points = score.best_quiz_score + score.help_bonus + score.lab_bonus
         score.save()
         return score
+
+
+LAB_POINTS = 5
+"""Pontos somados ao `TopicScore` por laboratório concluído.
+
+Menor que o teto do quiz (10) de propósito: o lab reforça o conteúdo, o
+quiz é a medida principal do eixo no radar.
+"""
+
+
+class LabCompletion(models.Model):
+    """Registro idempotente de que o usuário concluiu um laboratório.
+
+    Guardar a conclusão (em vez de só somar ponto na hora) é o que permite
+    `TopicScore.sync_lab_bonus` recomputar do zero — assim refazer o mesmo
+    lab não acumula ponto.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="lab_completions"
+    )
+    lab = models.ForeignKey(
+        "courses.Lab", on_delete=models.CASCADE, related_name="completions"
+    )
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("user", "lab")]
+        ordering = ["-completed_at"]
+        verbose_name = "conclusão de laboratório"
+        verbose_name_plural = "conclusões de laboratório"
+
+    def __str__(self) -> str:
+        return f"{self.user} concluiu {self.lab}"

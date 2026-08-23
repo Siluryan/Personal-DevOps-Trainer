@@ -10,4 +10,5 @@ urlpatterns = [
     path("topico/<slug:slug>/quiz/", views.QuizView.as_view(), name="quiz"),
     path("topico/<slug:slug>/quiz/resultado/<int:attempt_id>/",
          views.QuizResultView.as_view(), name="quiz_result"),
+    path("lab/<int:lab_id>/concluir/", views.LabCompleteView.as_view(), name="lab_complete"),
 ]

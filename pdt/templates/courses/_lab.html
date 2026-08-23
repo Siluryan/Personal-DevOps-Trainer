@@ -1,0 +1,161 @@
+{% load static %}
+{# Um card por lab. lab.elid e lab.is_done vêm anotados na view (TopicDetailView). #}
+{{ lab.spec|json_script:lab.elid }}
+<div class="lab-card"
+     x-data="labState(
+        {{ lab.id }},
+        '{{ lab.kind }}',
+        JSON.parse(document.getElementById('{{ lab.elid }}').textContent),
+        {% if lab.is_done %}true{% else %}false{% endif %},
+        '{% url 'courses:lab_complete' lab.id %}'
+     )">
+  <template x-if="done">
+    <span class="lab-done-badge">✓ Concluído (+5 pts)</span>
+  </template>
+  <h3>🧪 {{ lab.title }}</h3>
+
+  {# ── terminal: monta o comando tocando nos tokens ──────────────────── #}
+  <template x-if="kind === 'terminal'">
+    <div>
+      <p class="lab-scenario-text" x-text="spec.scenario"></p>
+      <div class="lab-command-line">
+        <template x-if="!chosen.length">
+          <span class="lab-placeholder">toque nos blocos abaixo para montar o comando…</span>
+        </template>
+        <template x-for="(tok, i) in chosen" :key="'c'+i">
+          <span x-text="tok"></span>
+        </template>
+      </div>
+      <div class="lab-token-pool">
+        <template x-for="(tok, i) in pool" :key="'p'+i">
+          <button type="button" class="lab-token" @click="pick(i)" x-text="tok"></button>
+        </template>
+      </div>
+      <div class="lab-actions">
+        <button type="button" class="lab-undo-btn" @click="undo()" :disabled="!chosen.length">← Desfazer</button>
+        <button type="button" class="lab-check-btn" @click="check()" :disabled="!pool.length && checked && correct">Conferir</button>
+      </div>
+      <template x-if="checked">
+        <p class="lab-explanation" :class="!correct && 'lab-explanation-pending'">
+          <strong x-text="correct ? 'Certo! ' : 'Ainda não. '"></strong>
+          <span x-text="spec.explanation"></span>
+        </p>
+      </template>
+    </div>
+  </template>
+
+  {# ── find_flaw: toca na linha com o problema ───────────────────────── #}
+  <template x-if="kind === 'find_flaw'">
+    <div>
+      <p class="lab-scenario-text" x-text="spec.scenario"></p>
+      <div class="lab-lines">
+        <template x-for="(line, i) in spec.lines" :key="i">
+          <button type="button" class="lab-line"
+                  :class="{
+                    'lab-selected': selected === i && !checked,
+                    'lab-correct': checked && i === spec.flaw_line_index,
+                    'lab-wrong': checked && selected === i && i !== spec.flaw_line_index
+                  }"
+                  @click="select(i)" x-text="line"></button>
+        </template>
+      </div>
+      <div class="lab-actions">
+        <button type="button" class="lab-check-btn" @click="check()" :disabled="selected === null || (checked && correct)">Conferir</button>
+      </div>
+      <template x-if="checked">
+        <p class="lab-explanation" :class="!correct && 'lab-explanation-pending'">
+          <strong x-text="correct ? 'Certo! ' : 'Ainda não. '"></strong>
+          <span x-text="spec.explanation"></span>
+        </p>
+      </template>
+    </div>
+  </template>
+
+  {# ── order: toca nas etapas na ordem certa ─────────────────────────── #}
+  <template x-if="kind === 'order'">
+    <div>
+      <p class="lab-scenario-text" x-text="spec.scenario"></p>
+      <div class="lab-order-list">
+        <template x-for="(step, i) in chosen" :key="'c'+i">
+          <div class="lab-order-item">
+            <span class="lab-order-num" x-text="i + 1"></span>
+            <span x-text="step"></span>
+          </div>
+        </template>
+      </div>
+      <div class="lab-token-pool">
+        <template x-for="(step, i) in remaining" :key="'r'+i">
+          <button type="button" class="lab-token" @click="pick(i)" x-text="step"></button>
+        </template>
+      </div>
+      <div class="lab-actions">
+        <button type="button" class="lab-undo-btn" @click="undo()" :disabled="!chosen.length">← Desfazer</button>
+        <button type="button" class="lab-check-btn" @click="check()" :disabled="remaining.length || (checked && correct)">Conferir</button>
+      </div>
+      <template x-if="checked">
+        <p class="lab-explanation" :class="!correct && 'lab-explanation-pending'">
+          <strong x-text="correct ? 'Certo! ' : 'Ainda não. '"></strong>
+          <span x-text="spec.explanation"></span>
+        </p>
+      </template>
+    </div>
+  </template>
+
+  {# ── blanks: completa a config escolhendo o valor de cada lacuna ───── #}
+  <template x-if="kind === 'blanks'">
+    <div>
+      <p class="lab-scenario-text" x-text="spec.scenario"></p>
+      <div class="lab-code-block" x-text="renderedTemplate"></div>
+      <template x-for="key in blankKeys" :key="key">
+        <div class="lab-blank-group">
+          <p class="lab-blank-label" x-text="'Preencha ' + key + ':'"></p>
+          <div class="lab-choice-chips">
+            <template x-for="opt in spec.blanks[key].options" :key="opt">
+              <button type="button" class="lab-token"
+                      :style="answers[key] === opt ? 'border-color:var(--pdt-accent);background:rgba(14,165,233,.15)' : ''"
+                      @click="selectBlank(key, opt)" x-text="opt"></button>
+            </template>
+          </div>
+        </div>
+      </template>
+      <div class="lab-actions">
+        <button type="button" class="lab-check-btn" @click="check()"
+                :disabled="blankKeys.some(k => !answers[k]) || (checked && correct)">Conferir</button>
+      </div>
+      <template x-if="checked">
+        <p class="lab-explanation" :class="!correct && 'lab-explanation-pending'">
+          <strong x-text="correct ? 'Certo! ' : 'Ainda não. '"></strong>
+          <span x-text="spec.explanation"></span>
+        </p>
+      </template>
+    </div>
+  </template>
+
+  {# ── scenario: escolhe uma decisão e vê a consequência ─────────────── #}
+  <template x-if="kind === 'scenario'">
+    <div>
+      <p class="lab-scenario-situation" x-text="spec.situation"></p>
+      <template x-for="(c, i) in spec.choices" :key="i">
+        <button type="button" class="lab-scenario-choice"
+                :class="{
+                  'lab-choice-good': checked && chosenIndex === i && c.good,
+                  'lab-choice-bad': checked && chosenIndex === i && !c.good
+                }"
+                @click="choose(i)" :disabled="checked && correct" x-text="c.text"></button>
+      </template>
+      <template x-if="checked">
+        <div>
+          <p class="lab-outcome" x-text="spec.choices[chosenIndex].outcome"></p>
+          <template x-if="!correct">
+            <div class="lab-actions" style="margin-top:.75rem">
+              <button type="button" class="lab-undo-btn" @click="tryAgain()">Tentar outra decisão</button>
+            </div>
+          </template>
+          <template x-if="correct">
+            <p class="lab-explanation" x-text="spec.explanation"></p>
+          </template>
+        </div>
+      </template>
+    </div>
+  </template>
+</div>

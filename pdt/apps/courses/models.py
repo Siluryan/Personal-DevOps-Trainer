@@ -141,3 +141,51 @@ class Choice(models.Model):
 
     def __str__(self) -> str:
         return self.text
+
+
+class Lab(models.Model):
+    """Laboratório prático interativo de um tópico.
+
+    Roda inteiramente no cliente (Alpine.js): NÃO executa comando de verdade,
+    valida o raciocínio. Isso é deliberado, não limitação temporária — a
+    plataforma roda numa t4g.nano (512 MB) e sandbox por aluno exigiria uma
+    fleet própria; e o objetivo é o aluno conseguir estudar pelo celular,
+    onde digitar `find . -type f -name '*.sh'` é inviável. Por isso todo
+    formato abaixo é resolvido por TOQUE, não por digitação.
+
+    Cada `kind` interpreta `spec` de um jeito (o schema de cada um está
+    documentado em apps/courses/seed_data/labs.py, junto dos 60 labs).
+    """
+
+    class Kind(models.TextChoices):
+        TERMINAL = "terminal", "Terminal — montar comando tocando nos tokens"
+        FIND_FLAW = "find_flaw", "Caça-a-falha — tocar na linha vulnerável"
+        ORDER = "order", "Ordenação — pôr as etapas na ordem certa"
+        BLANKS = "blanks", "Lacunas — completar config escolhendo o valor"
+        SCENARIO = "scenario", "Cenário — decidir e ver a consequência"
+
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="labs")
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    title = models.CharField(max_length=140)
+    spec = models.JSONField(
+        help_text="Conteúdo do lab; o formato depende de `kind` (ver seed_data/labs.py)."
+    )
+    order = models.PositiveSmallIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    seed_managed = models.BooleanField(
+        default=True,
+        help_text=(
+            "Enquanto marcado, `seed_labs` mantém este lab sincronizado com "
+            "apps/courses/seed_data/labs.py. Salvar pelo admin desmarca "
+            "automaticamente — a partir daí o seed não sobrescreve a edição."
+        ),
+    )
+
+    class Meta:
+        ordering = ["topic_id", "order", "id"]
+        verbose_name = "laboratório"
+        verbose_name_plural = "laboratórios"
+
+    def __str__(self) -> str:
+        return f"{self.topic.title} · {self.title}"

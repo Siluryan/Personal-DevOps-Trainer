@@ -4,8 +4,8 @@ from __future__ import annotations
 import pytest
 from django.urls import reverse
 
-from apps.courses.models import Phase, Topic
-from apps.gamification.models import TopicAttempt, TopicScore
+from apps.courses.models import Lab, Phase, Topic
+from apps.gamification.models import LabCompletion, TopicAttempt, TopicScore
 from apps.gamification.services import (
     build_radar_payload,
     top_users,
@@ -56,6 +56,48 @@ class TestTopicScoreModel:
         TopicScore.add_help_bonus(user=admitted_user, topic=t1, amount=2)
         score = TopicScore.objects.get(user=admitted_user, topic=t1)
         assert score.points == 10
+
+    def test_sync_lab_bonus_conta_labs_concluidos(self, admitted_user, two_topics):
+        _, t1, _ = two_topics
+        lab1 = Lab.objects.create(topic=t1, kind="terminal", title="L1", spec={})
+        lab2 = Lab.objects.create(topic=t1, kind="order", title="L2", spec={})
+        LabCompletion.objects.create(user=admitted_user, lab=lab1)
+        LabCompletion.objects.create(user=admitted_user, lab=lab2)
+        score = TopicScore.sync_lab_bonus(user=admitted_user, topic=t1)
+        assert score.lab_bonus == 10  # 2 labs x LAB_POINTS (5)
+        assert score.points == 10
+
+    def test_sync_lab_bonus_ignora_lab_de_outro_topico(self, admitted_user, two_topics):
+        _, t1, t2 = two_topics
+        lab_outro = Lab.objects.create(topic=t2, kind="terminal", title="L", spec={})
+        LabCompletion.objects.create(user=admitted_user, lab=lab_outro)
+        score = TopicScore.sync_lab_bonus(user=admitted_user, topic=t1)
+        assert score.lab_bonus == 0
+
+    def test_sync_lab_bonus_ignora_lab_inativo(self, admitted_user, two_topics):
+        _, t1, _ = two_topics
+        lab = Lab.objects.create(topic=t1, kind="terminal", title="L", spec={}, is_active=False)
+        LabCompletion.objects.create(user=admitted_user, lab=lab)
+        score = TopicScore.sync_lab_bonus(user=admitted_user, topic=t1)
+        assert score.lab_bonus == 0
+
+    def test_sync_lab_bonus_recomputa_do_zero_nao_acumula(self, admitted_user, two_topics):
+        _, t1, _ = two_topics
+        lab = Lab.objects.create(topic=t1, kind="terminal", title="L", spec={})
+        LabCompletion.objects.create(user=admitted_user, lab=lab)
+        TopicScore.sync_lab_bonus(user=admitted_user, topic=t1)
+        score = TopicScore.sync_lab_bonus(user=admitted_user, topic=t1)  # roda 2x
+        assert score.lab_bonus == 5  # não dobra por rodar de novo
+
+    def test_pontos_combinam_quiz_help_e_lab(self, admitted_user, two_topics):
+        _, t1, _ = two_topics
+        attempt = TopicAttempt.objects.create(user=admitted_user, topic=t1, score=8)
+        TopicScore.update_from_attempt(attempt)
+        TopicScore.add_help_bonus(user=admitted_user, topic=t1, amount=2)
+        lab = Lab.objects.create(topic=t1, kind="terminal", title="L", spec={})
+        LabCompletion.objects.create(user=admitted_user, lab=lab)
+        score = TopicScore.sync_lab_bonus(user=admitted_user, topic=t1)
+        assert score.points == 8 + 2 + 5
 
 
 @pytest.mark.django_db

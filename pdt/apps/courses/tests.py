@@ -4,9 +4,12 @@ from __future__ import annotations
 import pytest
 from django.urls import reverse
 
-from apps.courses.models import Choice, Lesson, Phase, Question, Topic
+from apps.courses.models import Choice, Lab, Lesson, Phase, Question, Topic
 from apps.courses.seed_data import PHASES
-from apps.gamification.models import TopicAttempt, TopicScore
+from apps.courses.seed_data.labs import LABS
+from apps.gamification.models import LabCompletion, TopicAttempt, TopicScore
+
+ALL_TOPIC_TITLES = {t["title"] for phase in PHASES for t in phase["topics"]}
 
 
 @pytest.mark.django_db
@@ -101,6 +104,159 @@ class TestSeedDataIntegrity:
                 assert topic["title"] not in seen, f"Tópico duplicado: {topic['title']}"
                 seen.add(topic["title"])
         assert len(seen) == 60
+
+
+class TestLabDataIntegrity:
+    """Garante que os 60 laboratórios (1 por tópico) estão bem-formados.
+
+    Cobre a queixa "não tem laboratório prático de verdade": cada um dos 60
+    tópicos precisa ter exatamente 1 lab, com `topic_title` batendo com um
+    tópico real (senão `seed_labs` levanta CommandError silenciosamente
+    ignorável em produção) e `spec` no formato que `kind` espera.
+    """
+
+    def test_existem_60_labs_um_por_topico(self):
+        assert len(LABS) == 60
+
+    def test_topic_title_bate_com_topico_real(self):
+        for lab in LABS:
+            assert lab["topic_title"] in ALL_TOPIC_TITLES, (
+                f"Lab {lab['title']!r} aponta pro tópico "
+                f"{lab['topic_title']!r}, que não existe em seed_data"
+            )
+
+    def test_cada_topico_tem_exatamente_1_lab(self):
+        titles = [lab["topic_title"] for lab in LABS]
+        assert len(titles) == len(set(titles)) == 60
+
+    def test_kind_e_um_dos_validos(self):
+        validos = {k for k, _ in Lab.Kind.choices}
+        for lab in LABS:
+            assert lab["kind"] in validos, f"{lab['title']}: kind {lab['kind']!r} inválido"
+
+    def test_spec_terminal_tem_pool_sem_token_duplicado(self):
+        for lab in LABS:
+            if lab["kind"] != "terminal":
+                continue
+            spec = lab["spec"]
+            pool = spec["correct_command"] + spec["distractor_tokens"]
+            assert len(set(pool)) == len(pool), f"{lab['title']}: token duplicado no pool"
+
+    def test_spec_find_flaw_indice_dentro_do_range(self):
+        for lab in LABS:
+            if lab["kind"] != "find_flaw":
+                continue
+            spec = lab["spec"]
+            assert 0 <= spec["flaw_line_index"] < len(spec["lines"]), lab["title"]
+
+    def test_spec_order_mesmos_itens_embaralhados_e_ordenados(self):
+        for lab in LABS:
+            if lab["kind"] != "order":
+                continue
+            spec = lab["spec"]
+            assert sorted(spec["steps_shuffled"]) == sorted(spec["correct_order"]), lab["title"]
+
+    def test_spec_blanks_marcador_aparece_no_template(self):
+        for lab in LABS:
+            if lab["kind"] != "blanks":
+                continue
+            spec = lab["spec"]
+            for key, blank in spec["blanks"].items():
+                assert f"___{key}___" in spec["template"], f"{lab['title']}: falta marcador {key}"
+                assert blank["correct"] in blank["options"], lab["title"]
+
+    def test_spec_scenario_tem_exatamente_1_choice_boa(self):
+        for lab in LABS:
+            if lab["kind"] != "scenario":
+                continue
+            spec = lab["spec"]
+            boas = sum(1 for c in spec["choices"] if c["good"])
+            assert boas == 1, f"{lab['title']}: {boas} choices boas (esperava 1)"
+
+
+@pytest.mark.django_db
+class TestSeedLabsCommand:
+    """Mesmo padrão de TestSeedTopicsCommand: idempotente, preserva edição."""
+
+    def test_seed_labs_cria_um_por_topico(self):
+        from django.core.management import call_command
+
+        call_command("seed_topics", verbosity=0)
+        call_command("seed_labs", verbosity=0)
+        assert Lab.objects.count() == 60
+        assert Topic.objects.filter(labs__isnull=True).count() == 0
+
+    def test_seed_labs_idempotente(self):
+        from django.core.management import call_command
+
+        call_command("seed_topics", verbosity=0)
+        call_command("seed_labs", verbosity=0)
+        primeiro_count = Lab.objects.count()
+        call_command("seed_labs", verbosity=0)
+        assert Lab.objects.count() == primeiro_count
+
+    def test_seed_labs_preserva_edicao_do_admin(self):
+        from django.core.management import call_command
+
+        call_command("seed_topics", verbosity=0)
+        call_command("seed_labs", verbosity=0)
+        lab = Lab.objects.first()
+        lab.title = "Editado pelo mantenedor"
+        lab.seed_managed = False
+        lab.save(update_fields=["title", "seed_managed"])
+
+        call_command("seed_labs", verbosity=0)
+        lab.refresh_from_db()
+        assert lab.title == "Editado pelo mantenedor"
+
+    def test_seed_labs_force_sobrescreve_edicao(self):
+        from django.core.management import call_command
+
+        call_command("seed_topics", verbosity=0)
+        call_command("seed_labs", verbosity=0)
+        lab = Lab.objects.first()
+        titulo_original = lab.title
+        lab.title = "Será revertido"
+        lab.seed_managed = False
+        lab.save(update_fields=["title", "seed_managed"])
+
+        call_command("seed_labs", force=True, verbosity=0)
+        lab.refresh_from_db()
+        assert lab.title == titulo_original
+        assert lab.seed_managed is True
+
+
+@pytest.mark.django_db
+class TestLabCompleteView:
+    def test_completar_lab_soma_bonus_e_e_idempotente(self, client, admitted_user, seed_phases):
+        client.force_login(admitted_user)
+        topic = seed_phases["topic"]
+        lab = Lab.objects.create(topic=topic, kind="terminal", title="L", spec={})
+
+        url = reverse("courses:lab_complete", args=[lab.id])
+        resp = client.post(url)
+        assert resp.status_code == 200
+        assert resp.json()["lab_bonus"] == 5
+        assert LabCompletion.objects.filter(user=admitted_user, lab=lab).count() == 1
+
+        resp2 = client.post(url)  # refazer não deve dobrar o bônus
+        assert resp2.json()["lab_bonus"] == 5
+        assert LabCompletion.objects.filter(user=admitted_user, lab=lab).count() == 1
+
+    def test_completar_lab_exige_login(self, client, seed_phases):
+        topic = seed_phases["topic"]
+        lab = Lab.objects.create(topic=topic, kind="terminal", title="L", spec={})
+        resp = client.post(reverse("courses:lab_complete", args=[lab.id]))
+        assert resp.status_code in (302, 401, 403)
+
+    def test_lab_inativo_nao_pode_ser_completado(self, client, admitted_user, seed_phases):
+        client.force_login(admitted_user)
+        topic = seed_phases["topic"]
+        lab = Lab.objects.create(
+            topic=topic, kind="terminal", title="L", spec={}, is_active=False
+        )
+        resp = client.post(reverse("courses:lab_complete", args=[lab.id]))
+        assert resp.status_code == 404
 
 
 @pytest.mark.django_db
