@@ -349,6 +349,67 @@ html { scroll-behavior: smooth; }
   }
 }
 
+/* Sidebar "Nesta aula": termos do glossário citados na aula, listados de uma
+   vez ao lado do texto (complementa o popover clicável inline em cada termo).
+   Em telas estreitas some do grid e cai para baixo do conteúdo principal. */
+.lesson-with-sidebar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.lesson-main {
+  min-width: 0;
+}
+.lesson-glossary-sidebar {
+  background: var(--pdt-surface);
+  border: 1px solid var(--pdt-border);
+  border-radius: 12px;
+  padding: 1.25rem 1.375rem;
+}
+.lesson-glossary-sidebar h3 {
+  color: #7dd3fc;
+  font-size: .9375rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.lesson-glossary-sidebar dl {
+  margin: 0;
+}
+.lesson-glossary-sidebar-item {
+  padding: .75rem 0;
+  border-top: 1px solid var(--pdt-border);
+}
+.lesson-glossary-sidebar-item:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+.lesson-glossary-sidebar-item dt {
+  color: var(--pdt-accent-h);
+  font-weight: 700;
+  font-size: .875rem;
+  margin-bottom: .25rem;
+}
+.lesson-glossary-sidebar-item dd {
+  color: var(--pdt-text2);
+  font-size: .8125rem;
+  line-height: 1.5;
+  margin: 0;
+}
+@media (min-width: 1024px) {
+  .lesson-with-sidebar {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+  .lesson-glossary-sidebar {
+    position: sticky;
+    top: 1.5rem;
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    SISTEMA LEGADO (prose-invert), mantido para compatibilidade
    ══════════════════════════════════════════════════════════════════════════ */

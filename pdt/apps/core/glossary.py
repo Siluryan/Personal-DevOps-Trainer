@@ -34,6 +34,7 @@ class _GlossaryAnnotator(HTMLParser):
         self._out: list[str] = []
         self._skip_depth = 0
         self._used: set[str] = set()
+        self.used_order: list[str] = []  # ordem de 1ª aparição, para a sidebar
 
     @staticmethod
     def _build_pattern(terms: dict[str, str]) -> re.Pattern[str] | None:
@@ -86,6 +87,7 @@ class _GlossaryAnnotator(HTMLParser):
                 pieces.append(escape(term))
                 continue
             self._used.add(term)
+            self.used_order.append(term)
             pieces.append(_render_term(term, definition))
         pieces.append(escape(text[last:]))
         return "".join(pieces)
@@ -127,6 +129,30 @@ def annotate_glossary_terms(html: str, terms: dict[str, str]) -> str:
     parser.feed(html)
     parser.close()
     return parser.get_html()
+
+
+def lesson_glossary_sidebar(html_parts: list[str], terms: dict[str, str], limit: int = 12) -> list[dict[str, str]]:
+    """Termos do glossário citados em uma aula, em ordem de 1ª aparição.
+
+    `html_parts` é a lista de blocos de HTML da aula (intro, corpo, prático),
+    concatenados aqui para que a ordem reflita a leitura de cima a baixo,
+    mesmo com o corpo paginado em pedaços menores em `paginate_lesson_body`.
+    Serve para montar a sidebar "Nesta aula" ao lado do conteúdo. Respeita o
+    mesmo `_SKIP_TAGS` do popover inline: nunca cita termo que só aparece
+    dentro de bloco de código.
+    """
+    if not terms:
+        return []
+    combined = "\n".join(part for part in html_parts if part)
+    if not combined:
+        return []
+    parser = _GlossaryAnnotator(terms)
+    parser.feed(combined)
+    parser.close()
+    return [
+        {"term": term, "definition": terms[term]}
+        for term in parser.used_order[:limit]
+    ]
 
 
 def get_glossary_terms() -> dict[str, str]:

@@ -8,6 +8,7 @@ from django.utils.html import escape, linebreaks
 from django.utils.safestring import mark_safe
 
 from apps.core.glossary import annotate_glossary_terms, get_glossary_terms
+from apps.core.glossary import lesson_glossary_sidebar as _lesson_glossary_sidebar
 from apps.core.pagination import paginate_html_sections
 
 register = template.Library()
@@ -171,6 +172,20 @@ def paginate_lesson_body(value: str) -> list:
     """
     html = _prepare_lesson_html(value)
     return [mark_safe(page) for page in paginate_html_sections(html)]
+
+
+@register.simple_tag
+def lesson_glossary_sidebar(lesson, limit=12) -> list[dict[str, str]]:
+    """Termos do glossário citados na aula (intro+corpo+prático), em ordem de leitura.
+
+    Usado para montar a sidebar "Nesta aula" ao lado do conteúdo — diferente
+    do popover inline (`render_lesson`/`paginate_lesson_body`), que marca o
+    termo dentro do próprio texto e exige clique para ver a definição.
+    """
+    if lesson is None:
+        return []
+    parts = [lesson.intro, lesson.body, lesson.practical]
+    return _lesson_glossary_sidebar(parts, get_glossary_terms(), limit=limit)
 
 
 @register.filter

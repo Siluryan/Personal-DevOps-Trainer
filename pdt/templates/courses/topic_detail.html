@@ -31,7 +31,9 @@
 
   <!-- ── AULA ───────────────────────────────────────────────────────────── -->
   {% if topic.lesson %}
-    <div class="mt-8">
+    {% lesson_glossary_sidebar topic.lesson as glossary_sidebar_terms %}
+    <div class="mt-8 lesson-with-sidebar">
+     <div class="lesson-main">
 
       {% if topic.lesson.intro %}
         <div class="lesson-body mb-2" style="border-bottom:none;border-radius:12px 12px 0 0">
@@ -77,6 +79,21 @@
         </div>
       {% endif %}
 
+     </div>
+
+     {% if glossary_sidebar_terms %}
+       <aside class="lesson-glossary-sidebar">
+         <h3>Nesta aula</h3>
+         <dl>
+           {% for item in glossary_sidebar_terms %}
+             <div class="lesson-glossary-sidebar-item">
+               <dt>{{ item.term }}</dt>
+               <dd>{{ item.definition }}</dd>
+             </div>
+           {% endfor %}
+         </dl>
+       </aside>
+     {% endif %}
     </div>
   {% endif %}
 

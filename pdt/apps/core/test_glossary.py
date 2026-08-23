@@ -9,7 +9,7 @@ import pytest
 from django.core.cache import cache
 from django.core.management import call_command
 
-from apps.core.glossary import annotate_glossary_terms, get_glossary_terms
+from apps.core.glossary import annotate_glossary_terms, get_glossary_terms, lesson_glossary_sidebar
 from apps.core.models import GlossaryTerm
 from apps.core.templatetags.pdt_extras import render_lesson
 
@@ -58,6 +58,44 @@ class TestAnnotateGlossaryTerms:
 
     def test_entrada_vazia(self):
         assert annotate_glossary_terms("", {"RCE": "def"}) == ""
+
+
+class TestLessonGlossarySidebar:
+    """`lesson_glossary_sidebar` monta a lista da sidebar "Nesta aula" (sem banco)."""
+
+    TERMS = {
+        "RTT": "Round-Trip Time.",
+        "QUIC": "Protocolo moderno sobre UDP.",
+        "TCP": "Protocolo confiável.",
+    }
+
+    def test_ordem_e_por_1a_aparicao_entre_os_blocos(self):
+        intro = "<p>Handshake tradicional usa TCP.</p>"
+        body = "<p>RTT antes do byte. QUIC roda sobre UDP. De novo: RTT e TCP.</p>"
+        result = lesson_glossary_sidebar([intro, body, None], self.TERMS)
+        assert [item["term"] for item in result] == ["TCP", "RTT", "QUIC"]
+
+    def test_sem_duplicata_mesmo_citado_em_blocos_diferentes(self):
+        intro = "<p>TCP aqui.</p>"
+        practical = "<p>TCP de novo aqui.</p>"
+        result = lesson_glossary_sidebar([intro, None, practical], self.TERMS)
+        assert len(result) == 1
+
+    def test_respeita_limit(self):
+        body = "<p>RTT, QUIC e TCP juntos.</p>"
+        result = lesson_glossary_sidebar([None, body, None], self.TERMS, limit=2)
+        assert len(result) == 2
+
+    def test_ignora_termo_dentro_de_bloco_de_codigo(self):
+        body = "<pre><code>RTT = 40</code></pre><p>Sem menção fora do código.</p>"
+        result = lesson_glossary_sidebar([None, body, None], self.TERMS)
+        assert result == []
+
+    def test_sem_termos_conhecidos_retorna_lista_vazia(self):
+        assert lesson_glossary_sidebar(["<p>nada aqui</p>"], {}) == []
+
+    def test_todos_blocos_vazios_retorna_lista_vazia(self):
+        assert lesson_glossary_sidebar([None, "", None], self.TERMS) == []
         assert annotate_glossary_terms(None, {"RCE": "def"}) == ""
 
     def test_atributo_de_tag_nunca_e_tocado(self):
