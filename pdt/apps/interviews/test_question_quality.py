@@ -18,6 +18,12 @@ import re
 
 import pytest
 
+from apps.core.question_quality import (
+    absolute_leak_rate,
+    absolute_word_leaks,
+    longest_wins_rate,
+    worst_offenders_by_length_gap,
+)
 from apps.interviews.seed_data import ALL_INTERVIEW_QUESTIONS
 
 # --- Heurísticas ---
@@ -426,3 +432,81 @@ class TestQualityHelpers:
         assert _is_lazy(
             "Lista os processos com snapshot único, sem atualização periódica."
         ) is False
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Vazamento agregado: "sempre a mais longa" e absoluto só no distrator
+# ─────────────────────────────────────────────────────────────────────────
+
+# Os testes acima checam cada distrator isoladamente (tamanho mínimo,
+# frase preguiçosa). Nenhum deles pega o padrão AGREGADO: mesmo com todo
+# distrator tendo "substância", se a correta é sistematicamente a mais
+# longa, quem chuta "a mais comprida" sem ler o enunciado ainda acerta bem
+# acima do acaso. Medido nestes 300 questões: marcar sempre a mais longa
+# acerta 82% no júnior, 95% no pleno, 98% no sênior (baseline: 25%); e um
+# absoluto — apenas/sempre/nunca... — aparece só no distrator em 32-64%
+# das questões, dependendo do nível.
+#
+# Corrigir isso exige reescrever distratores questão a questão (não dá para
+# aplicar uma regra mecânica sem arriscar trocar "plausível" por "errado
+# de um jeito óbvio"). Por isso os dois testes ficam `xfail` — cada um
+# documenta a métrica atual, então quando alguém reescrever um lote e a
+# métrica melhorar, remover o `xfail` correspondente é o sinal de que
+# aquele nível está pronto. Ver apps.assessments.test_question_quality
+# para um banco pequeno já corrigido com o mesmo par de heurísticas.
+
+
+def _longest_pairs(level: str) -> list:
+    questions = ALL_INTERVIEW_QUESTIONS[level]
+    pairs = []
+    for q in questions:
+        correct = q["choices"][q["correct_index"]]
+        wrong = [c for j, c in enumerate(q["choices"]) if j != q["correct_index"]]
+        pairs.append((correct, wrong))
+    return pairs
+
+
+def _longest_labeled_pairs(level: str) -> list:
+    return [(f"{level}#{i}", pair) for i, pair in enumerate(_longest_pairs(level))]
+
+
+class TestVazamentoAgregado:
+    """Aqui até por nível: cada um reflete o esforço de reescrita já feito."""
+
+    @pytest.mark.xfail(
+        reason="Onda 3: reescrita de distratores do júnior ainda em andamento "
+        "(82% de acerto marcando sempre a mais longa; alvo: ≤ 30%)",
+        strict=False,
+    )
+    def test_junior_taxa_de_acerto_marcando_sempre_a_mais_longa(self):
+        assert longest_wins_rate(_longest_pairs("junior")) <= 0.30
+
+    @pytest.mark.xfail(
+        reason="Onda 3: reescrita de distratores do pleno ainda em andamento "
+        "(95% de acerto marcando sempre a mais longa; alvo: ≤ 30%)",
+        strict=False,
+    )
+    def test_pleno_taxa_de_acerto_marcando_sempre_a_mais_longa(self):
+        assert longest_wins_rate(_longest_pairs("pleno")) <= 0.30
+
+    @pytest.mark.xfail(
+        reason="Onda 3: reescrita de distratores do sênior ainda em andamento "
+        "(98% de acerto marcando sempre a mais longa; alvo: ≤ 30%)",
+        strict=False,
+    )
+    def test_senior_taxa_de_acerto_marcando_sempre_a_mais_longa(self):
+        assert longest_wins_rate(_longest_pairs("senior")) <= 0.30
+
+    @pytest.mark.parametrize("level", ["junior", "pleno", "senior"])
+    @pytest.mark.xfail(
+        reason="Onda 3: absoluto (apenas/sempre/nunca...) ainda vaza só no "
+        "distrator em boa parte das questões; alvo: 0%",
+        strict=False,
+    )
+    def test_absoluto_nao_vaza_so_no_distrator(self, level):
+        pairs = _longest_pairs(level)
+        taxa = absolute_leak_rate(pairs)
+        ofensores = [
+            label for label, pair in _longest_labeled_pairs(level) if absolute_word_leaks(pair)
+        ]
+        assert taxa == 0.0, f"{level}: {taxa * 100:.1f}% vazando — {ofensores[:10]}"

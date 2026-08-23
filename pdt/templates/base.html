@@ -24,9 +24,19 @@
       }
     };
   </script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
-  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  {% comment %}
+    Servidos do próprio host, não de CDN: sem entregar IP e navegação do aluno
+    a terceiros, sem depender de rede externa e sem tag flutuante (o antigo
+    alpinejs@3.x.x executava qualquer versão futura). Os arquivos vivem em
+    static/vendor/ e já estavam no repositório.
+
+    Comentário em bloco de propósito: a sintaxe de cerquilha do Django cobre
+    uma linha só, e quando espalhada por várias o lexer não a reconhece —
+    o texto vaza renderizado no topo de todas as páginas.
+  {% endcomment %}
+  <script src="{% static 'vendor/tailwind/tailwindcdn.js' %}"></script>
+  <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
+  <script src="{% static 'vendor/alpine/alpine.min.js' %}" defer></script>
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
   <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}" />
   <link rel="shortcut icon" href="{% static 'img/favicon.svg' %}" />

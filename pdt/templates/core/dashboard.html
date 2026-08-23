@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% load l10n %}
 {% block title %}Dashboard · PDT{% endblock %}
 
@@ -262,7 +263,7 @@ function leaderboardPanel() {
   };
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 {{ radar|json_script:"radar-data" }}
 <script>
   const pdtLabelHover = {

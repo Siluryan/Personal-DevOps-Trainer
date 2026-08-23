@@ -80,6 +80,16 @@ contribuir:
   docker compose exec web python manage.py seed_topics --reset-questions
   ```
   para refletir as mudanças no banco local.
+- Se você (ou alguém) já editou aquela aula/questão pelo admin, o seed
+  pula o registro por padrão — é a proteção contra sobrescrever conteúdo
+  editado (`seed_managed=False`, setado automaticamente pelo admin).
+  Para forçar a sincronização com o arquivo mesmo assim, adicione
+  `--force`.
+- Antes de mexer numa alternativa, rode
+  `pytest apps/courses/test_question_quality.py`: ele mede se a
+  alternativa correta virou a mais longa das quatro, ou se um absoluto
+  ("apenas", "sempre", "nunca"...) só aparece nos distratores — os dois
+  padrões que deixam a questão "óbvia" sem o aluno saber o assunto.
 
 ## 6. Checagens locais (antes de abrir a PR)
 

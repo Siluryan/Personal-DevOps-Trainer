@@ -29,19 +29,31 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         ctx["my_total_score"] = total_score_for(self.request.user)
         users = list(top_users(limit=10))
         ctx["leaderboard"] = users
-        # Serializar dados de contato para uso no Alpine.js (apenas quem optou)
+        # Dados de contato para o painel em Alpine.js.
+        #
+        # Os campos de contato só entram no payload de quem marcou
+        # `show_contact_info`. Antes iam para todo mundo e a ocultação
+        # acontecia só no template (`x-if="selected.show_contact"`), ou seja,
+        # bio, país, LinkedIn e GitHub de quem NÃO optou ficavam legíveis no
+        # HTML da página para qualquer um que abrisse o "ver código-fonte".
         ctx["leaderboard_contacts_json"] = json.dumps(
             {
                 str(u.pk): {
                     "name": u.display_name,
-                    "country": u.country,
-                    "bio": u.bio,
-                    "linkedin": u.linkedin_url,
-                    "github": u.github_url,
                     "total": int(u.total or 0),
                     "show_contact": bool(u.show_contact_info),
                     "career": u.career_label,
                     "profile_url": reverse("accounts:profile", args=[u.pk]),
+                    **(
+                        {
+                            "country": u.country,
+                            "bio": u.bio,
+                            "linkedin": u.linkedin_url,
+                            "github": u.github_url,
+                        }
+                        if u.show_contact_info
+                        else {}
+                    ),
                 }
                 for u in users
             }

@@ -24,177 +24,216 @@ PHASE1 = {
                     "começa exatamente aqui."
                 ),
                 "body": (
-                    "<h3>1. Filosofia: tudo é arquivo</h3>"
-                    "<p>O lema do Unix vale também no Linux: <strong>tudo é representado como "
-                    "arquivo</strong>. Disco (<code>/dev/sda</code>), socket de rede "
-                    "(<code>/proc/net/tcp</code>), processos rodando (<code>/proc/&lt;pid&gt;</code>), "
-                    "configuração do kernel (<code>/sys</code>), até dispositivos USB e GPIOs. "
-                    "Isso significa que o mesmo modelo de permissões (rwx + dono/grupo) controla "
-                    "literalmente <em>tudo</em>. Quando um atacante explora uma vulnerabilidade "
-                    "para escrever em <code>/dev/mem</code> ou <code>/proc/sys/kernel/core_pattern</code>, "
-                    "ele está apenas usando o modelo de arquivos para subverter o kernel.</p>"
-                    "<p>Aprender Linux fundo é, em larga medida, aprender quais arquivos importam "
-                    "e quem deveria poder ler/escrever em cada um.</p>"
+                """<h3>1. Filosofia: tudo é arquivo</h3>
+<p>O lema clássico do Unix se aplica integralmente no Linux: tudo é
+representado como arquivo — disco (<code>/dev/sda</code>), socket de
+rede (<code>/proc/net/tcp</code>), processo rodando
+(<code>/proc/&lt;pid&gt;</code>), configuração do próprio kernel
+(<code>/sys</code>), até dispositivo USB e GPIO. A consequência prática
+é que o MESMO modelo de permissão (rwx combinado com dono e grupo)
+controla literalmente tudo isso de uma vez, sem exceção especial para
+cada tipo de recurso. Quando um atacante explora uma vulnerabilidade
+para escrever em <code>/dev/mem</code> ou
+<code>/proc/sys/kernel/core_pattern</code>, ele está usando exatamente
+esse modelo de arquivo unificado para subverter o kernel — não um
+mecanismo diferente. Aprender Linux a fundo é, em boa medida, aprender
+quais arquivos específicos importam e quem deveria ter permissão de ler
+ou escrever em cada um.</p>
 
-                    "<h3>2. Modelo de identidade: UID, GID e processos</h3>"
-                    "<p>Cada processo é executado em nome de um <strong>UID</strong> (effective "
-                    "user id) e tem um <strong>GID</strong> primário mais um conjunto de grupos "
-                    "suplementares. Todo processo herda do pai, o init/<code>systemd</code> roda "
-                    "como UID 0 (root) e os filhos vão derivando.</p>"
-                    "<ul>"
-                    "<li><strong>UID 0</strong>: <code>root</code>, ignora todo check de "
-                    "permissão. É o motivo de não rodar serviços expostos à internet como root.</li>"
-                    "<li><strong>UID 1-999</strong>: usuários de sistema (criados pelos pacotes: "
-                    "<code>www-data</code>, <code>postgres</code>, <code>nobody</code>...).</li>"
-                    "<li><strong>UID ≥ 1000</strong>: usuários humanos (em distros modernas).</li>"
-                    "</ul>"
-                    "<p>Inspecione com:</p>"
-                    "<pre><code>id                 # quem sou eu (uid, gid, grupos)\n"
-                    "id deploy          # idem para outro usuário\n"
-                    "ps -eo pid,uid,user,cmd | head\n"
-                    "cat /etc/passwd    # mapeamento UID ↔ login ↔ shell\n"
-                    "cat /etc/group     # mapeamento GID ↔ nome do grupo</code></pre>"
-                    "<p>Senhas <strong>nunca</strong> ficam em <code>/etc/passwd</code> em sistemas "
-                    "modernos: o hash mora em <code>/etc/shadow</code>, legível só pelo root. "
-                    "Usar <code>/etc/passwd</code> como atalho leitor está bem; vazar "
-                    "<code>/etc/shadow</code> para outro usuário é incidente de segurança.</p>"
+<h3>2. Modelo de identidade: UID, GID e processos</h3>
+<p>Todo processo roda em nome de um <strong>UID</strong> (effective
+user id) e carrega um <strong>GID</strong> primário mais um conjunto de
+grupo suplementar. Cada processo HERDA essa identidade do próprio pai
+— o init/<code>systemd</code> começa como UID 0 (root), e todo processo
+filho deriva dessa raiz. Três faixas de UID têm significado
+convencional: <strong>UID 0</strong> é o próprio root, que ignora
+literalmente todo check de permissão — é exatamente por isso que
+serviço exposto à internet nunca deveria rodar sob esse UID; UID entre
+1 e 999 são usuários de sistema criados pelos próprios pacotes
+(<code>www-data</code>, <code>postgres</code>, <code>nobody</code>); e
+UID a partir de 1000 são usuários humanos em distribuição moderna.
+Inspecionar essa identidade é direto:</p>
+<pre><code>id                 # quem sou eu (uid, gid, grupos)
+id deploy          # idem para outro usuário
+ps -eo pid,uid,user,cmd | head
+cat /etc/passwd    # mapeamento UID ↔ login ↔ shell
+cat /etc/group     # mapeamento GID ↔ nome do grupo</code></pre>
+<p>Um detalhe de segurança que muita gente ignora: senha NUNCA fica em
+<code>/etc/passwd</code> em sistema moderno — o hash mora
+especificamente em <code>/etc/shadow</code>, legível só pelo root. Usar
+<code>/etc/passwd</code> como referência de leitura geral é normal e
+esperado; vazar <code>/etc/shadow</code> para outro usuário já é
+incidente de segurança propriamente dito.</p>
 
-                    "<h3>3. Permissões clássicas: o modelo rwx</h3>"
-                    "<p>Cada arquivo tem dono, grupo e três classes de permissão "
-                    "(<em>user / group / other</em>) em três bits cada (<code>r</code>=4, "
-                    "<code>w</code>=2, <code>x</code>=1). Em octal:</p>"
-                    "<pre><code>chmod 750 deploy.sh\n"
-                    "  └ user 7 = r+w+x\n"
-                    "  └ group 5 = r+x  (sem write)\n"
-                    "  └ other 0 = nada\n\n"
-                    "ls -l deploy.sh\n"
-                    "-rwxr-x---  1 deploy web  142 Apr 25 16:12 deploy.sh</code></pre>"
-                    "<p>Para diretórios, o significado é diferente: <code>r</code> permite "
-                    "<em>listar</em> nomes, <code>x</code> permite <em>entrar</em>, e "
-                    "<code>w</code> permite <em>criar/remover</em> arquivos lá dentro. É "
-                    "perfeitamente possível ter um diretório com permissão <code>x</code> mas "
-                    "sem <code>r</code>, você consegue acessar arquivos por nome conhecido, "
-                    "mas não consegue listar.</p>"
-                    "<p>O modo simbólico costuma ser mais legível para mudanças incrementais:</p>"
-                    "<pre><code>chmod g+rw arquivo       # add read+write para o grupo\n"
-                    "chmod o-x  diretorio/     # remove execute do 'other'\n"
-                    "chmod -R u+rwX,g+rX,o-rwx /srv/app/   # X executa só em diretórios</code></pre>"
+<h3>3. Permissões clássicas: o modelo rwx</h3>
+<p>Todo arquivo carrega dono, grupo, e três classes de permissão
+(user, group, other), cada uma com três bits (<code>r</code>=4,
+<code>w</code>=2, <code>x</code>=1) representáveis em octal:</p>
+<pre><code>chmod 750 deploy.sh
+  └ user 7 = r+w+x
+  └ group 5 = r+x  (sem write)
+  └ other 0 = nada
 
-                    "<h3>4. Bits especiais: setuid, setgid, sticky</h3>"
-                    "<p>Três bits 'extras' alteram comportamento de execução:</p>"
-                    "<ul>"
-                    "<li><strong>setuid (4xxx)</strong>: o programa, ao ser executado, roda "
-                    "com privilégio do <em>dono</em> do arquivo, não de quem o invocou. É como "
-                    "<code>passwd</code> consegue alterar <code>/etc/shadow</code> sendo "
-                    "executado por usuário comum. Mal usado, é vetor clássico de escalada, "
-                    "todo binário setuid mantido na sua máquina deveria estar em uma whitelist.</li>"
-                    "<li><strong>setgid (2xxx)</strong>: idem, mas com privilégio do grupo. Em "
-                    "diretórios, garante que arquivos novos herdem o grupo do diretório (útil "
-                    "para diretórios compartilhados de equipe).</li>"
-                    "<li><strong>sticky bit (1xxx)</strong>: em diretórios, só o dono do arquivo "
-                    "(ou do diretório) pode apagá-lo. Por isso <code>/tmp</code> tem modo "
-                    "<code>1777</code>: qualquer um cria, mas só o criador apaga.</li>"
-                    "</ul>"
-                    "<pre><code>find / -perm -4000 -type f 2&gt;/dev/null   # binários setuid\n"
-                    "find / -perm -2000 -type f 2&gt;/dev/null   # binários setgid</code></pre>"
+ls -l deploy.sh
+-rwxr-x---  1 deploy web  142 Apr 25 16:12 deploy.sh</code></pre>
+<p>Em diretório, o significado muda de forma sutil e importante:
+<code>r</code> permite LISTAR nomes de arquivo dentro, <code>x</code>
+permite ENTRAR no diretório, e <code>w</code> permite CRIAR ou
+REMOVER arquivo ali. Isso torna perfeitamente possível ter um
+diretório com <code>x</code> mas sem <code>r</code> — nesse caso, é
+possível acessar um arquivo específico se você já souber o nome exato,
+mas impossível listar o conteúdo do diretório para descobrir esse nome
+por conta própria. Para mudança incremental, o modo simbólico costuma
+ser mais legível que recalcular o octal inteiro:</p>
+<pre><code>chmod g+rw arquivo       # add read+write para o grupo
+chmod o-x  diretorio/     # remove execute do 'other'
+chmod -R u+rwX,g+rX,o-rwx /srv/app/   # X executa só em diretórios</code></pre>
 
-                    "<h3>5. Para além de rwx: ACLs e capabilities</h3>"
-                    "<p>O modelo rwx tem só três classes, quando você precisa de granularidade "
-                    "mais fina, use <strong>ACLs POSIX</strong>:</p>"
-                    "<pre><code>setfacl -m u:carlos:r-- /srv/data/relatorio.csv\n"
-                    "setfacl -m g:auditoria:r-x /srv/scripts/\n"
-                    "getfacl /srv/data/relatorio.csv</code></pre>"
-                    "<p>Já as <strong>Linux capabilities</strong> decompõem o poder de root em "
-                    "~40 grãos (<code>man capabilities(7)</code>): em vez de dar root inteiro a "
-                    "um binário web só para ele bindar a porta 80, você concede só "
-                    "<code>CAP_NET_BIND_SERVICE</code>:</p>"
-                    "<pre><code>setcap cap_net_bind_service=+ep /usr/local/bin/myserver\n"
-                    "getcap /usr/local/bin/myserver</code></pre>"
-                    "<p>Esse é o mecanismo por trás de imagens Docker bem feitas que rodam como "
-                    "não-root mas conseguem escutar em portas privilegiadas.</p>"
+<h3>4. Bits especiais: setuid, setgid, sticky</h3>
+<p>Três bits adicionais alteram como um binário se comporta em
+execução. O <strong>setuid</strong> (4xxx) faz o programa rodar com o
+privilégio do DONO do arquivo, não de quem o invocou na prática — é
+exatamente assim que o comando <code>passwd</code> consegue alterar
+<code>/etc/shadow</code> mesmo sendo executado por um usuário comum sem
+privilégio nenhum. Mal aplicado, é um vetor clássico de escalada de
+privilégio — todo binário com setuid presente numa máquina deveria
+estar numa whitelist auditada, não deixado ao acaso. O
+<strong>setgid</strong> (2xxx) segue a mesma lógica, mas com o grupo em
+vez do dono; em diretório, garante que todo arquivo NOVO criado ali
+herda automaticamente o grupo do diretório, útil especificamente para
+área compartilhada de equipe. E o <strong>sticky bit</strong> (1xxx),
+aplicado a diretório, restringe quem pode APAGAR um arquivo àquele que
+o criou (ou ao dono do próprio diretório) — é exatamente por isso que
+<code>/tmp</code> roda com modo <code>1777</code>: qualquer usuário
+cria arquivo ali livremente, mas só quem criou consegue apagar o
+próprio arquivo depois.</p>
+<pre><code>find / -perm -4000 -type f 2&gt;/dev/null   # binários setuid
+find / -perm -2000 -type f 2&gt;/dev/null   # binários setgid</code></pre>
 
-                    "<h3>6. Processos, sinais e systemd</h3>"
-                    "<p>Cada processo tem um <strong>PID</strong>, um pai (<strong>PPID</strong>) "
-                    "e um estado (<code>R</code>=running, <code>S</code>=sleeping, "
-                    "<code>D</code>=disk wait, <code>Z</code>=zombie). Inspecione com "
-                    "<code>ps auxf</code> ou interativamente com <code>htop</code>.</p>"
-                    "<p>O kernel se comunica com processos via <strong>sinais</strong>:</p>"
-                    "<ul>"
-                    "<li><code>SIGTERM (15)</code>, pede para terminar; processo bem-comportado "
-                    "fecha conexões, salva estado e sai. Sempre tente esse primeiro.</li>"
-                    "<li><code>SIGKILL (9)</code>, termina imediatamente; processo não tem "
-                    "chance de cleanup. Use só quando SIGTERM não responde.</li>"
-                    "<li><code>SIGHUP (1)</code>, historicamente 'hangup'; serviços usam para "
-                    "<em>recarregar configuração</em> sem reiniciar.</li>"
-                    "<li><code>SIGINT (2)</code>, Ctrl+C no terminal.</li>"
-                    "<li><code>SIGSTOP/SIGCONT</code>, pausa/retoma o processo.</li>"
-                    "</ul>"
-                    "<p>Em distros modernas, todo serviço é gerenciado pelo "
-                    "<strong>systemd</strong> via <em>units</em>:</p>"
-                    "<pre><code>systemctl status nginx\n"
-                    "systemctl restart nginx\n"
-                    "systemctl reload nginx       # equivale a SIGHUP, sem downtime\n"
-                    "journalctl -u nginx -f       # logs em tempo real\n"
-                    "systemctl list-units --failed</code></pre>"
+<h3>5. Para além de rwx: ACLs e capabilities</h3>
+<p>O modelo rwx tem apenas três classes fixas de permissão — quando
+isso não basta, as ACLs POSIX permitem granularidade por usuário ou
+grupo específico, além do dono e grupo padrão do arquivo:</p>
+<pre><code>setfacl -m u:carlos:r-- /srv/data/relatorio.csv
+setfacl -m g:auditoria:r-x /srv/scripts/
+getfacl /srv/data/relatorio.csv</code></pre>
+<p>As Linux capabilities resolvem um problema diferente: decompõem o
+poder inteiro de root em cerca de 40 grãos individuais
+(<code>man capabilities(7)</code>). Em vez de conceder root completo a
+um binário web só porque ele precisa bindar na porta 80 (abaixo de
+1024, restrita por padrão a root), é possível conceder apenas
+<code>CAP_NET_BIND_SERVICE</code>, exatamente a fração de privilégio
+necessária:</p>
+<pre><code>setcap cap_net_bind_service=+ep /usr/local/bin/myserver
+getcap /usr/local/bin/myserver</code></pre>
+<p>Esse é justamente o mecanismo por trás de imagem Docker bem
+construída que consegue escutar em porta privilegiada mesmo rodando
+como usuário não-root dentro do container.</p>
 
-                    "<h3>7. Filesystem hierarchy padrão (FHS)</h3>"
-                    "<p>Saber onde cada coisa mora economiza horas de busca:</p>"
-                    "<ul>"
-                    "<li><code>/etc</code>, configuração do sistema. Apenas root escreve.</li>"
-                    "<li><code>/usr/bin</code>, <code>/usr/sbin</code>, binários do sistema.</li>"
-                    "<li><code>/usr/local/bin</code>, binários instalados manualmente.</li>"
-                    "<li><code>/var</code>, dados <em>variáveis</em>: logs, caches, spool, "
-                    "bancos de dados. Faz sentido em FS separado em produção.</li>"
-                    "<li><code>/home</code>, dados de usuários humanos.</li>"
-                    "<li><code>/srv</code>, dados servidos por serviços (web, ftp).</li>"
-                    "<li><code>/opt</code>, software de terceiros 'self-contained'.</li>"
-                    "<li><code>/proc</code>, <code>/sys</code>, pseudo-FS exposto pelo kernel.</li>"
-                    "<li><code>/dev</code>, dispositivos.</li>"
-                    "<li><code>/run</code>, <code>/tmp</code>, efêmeros (zerados ao reboot).</li>"
-                    "</ul>"
+<h3>6. Processos, sinais e systemd</h3>
+<p>Todo processo carrega um <strong>PID</strong>, um pai
+(<strong>PPID</strong>), e um estado — <code>R</code> (running),
+<code>S</code> (sleeping), <code>D</code> (disk wait), <code>Z</code>
+(zombie) — inspecionável via <code>ps auxf</code> ou interativamente
+via <code>htop</code>. O kernel se comunica com processo através de
+<strong>sinais</strong>, cada um com um significado convencional
+específico: <code>SIGTERM (15)</code> pede terminação educada — um
+processo bem-comportado fecha conexão, salva estado e sai sozinho, e
+deveria ser sempre o primeiro tentado; <code>SIGKILL (9)</code> termina
+imediatamente sem NENHUMA chance de cleanup, reservado para quando
+SIGTERM já não responde; <code>SIGHUP (1)</code>, historicamente
+"hangup", virou o sinal convencional para recarregar configuração sem
+reiniciar o processo inteiro; <code>SIGINT (2)</code> é o Ctrl+C do
+terminal; e <code>SIGSTOP/SIGCONT</code> pausam e retomam a execução.
+Em distribuição moderna, todo serviço é gerenciado pelo systemd através
+de units:</p>
+<pre><code>systemctl status nginx
+systemctl restart nginx
+systemctl reload nginx       # equivale a SIGHUP, sem downtime
+journalctl -u nginx -f       # logs em tempo real
+systemctl list-units --failed</code></pre>
 
-                    "<h3>8. Anti-patterns clássicos</h3>"
-                    "<ul>"
-                    "<li><strong><code>chmod 777 /srv/app</code></strong>: qualquer usuário do "
-                    "sistema escreve. Atacante com qualquer outra conta no mesmo host injeta "
-                    "payload no app legítimo, escalada trivial.</li>"
-                    "<li><strong>Rodar serviços como root</strong>: cada bug no serviço "
-                    "(Heartbleed, Log4Shell, etc.) vira RCE como root e portanto comprometimento "
-                    "total da máquina. Use usuário dedicado + <code>User=</code> no systemd.</li>"
-                    "<li><strong>Adicionar usuário ao grupo <code>sudo</code> sem regras "
-                    "específicas</strong>: dá poder total. Prefira drops em "
-                    "<code>/etc/sudoers.d/</code> liberando comandos específicos.</li>"
-                    "<li><strong>Editar arquivo de config como root sem backup</strong>: um "
-                    "<code>vim /etc/sshd_config</code> esquecendo o <code>PermitRootLogin</code> "
-                    "e você acabou de se trancar fora do servidor de produção. Sempre "
-                    "<code>cp arquivo arquivo.bak</code> antes.</li>"
-                    "<li><strong>Esquecer permissão em <code>~/.ssh</code></strong>: o sshd "
-                    "<em>silenciosamente</em> recusa autenticação se o diretório/arquivo tiver "
-                    "permissão frouxa. Você só descobre olhando <code>journalctl -u sshd</code>.</li>"
-                    "</ul>"
+<h3>7. Filesystem hierarchy padrão (FHS)</h3>
+<p>Saber de antemão onde cada tipo de arquivo mora economiza tempo real
+de busca em qualquer investigação. <code>/etc</code> guarda
+configuração do sistema, editável apenas por root. <code>/usr/bin</code>
+e <code>/usr/sbin</code> guardam binário do sistema, enquanto
+<code>/usr/local/bin</code> é reservado para binário instalado
+manualmente fora do gerenciador de pacote. <code>/var</code> guarda
+dado VARIÁVEL — log, cache, spool, banco de dados — e faz sentido
+morar num filesystem separado em produção, justamente porque cresce de
+forma imprevisível. <code>/home</code> guarda dado de usuário humano.
+<code>/srv</code> guarda dado servido diretamente por um serviço (web,
+FTP). <code>/opt</code> guarda software de terceiro "self-contained",
+empacotado de forma independente do resto do sistema. <code>/proc</code>
+e <code>/sys</code> são pseudo-filesystems expostos diretamente pelo
+kernel, sem existir fisicamente em disco. <code>/dev</code> representa
+dispositivo. E <code>/run</code> e <code>/tmp</code> são efêmeros,
+zerados a cada reboot.</p>
 
-                    "<h3>9. Caso real: o ataque no <code>/tmp</code></h3>"
-                    "<p>Em 2016, várias distros tiveram que mudar o default de <code>/tmp</code> "
-                    "para um <em>tmpfs</em> isolado por usuário porque o <code>/tmp</code> "
-                    "compartilhado virou vetor recorrente: serviço A criava arquivo previsível "
-                    "(<code>/tmp/upload.txt</code>); atacante criava antes um symlink apontando "
-                    "para <code>/etc/shadow</code>; o serviço, rodando como root, sobrescrevia "
-                    "shadow. Daí veio a popularização do <code>PrivateTmp=true</code> no systemd, "
-                    "que monta um <code>/tmp</code> exclusivo por serviço, pequena mudança no "
-                    "kernel/systemd que matou uma classe inteira de bugs.</p>"
+<h3>8. Anti-patterns clássicos</h3>
+<ul>
+<li><strong><code>chmod 777 /srv/app</code></strong>: qualquer usuário
+do mesmo sistema ganha permissão de escrita — um atacante com QUALQUER
+outra conta na mesma máquina consegue injetar payload direto na
+aplicação legítima, uma escalada trivial de executar.</li>
+<li><strong>Rodar serviço como root</strong>: qualquer bug conhecido
+no serviço (Heartbleed, Log4Shell) vira automaticamente RCE como
+root, e portanto comprometimento total da máquina — usuário dedicado
+combinado com <code>User=</code> no systemd fecha essa lacuna
+diretamente.</li>
+<li><strong>Adicionar usuário ao grupo <code>sudo</code> sem regra
+específica</strong>: concede poder total quando provavelmente só um
+comando pontual era realmente necessário — prefira um drop-in em
+<code>/etc/sudoers.d/</code> liberando exatamente o comando
+específico.</li>
+<li><strong>Editar arquivo de configuração como root sem backup
+antes</strong>: um <code>vim /etc/sshd_config</code> esquecendo de
+revisar <code>PermitRootLogin</code> pode trancar o próprio operador
+fora do servidor de produção sem aviso — <code>cp arquivo
+arquivo.bak</code> antes de qualquer edição custa segundos e evita
+esse cenário inteiro.</li>
+<li><strong>Esquecer a permissão correta em <code>~/.ssh</code></strong>:
+o sshd recusa autenticação SILENCIOSAMENTE quando o diretório ou
+arquivo tem permissão frouxa demais — a única forma de descobrir isso é
+olhando <code>journalctl -u sshd</code> depois que a autenticação já
+falhou sem mensagem clara na tela do cliente.</li>
+</ul>
 
-                    "<h3>10. Checklist mental ao se conectar a um host novo</h3>"
-                    "<ol>"
-                    "<li><code>uname -a</code>, kernel e arquitetura.</li>"
-                    "<li><code>cat /etc/os-release</code>, qual distro/versão.</li>"
-                    "<li><code>id</code> e <code>sudo -l</code>, quem sou e o que posso.</li>"
-                    "<li><code>ss -tulpn</code>, quais portas estão abertas e quem escuta.</li>"
-                    "<li><code>systemctl list-units --type=service --state=running</code>.</li>"
-                    "<li><code>df -h</code> e <code>free -h</code>, disco e memória.</li>"
-                    "<li><code>journalctl -p err -S 'today'</code>, erros recentes do sistema.</li>"
-                    "</ol>"
-                    "<p>Em 2 minutos você sabe se está em terreno familiar ou se pisou em uma "
-                    "máquina já comprometida.</p>"
+<h3>9. Caso real: o ataque no <code>/tmp</code></h3>
+<p>Em 2016, várias distribuições precisaram mudar o comportamento
+padrão de <code>/tmp</code> para um tmpfs isolado por usuário, porque
+um <code>/tmp</code> compartilhado entre todos os processos virou vetor
+recorrente de ataque: um serviço A criava um arquivo com nome
+PREVISÍVEL (<code>/tmp/upload.txt</code>); um atacante, sabendo disso
+de antemão, criava ANTES um symlink com esse mesmo nome apontando para
+<code>/etc/shadow</code>; e o serviço, rodando como root, ao "criar"
+seu próprio arquivo temporário, na verdade sobrescrevia o shadow
+inteiro através do symlink já plantado. Foi exatamente esse padrão de
+ataque que popularizou o <code>PrivateTmp=true</code> no systemd —
+uma mudança relativamente pequena no kernel e no systemd que eliminou
+uma classe inteira de bug de uma vez, sem exigir que cada serviço
+individual fosse corrigido separadamente.</p>
+
+<h3>10. Checklist mental ao se conectar a um host novo</h3>
+<ol>
+<li><code>uname -a</code>, para conhecer kernel e arquitetura.</li>
+<li><code>cat /etc/os-release</code>, para saber qual distribuição e
+versão exatamente.</li>
+<li><code>id</code> e <code>sudo -l</code>, para saber quem você é e o
+que exatamente pode fazer.</li>
+<li><code>ss -tulpn</code>, para ver quais portas estão abertas e
+quem está escutando cada uma.</li>
+<li><code>systemctl list-units --type=service --state=running</code>,
+para o inventário de serviço ativo.</li>
+<li><code>df -h</code> e <code>free -h</code>, para disco e memória
+disponíveis.</li>
+<li><code>journalctl -p err -S 'today'</code>, para erro recente que
+já pode indicar problema em andamento.</li>
+</ol>
+<p>Em dois minutos rodando essa sequência, dá para saber se está pisando
+em terreno familiar e saudável, ou se a máquina já apresenta sinal de
+algo comprometido antes mesmo de investigar mais a fundo.</p>"""
                 ),
                 "practical": (
                     "Em uma VM ou container limpo:<br>"
@@ -571,169 +610,217 @@ PHASE1 = {
                     "você deixa rodar como root em produção sem perder o sono."
                 ),
                 "body": (
-                    "<h3>1. Cabeçalho seguro: o 'unsafe at any speed' do bash</h3>"
-                    "<p>Sempre comece com:</p>"
-                    "<pre><code>#!/usr/bin/env bash\n"
-                    "set -euo pipefail\n"
-                    "IFS=$'\\n\\t'</code></pre>"
-                    "<p>Cada flag resolve uma classe de bug:</p>"
-                    "<ul>"
-                    "<li><code>-e</code>: aborta no primeiro comando que retornar erro. Sem "
-                    "isso, o script <em>continua</em> e você pode acabar deletando a base certa "
-                    "depois de falhar criar o backup.</li>"
-                    "<li><code>-u</code>: erro ao referenciar variável não definida. Pega "
-                    "typos antes que virem string vazia em <code>rm -rf $TARGET/*</code>.</li>"
-                    "<li><code>-o pipefail</code>: o status do pipe é o do <em>pior</em> "
-                    "estágio. Sem isso, <code>backup_db | gzip &gt; out.gz</code> retorna 0 "
-                    "mesmo se <code>backup_db</code> falhar.</li>"
-                    "<li><code>IFS=$'\\n\\t'</code>: word-splitting só em quebra de linha e "
-                    "tab. Evita bug clássico de nomes de arquivo com espaço.</li>"
-                    "</ul>"
-                    "<p>Depois você ativa <code>set -x</code> em modo debug e desativa em "
-                    "produção. Para depurar uma seção específica:</p>"
-                    "<pre><code>{ set -x; comando_problematico; } 2&gt;&amp;1 | tee /tmp/debug.log\n"
-                    "set +x</code></pre>"
+                """<h3>1. Cabeçalho seguro: o 'unsafe at any speed' do bash</h3>
+<p>Todo script sério começa com a mesma combinação de três configurações:</p>
+<pre><code>#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\\n\\t'</code></pre>
+<p>Cada flag fecha uma classe específica de bug. O <code>-e</code>
+aborta a execução no primeiro comando que retornar erro — sem ele, o
+script simplesmente CONTINUA depois de uma falha, o que pode significar
+apagar a base de dados errada logo depois de um backup que falhou
+silenciosamente. O <code>-u</code> gera erro ao referenciar uma
+variável não definida — pega um typo antes que ele vire uma string
+vazia dentro de <code>rm -rf $TARGET/*</code>, transformando o comando
+em algo bem mais destrutivo do que pretendido. O <code>-o pipefail</code>
+faz o status do pipe refletir o PIOR estágio, não o último — sem ele,
+<code>backup_db | gzip &gt; out.gz</code> retorna sucesso mesmo que
+<code>backup_db</code> tenha falhado completamente, um silêncio
+perigoso justamente onde o script mais precisaria alertar. E o
+<code>IFS=$'\\n\\t'</code> restringe o word-splitting a quebra de linha
+e tab, evitando o bug clássico de nome de arquivo com espaço quebrando
+em pedaços inesperados. Para depuração pontual, ativar
+<code>set -x</code> temporariamente numa seção específica isola o
+problema sem poluir o log inteiro do script:</p>
+<pre><code>{ set -x; comando_problematico; } 2&gt;&amp;1 | tee /tmp/debug.log
+set +x</code></pre>
 
-                    "<h3>2. Aspas, a primeira regra é citar tudo</h3>"
-                    "<p>O ponto mais comum de bugs em bash é word-splitting e glob expansion "
-                    "inesperado:</p>"
-                    "<pre><code># RUIM: arquivo 'meu doc.txt' vira dois argumentos\n"
-                    "rm $arquivo\n\n"
-                    "# BOM\n"
-                    "rm \"$arquivo\"\n\n"
-                    "# RUIM: se $files for vazio, vira `for f in` (loop não executa, ok)\n"
-                    "#       mas se for um glob solto, expande no momento errado\n"
-                    "for f in $files; do echo $f; done\n\n"
-                    "# BOM: array preserva elementos individualmente\n"
-                    "files=( '/srv/a 1.txt' '/srv/b.txt' )\n"
-                    "for f in \"${files[@]}\"; do echo \"$f\"; done</code></pre>"
-                    "<p>Regra: <strong>cite toda variável ao expandir</strong>, exceto quando "
-                    "você <em>quer</em> word-splitting (raro).</p>"
+<h3>2. Aspas, a primeira regra é citar tudo</h3>
+<p>A fonte mais comum de bug em bash é word-splitting e expansão de
+glob acontecendo num momento inesperado:</p>
+<pre><code># RUIM: arquivo 'meu doc.txt' vira dois argumentos
+rm $arquivo
 
-                    "<h3>3. Estruturas de controle modernas</h3>"
-                    "<p>Prefira <code>[[ ... ]]</code> a <code>[ ... ]</code>, suporta regex, "
-                    "operadores compostos e não tem armadilhas com strings vazias:</p>"
-                    "<pre><code>if [[ -z \"$1\" ]]; then\n"
-                    "  echo 'uso: deploy.sh &lt;ambiente&gt;' &gt;&amp;2\n"
-                    "  exit 64    # EX_USAGE\n"
-                    "fi\n\n"
-                    "if [[ \"$ENV\" =~ ^(dev|staging|prod)$ ]]; then\n"
-                    "  echo \"deploy em $ENV\"\n"
-                    "fi\n\n"
-                    "case \"$ENV\" in\n"
-                    "  dev|staging)  HOST=internal.example.com ;;\n"
-                    "  prod)         HOST=api.example.com ;;\n"
-                    "  *)            echo 'ambiente inválido' &gt;&amp;2; exit 64 ;;\n"
-                    "esac</code></pre>"
+# BOM
+rm "$arquivo"
 
-                    "<h3>4. Iterando arquivos com nome 'esquisito'</h3>"
-                    "<p>Existe basicamente <em>uma</em> forma 100% segura, separador NUL:</p>"
-                    "<pre><code># RUIM: quebra com espaço, tab ou newline no nome\n"
-                    "for f in $(ls *.log); do\n"
-                    "  process \"$f\"\n"
-                    "done\n\n"
-                    "# RUIM ainda: ls não é parseável\n"
-                    "find . -name '*.log' | while read f; do process \"$f\"; done\n\n"
-                    "# BOM: -print0 emite separadores NUL\n"
-                    "find . -type f -name '*.log' -print0 | \\\n"
-                    "  while IFS= read -r -d '' f; do\n"
-                    "    process \"$f\"\n"
-                    "  done\n\n"
-                    "# Alternativa elegante com bash 4+ (mapfile)\n"
-                    "mapfile -d '' -t files &lt; &lt;(find . -type f -name '*.log' -print0)\n"
-                    "for f in \"${files[@]}\"; do process \"$f\"; done</code></pre>"
+# RUIM: se $files for vazio, vira `for f in` (loop não executa, ok)
+#       mas se for um glob solto, expande no momento errado
+for f in $files; do echo $f; done
 
-                    "<h3>5. Funções, retorno e erro propagado</h3>"
-                    "<pre><code>require_env() {\n"
-                    "  local var=$1\n"
-                    "  if [[ -z \"${!var:-}\" ]]; then\n"
-                    "    echo \"FATAL: variável $var não definida\" &gt;&amp;2\n"
-                    "    return 1\n"
-                    "  fi\n"
-                    "}\n\n"
-                    "deploy() {\n"
-                    "  require_env GITHUB_TOKEN\n"
-                    "  require_env DEPLOY_KEY\n"
-                    "  # ...\n"
-                    "}\n\n"
-                    "deploy || { echo 'deploy falhou' &gt;&amp;2; exit 1; }</code></pre>"
-                    "<p>Use <code>local</code> para variáveis dentro de função (evita "
-                    "vazamento global). <code>${!var}</code> faz indireção "
-                    "(referencia a variável cujo nome está em <code>$var</code>).</p>"
+# BOM: array preserva elementos individualmente
+files=( '/srv/a 1.txt' '/srv/b.txt' )
+for f in "${files[@]}"; do echo "$f"; done</code></pre>
+<p>A regra prática é citar TODA variável no momento da expansão, exceto
+no raro caso em que word-splitting é exatamente o comportamento
+desejado.</p>
 
-                    "<h3>6. Trap para cleanup determinístico</h3>"
-                    "<pre><code>tmp=$(mktemp -d)\n"
-                    "trap 'rm -rf \"$tmp\"' EXIT INT TERM\n\n"
-                    "echo 'baixando…' &gt; \"$tmp/log\"\n"
-                    "curl https://api.example.com/dump &gt; \"$tmp/dump.json\"\n"
-                    "process \"$tmp/dump.json\"\n"
-                    "# o trap cuida da limpeza mesmo se algo falhar</code></pre>"
-                    "<p>Sem <code>trap</code>, um <code>exit 1</code> ou Ctrl+C deixa lixo em "
-                    "<code>/tmp</code>. Em scripts longos isso entope disco.</p>"
+<h3>3. Estruturas de controle modernas</h3>
+<p><code>[[ ... ]]</code> deveria ser preferido a <code>[ ... ]</code>
+sempre que possível — suporta regex nativamente, operadores compostos, e
+não carrega as armadilhas clássicas de <code>[ ]</code> com string
+vazia não citada:</p>
+<pre><code>if [[ -z "$1" ]]; then
+  echo 'uso: deploy.sh &lt;ambiente&gt;' &gt;&amp;2
+  exit 64    # EX_USAGE
+fi
 
-                    "<h3>7. Validação de input, trate como hostil</h3>"
-                    "<pre><code># Recebido por argumento ou variável de ambiente\n"
-                    "name=${1:?uso: ./script.sh &lt;nome&gt;}\n\n"
-                    "# Whitelist é melhor que blacklist\n"
-                    "if [[ ! \"$name\" =~ ^[a-zA-Z0-9_-]{1,32}$ ]]; then\n"
-                    "  echo \"nome inválido: $name\" &gt;&amp;2\n"
-                    "  exit 64\n"
-                    "fi\n\n"
-                    "# NUNCA: rm -rf /srv/$name (com $name vazio = rm -rf /srv/)\n"
-                    "# NUNCA: eval \"$name\"\n"
-                    "# NUNCA: bash -c \"echo $name\"   ← injeção de comando</code></pre>"
+if [[ "$ENV" =~ ^(dev|staging|prod)$ ]]; then
+  echo "deploy em $ENV"
+fi
 
-                    "<h3>8. Logging com timestamp e níveis</h3>"
-                    "<pre><code>log() {\n"
-                    "  local level=$1; shift\n"
-                    "  printf '%s [%s] %s\\n' \"$(date -Iseconds)\" \"$level\" \"$*\" &gt;&amp;2\n"
-                    "}\n\n"
-                    "log INFO  'iniciando deploy'\n"
-                    "log WARN  'cache vazio, baixando do registry'\n"
-                    "log ERROR 'falha ao subir container'</code></pre>"
-                    "<p>Logue em <code>stderr</code> para que stdout fique livre para a saída "
-                    "<em>útil</em> do script (que pode ser piped para outro comando).</p>"
+case "$ENV" in
+  dev|staging)  HOST=internal.example.com ;;
+  prod)         HOST=api.example.com ;;
+  *)            echo 'ambiente inválido' &gt;&amp;2; exit 64 ;;
+esac</code></pre>
 
-                    "<h3>9. Anti-patterns que custam caro</h3>"
-                    "<table style='border-collapse:collapse'>"
-                    "<tr><td><code>eval \"$input\"</code></td>"
-                    "<td>RCE garantido se input vier de fora.</td></tr>"
-                    "<tr><td><code>rm -rf $dir/</code></td>"
-                    "<td>Sem checar <code>$dir</code>, com <code>set -u</code> off, vira "
-                    "<code>rm -rf /</code>.</td></tr>"
-                    "<tr><td><code>curl ... | bash</code></td>"
-                    "<td>Executa código remoto sem verificação. Se o servidor for comprometido, "
-                    "RCE no seu host.</td></tr>"
-                    "<tr><td><code>ssh host \"$cmd\"</code></td>"
-                    "<td>Sem aspas adicionais e validação, injeção de comando.</td></tr>"
-                    "<tr><td><code>readlink</code> sem <code>-f</code></td>"
-                    "<td>Não resolve symlinks aninhados.</td></tr>"
-                    "<tr><td><code>cat $file | grep …</code></td>"
-                    "<td>Useless use of cat. Prefira <code>grep … &lt; $file</code>.</td></tr>"
-                    "</table>"
+<h3>4. Iterando arquivos com nome 'esquisito'</h3>
+<p>Existe basicamente uma única forma 100% segura de iterar arquivo por
+arquivo sem quebrar em nome com caractere especial: usar separador NUL
+de ponta a ponta:</p>
+<pre><code># RUIM: quebra com espaço, tab ou newline no nome
+for f in $(ls *.log); do
+  process "$f"
+done
 
-                    "<h3>10. shellcheck, shfmt e quando subir para Python</h3>"
-                    "<p><code>shellcheck</code> pega 95% dos bugs comuns automaticamente. "
-                    "Integre na CI e no editor, falhe o pipeline em qualquer warning. "
-                    "<code>shfmt</code> formata o código.</p>"
-                    "<p>Bash brilha em scripts ≤ 150 linhas. Quando precisa de:</p>"
-                    "<ul>"
-                    "<li>Estruturas de dados não-triviais;</li>"
-                    "<li>Lógica de retry/backoff complexa;</li>"
-                    "<li>Concorrência além de <code>&amp;</code> simples;</li>"
-                    "<li>Testes unitários reais;</li>"
-                    "</ul>"
-                    "<p>...suba para Python (com <code>typer</code>) ou Go. Tempo de manutenção "
-                    "compensa.</p>"
+# RUIM ainda: ls não é parseável
+find . -name '*.log' | while read f; do process "$f"; done
 
-                    "<h3>11. Caso real: o <code>rm -rf $STEAMROOT/*</code> da Steam</h3>"
-                    "<p>Em 2015, o launcher da Steam para Linux trazia um script de "
-                    "desinstalação que continha literalmente <code>rm -rf \"$STEAMROOT/\"*</code>. "
-                    "Quando a variável estava vazia, o comando virava "
-                    "<code>rm -rf \"/\"*</code> e <em>apagava todos os arquivos do usuário</em>, "
-                    "o sistema todo, na verdade. O bug existia há anos. A correção foi de "
-                    "uma linha: validar que <code>$STEAMROOT</code> não está vazio. "
-                    "Isso é o que <code>set -u</code> e validação de input previnem."
+# BOM: -print0 emite separadores NUL
+find . -type f -name '*.log' -print0 | \\
+  while IFS= read -r -d '' f; do
+    process "$f"
+  done
+
+# Alternativa elegante com bash 4+ (mapfile)
+mapfile -d '' -t files &lt; &lt;(find . -type f -name '*.log' -print0)
+for f in "${files[@]}"; do process "$f"; done</code></pre>
+<p>Ambas as versões "RUIM" quebram silenciosamente diante de espaço,
+tab ou quebra de linha embutidos no nome do arquivo — o separador NUL é
+o único caractere garantido a nunca aparecer num nome de arquivo válido
+em sistema POSIX, o que o torna o único delimitador realmente seguro
+para esse propósito.</p>
+
+<h3>5. Funções, retorno e erro propagado</h3>
+<pre><code>require_env() {
+  local var=$1
+  if [[ -z "${!var:-}" ]]; then
+    echo "FATAL: variável $var não definida" &gt;&amp;2
+    return 1
+  fi
+}
+
+deploy() {
+  require_env GITHUB_TOKEN
+  require_env DEPLOY_KEY
+  # ...
+}
+
+deploy || { echo 'deploy falhou' &gt;&amp;2; exit 1; }</code></pre>
+<p>Usar <code>local</code> para toda variável dentro de uma função
+evita que ela vaze para o escopo global sem querer, um efeito colateral
+fácil de esquecer em bash. E <code>${!var}</code> faz indireção —
+referencia a variável cujo NOME está guardado dentro de
+<code>$var</code>, o que é o que permite <code>require_env</code>
+checar dinamicamente qualquer nome de variável passado como
+argumento.</p>
+
+<h3>6. Trap para cleanup determinístico</h3>
+<pre><code>tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT INT TERM
+
+echo 'baixando…' &gt; "$tmp/log"
+curl https://api.example.com/dump &gt; "$tmp/dump.json"
+process "$tmp/dump.json"
+# o trap cuida da limpeza mesmo se algo falhar</code></pre>
+<p>Sem o <code>trap</code>, um <code>exit 1</code> no meio do script ou
+um Ctrl+C do usuário deixa lixo acumulando em <code>/tmp</code> — em
+script rodando com frequência, isso entope disco silenciosamente ao
+longo do tempo, sem nenhum sinal óbvio até o disco realmente encher.</p>
+
+<h3>7. Validação de input, trate como hostil</h3>
+<pre><code># Recebido por argumento ou variável de ambiente
+name=${1:?uso: ./script.sh &lt;nome&gt;}
+
+# Whitelist é melhor que blacklist
+if [[ ! "$name" =~ ^[a-zA-Z0-9_-]{1,32}$ ]]; then
+  echo "nome inválido: $name" &gt;&amp;2
+  exit 64
+fi
+
+# NUNCA: rm -rf /srv/$name (com $name vazio = rm -rf /srv/)
+# NUNCA: eval "$name"
+# NUNCA: bash -c "echo $name"   ← injeção de comando</code></pre>
+<p>A escolha entre whitelist e blacklist não é estilística: uma
+whitelist define explicitamente o que é PERMITIDO, então qualquer coisa
+fora desse padrão falha por padrão; uma blacklist tenta listar o que é
+PROIBIDO, e sempre existe algum caractere ou sequência esquecida que
+escapa da lista — a assimetria entre as duas abordagens é o que torna
+whitelist estruturalmente mais segura.</p>
+
+<h3>8. Logging com timestamp e níveis</h3>
+<pre><code>log() {
+  local level=$1; shift
+  printf '%s [%s] %s\\n' "$(date -Iseconds)" "$level" "$*" &gt;&amp;2
+}
+
+log INFO  'iniciando deploy'
+log WARN  'cache vazio, baixando do registry'
+log ERROR 'falha ao subir container'</code></pre>
+<p>Registrar log no <code>stderr</code> mantém o <code>stdout</code>
+livre exclusivamente para a saída ÚTIL do script — a parte que
+eventualmente vai ser encadeada com pipe para outro comando. Misturar
+log e saída útil no mesmo stream quebra qualquer composição posterior
+do script com outra ferramenta via pipe.</p>
+
+<h3>9. Anti-patterns que custam caro</h3>
+<table style='border-collapse:collapse'>
+<tr><td><code>eval "$input"</code></td>
+<td>RCE garantido se input vier de fora.</td></tr>
+<tr><td><code>rm -rf $dir/</code></td>
+<td>Sem checar <code>$dir</code>, com <code>set -u</code> off, vira
+<code>rm -rf /</code>.</td></tr>
+<tr><td><code>curl ... | bash</code></td>
+<td>Executa código remoto sem verificação. Se o servidor for comprometido,
+RCE no seu host.</td></tr>
+<tr><td><code>ssh host "$cmd"</code></td>
+<td>Sem aspas adicionais e validação, injeção de comando.</td></tr>
+<tr><td><code>readlink</code> sem <code>-f</code></td>
+<td>Não resolve symlinks aninhados.</td></tr>
+<tr><td><code>cat $file | grep …</code></td>
+<td>Useless use of cat. Prefira <code>grep … &lt; $file</code>.</td></tr>
+</table>
+
+<h3>10. shellcheck, shfmt e quando subir para Python</h3>
+<p>O <code>shellcheck</code> pega cerca de 95% dos bugs mais comuns
+automaticamente, sem exigir revisão manual linha por linha — integrar
+no CI e no editor, falhando o pipeline em qualquer warning, transforma
+essa classe inteira de erro em algo pego antes do merge, não depois do
+incidente. O <code>shfmt</code> cuida da formatação de forma
+equivalente. Bash brilha em script de até aproximadamente 150 linhas —
+além desse tamanho, ou quando o script precisa de estrutura de dado
+não-trivial, lógica de retry/backoff mais elaborada, concorrência além
+de um <code>&amp;</code> simples, ou teste unitário de verdade, a
+manutenção em bash puro fica cada vez mais cara — nesse ponto, subir
+para Python (com <code>typer</code>) ou Go compensa o tempo investido
+na migração.</p>
+
+<h3>11. Caso real: o <code>rm -rf $STEAMROOT/*</code> da Steam</h3>
+<p>Em 2015, o launcher da Steam para Linux trazia um script de
+desinstalação contendo literalmente
+<code>rm -rf "$STEAMROOT/"*</code>. Quando a variável
+<code>$STEAMROOT</code> estava vazia — algo que podia acontecer
+dependendo de como o script era invocado — o comando virava
+efetivamente <code>rm -rf "/"*</code>, apagando todo o conteúdo do
+sistema de arquivos acessível pelo usuário, não só os arquivos da
+Steam. O bug existiu no script por anos antes de ser descoberto e
+reportado publicamente. A correção final foi de uma única linha:
+validar explicitamente que <code>$STEAMROOT</code> não está vazio antes
+de qualquer operação destrutiva — exatamente o tipo de proteção que
+<code>set -u</code> (seção 1) e a validação de input (seção 7)
+previnem estruturalmente, em vez de depender de alguém lembrar de
+checar manualmente em cada script novo.</p>"""
                 ),
                 "practical": (
                     "Escreva um script <code>analyze_logs.sh</code> que:<br>"
@@ -1136,194 +1223,240 @@ PHASE1 = {
                     "sudo, systemd, containers (Docker/K8s) e cloud (IAM)."
                 ),
                 "body": (
-                    "<h3>1. Por que PoLP é fundamental</h3>"
-                    "<p>Pense em PoLP como <strong>blast radius</strong>: o quanto se "
-                    "compromete quando uma identidade vaza. Se a aplicação web tem credencial "
-                    "<code>AdministratorAccess</code> em AWS e é comprometida, atacante "
-                    "controla toda a conta, derruba banco, exfiltra S3, sobe instância para "
-                    "minerar crypto. Se a mesma app tinha apenas <code>s3:GetObject</code> "
-                    "num bucket específico, o blast radius cabe em um relatório.</p>"
-                    "<p>PoLP é defensa em profundidade <em>posta em prática</em>. Não evita "
-                    "comprometimento; limita as consequências. É o que separa um incidente "
-                    "constrangedor de uma crise de imagem.</p>"
+                """<h3>1. Por que PoLP é fundamental</h3>
+<p>A forma mais útil de pensar em PoLP é como controle de
+<strong>blast radius</strong>: quanto se compromete no momento em que
+uma identidade específica vaza. Se uma aplicação web carrega credencial
+<code>AdministratorAccess</code> na AWS e é comprometida, o atacante
+controla a conta inteira — derruba banco, exfiltra bucket S3, sobe
+instância própria para minerar criptomoeda com o cartão da empresa. Se
+a mesma aplicação tivesse apenas <code>s3:GetObject</code> num bucket
+específico, o vazamento cabe numa única linha de relatório de
+incidente, não numa manchete. PoLP não IMPEDE o comprometimento em si —
+é defesa em profundidade posta em prática, limitando a CONSEQUÊNCIA de
+algo que eventualmente vai acontecer de qualquer forma. É exatamente o
+que separa um incidente constrangedor de uma crise de imagem completa.</p>
 
-                    "<h3>2. PoLP no host Linux: usuários dedicados por serviço</h3>"
-                    "<p>Cada serviço (nginx, postgres, app) deve ter usuário próprio:</p>"
-                    "<pre><code>useradd --system --shell /usr/sbin/nologin --home-dir /var/lib/app app\n"
-                    "chown -R app:app /opt/app /var/lib/app /var/log/app</code></pre>"
-                    "<p>Vantagens:</p>"
-                    "<ul>"
-                    "<li>Compromisso da app não dá acesso a outros serviços.</li>"
-                    "<li>Permissões granulares: app não consegue ler "
-                    "<code>/etc/postgres</code>.</li>"
-                    "<li>Auditoria por usuário: <code>journalctl _UID=$(id -u app)</code>.</li>"
-                    "<li>Limites por usuário (ulimit, cgroups).</li>"
-                    "</ul>"
+<h3>2. PoLP no host Linux: usuários dedicados por serviço</h3>
+<p>Cada serviço — nginx, postgres, a própria aplicação — deveria ter
+seu usuário de sistema próprio, nunca compartilhado:</p>
+<pre><code>useradd --system --shell /usr/sbin/nologin --home-dir /var/lib/app app
+chown -R app:app /opt/app /var/lib/app /var/log/app</code></pre>
+<p>Isso traz quatro vantagens concretas: o comprometimento de uma
+aplicação não dá acesso automático a nenhum outro serviço rodando na
+mesma máquina; a permissão fica granular o suficiente para que a
+aplicação nem consiga LER <code>/etc/postgres</code>, por exemplo;
+auditoria por usuário fica trivial (<code>journalctl
+_UID=$(id -u app)</code> isola exatamente o que aquele processo
+fez); e limite de recurso (ulimit, cgroup) pode ser aplicado por
+usuário individualmente, sem afetar os demais serviços da mesma
+máquina.</p>
 
-                    "<h3>3. systemd hardening: a camada que muita gente ignora</h3>"
-                    "<p>Em <code>/etc/systemd/system/app.service</code>:</p>"
-                    "<pre><code>[Service]\n"
-                    "ExecStart=/opt/app/bin/server\n"
-                    "User=app\n"
-                    "Group=app\n"
-                    "\n"
-                    "# Identidade\n"
-                    "NoNewPrivileges=true       # impede setuid/setcap em descendentes\n"
-                    "\n"
-                    "# Filesystem\n"
-                    "ProtectSystem=strict       # tudo readonly exceto paths permitidos\n"
-                    "ProtectHome=true           # /home, /root, /run/user invisíveis\n"
-                    "PrivateTmp=true            # /tmp isolado por instância\n"
-                    "ReadWritePaths=/var/lib/app /var/log/app\n"
-                    "\n"
-                    "# Capabilities\n"
-                    "CapabilityBoundingSet=     # vazio = abre mão de tudo\n"
-                    "AmbientCapabilities=\n"
-                    "\n"
-                    "# Syscalls (via seccomp-bpf)\n"
-                    "SystemCallFilter=@system-service\n"
-                    "SystemCallErrorNumber=EPERM\n"
-                    "\n"
-                    "# Rede\n"
-                    "RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX\n"
-                    "PrivateNetwork=false       # true = sem acesso de rede algum\n"
-                    "\n"
-                    "# Outros\n"
-                    "ProtectKernelModules=true\n"
-                    "ProtectKernelTunables=true\n"
-                    "ProtectControlGroups=true\n"
-                    "RestrictNamespaces=true\n"
-                    "LockPersonality=true\n"
-                    "MemoryDenyWriteExecute=true</code></pre>"
-                    "<p>Para auditar o que uma unit já tem habilitado:</p>"
-                    "<pre><code>systemd-analyze security app.service</code></pre>"
-                    "<p>Ele dá uma nota de 0 a 10 com sugestões. Mire em &lt; 3 (mais seguro).</p>"
+<h3>3. systemd hardening: a camada que muita gente ignora</h3>
+<p>Em <code>/etc/systemd/system/app.service</code>:</p>
+<pre><code>[Service]
+ExecStart=/opt/app/bin/server
+User=app
+Group=app
 
-                    "<h3>4. sudo, mas com critério</h3>"
-                    "<p><code>ALL=(ALL:ALL) ALL</code> é o atalho mais comum e o pior. Em "
-                    "<code>/etc/sudoers.d/deploy</code>:</p>"
-                    "<pre><code># Usuário deploy só pode reiniciar o nginx, sem senha\n"
-                    "deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx\n"
-                    "deploy ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx\n"
-                    "\n"
-                    "# Negar shell escapes\n"
-                    "Defaults:deploy !requiretty\n"
-                    "Defaults:deploy log_year, logfile=/var/log/sudo-deploy.log</code></pre>"
-                    "<p>Sempre edite com <code>visudo -f /etc/sudoers.d/arquivo</code>, ele "
-                    "valida sintaxe antes de salvar. Sem isso, um typo deixa todo mundo sem "
-                    "sudo.</p>"
+# Identidade
+NoNewPrivileges=true       # impede setuid/setcap em descendentes
 
-                    "<h3>5. PoLP em containers Docker</h3>"
-                    "<pre><code># Dockerfile\n"
-                    "FROM python:3.12-slim\n"
-                    "RUN useradd --uid 10001 --system --no-create-home app\n"
-                    "WORKDIR /app\n"
-                    "COPY --chown=app:app . .\n"
-                    "RUN pip install --no-cache-dir -r requirements.txt\n"
-                    "USER app                          # nunca rode como root\n"
-                    "EXPOSE 8000\n"
-                    "CMD [\"gunicorn\", \"-b\", \"0.0.0.0:8000\", \"app.wsgi\"]</code></pre>"
-                    "<p>No <code>docker run</code>, vá além:</p>"
-                    "<pre><code>docker run --rm \\\n"
-                    "  --user 10001:10001 \\\n"
-                    "  --read-only \\\n"
-                    "  --tmpfs /tmp \\\n"
-                    "  --cap-drop=ALL \\\n"
-                    "  --cap-add=NET_BIND_SERVICE \\\n"
-                    "  --security-opt=no-new-privileges \\\n"
-                    "  --pids-limit 200 \\\n"
-                    "  -p 8000:8000 myapp:1.0</code></pre>"
+# Filesystem
+ProtectSystem=strict       # tudo readonly exceto paths permitidos
+ProtectHome=true           # /home, /root, /run/user invisíveis
+PrivateTmp=true            # /tmp isolado por instância
+ReadWritePaths=/var/lib/app /var/log/app
 
-                    "<h3>6. PoLP em Kubernetes (securityContext)</h3>"
-                    "<pre><code>apiVersion: apps/v1\n"
-                    "kind: Deployment\n"
-                    "metadata: { name: app }\n"
-                    "spec:\n"
-                    "  template:\n"
-                    "    spec:\n"
-                    "      automountServiceAccountToken: false   # se a app não chama K8s API\n"
-                    "      securityContext:\n"
-                    "        runAsNonRoot: true\n"
-                    "        runAsUser: 10001\n"
-                    "        fsGroup: 10001\n"
-                    "        seccompProfile: { type: RuntimeDefault }\n"
-                    "      containers:\n"
-                    "      - name: app\n"
-                    "        image: myapp:1.0\n"
-                    "        securityContext:\n"
-                    "          allowPrivilegeEscalation: false\n"
-                    "          readOnlyRootFilesystem: true\n"
-                    "          capabilities: { drop: [\"ALL\"] }</code></pre>"
-                    "<p>Use <strong>Pod Security Standards</strong> (restricted) no namespace "
-                    "para forçar o padrão em todo deploy:</p>"
-                    "<pre><code>kubectl label ns app pod-security.kubernetes.io/enforce=restricted</code></pre>"
+# Capabilities
+CapabilityBoundingSet=     # vazio = abre mão de tudo
+AmbientCapabilities=
 
-                    "<h3>7. PoLP em Cloud (IAM)</h3>"
-                    "<p>Princípios:</p>"
-                    "<ul>"
-                    "<li><strong>Roles, não chaves estáticas</strong>: workload identity "
-                    "(IRSA na AWS, Workload Identity no GKE, Managed Identity no AKS).</li>"
-                    "<li><strong>Policies granulares</strong>: <code>s3:GetObject</code> em "
-                    "<code>arn:aws:s3:::bucket-x/*</code>, não <code>s3:*</code> em "
-                    "<code>*</code>.</li>"
-                    "<li><strong>Permission Boundaries / SCPs</strong>: guard-rails "
-                    "estruturais que nem o admin de uma sub-conta pode exceder.</li>"
-                    "<li><strong>Condicionais</strong>: <code>aws:SourceVpc</code>, "
-                    "<code>aws:MultiFactorAuthPresent</code>, "
-                    "<code>aws:RequestedRegion</code>.</li>"
-                    "<li><strong>Tempo limitado</strong>: STS AssumeRole com TTL curto.</li>"
-                    "</ul>"
-                    "<pre><code>// IAM policy mínima\n"
-                    "{\n"
-                    "  \"Version\": \"2012-10-17\",\n"
-                    "  \"Statement\": [\n"
-                    "    {\n"
-                    "      \"Effect\": \"Allow\",\n"
-                    "      \"Action\": [\"s3:GetObject\"],\n"
-                    "      \"Resource\": \"arn:aws:s3:::reports-prod/*\",\n"
-                    "      \"Condition\": {\n"
-                    "        \"StringEquals\": {\"aws:SourceVpc\": \"vpc-abc\"}\n"
-                    "      }\n"
-                    "    }\n"
-                    "  ]\n"
-                    "}</code></pre>"
+# Syscalls (via seccomp-bpf)
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
 
-                    "<h3>8. Privilege creep, o inimigo invisível</h3>"
-                    "<p>Sem auditoria, todo mundo só <em>adiciona</em> permissão. Ninguém "
-                    "remove. Em 2 anos, a IAM role 'app-prod' que começou com "
-                    "<code>s3:GetObject</code> em um bucket está com 47 permissões e ninguém "
-                    "sabe quais são realmente usadas.</p>"
-                    "<p>Ferramentas para auditar:</p>"
-                    "<ul>"
-                    "<li><strong>AWS IAM Access Analyzer</strong>: gera relatório do que cada "
-                    "principal <em>realmente</em> usou nos últimos 90 dias.</li>"
-                    "<li><strong>Cloudsplaining</strong> (Salesforce): scanner que avalia "
-                    "policies por risco.</li>"
-                    "<li><strong>Steampipe</strong>: SQL sobre seu cloud, "
-                    "<code>select * from aws_iam_role where assume_role_policy like '%*%'</code>.</li>"
-                    "<li><strong>cloudquery</strong>: catálogo continuamente atualizado.</li>"
-                    "</ul>"
+# Rede
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+PrivateNetwork=false       # true = sem acesso de rede algum
 
-                    "<h3>9. Caso real: Capital One 2019</h3>"
-                    "<p>Atacante explorou um WAF mal configurado (SSRF) para obter "
-                    "credenciais IAM via <code>169.254.169.254</code>. As credenciais tinham "
-                    "permissão <code>s3:ListAllMyBuckets</code> e <code>s3:GetObject</code> "
-                    "<em>em todos os buckets da empresa</em>, para 'simplicidade'. "
-                    "Resultado: 100M de registros de clientes vazados, multa de US$ 80M, "
-                    "CISO demitida. Se a role tivesse acesso só ao bucket que o WAF realmente "
-                    "precisava, o vazamento seria de 1% do que foi.</p>"
+# Outros
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true</code></pre>
+<p>Cada uma dessas diretivas fecha um vetor de escalada específico —
+<code>NoNewPrivileges</code>, por exemplo, impede que um processo
+comprometido ganhe MAIS privilégio do que já tinha via um binário
+setuid encontrado no sistema. Para saber exatamente onde uma unit já
+está, o próprio systemd oferece um auditor embutido:</p>
+<pre><code>systemd-analyze security app.service</code></pre>
+<p>Ele devolve uma nota de 0 a 10 com sugestão concreta do que ainda
+falta endurecer — quanto MENOR a nota, mais seguro o serviço já está
+configurado.</p>
 
-                    "<h3>10. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><code>chmod 777</code> 'porque tava dando erro'.</li>"
-                    "<li><code>kubectl create clusterrolebinding app-admin --clusterrole=cluster-admin</code>.</li>"
-                    "<li>App rodando como root no container 'porque a imagem oficial é assim'.</li>"
-                    "<li>IAM role <code>*</code> em <code>*</code> 'depois eu restrinjo'.</li>"
-                    "<li>Compartilhar credencial de service account entre humanos.</li>"
-                    "<li>Acesso permanente em vez de just-in-time (JIT).</li>"
-                    "</ul>"
-                    "<p>Para cada um deles, há uma alternativa segura que custa minutos a "
-                    "configurar e horas economizadas em incidente.</p>"
+<h3>4. sudo, mas com critério</h3>
+<p>A entrada <code>ALL=(ALL:ALL) ALL</code> é o atalho mais comum e
+também o pior possível — concede exatamente o oposto do que PoLP
+pede. Em <code>/etc/sudoers.d/deploy</code>, a alternativa granular
+concede apenas o comando específico necessário:</p>
+<pre><code># Usuário deploy só pode reiniciar o nginx, sem senha
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
+
+# Negar shell escapes
+Defaults:deploy !requiretty
+Defaults:deploy log_year, logfile=/var/log/sudo-deploy.log</code></pre>
+<p>Editar sempre com <code>visudo -f /etc/sudoers.d/arquivo</code> é
+uma proteção estrutural própria: o comando VALIDA a sintaxe antes de
+salvar — sem essa validação, um typo simples pode deixar o sistema
+inteiro sem ninguém conseguindo usar sudo até alguém corrigir via
+acesso físico ou console de emergência.</p>
+
+<h3>5. PoLP em containers Docker</h3>
+<pre><code># Dockerfile
+FROM python:3.12-slim
+RUN useradd --uid 10001 --system --no-create-home app
+WORKDIR /app
+COPY --chown=app:app . .
+RUN pip install --no-cache-dir -r requirements.txt
+USER app                          # nunca rode como root
+EXPOSE 8000
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "app.wsgi"]</code></pre>
+<p>No momento de rodar o container, ainda há espaço para ir além do
+que o Dockerfile já garante:</p>
+<pre><code>docker run --rm \\
+  --user 10001:10001 \\
+  --read-only \\
+  --tmpfs /tmp \\
+  --cap-drop=ALL \\
+  --cap-add=NET_BIND_SERVICE \\
+  --security-opt=no-new-privileges \\
+  --pids-limit 200 \\
+  -p 8000:8000 myapp:1.0</code></pre>
+<p>O <code>--cap-drop=ALL</code> combinado com um único
+<code>--cap-add</code> específico (aqui, apenas
+<code>NET_BIND_SERVICE</code>, necessário só para bindar em porta
+abaixo de 1024) ilustra o próprio PoLP em ação: em vez de conceder o
+conjunto completo de capability do kernel, concede exatamente a única
+que a aplicação de fato precisa.</p>
+
+<h3>6. PoLP em Kubernetes (securityContext)</h3>
+<pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata: { name: app }
+spec:
+  template:
+    spec:
+      automountServiceAccountToken: false   # se a app não chama K8s API
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+      - name: app
+        image: myapp:1.0
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: { drop: ["ALL"] }</code></pre>
+<p>Os Pod Security Standards, no modo <code>restricted</code>, aplicam
+esse padrão inteiro FORÇADAMENTE em todo deploy dentro do namespace, em
+vez de depender de cada time lembrar de configurar isso manualmente:</p>
+<pre><code>kubectl label ns app pod-security.kubernetes.io/enforce=restricted</code></pre>
+
+<h3>7. PoLP em Cloud (IAM)</h3>
+<p>Cinco princípios sustentam PoLP na camada de nuvem. Preferir role a
+chave estática — via workload identity (IRSA na AWS, Workload Identity
+no GKE, Managed Identity no AKS) — elimina o problema de uma
+credencial de longa duração vazando permanentemente. Policy granular
+concede <code>s3:GetObject</code> num
+<code>arn:aws:s3:::bucket-x/*</code> específico, nunca
+<code>s3:*</code> em <code>*</code> por conveniência. Permission
+Boundaries e SCPs funcionam como guard-rail estrutural que nem o
+administrador de uma sub-conta consegue exceder, mesmo com a melhor das
+intenções. Condicionais (<code>aws:SourceVpc</code>,
+<code>aws:MultiFactorAuthPresent</code>,
+<code>aws:RequestedRegion</code>) restringem QUANDO e DE ONDE uma
+permissão vale, não só O QUE ela permite. E tempo limitado — via STS
+AssumeRole com TTL curto — garante que mesmo uma credencial concedida
+corretamente expire sozinha, reduzindo a janela de exploração em caso
+de vazamento:</p>
+<pre><code>// IAM policy mínima
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::reports-prod/*",
+      "Condition": {
+        "StringEquals": {"aws:SourceVpc": "vpc-abc"}
+      }
+    }
+  ]
+}</code></pre>
+
+<h3>8. Privilege creep, o inimigo invisível</h3>
+<p>Sem auditoria periódica, o padrão natural é todo mundo só
+ADICIONAR permissão nova, e ninguém nunca remover a antiga que deixou
+de ser necessária. Em dois anos, uma role IAM que começou com um único
+<code>s3:GetObject</code> num bucket específico acumula 47 permissões
+diferentes, e ninguém mais consegue dizer com certeza quais delas ainda
+são realmente usadas na prática. Quatro ferramentas resolvem essa
+opacidade: o AWS IAM Access Analyzer gera relatório do que cada
+principal REALMENTE usou nos últimos 90 dias, revelando o que pode ser
+podado com segurança; o Cloudsplaining (originalmente da Salesforce) é
+um scanner que avalia risco diretamente na policy declarada; o
+Steampipe permite rodar SQL direto sobre o estado real da nuvem — uma
+consulta como <code>select * from aws_iam_role where
+assume_role_policy like '%*%'</code> encontra role perigosamente aberta
+em segundos; e o cloudquery mantém um catálogo continuamente atualizado
+para consulta recorrente.</p>
+
+<h3>9. Caso real: Capital One 2019</h3>
+<p>O atacante explorou um WAF mal configurado, permitindo SSRF que
+extraiu credencial IAM temporária via
+<code>169.254.169.254</code> — o serviço de metadados da própria AWS.
+Essa credencial carregava <code>s3:ListAllMyBuckets</code> e
+<code>s3:GetObject</code> liberado em TODOS os buckets da empresa, uma
+decisão justificada internamente como "simplicidade" na hora de
+configurar. O resultado foi 100 milhões de registro de cliente
+vazado, uma multa de US$ 80 milhões, e a demissão da CISO responsável.
+Se a role tivesse acesso restrito apenas ao bucket específico que o
+WAF realmente precisava tocar, o vazamento teria ficado numa fração
+mínima do que de fato aconteceu — o incidente inteiro é, no fundo, um
+caso de PoLP violado desde o desenho original da permissão.</p>
+
+<h3>10. Anti-patterns</h3>
+<ul>
+<li><strong><code>chmod 777</code> "porque tava dando erro"</strong>:
+resolve o sintoma imediato abrindo uma porta permanente que qualquer
+usuário do sistema pode explorar depois.</li>
+<li><strong><code>kubectl create clusterrolebinding app-admin
+--clusterrole=cluster-admin</code></strong>: concede controle total
+sobre o cluster inteiro para resolver um problema que provavelmente
+precisava de uma fração disso.</li>
+<li><strong>Aplicação rodando como root no container "porque a imagem
+oficial é assim"</strong>: aceita o default sem questionar se ele
+atende ao caso de uso real (seção 5).</li>
+<li><strong>IAM role <code>*</code> em <code>*</code> "depois eu
+restrinjo"</strong>: o "depois" quase nunca chega, e o acesso amplo
+vira o estado permanente de fato.</li>
+<li><strong>Compartilhar credencial de service account entre
+humanos</strong>: elimina toda rastreabilidade de quem fez o quê,
+exatamente o oposto do que auditoria por identidade (seção 2)
+propõe.</li>
+<li><strong>Acesso permanente em vez de just-in-time</strong>: mantém
+privilégio elevado ativo o tempo todo, quando ele só é necessário por
+uma janela específica de tempo.</li>
+</ul>
+<p>Para cada um desses padrões, existe uma alternativa segura que
+custa minutos a configurar e potencialmente evita horas — ou dias — de
+resposta a incidente depois.</p>"""
                 ),
                 "practical": (
                     "(1) Pegue um serviço systemd existente em sua máquina e rode "
@@ -1438,169 +1571,203 @@ PHASE1 = {
                     "padrões operacionais e armadilhas que travam admins fora do servidor."
                 ),
                 "body": (
-                    "<h3>1. O subsystem netfilter</h3>"
-                    "<p>O kernel Linux tem um framework de filtro de pacotes chamado "
-                    "<strong>netfilter</strong>, com hooks em pontos do caminho do pacote:</p>"
-                    "<ul>"
-                    "<li><code>PRE-ROUTING</code>: antes de decidir destino (NAT entrada).</li>"
-                    "<li><code>INPUT</code>: pacote destinado ao próprio host.</li>"
-                    "<li><code>FORWARD</code>: pacote roteado pela máquina (gateway/router).</li>"
-                    "<li><code>OUTPUT</code>: pacote saindo do host.</li>"
-                    "<li><code>POST-ROUTING</code>: depois de roteado (NAT saída).</li>"
-                    "</ul>"
-                    "<p>As interfaces de usuário (iptables/nftables/ufw) só montam regras "
-                    "nessas hooks. Trocar de interface não muda o motor.</p>"
+                """<h3>1. O subsystem netfilter</h3>
+<p>O kernel Linux implementa um framework de filtro de pacotes chamado
+netfilter, com hook em cinco pontos distintos ao longo do caminho de
+um pacote pela pilha de rede. O <code>PRE-ROUTING</code> atua antes
+mesmo de decidir o destino final, sendo onde NAT de entrada acontece. O
+<code>INPUT</code> filtra pacote destinado ao próprio host. O
+<code>FORWARD</code> filtra pacote apenas roteado através da máquina —
+o cenário de um gateway ou router. O <code>OUTPUT</code> filtra pacote
+saindo do próprio host. E o <code>POST-ROUTING</code> atua depois de já
+roteado, onde NAT de saída acontece. Um detalhe importante para quem
+compara ferramentas: as interfaces de usuário — iptables, nftables, ufw
+— só MONTAM regra sobre esses hooks já existentes, elas não trocam o
+motor por baixo. Trocar de <code>iptables</code> para
+<code>nftables</code> muda a sintaxe, não o comportamento fundamental
+do kernel.</p>
 
-                    "<h3>2. iptables vs nftables vs ufw</h3>"
-                    "<p>Linha do tempo:</p>"
-                    "<ul>"
-                    "<li><strong>iptables</strong> (1998): clássico, sintaxe verbosa, "
-                    "tabela separada para IPv6 (ip6tables), ARP, ebtables.</li>"
-                    "<li><strong>nftables</strong> (2014): substituto unificado, sintaxe "
-                    "nova, performance melhor, IPv4+IPv6 numa só árvore. Em distros novas "
-                    "(Debian 11+, RHEL 9, Ubuntu 22.04+), <code>iptables</code> é só um shim "
-                    "que traduz para nftables.</li>"
-                    "<li><strong>UFW</strong> (Uncomplicated Firewall): wrapper amigável "
-                    "para iniciantes. <code>ufw allow ssh</code> e pronto.</li>"
-                    "<li><strong>firewalld</strong> (RHEL/Fedora): wrapper diferente, "
-                    "orientado a 'zonas'.</li>"
-                    "</ul>"
+<h3>2. iptables vs nftables vs ufw</h3>
+<p>Quatro ferramentas cobrem o mesmo espaço em momentos históricos
+diferentes. O <strong>iptables</strong> (1998) é o clássico, com
+sintaxe verbosa e tabela SEPARADA para IPv6 (via
+<code>ip6tables</code>), ARP e ebtables — esquecer de replicar uma
+regra em <code>ip6tables</code> é uma fonte histórica de vazamento
+(seção 9). O <strong>nftables</strong> (2014) veio como substituto
+unificado, com sintaxe nova, performance melhor, e IPv4 e IPv6
+convivendo na mesma árvore de regra — em distribuição recente (Debian
+11+, RHEL 9, Ubuntu 22.04+), o próprio comando <code>iptables</code>
+virou apenas um shim que traduz internamente para nftables. O
+<strong>UFW</strong> (Uncomplicated Firewall) é um wrapper amigável
+para quem está começando — <code>ufw allow ssh</code> resolve sem
+precisar entender hook nem chain. E o <strong>firewalld</strong>
+(comum em RHEL/Fedora) segue um modelo diferente, organizado em torno
+de "zonas" em vez de regra explícita direta.</p>
 
-                    "<h3>3. UFW na prática</h3>"
-                    "<pre><code># Estado / status\n"
-                    "ufw status verbose\n"
-                    "ufw status numbered\n"
-                    "\n"
-                    "# Política default (default-deny inbound é o caminho)\n"
-                    "ufw default deny incoming\n"
-                    "ufw default allow outgoing\n"
-                    "\n"
-                    "# Regras\n"
-                    "ufw allow ssh                            # equivale a 22/tcp\n"
-                    "ufw allow 80,443/tcp                     # web\n"
-                    "ufw allow from 10.0.1.0/24 to any port 5432  # postgres só da subnet\n"
-                    "ufw limit ssh                            # rate limit (anti brute force)\n"
-                    "\n"
-                    "# Aplicar\n"
-                    "ufw enable\n"
-                    "\n"
-                    "# Remover regra\n"
-                    "ufw status numbered\n"
-                    "ufw delete 3</code></pre>"
-                    "<p><code>ufw limit</code> bloqueia IPs com mais de 6 conexões em 30s, "
-                    "útil contra brute-force a SSH. Para resposta mais agressiva, combine com "
-                    "<code>fail2ban</code> que banem por mais tempo e em mais portas.</p>"
+<h3>3. UFW na prática</h3>
+<pre><code># Estado / status
+ufw status verbose
+ufw status numbered
 
-                    "<h3>4. nftables raw, para quando UFW não basta</h3>"
-                    "<pre><code># /etc/nftables.conf\n"
-                    "table inet filter {\n"
-                    "  chain input {\n"
-                    "    type filter hook input priority 0; policy drop;\n"
-                    "    \n"
-                    "    iif lo accept\n"
-                    "    ct state established,related accept\n"
-                    "    ct state invalid drop\n"
-                    "    \n"
-                    "    icmp type echo-request limit rate 5/second accept\n"
-                    "    icmpv6 type { echo-request, nd-neighbor-solicit, nd-router-advert, \\\n"
-                    "                  nd-neighbor-advert } accept\n"
-                    "    \n"
-                    "    tcp dport 22 limit rate 10/minute accept    # ssh com rate limit\n"
-                    "    tcp dport { 80, 443 } accept                 # web\n"
-                    "    \n"
-                    "    log prefix \"nft drop: \" level info limit rate 5/minute\n"
-                    "  }\n"
-                    "  chain forward { type filter hook forward priority 0; policy drop; }\n"
-                    "  chain output  { type filter hook output  priority 0; policy accept; }\n"
-                    "}</code></pre>"
-                    "<p>Aplicar: <code>nft -f /etc/nftables.conf &amp;&amp; "
-                    "systemctl enable nftables</code>.</p>"
+# Política default (default-deny inbound é o caminho)
+ufw default deny incoming
+ufw default allow outgoing
 
-                    "<h3>5. DROP vs REJECT vs ACCEPT</h3>"
-                    "<table>"
-                    "<tr><td><code>ACCEPT</code></td><td>passa</td></tr>"
-                    "<tr><td><code>DROP</code></td><td>descarta silenciosamente. Atacante vê "
-                    "timeout, mais difícil de mapear. Padrão em internet pública.</td></tr>"
-                    "<tr><td><code>REJECT</code></td><td>responde com ICMP "
-                    "<em>port-unreachable</em> ou TCP RST. 'Mais educado'; cliente legítimo "
-                    "descobre o erro mais rápido. Bom em rede interna.</td></tr>"
-                    "</table>"
-                    "<p>Conntrack (<code>ct state established,related accept</code>) é o que "
-                    "permite respostas de conexões iniciadas pelo host de saírem sem regra "
-                    "explícita.</p>"
+# Regras
+ufw allow ssh                            # equivale a 22/tcp
+ufw allow 80,443/tcp                     # web
+ufw allow from 10.0.1.0/24 to any port 5432  # postgres só da subnet
+ufw limit ssh                            # rate limit (anti brute force)
 
-                    "<h3>6. Cuidados em produção: não se trave fora!</h3>"
-                    "<p>Antes de aplicar regras restritivas em SSH remoto:</p>"
-                    "<pre><code># Plano B: reverte automaticamente em 5 min se você não desativar\n"
-                    "echo 'iptables-restore &lt; /tmp/rules.backup' | at now +5 minutes\n"
-                    "\n"
-                    "iptables-save &gt; /tmp/rules.backup\n"
-                    "# ... aplica novas regras ...\n"
-                    "# se você confirma que continua funcionando:\n"
-                    "atrm $(atq | tail -1 | awk '{print $1}')</code></pre>"
-                    "<p>Para nftables: <code>nft list ruleset &gt; /tmp/before.nft</code> "
-                    "antes; reverter com <code>nft -f /tmp/before.nft</code>.</p>"
-                    "<p>Sempre <strong>persista</strong> as regras: distros costumam ter "
-                    "<code>netfilter-persistent</code>, <code>iptables-persistent</code> ou "
-                    "<code>nftables.service</code> que carrega as regras no boot. Sem isso, um "
-                    "reboot zera tudo e você fica com host wide-open.</p>"
+# Aplicar
+ufw enable
 
-                    "<h3>7. Limites de firewall L3/L4</h3>"
-                    "<p>Firewall por porta não enxerga:</p>"
-                    "<ul>"
-                    "<li>Conteúdo HTTPS (criptografado).</li>"
-                    "<li>Lógica de aplicação (SQLi, XSS, RCE).</li>"
-                    "<li>Comportamento de usuário legítimo (credential stuffing com IPs "
-                    "rotativos).</li>"
-                    "</ul>"
-                    "<p>Para isso existe a camada 7:</p>"
-                    "<ul>"
-                    "<li><strong>WAF</strong> (Web Application Firewall): ModSecurity, "
-                    "Cloudflare, AWS WAF, Azure FrontDoor.</li>"
-                    "<li><strong>API Gateway</strong>: Kong, Tyk, AWS API Gateway, rate "
-                    "limit por chave, schema validation.</li>"
-                    "<li><strong>Service Mesh</strong>: Istio, Linkerd, autenticação mTLS "
-                    "entre serviços.</li>"
-                    "</ul>"
+# Remover regra
+ufw status numbered
+ufw delete 3</code></pre>
+<p>O <code>ufw limit</code> bloqueia automaticamente IP com mais de 6
+tentativas de conexão em 30 segundos — uma proteção direta contra
+brute-force em SSH, sem precisar de ferramenta externa. Para uma
+resposta ainda mais agressiva, combinar com <code>fail2ban</code>
+adiciona banimento por período mais longo e cobrindo mais portas ao
+mesmo tempo.</p>
 
-                    "<h3>8. Firewall em cloud: Security Groups e NACLs</h3>"
-                    "<p>Em AWS (e equivalentes):</p>"
-                    "<ul>"
-                    "<li><strong>Security Group</strong>: stateful, anexa em ENI/instância. "
-                    "Default deny inbound, allow outbound. Regra de saída pode ser "
-                    "destinada a outro SG (composição).</li>"
-                    "<li><strong>Network ACL</strong>: stateless, em subnet. Regras "
-                    "numeradas (avaliadas em ordem). Útil para bloquear IPs maliciosos sem "
-                    "tocar no SG.</li>"
-                    "</ul>"
-                    "<p>Use Security Group como firewall de aplicação ('app fala com "
-                    "postgres') e NACL como guard-rail por subnet ('subnet privada não recebe "
-                    "internet').</p>"
+<h3>4. nftables raw, para quando UFW não basta</h3>
+<pre><code># /etc/nftables.conf
+table inet filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+    
+    iif lo accept
+    ct state established,related accept
+    ct state invalid drop
+    
+    icmp type echo-request limit rate 5/second accept
+    icmpv6 type { echo-request, nd-neighbor-solicit, nd-router-advert, \\
+                  nd-neighbor-advert } accept
+    
+    tcp dport 22 limit rate 10/minute accept    # ssh com rate limit
+    tcp dport { 80, 443 } accept                 # web
+    
+    log prefix "nft drop: " level info limit rate 5/minute
+  }
+  chain forward { type filter hook forward priority 0; policy drop; }
+  chain output  { type filter hook output  priority 0; policy accept; }
+}</code></pre>
+<p>Aplicar essa configuração e garantir que ela persista no boot é um
+único comando: <code>nft -f /etc/nftables.conf &amp;&amp; systemctl
+enable nftables</code>.</p>
 
-                    "<h3>9. Caso real: o ipv6-bypass</h3>"
-                    "<p>Por anos, admins configuravam <code>iptables</code> mas esqueciam "
-                    "<code>ip6tables</code>, deixando IPv6 totalmente aberto. Atacantes "
-                    "automatizados descobriam o IPv6 do host (geralmente exposto em DNS) e "
-                    "entravam direto. Em 2014, isso ficou famoso quando "
-                    "<code>kubelet</code> em K8s expunha-se em IPv6 por default. Lição: "
-                    "use <code>nftables</code> com tabela <code>inet</code> (filtra IPv4 e "
-                    "IPv6 juntos) ou seja explícito em ambas as stacks.</p>"
+<h3>5. DROP vs REJECT vs ACCEPT</h3>
+<table>
+<tr><td><code>ACCEPT</code></td><td>passa</td></tr>
+<tr><td><code>DROP</code></td><td>descarta silenciosamente. Atacante vê
+timeout, mais difícil de mapear. Padrão em internet pública.</td></tr>
+<tr><td><code>REJECT</code></td><td>responde com ICMP
+<em>port-unreachable</em> ou TCP RST. 'Mais educado'; cliente legítimo
+descobre o erro mais rápido. Bom em rede interna.</td></tr>
+</table>
+<p>A escolha entre DROP e REJECT não é neutra: DROP faz o atacante
+gastar tempo esperando um timeout que nunca chega, dificultando mapear
+quais portas realmente existem por trás — o padrão correto para
+qualquer interface exposta à internet pública. REJECT, ao contrário,
+informa imediatamente que a porta está fechada, o que é útil em rede
+interna onde não há adversário tentando mapear o ambiente, só um
+colega tentando debugar mais rápido por que algo não conecta. E a linha
+<code>ct state established,related accept</code> é o que permite a
+RESPOSTA de uma conexão que o próprio host iniciou voltar livremente,
+sem precisar de uma regra explícita separada para cada tipo de tráfego
+de retorno.</p>
 
-                    "<h3>10. Checklist de hardening</h3>"
-                    "<ol>"
-                    "<li>Default-deny inbound; default-allow outbound (com revisão "
-                    "periódica).</li>"
-                    "<li>Apenas portas estritamente necessárias abertas.</li>"
-                    "<li>SSH com rate-limit (<code>ufw limit</code> + fail2ban).</li>"
-                    "<li>ICMP echo aceitando mas com rate-limit.</li>"
-                    "<li>Conntrack para established/related; drop para invalid.</li>"
-                    "<li>Logs em todos os DROP no início (sample 5/min para não encher "
-                    "disco).</li>"
-                    "<li>Persistência configurada (sobrevive a reboot).</li>"
-                    "<li>IPv6 também filtrado.</li>"
-                    "<li>Plano de reversão antes de qualquer mudança remota.</li>"
-                    "<li>Auditoria periódica: o que cada porta aberta serve?</li>"
-                    "</ol>"
+<h3>6. Cuidados em produção: não se trave fora!</h3>
+<p>Antes de aplicar uma regra restritiva via SSH remoto, um plano de
+reversão automática evita o cenário clássico de perder acesso ao
+próprio servidor:</p>
+<pre><code># Plano B: reverte automaticamente em 5 min se você não desativar
+echo 'iptables-restore &lt; /tmp/rules.backup' | at now +5 minutes
+
+iptables-save &gt; /tmp/rules.backup
+# ... aplica novas regras ...
+# se você confirma que continua funcionando:
+atrm $(atq | tail -1 | awk '{print $1}')</code></pre>
+<p>Para nftables, o mesmo princípio se aplica salvando o estado atual
+com <code>nft list ruleset &gt; /tmp/before.nft</code> antes de
+qualquer mudança, com <code>nft -f /tmp/before.nft</code> pronto para
+reverter caso algo saia errado. E persistir a regra é igualmente
+crítico: distribuições costumam oferecer
+<code>netfilter-persistent</code>, <code>iptables-persistent</code> ou
+o próprio <code>nftables.service</code> para carregar a configuração
+novamente no boot — sem isso, um simples reboot zera tudo e o host
+volta a ficar completamente exposto sem ninguém perceber
+imediatamente.</p>
+
+<h3>7. Limites de firewall L3/L4</h3>
+<p>Um firewall operando por porta e protocolo simplesmente não enxerga
+três categorias inteiras de ataque: o conteúdo de uma conexão HTTPS,
+que chega criptografado; a lógica da própria aplicação, onde SQL
+injection, XSS e RCE acontecem inteiramente dentro do payload
+permitido; e o comportamento de um usuário aparentemente legítimo, como
+credential stuffing distribuído entre muitos IPs rotativos diferentes,
+cada um individualmente abaixo de qualquer limite de taxa configurado.
+Para cobrir essa lacuna existe a camada 7: um WAF (ModSecurity,
+Cloudflare, AWS WAF, Azure Front Door) inspeciona o conteúdo real da
+requisição; um API Gateway (Kong, Tyk, AWS API Gateway) aplica rate
+limit por chave de API e validação de schema; e um service mesh
+(Istio, Linkerd) garante autenticação mTLS genuína entre serviços
+internos.</p>
+
+<h3>8. Firewall em cloud: Security Groups e NACLs</h3>
+<p>Na AWS (e equivalentes), o Security Group é STATEFUL e anexado
+diretamente a uma ENI ou instância, com default deny no inbound e
+allow no outbound — e uma regra de saída pode referenciar outro
+Security Group diretamente como destino, permitindo composição de
+arquitetura inteira via referência (detalhado na aula de rede em
+nuvem). O Network ACL é STATELESS e opera a nível de subnet, com regra
+numerada avaliada em ordem sequencial — útil especificamente para
+bloquear um IP malicioso amplo sem precisar tocar em nenhum Security
+Group individual. O padrão prático de uso divide o papel de cada um:
+Security Group como firewall de aplicação ("a aplicação fala com o
+Postgres, mais nada"), e NACL como guard-rail estrutural por subnet
+("a subnet privada não recebe tráfego de internet, ponto final").</p>
+
+<h3>9. Caso real: o ipv6-bypass</h3>
+<p>Por anos, administradores configuravam <code>iptables</code> com
+cuidado e simplesmente esqueciam de replicar a mesma configuração em
+<code>ip6tables</code>, deixando o tráfego IPv6 completamente aberto
+mesmo com o IPv4 bem protegido. Atacante automatizado descobria o
+endereço IPv6 do host — frequentemente exposto pelo próprio DNS — e
+entrava direto por essa porta lateral esquecida. Em 2014, esse padrão
+ficou particularmente conhecido quando o próprio <code>kubelet</code>
+do Kubernetes se expunha via IPv6 por configuração default sem que
+ninguém tivesse pensado nisso explicitamente. A lição prática direta:
+usar <code>nftables</code> com a tabela <code>inet</code> — que filtra
+IPv4 e IPv6 na mesma árvore de regra simultaneamente — elimina
+estruturalmente esse tipo de esquecimento, em vez de depender de
+lembrar manualmente de duplicar cada regra nas duas stacks
+separadas.</p>
+
+<h3>10. Checklist de hardening</h3>
+<ol>
+<li>Default-deny no inbound; default-allow no outbound, com revisão
+periódica mesmo assim.</li>
+<li>Apenas as portas estritamente necessárias abertas, nada "por via
+das dúvidas".</li>
+<li>SSH com rate-limit (<code>ufw limit</code> combinado com
+fail2ban).</li>
+<li>ICMP echo aceito mas com rate-limit aplicado, evitando abuso
+como vetor de flood.</li>
+<li>Conntrack aceitando established/related, e descartando
+explicitamente estado invalid.</li>
+<li>Log em todo DROP inicial, mas amostrado (5 por minuto, por
+exemplo) para não encher o disco com ruído repetitivo.</li>
+<li>Persistência configurada, garantindo que a regra sobrevive a um
+reboot (seção 6).</li>
+<li>IPv6 filtrado com o mesmo rigor do IPv4 (seção 9).</li>
+<li>Plano de reversão pronto antes de qualquer mudança remota via
+SSH.</li>
+<li>Auditoria periódica perguntando, para cada porta ainda aberta, "o
+que exatamente ela serve hoje?".</li>
+</ol>"""
                 ),
                 "practical": (
                     "Em uma VM:<br>"
@@ -1706,227 +1873,269 @@ PHASE1 = {
                     "mais usado na indústria) com pontes para Apache e Caddy."
                 ),
                 "body": (
-                    "<h3>1. Por que ainda existe TLS termination na borda</h3>"
-                    "<p>Mesmo com mTLS dentro do mesh, há motivos para ter um proxy de borda:</p>"
-                    "<ul>"
-                    "<li>Certificado público (Let's Encrypt) gerenciado em um único lugar.</li>"
-                    "<li>HTTP/2 e HTTP/3 (QUIC) por default sem que cada microservice precise "
-                    "implementar.</li>"
-                    "<li>Compressão (gzip, brotli) e cache de respostas.</li>"
-                    "<li>WAF (ModSecurity).</li>"
-                    "<li>Roteamento por path/host com lógica complexa.</li>"
-                    "</ul>"
-                    "<p>Padrão clássico: Nginx em 80/443 → "
-                    "<code>proxy_pass http://127.0.0.1:8000</code> (gunicorn/uvicorn/daphne) "
-                    "ou socket Unix.</p>"
+                """<h3>1. Por que ainda existe TLS termination na borda</h3>
+<p>Mesmo num ambiente com mTLS pleno dentro do mesh, o proxy de borda
+continua justificado por cinco razões concretas: certificado público
+(Let's Encrypt) gerenciado num único lugar central, em vez de espalhado
+por dezenas de microserviços; HTTP/2 e HTTP/3 (QUIC) disponíveis por
+padrão sem que cada serviço individual precise implementar isso
+sozinho; compressão (gzip, brotli) e cache de resposta aplicados numa
+única camada; um WAF (ModSecurity) inspecionando tudo que entra antes
+mesmo de chegar na aplicação; e roteamento por path ou host com lógica
+potencialmente complexa, centralizada num só lugar em vez de
+duplicada. O padrão clássico é o Nginx escutando em 80/443, e fazendo
+<code>proxy_pass http://127.0.0.1:8000</code> para gunicorn, uvicorn ou
+daphne — ou, quando disponível, um socket Unix diretamente.</p>
 
-                    "<h3>2. Configuração mínima viável</h3>"
-                    "<pre><code># /etc/nginx/sites-available/api.example.com\n"
-                    "upstream api_backend {\n"
-                    "  server 127.0.0.1:8000 fail_timeout=5s;\n"
-                    "  keepalive 32;\n"
-                    "}\n"
-                    "\n"
-                    "server {\n"
-                    "  listen 80;\n"
-                    "  listen [::]:80;\n"
-                    "  server_name api.example.com;\n"
-                    "  return 301 https://$host$request_uri;        # força HTTPS\n"
-                    "}\n"
-                    "\n"
-                    "server {\n"
-                    "  listen 443 ssl http2;\n"
-                    "  listen [::]:443 ssl http2;\n"
-                    "  server_name api.example.com;\n"
-                    "  \n"
-                    "  ssl_certificate     /etc/letsencrypt/live/api.example.com/fullchain.pem;\n"
-                    "  ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;\n"
-                    "  \n"
-                    "  # Mozilla 'modern' (apenas TLS 1.3) ou 'intermediate' (1.2+1.3)\n"
-                    "  ssl_protocols TLSv1.3;\n"
-                    "  ssl_prefer_server_ciphers off;\n"
-                    "  ssl_ciphers TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384;\n"
-                    "  ssl_session_timeout 1d;\n"
-                    "  ssl_session_cache shared:SSL:10m;\n"
-                    "  ssl_session_tickets off;\n"
-                    "  ssl_stapling on;\n"
-                    "  ssl_stapling_verify on;\n"
-                    "  \n"
-                    "  # Headers de segurança\n"
-                    "  add_header Strict-Transport-Security \"max-age=63072000; includeSubDomains; preload\" always;\n"
-                    "  add_header X-Frame-Options DENY always;\n"
-                    "  add_header X-Content-Type-Options nosniff always;\n"
-                    "  add_header Referrer-Policy strict-origin-when-cross-origin always;\n"
-                    "  add_header Permissions-Policy \"camera=(), microphone=(), geolocation=()\" always;\n"
-                    "  add_header Content-Security-Policy \"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'\" always;\n"
-                    "  \n"
-                    "  # Esconde versão do Nginx\n"
-                    "  server_tokens off;\n"
-                    "  \n"
-                    "  # Tamanho máximo de body\n"
-                    "  client_max_body_size 5M;\n"
-                    "  \n"
-                    "  # Compressão\n"
-                    "  gzip on;\n"
-                    "  gzip_types text/plain text/css application/json application/javascript;\n"
-                    "  \n"
-                    "  # Rate limit em /login\n"
-                    "  limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;\n"
-                    "  \n"
-                    "  location = /login {\n"
-                    "    limit_req zone=login burst=10 nodelay;\n"
-                    "    proxy_pass http://api_backend;\n"
-                    "  }\n"
-                    "  \n"
-                    "  location / {\n"
-                    "    proxy_http_version 1.1;\n"
-                    "    proxy_set_header Connection \"\";\n"
-                    "    proxy_set_header Host $host;\n"
-                    "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n"
-                    "    proxy_set_header X-Forwarded-Proto $scheme;\n"
-                    "    proxy_set_header X-Real-IP $remote_addr;\n"
-                    "    proxy_pass http://api_backend;\n"
-                    "    proxy_read_timeout 60s;\n"
-                    "  }\n"
-                    "}</code></pre>"
+<h3>2. Configuração mínima viável</h3>
+<pre><code># /etc/nginx/sites-available/api.example.com
+upstream api_backend {
+  server 127.0.0.1:8000 fail_timeout=5s;
+  keepalive 32;
+}
 
-                    "<h3>3. Headers de segurança detalhados</h3>"
-                    "<table>"
-                    "<tr><td><code>Strict-Transport-Security</code></td>"
-                    "<td>Browser vai usar HTTPS por X segundos sem nem tentar HTTP.</td></tr>"
-                    "<tr><td><code>X-Frame-Options DENY</code></td>"
-                    "<td>Mata clickjacking via &lt;iframe&gt;.</td></tr>"
-                    "<tr><td><code>X-Content-Type-Options nosniff</code></td>"
-                    "<td>Browser não 'adivinha' MIME, para upload de avatar virar HTML.</td></tr>"
-                    "<tr><td><code>Content-Security-Policy</code></td>"
-                    "<td>A defesa contra XSS mais poderosa. "
-                    "Define quais origens podem rodar JS, carregar imagem, etc.</td></tr>"
-                    "<tr><td><code>Referrer-Policy</code></td>"
-                    "<td>Controla quanto da URL atual é enviado em <em>navegação</em>.</td></tr>"
-                    "<tr><td><code>Permissions-Policy</code></td>"
-                    "<td>Câmera, microfone, geolocalização, só com opt-in explícito.</td></tr>"
-                    "</table>"
-                    "<p>Audite com <a href='https://securityheaders.com'>securityheaders.com</a> "
-                    "e <a href='https://www.ssllabs.com/ssltest/'>SSL Labs</a>.</p>"
+server {
+  listen 80;
+  listen [::]:80;
+  server_name api.example.com;
+  return 301 https://$host$request_uri;        # força HTTPS
+}
 
-                    "<h3>4. CSP, o headache que vale o esforço</h3>"
-                    "<p>Comece em modo report-only para não quebrar produção:</p>"
-                    "<pre><code>add_header Content-Security-Policy-Report-Only \"\n"
-                    "  default-src 'self';\n"
-                    "  script-src 'self' 'sha256-XXX...';\n"
-                    "  style-src 'self' https://fonts.googleapis.com;\n"
-                    "  img-src 'self' data: https:;\n"
-                    "  connect-src 'self' https://api.example.com;\n"
-                    "  frame-ancestors 'none';\n"
-                    "  report-uri /csp-report;\n"
-                    "\" always;</code></pre>"
-                    "<p>Colete violações por algumas semanas, ajuste, e troque "
-                    "<code>Content-Security-Policy-Report-Only</code> por "
-                    "<code>Content-Security-Policy</code>.</p>"
+server {
+  listen 443 ssl http2;
+  listen [::]:443 ssl http2;
+  server_name api.example.com;
+  
+  ssl_certificate     /etc/letsencrypt/live/api.example.com/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+  
+  # Mozilla 'modern' (apenas TLS 1.3) ou 'intermediate' (1.2+1.3)
+  ssl_protocols TLSv1.3;
+  ssl_prefer_server_ciphers off;
+  ssl_ciphers TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384;
+  ssl_session_timeout 1d;
+  ssl_session_cache shared:SSL:10m;
+  ssl_session_tickets off;
+  ssl_stapling on;
+  ssl_stapling_verify on;
+  
+  # Headers de segurança
+  add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+  add_header X-Frame-Options DENY always;
+  add_header X-Content-Type-Options nosniff always;
+  add_header Referrer-Policy strict-origin-when-cross-origin always;
+  add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+  add_header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'" always;
+  
+  # Esconde versão do Nginx
+  server_tokens off;
+  
+  # Tamanho máximo de body
+  client_max_body_size 5M;
+  
+  # Compressão
+  gzip on;
+  gzip_types text/plain text/css application/json application/javascript;
+  
+  # Rate limit em /login
+  limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
+  
+  location = /login {
+    limit_req zone=login burst=10 nodelay;
+    proxy_pass http://api_backend;
+  }
+  
+  location / {
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_pass http://api_backend;
+    proxy_read_timeout 60s;
+  }
+}</code></pre>
 
-                    "<h3>5. Rate limiting, o ABC contra credential stuffing</h3>"
-                    "<p>Rotas como <code>/login</code>, <code>/register</code>, "
-                    "<code>/forgot-password</code> são alvos óbvios. No Nginx:</p>"
-                    "<pre><code>http {\n"
-                    "  limit_req_zone $binary_remote_addr zone=auth:10m rate=10r/m;\n"
-                    "  limit_req_zone $binary_remote_addr zone=api:10m rate=600r/m;\n"
-                    "}\n"
-                    "\n"
-                    "server {\n"
-                    "  location ~ ^/(login|register|forgot)$ {\n"
-                    "    limit_req zone=auth burst=5 nodelay;\n"
-                    "    proxy_pass http://app;\n"
-                    "  }\n"
-                    "  location /api/ {\n"
-                    "    limit_req zone=api burst=100;\n"
-                    "    proxy_pass http://app;\n"
-                    "  }\n"
-                    "}</code></pre>"
-                    "<p>Combine com rate-limit por usuário/api-key na app, IP-based sozinho "
-                    "é facilmente bypassado com proxy/botnet.</p>"
+<h3>3. Headers de segurança detalhados</h3>
+<table>
+<tr><td><code>Strict-Transport-Security</code></td>
+<td>Browser vai usar HTTPS por X segundos sem nem tentar HTTP.</td></tr>
+<tr><td><code>X-Frame-Options DENY</code></td>
+<td>Mata clickjacking via &lt;iframe&gt;.</td></tr>
+<tr><td><code>X-Content-Type-Options nosniff</code></td>
+<td>Browser não 'adivinha' MIME, para upload de avatar virar HTML.</td></tr>
+<tr><td><code>Content-Security-Policy</code></td>
+<td>A defesa contra XSS mais poderosa.
+Define quais origens podem rodar JS, carregar imagem, etc.</td></tr>
+<tr><td><code>Referrer-Policy</code></td>
+<td>Controla quanto da URL atual é enviado em <em>navegação</em>.</td></tr>
+<tr><td><code>Permissions-Policy</code></td>
+<td>Câmera, microfone, geolocalização, só com opt-in explícito.</td></tr>
+</table>
+<p>Cada um desses headers fecha um vetor de ataque específico que o
+navegador, sozinho, deixaria aberto por default — o
+<code>X-Frame-Options</code>, por exemplo, existe porque sem ele
+qualquer site pode embutir sua página inteira num iframe invisível e
+capturar clique do usuário sem que ele perceba. Auditar tudo isso de
+uma vez via securityheaders.com e SSL Labs revela rapidamente qual
+header está faltando antes de alguém precisar descobrir isso num
+incidente.</p>
 
-                    "<h3>6. Proxy reverso e o problema do IP real</h3>"
-                    "<p>Quando o Nginx faz <code>proxy_pass</code>, a app vê IP "
-                    "<code>127.0.0.1</code>. Para preservar o IP real:</p>"
-                    "<pre><code>proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n"
-                    "proxy_set_header X-Forwarded-Proto $scheme;\n"
-                    "proxy_set_header X-Real-IP $remote_addr;</code></pre>"
-                    "<p>Na app (Django):</p>"
-                    "<pre><code>USE_X_FORWARDED_HOST = True\n"
-                    "SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')</code></pre>"
-                    "<p><strong>NUNCA</strong> confie em <code>X-Forwarded-For</code> vindo "
-                    "diretamente do cliente. Configure o número de hops confiáveis (Nginx: "
-                    "<code>set_real_ip_from</code> + <code>real_ip_recursive on</code>; ALB: "
-                    "trust hops).</p>"
+<h3>4. CSP, o headache que vale o esforço</h3>
+<p>Aplicar Content-Security-Policy direto em modo enforcement corre o
+risco real de quebrar algo em produção sem aviso — o caminho seguro é
+começar em modo report-only, que só REGISTRA violação sem bloquear
+nada:</p>
+<pre><code>add_header Content-Security-Policy-Report-Only "
+  default-src 'self';
+  script-src 'self' 'sha256-XXX...';
+  style-src 'self' https://fonts.googleapis.com;
+  img-src 'self' data: https:;
+  connect-src 'self' https://api.example.com;
+  frame-ancestors 'none';
+  report-uri /csp-report;
+" always;</code></pre>
+<p>Depois de coletar violação real por algumas semanas e ajustar a
+policy conforme o que aparece, trocar
+<code>Content-Security-Policy-Report-Only</code> por
+<code>Content-Security-Policy</code> passa do modo observação para
+bloqueio de verdade, já calibrado contra falso positivo do próprio
+tráfego legítimo.</p>
 
-                    "<h3>7. Caching para performance e proteção</h3>"
-                    "<pre><code># Cache de respostas estáticas\n"
-                    "location ~* \\.(jpg|css|js|woff2)$ {\n"
-                    "  expires 30d;\n"
-                    "  add_header Cache-Control \"public, immutable\";\n"
-                    "}\n"
-                    "\n"
-                    "# Cache de respostas dinâmicas (chamadas idempotentes)\n"
-                    "proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=app:10m max_size=1g;\n"
-                    "\n"
-                    "location /api/products {\n"
-                    "  proxy_cache app;\n"
-                    "  proxy_cache_valid 200 5m;\n"
-                    "  proxy_cache_use_stale error timeout updating;\n"
-                    "  add_header X-Cache-Status $upstream_cache_status;\n"
-                    "  proxy_pass http://app;\n"
-                    "}</code></pre>"
-                    "<p>Cache também é proteção contra DoS, request repetida não chega na "
-                    "app.</p>"
+<h3>5. Rate limiting, o ABC contra credential stuffing</h3>
+<p>Rotas como <code>/login</code>, <code>/register</code> e
+<code>/forgot-password</code> são alvo óbvio de tentativa automatizada
+de login em massa. No Nginx, isso vira uma zona de rate limit
+dedicada:</p>
+<pre><code>http {
+  limit_req_zone $binary_remote_addr zone=auth:10m rate=10r/m;
+  limit_req_zone $binary_remote_addr zone=api:10m rate=600r/m;
+}
 
-                    "<h3>8. ModSecurity, WAF embedded</h3>"
-                    "<p>ModSecurity v3 + OWASP Core Rule Set bloqueia padrões clássicos "
-                    "(SQLi, XSS, path traversal). Cuidado: false positives podem quebrar app "
-                    "legítima. Comece em <code>DetectionOnly</code>:</p>"
-                    "<pre><code># /etc/nginx/modsec/main.conf\n"
-                    "Include /etc/nginx/modsec/coreruleset/crs-setup.conf\n"
-                    "Include /etc/nginx/modsec/coreruleset/rules/*.conf\n"
-                    "SecRuleEngine DetectionOnly\n"
-                    "SecAuditLog /var/log/nginx/modsec_audit.log\n"
-                    "SecAuditLogFormat JSON</code></pre>"
-                    "<p>Após semanas de log, vire <code>SecRuleEngine On</code> e tunne falsos "
-                    "positivos com <code>SecRuleRemoveById</code>.</p>"
+server {
+  location ~ ^/(login|register|forgot)$ {
+    limit_req zone=auth burst=5 nodelay;
+    proxy_pass http://app;
+  }
+  location /api/ {
+    limit_req zone=api burst=100;
+    proxy_pass http://app;
+  }
+}</code></pre>
+<p>Combinar isso com rate-limit adicional por usuário ou api-key
+diretamente na aplicação é importante porque rate-limit baseado só em
+IP é facilmente contornado com proxy rotativo ou botnet distribuído —
+uma segunda camada olhando a IDENTIDADE, não só a origem de rede,
+fecha essa lacuna.</p>
 
-                    "<h3>9. Caddy, alternativa moderna</h3>"
-                    "<p>Caddy faz TLS automático (Let's Encrypt embutido), HTTP/3 default, "
-                    "config simples:</p>"
-                    "<pre><code># Caddyfile\n"
-                    "api.example.com {\n"
-                    "  reverse_proxy 127.0.0.1:8000\n"
-                    "  encode zstd gzip\n"
-                    "  header {\n"
-                    "    Strict-Transport-Security \"max-age=63072000; includeSubDomains; preload\"\n"
-                    "    X-Content-Type-Options nosniff\n"
-                    "  }\n"
-                    "  rate_limit {\n"
-                    "    zone login {\n"
-                    "      key {http.request.remote.host}\n"
-                    "      events 5\n"
-                    "      window 60s\n"
-                    "    }\n"
-                    "  }\n"
-                    "}</code></pre>"
+<h3>6. Proxy reverso e o problema do IP real</h3>
+<p>Quando o Nginx faz <code>proxy_pass</code>, a aplicação por trás
+enxerga o IP <code>127.0.0.1</code> — o endereço do próprio proxy, não
+do cliente real. Preservar o IP verdadeiro exige três headers
+explícitos:</p>
+<pre><code>proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Real-IP $remote_addr;</code></pre>
+<p>E do lado da aplicação (Django, por exemplo), configurar
+explicitamente que confia nesse header:</p>
+<pre><code>USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')</code></pre>
+<p>O detalhe crítico é NUNCA confiar em <code>X-Forwarded-For</code>
+vindo diretamente de um cliente não confiável — sem um proxy
+intermediário validando isso, qualquer cliente pode simplesmente
+FORJAR esse header e se passar por qualquer IP que quiser. Configurar
+explicitamente o número de "hops" confiáveis (via
+<code>set_real_ip_from</code> combinado com
+<code>real_ip_recursive on</code> no Nginx, ou a configuração
+equivalente de trust hops num ALB) garante que só o valor inserido pelo
+proxy legítimo seja aceito como verdadeiro.</p>
 
-                    "<h3>10. Anti-patterns + caso real</h3>"
-                    "<ul>"
-                    "<li><code>autoindex on</code> em produção: lista diretórios, vazamento "
-                    "trivial.</li>"
-                    "<li>Servir <code>.git</code> ou <code>.env</code>: <em>caso real</em>, "
-                    "muitos sites WordPress já vazaram credenciais por isso. Bloqueie em "
-                    "regex.</li>"
-                    "<li>TLS 1.0/1.1: vulnerável (BEAST, POODLE). Desabilite.</li>"
-                    "<li>Sem <code>server_tokens off</code>: revela versão exata do Nginx, "
-                    "facilita CVE matching.</li>"
-                    "<li>Sem <code>client_max_body_size</code>: aberto para DoS por upload "
-                    "gigante.</li>"
-                    "<li>Default config sem testar TLS no SSL Labs: muitos times só descobrem "
-                    "depois que o cliente reclamou.</li>"
-                    "</ul>"
+<h3>7. Caching para performance e proteção</h3>
+<pre><code># Cache de respostas estáticas
+location ~* \\.(jpg|css|js|woff2)$ {
+  expires 30d;
+  add_header Cache-Control "public, immutable";
+}
+
+# Cache de respostas dinâmicas (chamadas idempotentes)
+proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=app:10m max_size=1g;
+
+location /api/products {
+  proxy_cache app;
+  proxy_cache_valid 200 5m;
+  proxy_cache_use_stale error timeout updating;
+  add_header X-Cache-Status $upstream_cache_status;
+  proxy_pass http://app;
+}</code></pre>
+<p>Além do ganho óbvio de performance, cache funciona como proteção
+adicional contra DoS: uma requisição repetida encontra resposta pronta
+no proxy e nunca chega a sobrecarregar a aplicação por trás, mesmo sob
+volume alto de tráfego repetitivo.</p>
+
+<h3>8. ModSecurity, WAF embedded</h3>
+<p>O ModSecurity v3 combinado com o OWASP Core Rule Set bloqueia
+padrão clássico de ataque — SQL injection, XSS, path traversal —
+diretamente na camada do proxy. O risco real é falso positivo
+quebrando funcionalidade legítima da aplicação, o que justifica
+começar em modo <code>DetectionOnly</code>, só registrando sem
+bloquear ainda:</p>
+<pre><code># /etc/nginx/modsec/main.conf
+Include /etc/nginx/modsec/coreruleset/crs-setup.conf
+Include /etc/nginx/modsec/coreruleset/rules/*.conf
+SecRuleEngine DetectionOnly
+SecAuditLog /var/log/nginx/modsec_audit.log
+SecAuditLogFormat JSON</code></pre>
+<p>Depois de algumas semanas analisando o log gerado nesse modo,
+mudar para <code>SecRuleEngine On</code> e ajustar falso positivo
+específico com <code>SecRuleRemoveById</code> completa a transição para
+bloqueio efetivo, já calibrado contra o tráfego real daquela
+aplicação.</p>
+
+<h3>9. Caddy, alternativa moderna</h3>
+<p>O Caddy resolve boa parte da fricção de configuração manual:
+provisiona TLS automaticamente via Let's Encrypt embutido, habilita
+HTTP/3 por padrão, e mantém a sintaxe de configuração deliberadamente
+mais simples que o Nginx equivalente:</p>
+<pre><code># Caddyfile
+api.example.com {
+  reverse_proxy 127.0.0.1:8000
+  encode zstd gzip
+  header {
+    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options nosniff
+  }
+  rate_limit {
+    zone login {
+      key {http.request.remote.host}
+      events 5
+      window 60s
+    }
+  }
+}</code></pre>
+
+<h3>10. Anti-patterns + caso real</h3>
+<ul>
+<li><strong><code>autoindex on</code> em produção</strong>: lista o
+conteúdo do diretório inteiro, um vazamento trivial de estrutura interna
+sem nenhum esforço do atacante.</li>
+<li><strong>Servir <code>.git</code> ou <code>.env</code></strong>:
+caso real e recorrente — muitos site WordPress já vazaram credencial
+inteira exatamente por não bloquear esses caminhos explicitamente via
+regex.</li>
+<li><strong>TLS 1.0/1.1 ainda habilitado</strong>: vulnerável a BEAST
+e POODLE, ataques conhecidos há anos — desabilitar é trivial e sem
+custo real de compatibilidade hoje.</li>
+<li><strong>Sem <code>server_tokens off</code></strong>: revela a
+versão exata do Nginx rodando, facilitando o atacante casar uma CVE
+específica sem precisar adivinhar.</li>
+<li><strong>Sem <code>client_max_body_size</code></strong>: deixa a
+porta aberta para DoS via upload de arquivo desproporcionalmente
+grande.</li>
+<li><strong>Configuração default nunca testada no SSL Labs</strong>:
+muitos times só descobrem a nota real quando um cliente reclama, não
+antes.</li>
+</ul>"""
                 ),
                 "practical": (
                     "(1) Suba uma app simples (FastAPI/Django) na porta 8000.<br>"
@@ -2031,188 +2240,215 @@ PHASE1 = {
                     "como gerar SBOM para sobreviver à próxima Log4Shell."
                 ),
                 "body": (
-                    "<h3>1. Modelo de confiança em APT</h3>"
-                    "<p>O processo:</p>"
-                    "<ol>"
-                    "<li>O repositório publica um <code>Release</code> file com hash de cada "
-                    "<code>Packages</code>.</li>"
-                    "<li>O <code>Release</code> é assinado com GPG. A assinatura vai em "
-                    "<code>Release.gpg</code> (ou <code>InRelease</code> com tudo num só "
-                    "arquivo).</li>"
-                    "<li>O cliente baixa <code>Release</code>, valida com a chave pública do "
-                    "mantenedor (em <code>/etc/apt/keyrings/</code> ou "
-                    "<code>/etc/apt/trusted.gpg.d/</code>) e só então confia nos hashes "
-                    "listados.</li>"
-                    "<li>Cada pacote (<code>.deb</code>) tem hash que precisa bater.</li>"
-                    "</ol>"
-                    "<p>Assim, mesmo que um espelho seja comprometido, o atacante não "
-                    "consegue trocar pacotes sem invalidar a assinatura.</p>"
+                """<h3>1. Modelo de confiança em APT</h3>
+<p>O processo de validação de pacote no APT segue quatro passos
+encadeados, cada um dependendo do anterior. O repositório publica um
+arquivo <code>Release</code> contendo o hash de cada
+<code>Packages</code>. Esse arquivo <code>Release</code> é assinado com
+GPG, com a assinatura indo em <code>Release.gpg</code> (ou embutida
+junto no <code>InRelease</code>). O cliente baixa o <code>Release</code>,
+valida a assinatura com a chave pública do mantenedor — guardada em
+<code>/etc/apt/keyrings/</code> ou <code>/etc/apt/trusted.gpg.d/</code>
+— e só DEPOIS de confirmar a assinatura passa a confiar nos hashes
+listados dentro. E cada pacote <code>.deb</code> individual carrega um
+hash que precisa bater exatamente com o registrado. O resultado prático
+dessa cadeia é que, mesmo que um espelho seja comprometido, o atacante
+não consegue trocar um pacote sem invalidar a assinatura de todo o
+resto — forjar um pacote isolado exigiria também forjar a assinatura
+GPG do mantenedor, algo que a criptografia por trás torna
+inviável.</p>
 
-                    "<h3>2. Adicionando repositórios externos com segurança</h3>"
-                    "<p>A forma <strong>antiga</strong> (<code>apt-key add -</code>) está "
-                    "depreciada porque adicionava confiança global no sistema todo. A forma "
-                    "moderna usa <code>signed-by</code> para limitar o escopo da chave a "
-                    "<em>aquele</em> repositório:</p>"
-                    "<pre><code># 1. Baixe a chave em formato dearmored\n"
-                    "curl -fsSL https://download.docker.com/linux/ubuntu/gpg \\\n"
-                    "  | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg\n"
-                    "sudo chmod 644 /etc/apt/keyrings/docker.gpg\n"
-                    "\n"
-                    "# 2. Adicione o repositório referenciando essa chave\n"
-                    "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] \\\n"
-                    "  https://download.docker.com/linux/ubuntu jammy stable' \\\n"
-                    "  | sudo tee /etc/apt/sources.list.d/docker.list\n"
-                    "\n"
-                    "# 3. Verifique a chave antes de aceitar\n"
-                    "gpg --no-default-keyring --keyring /etc/apt/keyrings/docker.gpg --list-keys\n"
-                    "# Compare o fingerprint com o que está na docs oficial.\n"
-                    "\n"
-                    "sudo apt update\n"
-                    "sudo apt install docker-ce</code></pre>"
-                    "<p>Em RHEL/Fedora:</p>"
-                    "<pre><code>sudo rpm --import https://download.docker.com/linux/centos/gpg\n"
-                    "sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo\n"
-                    "# /etc/yum.repos.d/docker-ce.repo precisa ter gpgcheck=1</code></pre>"
+<h3>2. Adicionando repositórios externos com segurança</h3>
+<p>A forma antiga (<code>apt-key add -</code>) está depreciada
+justamente porque adicionava confiança GLOBAL ao sistema inteiro — uma
+chave adicionada dessa forma passava a poder assinar QUALQUER pacote
+de QUALQUER repositório, não só o repositório específico que a
+introduziu. A forma moderna usa <code>signed-by</code> para restringir
+o escopo da chave a apenas aquele repositório declarado:</p>
+<pre><code># 1. Baixe a chave em formato dearmored
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg \\
+  | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod 644 /etc/apt/keyrings/docker.gpg
 
-                    "<h3>3. Pinning de versões em produção</h3>"
-                    "<p>Em produção, <strong>nunca</strong> rode <code>apt upgrade</code> em "
-                    "pipeline sem testar primeiro. Você pode acordar com nginx atualizado e "
-                    "config quebrada. Soluções:</p>"
-                    "<pre><code># /etc/apt/preferences.d/nginx\n"
-                    "Package: nginx*\n"
-                    "Pin: version 1.24.*\n"
-                    "Pin-Priority: 1001\n"
-                    "\n"
-                    "# Ou marque como hold\n"
-                    "sudo apt-mark hold nginx\n"
-                    "\n"
-                    "# Ou, em containers, pin direto no Dockerfile\n"
-                    "RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends \\\n"
-                    "    nginx=1.24.* \\\n"
-                    "  &amp;&amp; rm -rf /var/lib/apt/lists/*</code></pre>"
-                    "<p>Em RHEL: <code>dnf versionlock add nginx</code>.</p>"
+# 2. Adicione o repositório referenciando essa chave
+echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] \\
+  https://download.docker.com/linux/ubuntu jammy stable' \\
+  | sudo tee /etc/apt/sources.list.d/docker.list
 
-                    "<h3>4. Mirror/registry interno: por que vale a pena</h3>"
-                    "<p>Em ambientes corporativos sérios:</p>"
-                    "<ul>"
-                    "<li><strong>Independência</strong>: build não falha quando upstream cai.</li>"
-                    "<li><strong>Auditoria</strong>: quem baixou o quê, quando.</li>"
-                    "<li><strong>Scanning</strong>: pacote é varrido antes de chegar ao "
-                    "build.</li>"
-                    "<li><strong>Velocidade</strong>: dentro da VPC é mais rápido que pegar "
-                    "no mantenedor.</li>"
-                    "<li><strong>Compliance</strong>: SOC 2, ISO 27001 olham para isso.</li>"
-                    "</ul>"
-                    "<p>Ferramentas: <strong>JFrog Artifactory</strong> "
-                    "(comercial, suporta tudo), <strong>Sonatype Nexus</strong> "
-                    "(comercial/free), <strong>Pulpcore</strong> (open source, RHEL).</p>"
+# 3. Verifique a chave antes de aceitar
+gpg --no-default-keyring --keyring /etc/apt/keyrings/docker.gpg --list-keys
+# Compare o fingerprint com o que está na docs oficial.
 
-                    "<h3>5. Pacotes de linguagem: o oeste selvagem</h3>"
-                    "<p>npm, pypi, rubygems, crates.io têm modelo diferente: qualquer um "
-                    "publica. Atacantes exploram via:</p>"
-                    "<ul>"
-                    "<li><strong>Typosquatting</strong>: pacote com nome parecido. Já houve "
-                    "<code>colourama</code>, <code>requestes</code>, <code>pythn</code>.</li>"
-                    "<li><strong>Dependency confusion</strong>: pacote <em>privado</em> com "
-                    "nome que existe no público; o gerente prefere o público (mais novo).</li>"
-                    "<li><strong>Account takeover</strong>: mantenedor original perde "
-                    "credencial; atacante publica versão maliciosa do pacote legítimo. "
-                    "<em>Caso 'colors.js'</em> em 2022.</li>"
-                    "<li><strong>Long con</strong>: contribuidor 'útil' por anos eventualmente "
-                    "adiciona backdoor. <em>xz-utils 2024</em>.</li>"
-                    "</ul>"
-                    "<p>Mitigações:</p>"
-                    "<ul>"
-                    "<li><strong>Lockfiles obrigatórios</strong>: "
-                    "<code>poetry.lock</code>, <code>package-lock.json</code>, "
-                    "<code>Cargo.lock</code> com hash. Build determinístico.</li>"
-                    "<li><strong>Mirror interno</strong> (Artifactory) com whitelist de "
-                    "pacotes aprovados.</li>"
-                    "<li><strong>Scanners</strong>: <code>pip-audit</code>, "
-                    "<code>npm audit</code>, <code>cargo audit</code>, "
-                    "<code>OSV-Scanner</code>, <code>Trivy</code>.</li>"
-                    "<li><strong>Dependency review</strong> nos PRs: GitHub e GitLab têm "
-                    "checks nativos.</li>"
-                    "</ul>"
+sudo apt update
+sudo apt install docker-ce</code></pre>
+<p>O passo 3 — comparar o fingerprint com a documentação oficial antes
+de confiar — é o que fecha a lacuna real: baixar a chave sozinho não
+prova que ela veio do mantenedor legítimo, só que veio de ALGUM lugar.
+Em RHEL/Fedora o mesmo princípio se aplica:</p>
+<pre><code>sudo rpm --import https://download.docker.com/linux/centos/gpg
+sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+# /etc/yum.repos.d/docker-ce.repo precisa ter gpgcheck=1</code></pre>
 
-                    "<h3>6. SBOM, Software Bill of Materials</h3>"
-                    "<p>Um SBOM é a lista 'de ingredientes' do seu software. Em incidente "
-                    "(ex.: nova CVE em libxml), você consulta o SBOM e em segundos sabe "
-                    "exatamente quais imagens/serviços estão afetados, em vez de varrer 200 "
-                    "Dockerfiles.</p>"
-                    "<p>Formatos padronizados:</p>"
-                    "<ul>"
-                    "<li><strong>CycloneDX</strong> (OWASP).</li>"
-                    "<li><strong>SPDX</strong> (Linux Foundation).</li>"
-                    "</ul>"
-                    "<p>Geração:</p>"
-                    "<pre><code># Imagem Docker\n"
-                    "syft myapp:1.0 -o cyclonedx-json &gt; sbom.json\n"
-                    "\n"
-                    "# Sistema de arquivos\n"
-                    "syft dir:/opt/app -o spdx-json &gt; sbom-spdx.json\n"
-                    "\n"
-                    "# Python apenas\n"
-                    "cyclonedx-py -i requirements.txt -o sbom.xml\n"
-                    "\n"
-                    "# Cruzando com CVEs\n"
-                    "grype sbom:./sbom.json</code></pre>"
-                    "<p>Em alguns setores (US Federal, automotive, médicos), SBOM virou "
-                    "obrigação legal, Executive Order 14028 nos EUA.</p>"
+<h3>3. Pinning de versões em produção</h3>
+<p>Rodar <code>apt upgrade</code> num pipeline de produção sem testar
+antes é uma aposta arriscada — o Nginx pode atualizar sozinho e a
+configuração que funcionava até ontem quebrar sem aviso. Três
+mecanismos resolvem isso de forma progressivamente mais explícita:
+pinning por prioridade, marcação de hold, ou fixar a versão diretamente
+no Dockerfile:</p>
+<pre><code># /etc/apt/preferences.d/nginx
+Package: nginx*
+Pin: version 1.24.*
+Pin-Priority: 1001
 
-                    "<h3>7. Reproducibilidade de builds</h3>"
-                    "<p>Build reprodutível: dado o mesmo source + mesmo ambiente, mesmo "
-                    "binário (byte a byte). Permite verificar que um binário foi gerado a "
-                    "partir do código alegado. Conceito-chave do projeto "
-                    "<a href='https://reproducible-builds.org/'>Reproducible Builds</a>. "
-                    "Práticas:</p>"
-                    "<ul>"
-                    "<li>Pin de versão em todos os steps.</li>"
-                    "<li>Datas determinísticas "
-                    "(<code>SOURCE_DATE_EPOCH</code>).</li>"
-                    "<li>Sem aleatoriedade em ordem (sort em listas de arquivos).</li>"
-                    "<li>Toolchain pinada (compilador específico).</li>"
-                    "</ul>"
+# Ou marque como hold
+sudo apt-mark hold nginx
 
-                    "<h3>8. Caso real: xz-utils 2024</h3>"
-                    "<p>Em março/2024, descobriu-se que <code>xz-utils</code> 5.6.0/5.6.1, "
-                    "biblioteca usada em quase toda distro Linux, tinha backdoor injetada "
-                    "via <code>libsystemd</code> que permitia RCE em sshd remotamente. O "
-                    "atacante (Jia Tan) foi mantenedor confiável por anos antes de inserir o "
-                    "código. Salvou-se: um engenheiro da Microsoft notou latência incomum no "
-                    "ssh e investigou. Lições:</p>"
-                    "<ul>"
-                    "<li>SBOM teria identificado servidores afetados em minutos.</li>"
-                    "<li>Releases que demoram demais a aparecer em distros estáveis "
-                    "(quarentena natural) salvaram a maioria dos casos.</li>"
-                    "<li>Reproducible builds não pegariam, o tarball tinha código diferente "
-                    "do repo.</li>"
-                    "<li>Open source não é mágica: precisa de revisão real.</li>"
-                    "</ul>"
+# Ou, em containers, pin direto no Dockerfile
+RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends \\
+    nginx=1.24.* \\
+  &amp;&amp; rm -rf /var/lib/apt/lists/*</code></pre>
+<p>Em RHEL, o equivalente é <code>dnf versionlock add nginx</code>.</p>
 
-                    "<h3>9. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><code>curl ... | bash</code>: RCE se servidor de origem comprometido.</li>"
-                    "<li><code>--allow-unauthenticated</code> ou "
-                    "<code>nodaemon=true</code> para 'ignorar erro de assinatura'.</li>"
-                    "<li>Adicionar PPA/repos externos sem verificar fingerprint.</li>"
-                    "<li>Não pinar nada, sempre usar 'latest'.</li>"
-                    "<li>Misturar repositórios estáveis e instáveis, Frankenstein de versões.</li>"
-                    "<li>Pular release notes e atualizar produção sem ler.</li>"
-                    "</ul>"
+<h3>4. Mirror/registry interno: por que vale a pena</h3>
+<p>Um mirror interno resolve cinco problemas de uma vez em ambiente
+corporativo maduro: independência (o build não falha quando o upstream
+externo cai temporariamente); auditoria (fica registrado exatamente
+quem baixou o quê e quando); scanning (o pacote é varrido antes de
+sequer chegar ao build, não depois); velocidade (baixar de dentro da
+própria VPC é mais rápido que ir até o mantenedor original toda vez);
+e compliance (auditorias como SOC 2 e ISO 27001 explicitamente
+verificam esse tipo de controle). JFrog Artifactory (comercial, cobre
+praticamente todo formato), Sonatype Nexus (comercial ou free) e
+Pulpcore (open source, comum em ecossistema RHEL) são as ferramentas
+dominantes desse espaço.</p>
 
-                    "<h3>10. Workflow recomendado</h3>"
-                    "<ol>"
-                    "<li>CI: <code>pip-audit</code>/<code>npm audit</code> em todo PR. Falha "
-                    "para CVEs Critical/High.</li>"
-                    "<li>Build: gera SBOM e armazena com a artifact.</li>"
-                    "<li>Push: scan no registry (Trivy/Grype) com policy.</li>"
-                    "<li>Deploy: admission controller (Kyverno) só aceita imagem com SBOM "
-                    "anexado.</li>"
-                    "<li>Operação: re-scan periódico (Harbor, Trivy operator), CVEs novas "
-                    "aparecem depois.</li>"
-                    "<li>Renovate/Dependabot abre PRs de update automaticamente.</li>"
-                    "</ol>"
+<h3>5. Pacotes de linguagem: o oeste selvagem</h3>
+<p>npm, PyPI, RubyGems e crates.io operam num modelo estruturalmente
+diferente do APT: qualquer pessoa publica, sem barreira de curadoria
+central. Isso abre quatro vetores de ataque específicos. O
+<strong>typosquatting</strong> planta um pacote malicioso com nome
+parecido ao legítimo — já existiram <code>colourama</code>,
+<code>requestes</code>, <code>pythn</code>, cada um apostando num erro
+de digitação comum. A <strong>dependency confusion</strong> explora um
+pacote PRIVADO cujo nome também existe publicamente — se a configuração
+de resolução não distinguir isso corretamente, o gerenciador de pacote
+acaba preferindo o público (geralmente por ter versão mais recente),
+puxando código de origem desconhecida no lugar do privado esperado. O
+<strong>account takeover</strong> acontece quando o mantenedor original
+perde a própria credencial e um atacante publica versão maliciosa
+diretamente sobre o pacote legítimo já estabelecido — o caso
+"colors.js" de 2022 seguiu exatamente esse padrão. E o
+<strong>long con</strong> é o mais paciente dos quatro: um contribuidor
+se estabelece como confiável ao longo de ANOS antes de finalmente
+inserir um backdoor — o caso xz-utils de 2024 (seção 8) é o exemplo
+mais estudado dessa categoria. Quatro mitigações reduzem essa
+superfície: lockfile obrigatório (<code>poetry.lock</code>,
+<code>package-lock.json</code>, <code>Cargo.lock</code> com hash),
+garantindo build determinístico; mirror interno com whitelist de
+pacote aprovado; scanner dedicado (<code>pip-audit</code>,
+<code>npm audit</code>, <code>cargo audit</code>, OSV-Scanner, Trivy);
+e dependency review direto no PR, já nativo tanto no GitHub quanto no
+GitLab.</p>
+
+<h3>6. SBOM, Software Bill of Materials</h3>
+<p>Um SBOM é literalmente a lista de "ingredientes" de um software —
+quando uma CVE nova aparece numa biblioteca comum (como libxml, por
+exemplo), consultar o SBOM revela em segundos exatamente quais imagens
+ou serviços são afetados, em vez de varrer manualmente duzentos
+Dockerfiles um por um. Dois formatos dominam: CycloneDX (mantido pela
+OWASP) e SPDX (mantido pela Linux Foundation). A geração é direta:</p>
+<pre><code># Imagem Docker
+syft myapp:1.0 -o cyclonedx-json &gt; sbom.json
+
+# Sistema de arquivos
+syft dir:/opt/app -o spdx-json &gt; sbom-spdx.json
+
+# Python apenas
+cyclonedx-py -i requirements.txt -o sbom.xml
+
+# Cruzando com CVEs
+grype sbom:./sbom.json</code></pre>
+<p>Em setores específicos (governo federal dos EUA, automotivo,
+médico), SBOM já deixou de ser boa prática opcional e virou obrigação
+legal — via Executive Order 14028 nos Estados Unidos, por exemplo.</p>
+
+<h3>7. Reproducibilidade de builds</h3>
+<p>Um build reprodutível garante que o mesmo código-fonte, no mesmo
+ambiente, sempre produz exatamente o mesmo binário byte a byte — essa
+propriedade é o que permite VERIFICAR de forma independente que um
+binário publicado realmente veio do código-fonte que ele alega
+representar, sem precisar confiar cegamente na palavra de quem
+publicou. É o conceito central do projeto Reproducible Builds, e depende
+de quatro práticas: pin de versão em cada etapa do processo de build;
+uma data determinística (via <code>SOURCE_DATE_EPOCH</code>, em vez do
+timestamp real da execução); ausência de aleatoriedade em ordenação
+(por exemplo, ordenar explicitamente uma lista de arquivo antes de
+processá-la); e uma toolchain fixada, com compilador de versão
+específica, não "o que estiver instalado no momento".</p>
+
+<h3>8. Caso real: xz-utils 2024</h3>
+<p>Em março de 2024, descobriu-se que as versões 5.6.0 e 5.6.1 do
+<code>xz-utils</code> — uma biblioteca presente em praticamente toda
+distribuição Linux — carregavam um backdoor injetado através da
+<code>libsystemd</code>, permitindo execução remota de código via
+sshd. O atacante, conhecido pelo pseudônimo Jia Tan, havia sido
+mantenedor confiável do projeto por ANOS antes de finalmente inserir o
+código malicioso — exatamente o padrão "long con" descrito na seção 5.
+O que salvou a situação foi quase acidental: um engenheiro da
+Microsoft notou uma latência ligeiramente incomum numa conexão SSH e
+decidiu investigar por curiosidade, não porque algum alerta automatizado
+tivesse disparado. As lições documentadas depois: um SBOM já em uso
+teria identificado todo servidor afetado em minutos, não em dias de
+investigação manual; o próprio delay natural entre uma versão nova
+sair e chegar às distribuições Linux consideradas "estáveis" funcionou
+como uma quarentena acidental que salvou a maioria dos casos reais;
+build reproduzível, nesse incidente específico, NÃO teria pego o
+problema — o tarball distribuído continha código efetivamente diferente
+do que estava no repositório Git público, um detalhe que só uma
+auditoria manual comparando os dois revelaria; e todo o episódio serve
+de lembrete de que open source não é mágica automática de segurança —
+ainda depende de revisão humana real acontecendo de fato, não apenas
+presumida por estar "aberto ao público".</p>
+
+<h3>9. Anti-patterns</h3>
+<ul>
+<li><strong><code>curl ... | bash</code></strong>: vira RCE completo
+se o servidor de origem for comprometido em qualquer momento entre a
+publicação e o download.</li>
+<li><strong><code>--allow-unauthenticated</code></strong> ou
+equivalente "ignorar erro de assinatura": remove precisamente a
+proteção descrita na seção 1, tornando o pacote instalado
+indistinguível de um forjado.</li>
+<li><strong>Adicionar PPA ou repositório externo sem verificar
+fingerprint</strong>: pula o único passo que realmente prova a origem
+da chave (seção 2).</li>
+<li><strong>Nunca pinar nada, sempre usar "latest"</strong>: abre
+espaço para uma atualização inesperada quebrar produção sem aviso
+prévio.</li>
+<li><strong>Misturar repositório estável e instável</strong>: cria uma
+combinação de versão imprevisível, um "Frankenstein" difícil de
+depurar quando algo quebra.</li>
+<li><strong>Pular release notes e atualizar produção direto</strong>:
+ignora justamente a fonte de informação que alertaria sobre mudança
+que quebra compatibilidade.</li>
+</ul>
+
+<h3>10. Workflow recomendado</h3>
+<ol>
+<li>No CI, rodar <code>pip-audit</code> ou <code>npm audit</code> em
+todo PR, falhando explicitamente para CVE Critical ou High.</li>
+<li>No build, gerar o SBOM e armazená-lo junto do artefato produzido.</li>
+<li>No push, escanear no próprio registry (Trivy, Grype) contra uma
+policy definida.</li>
+<li>No deploy, um admission controller (Kyverno) só aceita imagem que
+já venha com SBOM anexado.</li>
+<li>Em operação, um re-scan periódico (Harbor, Trivy operator) pega
+CVE nova que só foi divulgada depois do deploy original.</li>
+<li>Renovate ou Dependabot abrindo PR de atualização automaticamente
+mantém esse ciclo funcionando sem depender de alguém lembrar
+manualmente.</li>
+</ol>"""
                 ),
                 "practical": (
                     "(1) Adicione o repositório oficial Docker em uma VM Ubuntu via "
@@ -2458,7 +2694,7 @@ PHASE1 = {
                     "</ul>"
                     "<p>Logs que importam em incidente: auth (login, sudo, ssh), audit "
                     "(comandos privilegiados), network (firewall drops, DNS queries), "
-                    "aplicação (errors, anomalias)."
+                    "aplicação (errors, anomalias).</p>"
 
                     "<h3>9. Métricas vs logs vs traces</h3>"
                     "<p>Os três pilares da observabilidade:</p>"

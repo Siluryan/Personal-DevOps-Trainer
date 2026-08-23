@@ -88,20 +88,45 @@ cp .env.example .env       # ajuste o que precisar (segredo, donation, etc.)
 docker compose up --build
 ```
 
-Na primeira subida, o `entrypoint.sh`:
+A cada subida, o `entrypoint.sh`:
 
 1. Espera o Postgres responder.
 2. Aplica as migrações versionadas no repositório.
 3. Coleta arquivos estáticos.
-4. Roda os seeds idempotentes:
-   - `python manage.py seed_topics` (6 fases, 60 tópicos, materiais e
-     questões);
-   - `python manage.py seed_admission_test` (banco de questões do teste
-     de admissão);
-   - `python manage.py seed_interviews` (300 questões do simulador de
-     entrevistas, 100 por nível; embaralha alternativas de forma
-     determinística, com mais mistura no pleno e ainda mais no sênior).
-5. Inicia o Daphne na porta `8000`.
+4. Inicia o Daphne na porta `8000`.
+
+### Semeando o conteúdo
+
+Os seeds **não** rodam sozinhos na partida do container — e como o container
+sobe a cada restart, OOM-kill e boot da máquina, deixá-los no caminho
+automático significava perder edições sem nenhum deploy.
+
+Para semear um banco novo, rode uma vez:
+
+```bash
+docker compose exec web python manage.py seed_topics
+docker compose exec web python manage.py seed_admission_test
+docker compose exec web python manage.py seed_interviews
+```
+
+- `seed_topics`: 6 fases, 60 tópicos, materiais e questões. **Não-destrutivo**:
+  uma aula ou questão editada pelo admin ganha `seed_managed=False`
+  automaticamente e o seed para de sobrescrevê-la. Use `--force` para
+  sincronizar de propósito mesmo assim, ou `--reset-questions` para apagar e
+  recriar questões e materiais do zero (não toca em respostas já dadas).
+- `seed_admission_test`: banco de questões do teste de admissão. Ainda
+  sobrescreve tudo a cada execução — banco pequeno (24 questões), sem a
+  mesma proteção do `seed_topics` por enquanto.
+- `seed_interviews`: 300 questões do simulador (100 por nível), com
+  embaralhamento determinístico — mais mistura no pleno, ainda mais no sênior.
+  Também ainda sobrescreve tudo a cada execução.
+
+Também dá para semear junto com a subida, definindo `PDT_RUN_SEED=1` no `.env`.
+Deixe desligado depois da primeira carga.
+
+Em produção, o deploy só reaplica os seeds com `PDT_SEED_ON_DEPLOY=1`; o
+provisionamento inicial (`user_data.sh.tpl`) semeia apenas se o banco estiver
+sem nenhum tópico.
 
 Acesse:
 

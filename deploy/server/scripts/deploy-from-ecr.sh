@@ -265,12 +265,55 @@ cd "$PDT_DIR"
 docker compose -f "$COMPOSE_FILE" pull web
 docker compose -f "$COMPOSE_FILE" up -d web
 
-# Migracao e estaticos dentro do conteiner (mesma imagem usada no run).
-docker compose -f "$COMPOSE_FILE" exec -T web python manage.py migrate --noinput
-docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_topics || true
-docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_admission_test || true
-docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_interviews || true
-docker compose -f "$COMPOSE_FILE" exec -T web python manage.py collectstatic --noinput
+# Espera o entrypoint do container terminar antes de qualquer `exec`.
+#
+# O entrypoint roda migrate + collectstatic e só então faz exec do daphne.
+# Rodar `exec ... collectstatic` enquanto isso ainda está em curso coloca dois
+# processos escrevendo em /app/staticfiles ao mesmo tempo: um remove o arquivo
+# que o outro acabou de gravar e o chmod seguinte estoura FileNotFoundError.
+#
+# Daphne respondendo em 127.0.0.1:8000 é a prova de que o entrypoint concluiu,
+# porque ele é o último passo. Qualquer código HTTP serve — inclusive 400 de
+# ALLOWED_HOSTS —, o que importa é ter alguém escutando e falando HTTP.
+wait_web_ready() {
+  local tentativas=60
+  while [ "$tentativas" -gt 0 ]; do
+    if curl -s --max-time 3 -o /dev/null "http://127.0.0.1:8000/healthz"; then
+      echo ">> Container pronto: migrate e collectstatic concluídos pelo entrypoint."
+      return 0
+    fi
+    if ! docker ps --format '{{.Names}}' | grep -qx pdt-web; then
+      echo "::error::pdt-web parou durante a inicialização."
+      docker compose -f "$COMPOSE_FILE" logs --tail 120 web || true
+      return 1
+    fi
+    tentativas=$((tentativas - 1))
+    sleep 2
+  done
+  echo "::error::pdt-web não respondeu em 127.0.0.1:8000 após 120s."
+  docker compose -f "$COMPOSE_FILE" logs --tail 120 web || true
+  return 1
+}
+
+wait_web_ready
+
+# migrate e collectstatic saem nos logs do container, não no log do SSM.
+# Ecoa o começo deles aqui para o registro do deploy não ficar cego.
+docker compose -f "$COMPOSE_FILE" logs --tail 40 web || true
+
+# Seeds de conteúdo: opt-in explícito.
+#
+# Reaplicar os seeds sobrescreve aulas, questões e alternativas com os arquivos
+# de seed_data/, descartando edições feitas no admin. Deploy de código não
+# destrói conteúdo; para reaplicar de propósito, use PDT_SEED_ON_DEPLOY=1.
+if [ "${PDT_SEED_ON_DEPLOY:-0}" = "1" ]; then
+  echo ">> PDT_SEED_ON_DEPLOY=1: reaplicando seeds de conteúdo."
+  docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_topics
+  docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_admission_test
+  docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_interviews
+else
+  echo ">> Seeds de conteúdo ignorados (PDT_SEED_ON_DEPLOY!=1)."
+fi
 
 # Nginx le /static e /media (www-data): garante leitura.
 chmod -R a+rX /opt/pdt/app/pdt/staticfiles /opt/pdt/app/pdt/media 2>/dev/null || true

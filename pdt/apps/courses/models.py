@@ -93,6 +93,15 @@ class Lesson(models.Model):
     practical = models.TextField(blank=True, help_text="Exercício prático sugerido.")
     updated_at = models.DateTimeField(auto_now=True)
 
+    seed_managed = models.BooleanField(
+        default=True,
+        help_text=(
+            "Enquanto marcado, `seed_topics` mantém esta aula sincronizada com "
+            "apps/courses/seed_data/. Salvar pelo admin desmarca automaticamente "
+            "— a partir daí o seed não sobrescreve mais o conteúdo editado."
+        ),
+    )
+
     def __str__(self) -> str:
         return f"Aula: {self.topic.title}"
 
@@ -103,6 +112,16 @@ class Question(models.Model):
     explanation = models.TextField(blank=True)
     order = models.PositiveSmallIntegerField(default=0)
     is_active = models.BooleanField(default=True)
+
+    seed_managed = models.BooleanField(
+        default=True,
+        help_text=(
+            "Enquanto marcado, `seed_topics` mantém esta questão (e suas "
+            "alternativas) sincronizada com apps/courses/seed_data/. Salvar "
+            "pelo admin desmarca automaticamente — a partir daí o seed não "
+            "sobrescreve nem apaga mais as alternativas editadas."
+        ),
+    )
 
     class Meta:
         ordering = ["topic_id", "order", "id"]

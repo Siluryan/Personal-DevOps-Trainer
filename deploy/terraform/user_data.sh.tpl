@@ -276,9 +276,23 @@ pip install -r requirements.txt
 set -a; . /opt/pdt/pdt.env; set +a
 python manage.py migrate --noinput
 python manage.py collectstatic --noinput
-python manage.py seed_topics || true
-python manage.py seed_admission_test || true
-python manage.py seed_interviews || true
+
+# Seed apenas de banco vazio.
+#
+# Este script roda no primeiro boot da instância, então normalmente o banco
+# está zerado e semear é o certo. Mas a instância também pode ser recriada
+# apontando para um banco restaurado de backup — nesse caso semear apagaria
+# aulas e questões já editadas. Por isso a checagem antes.
+TOPIC_COUNT=$(python manage.py shell -c \
+  'from apps.courses.models import Topic; print(Topic.objects.count())' 2>/dev/null || echo 0)
+if [ "$TOPIC_COUNT" = "0" ]; then
+  echo ">> Banco sem conteúdo: aplicando seeds iniciais."
+  python manage.py seed_topics || echo "AVISO: seed_topics falhou"
+  python manage.py seed_admission_test || echo "AVISO: seed_admission_test falhou"
+  python manage.py seed_interviews || echo "AVISO: seed_interviews falhou"
+else
+  echo ">> Banco já tem $TOPIC_COUNT tópicos: seeds ignorados para não sobrescrever conteúdo."
+fi
 EOSU
 
 # ─── 15. systemd unit do daphne ───────────────────────────────────────────
