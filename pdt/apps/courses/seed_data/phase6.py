@@ -307,7 +307,7 @@ de arquivo até o processo cair.</li>
                   "seguido do valor, útil pra logs rápidos."),
                 q("Como concatenar muitas strings com performance O(n)?",
                   "\"\".join(lista_de_strings)",
-                  ["Usar `operator.concat()` chamado repetidamente dentro de um loop.", "Concatenar cada string com `+=` dentro de um loop simples.", "Somar todas as strings manualmente com o operador `+`."],
+                  ["str1 + str2 + str3 + str4 + ...", "operator.concat(str1, str2, str3)", "resultado += item for item in lista"],
                   "Strings são imutáveis: cada `+=` cria nova. `str.join` aloca uma vez."),
                 q("Qual destas é a maneira correta de iterar com índice?",
                   "for i, item in enumerate(lst):",
@@ -932,7 +932,7 @@ tipo, sem que uma mascare a outra.</p>"""
             "questions": [
                 q("Qual destes deveria SEMPRE ser definido em uma classe customizada?",
                   "__repr__",
-                  ["Sobrescrever `__init__` deixando o corpo dele vazio.", "Implementar `__del__` para garantir a limpeza de recursos.", "Não existe método dunder algum recomendado nesse caso."],
+                  ["__init__ sobrescrito e vazio", "__del__ implementado manualmente", "__str__ isolado, sem __repr__"],
                   "__repr__ é o que aparece em logs e debugger. Sem ele, depurar erros "
                   "vira advinhação. __del__ é raramente útil."),
                 q("Para garantir que um arquivo seja fechado mesmo em caso de exceção:",
@@ -973,7 +973,7 @@ tipo, sem que uma mascare a outra.</p>"""
                   "uma classe com __enter__/__exit__."),
                 q("Qual a diferença entre `except Exception as e` e `except:` (sem tipo)?",
                   "`except:` captura também BaseException (KeyboardInterrupt, SystemExit), o que é perigoso.",
-                  ["A forma `except:` costuma rodar visivelmente mais rápido do que `except Exception`, segundo a maioria dos guias sobre o tema.", "Só essa segunda forma, sem tipo, passou a funcionar a partir da versão 3.10, pelo menos é o que a maioria dos devs pensa.", "As duas formas se comportam de maneira idêntica, sem diferença prática relevante, o que costuma pegar até quem já tem experiência."],
+                  ["Só essa segunda forma, sem tipo, passou a funcionar a partir da versão 3.10, prática ainda comum em sistema legado que raramente é atualizado.", "As duas formas se comportam de maneira idêntica, sem diferença prática relevante, prática que só aparece como erro grave durante um incidente real.", "A forma `except:` costuma rodar visivelmente mais rápido do que `except Exception`, que só aparece como problema depois que o sistema já está em produção."],
                   "Bare `except:` é proibido pelo PEP 8. Sempre use `except Exception` "
                   "no mínimo."),
                 q("`super().__init__(...)` em uma subclasse...",
@@ -985,7 +985,7 @@ tipo, sem que uma mascare a outra.</p>"""
                   "super() segue o MRO (Method Resolution Order)."),
                 q("Para um pedaço de código que SEMPRE deve rodar (limpeza), use:",
                   "finally:",
-                  ["Usar o bloco `else:` associado ao try, que só roda sem exceção.", "Usar `raise` dentro do bloco except para relançar o erro.", "Usar `pass` dentro do bloco except para ignorar o erro."],
+                  ["except Exception: (bloco genérico)", "else: (só roda sem exceção)", "pass (dentro do except)"],
                   "`finally:` executa com ou sem exceção, com ou sem `return`. É o "
                   "lugar de fechar conexões, soltar locks, remover arquivos temporários."),
             ],
@@ -1253,7 +1253,7 @@ código 65 exigiria rodar um subprocesso de verdade a cada teste.</p>"""
                   "vetor de RCE. Sempre use `yaml.safe_load`."),
                 q("Para parsear pyproject.toml na stdlib (3.11+), use:",
                   "tomllib",
-                  ["Usar o módulo `configparser` da própria stdlib.", "Instalar e usar a biblioteca externa `tomli`.", "Usar o módulo `json` da stdlib para fazer o parse."],
+                  ["tomli (pacote externo via pip)", "configparser (formato .ini)", "json (formato incompatível)"],
                   "tomllib é a stdlib a partir do 3.11. Para versões anteriores use "
                   "tomli (mesma API)."),
                 q("Em argparse, `action='store_true'` é usado para...",
@@ -1262,11 +1262,11 @@ código 65 exigiria rodar um subprocesso de verdade a cada teste.</p>"""
                   "Sem o flag → False; com o flag → True. Mais natural que --verbose=true."),
                 q("Por que separar saída em stdout vs stderr em um CLI?",
                   "Para que pipelines possam capturar só o resultado (stdout), enquanto diagnóstico vai para stderr.",
-                  ["O canal stderr costuma ser escrito de forma consideravelmente mais rápida que o stdout, segundo a maioria dos guias sobre o tema.", "É puramente uma escolha estética de organização, sem qualquer impacto real no uso do CLI, pelo menos é o que a maioria dos devs pensa.", "O stdout, por padrão, não consegue exibir corretamente caracteres codificados em UTF-8, o que costuma pegar até quem já tem experiência."],
+                  ["É puramente uma escolha estética de organização, sem qualquer impacto real no uso do CLI, prática ainda comum em sistema legado que raramente é atualizado.", "O canal stderr costuma ser escrito de forma consideravelmente mais rápida que o stdout, erro típico de configuração feita às pressas, sem revisão posterior.", "O stdout, por padrão, não consegue exibir corretamente caracteres codificados em UTF-8, comportamento que só some quando alguém finalmente lê a documentação."],
                   "Convenção POSIX. Permite `meu-cli | jq ...` sem misturar logs."),
                 q("Por que evitar `open(p).read()` direto, sem context manager?",
                   "O arquivo pode não ser fechado se o GC demorar, em servidores de longa vida vaza descritores.",
-                  ["Escrever direto assim costuma causar um erro de sintaxe já na leitura do código, segundo a maioria dos guias sobre o tema.", "Essa forma direta costuma rodar visivelmente mais devagar que usar um context manager, pelo menos é o que a maioria dos devs pensa.", "Esse problema só costuma aparecer em máquinas rodando especificamente o Windows, o que costuma pegar até quem já tem experiência."],
+                  ["Escrever direto assim costuma causar um erro de sintaxe já na leitura do código, suposição que vale só até o primeiro imprevisto de rede ou hardware.", "Essa forma direta costuma rodar visivelmente mais devagar que usar um context manager, erro típico de configuração feita às pressas, sem revisão posterior.", "Esse problema só costuma aparecer em máquinas rodando especificamente o Windows, abordagem que funciona bem até o primeiro pico de carga real."],
                   "Sem `with`, dependemos do GC para chamar __del__ que fecha o arquivo. "
                   "Em CPython funciona quase sempre, mas não é portável e em PyPy demora."),
                 q("Qual destes é o nível mais detalhado em logging padrão?",
@@ -1283,7 +1283,7 @@ código 65 exigiria rodar um subprocesso de verdade a cada teste.</p>"""
                   "depois."),
                 q("Para encerrar com código de saída 2 a partir de main():",
                   "return 2 (e usar SystemExit(main()) no entry point)",
-                  ["Chamar uma função inexistente chamada `os.exit(2)`.", "Levantar uma exceção chamada `Exit(2)`, que não existe na stdlib.", "Chamar `sys.exit('2')` passando o código como uma string."],
+                  ["sys.exit('2') com o código como string, direto na main", "raise Exit(2), classe que não existe na stdlib do Python", "os.exit(2), função que não existe no módulo os padrão"],
                   "Padrão idiomático: `def main() -> int: ...; raise SystemExit(main())`. "
                   "Evita `sys.exit` espalhado e facilita testar a função main()."),
                 q("Para iterar recursivamente em todos os arquivos *.py de um diretório:",
@@ -1560,7 +1560,7 @@ compara em tempo constante, independente de quantos caracteres coincidem.</p>"""
                   "handshake TLS repetido."),
                 q("Para verificar uma assinatura HMAC de webhook com segurança:",
                   "hmac.compare_digest(esperado, recebido)",
-                  ["Comparar as duas strings diretamente com o operador `==`.", "Verificar se o valor esperado está contido dentro do recebido.", "Checar se a string esperada começa com o valor recebido."],
+                  ["esperado == recebido (comparação direta)", "esperado in recebido (contido em vez de igual)", "recebido.startswith(esperado) (prefixo)"],
                   "compare_digest é constant-time: não vaza informação por timing. "
                   "`==` para de comparar no primeiro byte diferente."),
                 q("Em paginação por Link header (estilo GitHub), o atributo `r.links['next']['url']` retorna...",
@@ -1580,11 +1580,11 @@ compara em tempo constante, independente de quantos caracteres coincidem.</p>"""
                   "Síncrono seria sequencial."),
                 q("Para autenticação Bearer Token, o header correto é:",
                   "Authorization: Bearer <token>",
-                  ["Enviar o token dentro de um header `Cookie: token=<token>`.", "Usar um header customizado chamado `Auth: <token>`.", "Usar um header customizado chamado `X-Bearer: <token>`."],
+                  ["Auth: <token> (header customizado)", "X-Bearer: <token> (header customizado)", "Cookie: token=<token> (via cookie)"],
                   "Padrão RFC 6750. Sempre o esquema explícito antes do token."),
                 q("Vale a pena usar `r.json()` se o status for 500?",
                   "Não, chame raise_for_status() primeiro; senão pode parsear body de erro como dado válido.",
-                  ["Só vale a pena fazer isso quando a chamada acontece dentro da rede interna, segundo a maioria dos guias sobre o tema.", "Só vale a pena fazer isso quando a aplicação já está rodando em produção, pelo menos é o que a maioria dos devs pensa.", "Vale a pena fazer isso em qualquer situação, mesmo sem checar o status antes, o que costuma pegar até quem já tem experiência."],
+                  ["Vale a pena fazer isso em qualquer situação, mesmo sem checar o status antes, resultado típico de copiar configuração de outro projeto sem adaptar.", "Só vale a pena fazer isso quando a aplicação já está rodando em produção, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.", "Só vale a pena fazer isso quando a chamada acontece dentro da rede interna, suposição que só se sustenta enquanto o time é pequeno."],
                   "5xx geralmente vêm com body em texto/HTML, parsear como JSON gera "
                   "erro confuso. raise_for_status interrompe antes."),
             ],
@@ -1849,7 +1849,7 @@ execução.</li>
             "questions": [
                 q("Por que `subprocess.run([\"rm\", path])` é mais seguro que `os.system(f\"rm {path}\")`?",
                   "Argumentos em lista são passados direto ao processo, sem interpretação de shell, evitando injeção.",
-                  ["É só uma forma um pouco mais rápida de rodar o mesmo comando, só isso, segundo a maioria dos guias sobre o tema.", "A função `os.system` simplesmente deixou de existir a partir do Python 3, pelo menos é o que a maioria dos devs pensa.", "O `subprocess` geralmente captura a saída do comando automaticamente por padrão, o que costuma pegar até quem já tem experiência."],
+                  ["É só uma forma um pouco mais rápida de rodar o mesmo comando, só isso, decisão que parece inofensiva isolada, mas se acumula com o tempo.", "O `subprocess` geralmente captura a saída do comando automaticamente por padrão, prática que troca previsibilidade por economia de esforço imediato.", "A função `os.system` simplesmente deixou de existir a partir do Python 3, suposição que só vale em ambiente de desenvolvimento, não em produção."],
                   "Lista evita interpretação de espaços, `;`, `|`, `$()`. Vetor clássico "
                   "de injeção desaparece."),
                 q("Para garantir que `subprocess.run` falhe se o exit code não for 0:",
@@ -1874,7 +1874,7 @@ execução.</li>
                   "perde PATH, HOME, USER, etc."),
                 q("Para criar arquivo temporário que será removido automaticamente:",
                   "with tempfile.NamedTemporaryFile() as f: ... (delete=True default)",
-                  ["Chamar uma função inexistente chamada `shutil.create_temp()`.", "Usar `tempfile.mktemp()`, uma função antiga com race condition conhecida.", "Abrir manualmente um caminho fixo dentro de /tmp com um nome gerado por uuid4."],
+                  ["open('/tmp/' + str(uuid4()), 'w') sem cleanup automático depois", "tempfile.mktemp() (deprecado, com race condition conhecida há anos)", "shutil.create_temp() (função que não existe no módulo shutil)"],
                   "NamedTemporaryFile remove ao sair do `with` (delete=True default). "
                   "mktemp é race-condition vulnerable."),
                 q("`shutil.move(src, dst)` em FS diferentes...",
@@ -1884,12 +1884,12 @@ execução.</li>
                   "FS via rename(2)."),
                 q("Para localizar um binário no PATH:",
                   "shutil.which('kubectl')",
-                  ["Chamar um método inexistente, `Path.find('kubectl')`.", "Chamar uma função inexistente, `os.locate('kubectl')`.", "Chamar um método inexistente, `which.find('kubectl')`."],
+                  ["Path.find('kubectl', True)", "os.locate('kubectl', True)", "which.find('kubectl', True)"],
                   "shutil.which retorna o caminho absoluto ou None. Útil pra checar "
                   "dependências antes de chamar."),
                 q("`signal.signal(SIGTERM, handler)` é útil para...",
                   "Interceptar pedido de parada e fazer cleanup gracioso (fechar arquivos, drenar fila).",
-                  ["Forçar o reboot completo da máquina onde esse processo está rodando, segundo a maioria dos guias sobre o tema.", "Aumentar manualmente a prioridade de agendamento desse processo no sistema, pelo menos é o que a maioria dos devs pensa.", "Detectar de forma automática erros de lógica dentro do próprio código do programa, o que costuma pegar até quem já tem experiência."],
+                  ["Aumentar manualmente a prioridade de agendamento desse processo no sistema, erro que só é percebido quando o time de operação já está lidando com o incidente.", "Forçar o reboot completo da máquina onde esse processo está rodando, decisão que parece inofensiva isolada, mas se acumula com o tempo.", "Detectar de forma automática erros de lógica dentro do próprio código do programa, comportamento que só é notado quando alguém audita os logs depois."],
                   "Workers/daemons precisam disso para shutdown limpo. SIGKILL não pode "
                   "ser interceptado, só SIGTERM/SIGINT."),
                 q("Para escapar uma string que VAI para shell=True com segurança:",
@@ -2217,12 +2217,12 @@ simples, pelo overhead de coordenação sem ganho real.</p>"""
                   "via pickle entre processos."),
                 q("Em multiprocessing no Windows, o código que dispara workers DEVE estar dentro de:",
                   "if __name__ == '__main__':",
-                  ["Um bloco `try/except` qualquer envolvendo o disparo dos workers.", "Um bloco `with` qualquer usado como context manager.", "Uma função declarada com `async def` no lugar de uma comum."],
+                  ["try/except ao redor do disparo dos workers", "with usado como context manager qualquer", "async def no lugar de uma função comum"],
                   "Windows usa 'spawn' que re-executa o módulo no filho. Sem o guard, "
                   "o filho dispara workers de novo → fork bomb."),
                 q("`asyncio.TaskGroup` (3.11+) tem qual vantagem sobre gather?",
                   "Cancelamento estruturado: se uma falhar, as outras são canceladas e erros vêm em ExceptionGroup.",
-                  ["Funciona rodando diretamente dentro de threads separadas do sistema operacional, segundo a maioria dos guias sobre o tema.", "Substitui por completo a necessidade de usar um Semaphore em qualquer cenário, pelo menos é o que a maioria dos devs pensa.", "É consideravelmente mais rápido de executar na prática do que o próprio gather, o que costuma pegar até quem já tem experiência."],
+                  ["É consideravelmente mais rápido de executar na prática do que o próprio gather, suposição incorreta sobre como o sistema realmente se comporta sob estresse.", "Funciona rodando diretamente dentro de threads separadas do sistema operacional, suposição que raramente se sustenta fora do ambiente controlado de laboratório.", "Substitui por completo a necessidade de usar um Semaphore em qualquer cenário, que só aparece como problema depois que o sistema já está em produção."],
                   "TaskGroup implementa structured concurrency, escopo explícito, "
                   "cleanup automático, erros agregados."),
             ],
@@ -2534,7 +2534,7 @@ param de proteger de verdade.</p>"""
                   "Cleanup automático ao fim do teste. Evita TemporaryDirectory manual."),
                 q("Para verificar que uma função levanta uma exceção específica:",
                   "with pytest.raises(ValueError): ...",
-                  ["Chamar uma função inexistente, `assert raises(ValueError, fn)`.", "Envolver a chamada num bloco try/except genérico e ignorar o erro.", "Usar um decorator inexistente, `@pytest.expect(ValueError)`."],
+                  ["assert raises(ValueError, fn) (função inexistente)", "try/except genérico ignorando o erro", "@pytest.expect(ValueError) (decorator inexistente)"],
                   "pytest.raises é o jeito idiomático. Aceita `match=` para checar "
                   "mensagem por regex."),
                 q("Por que mockar chamadas externas em testes unitários?",
@@ -2549,12 +2549,12 @@ param de proteger de verdade.</p>"""
                   "via env."),
                 q("Cobertura de 100% garante código sem bugs?",
                   "Não, só garante que cada linha foi executada, não que os casos de borda foram cobertos.",
-                  ["Só garante isso de fato a partir especificamente da versão 3.12 do Python, segundo a maioria dos guias sobre o tema.", "Sim, cobertura de 100% garante que o código está livre de qualquer tipo de bug, pelo menos é o que a maioria dos devs pensa.", "Sim, desde que o código em questão seja considerado puro, sem efeito colateral algum, o que costuma pegar até quem já tem experiência."],
+                  ["Sim, desde que o código em questão seja considerado puro, sem efeito colateral algum, algo que passa no code review quando ninguém olha com atenção.", "Só garante isso de fato a partir especificamente da versão 3.12 do Python, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.", "Sim, cobertura de 100% garante que o código está livre de qualquer tipo de bug, erro típico de configuração feita às pressas, sem revisão posterior."],
                   "Cobertura é métrica de presença, não de qualidade. Casos de borda "
                   "(None, listas vazias, valores extremos) precisam ser explícitos."),
                 q("Para testar código async com pytest, instale:",
                   "pytest-asyncio e use @pytest.mark.asyncio",
-                  ["Usar uma classe inexistente, `unittest.AsyncTestCase`.", "Instalar um pacote inexistente chamado `asyncio-test`.", "Simplesmente não é possível testar código async no pytest."],
+                  ["asyncio-test (pacote que não existe no PyPI)", "unittest.AsyncTestCase (classe que não existe)", "Não há suporte a código async no pytest puro"],
                   "pytest-asyncio é o plugin padrão. Configure mode='auto' no "
                   "pyproject.toml para evitar mark em todo teste."),
                 q("Onde colocar fixtures que múltiplos arquivos de teste compartilham?",
@@ -2886,7 +2886,7 @@ dependência com segredo embutido para a internet.</p>
                   "código-fonte. Ambos vão para o PyPI."),
                 q("Configuração centralizada no pyproject.toml ajuda a evitar:",
                   "Inconsistências entre dev e CI sobre versão de regras de lint, format e types.",
-                  ["Conflitos de import entre módulos que compartilham o mesmo nome no projeto, segundo a maioria dos guias sobre o tema.", "Falhas relacionadas à resolução de nomes de DNS durante o pipeline de CI, pelo menos é o que a maioria dos devs pensa.", "Deadlocks que costumam acontecer só depois que o código já está em produção, o que costuma pegar até quem já tem experiência."],
+                  ["Conflitos de import entre módulos que compartilham o mesmo nome no projeto, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.", "Deadlocks que costumam acontecer só depois que o código já está em produção, prática que gera falso senso de segurança no time.", "Falhas relacionadas à resolução de nomes de DNS durante o pipeline de CI, atalho que troca segurança por conveniência de curto prazo."],
                   "Tudo em um único arquivo versionado: dev e CI usam exatamente as "
                   "mesmas regras."),
             ],
@@ -3199,7 +3199,7 @@ uma execução isolada.</li>
                   "scrape. É o padrão para jobs efêmeros."),
                 q("Para listar todos os objetos de um bucket S3 grande:",
                   "client.get_paginator('list_objects_v2').paginate(Bucket=name)",
-                  ["Chamar um método inexistente, `ec2.objects.all()`.", "Chamar uma função inexistente, `boto3.list_all()`.", "Chamar `client.list_objects(Bucket=name)`, que corta em 1000 itens."],
+                  ["client.list_objects(Bucket=name, MaxKeys=1000, Prefix='', Marker='')", "boto3.list_all(Bucket=name, recursive=True, retry=3, timeout=30)", "ec2.objects.all(Bucket=name, filter=True, limit=None, sort='asc')"],
                   "list_objects_v2 retorna 1000 itens por página. Paginator itera "
                   "automaticamente todas as páginas."),
                 q("`subprocess.run([..., 'aws', 's3', 'cp', ...])` vs. boto3, qual a vantagem do boto3?",
@@ -3209,7 +3209,7 @@ uma execução isolada.</li>
                   "do CLI estar no PATH e tem overhead de serialização JSON."),
                 q("Para reagir a eventos em tempo real no K8s, use:",
                   "kubernetes.watch.Watch().stream(...)",
-                  ["Não existe forma de fazer isso via SDK, só pelo CLI.", "Controlar manualmente o valor do ETag a cada chamada.", "Fazer polling chamando a API a cada `sleep(60)`."],
+                  ["ETag controlado manualmente a cada chamada", "polling com sleep(60) entre chamadas", "Só via CLI, sem qualquer suporte no SDK Python"],
                   "Watch usa long-polling do API Server: receberia eventos imediatos. "
                   "Polling é desperdício de quota e atrasa reação."),
                 q("Em uma ferramenta de CI, a saída idealmente vai em JSON quando:",
@@ -3229,7 +3229,7 @@ uma execução isolada.</li>
                   "de aplicar; vital para evitar erros operacionais."),
                 q("Idempotência em scripts DevOps significa:",
                   "Rodar o mesmo script várias vezes leva ao mesmo estado, sem efeitos colaterais extras.",
-                  ["Significa que o script em questão não faz qualquer operação de I/O, segundo a maioria dos guias sobre o tema.", "Significa que o script já vem com um mecanismo de retry embutido internamente, pelo menos é o que a maioria dos devs pensa.", "Significa que o script só pode ser executado uma única vez ao longo do tempo, o que costuma pegar até quem já tem experiência."],
+                  ["Significa que o script só pode ser executado uma única vez ao longo do tempo, abordagem que funciona bem até o primeiro pico de carga real.", "Significa que o script já vem com um mecanismo de retry embutido internamente, prática que gera falso senso de segurança no time.", "Significa que o script em questão não faz qualquer operação de I/O, comportamento que confunde quem está debugando meses depois."],
                   "Ex: 'criar bucket' deveria checar se existe primeiro. Idempotência "
                   "é base de Ansible, Terraform e bons pipelines de deploy."),
             ],
