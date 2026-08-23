@@ -25,182 +25,202 @@ PHASE2 = {
                     "próximas aulas."
                 ),
                 "body": (
-                    "<h3>1. Da máquina física à VM: hypervisor</h3>"
-                    "<p>Antes de cloud havia datacenter com servidores físicos. Cada workload "
-                    "ocupava uma máquina inteira; utilização típica girava em torno de 10-15%. "
-                    "<strong>Hypervisor</strong> é o software que cria múltiplas máquinas "
-                    "virtuais sobre o mesmo hardware:</p>"
-                    "<ul>"
-                    "<li><strong>Tipo 1 (bare-metal)</strong>: roda direto no hardware, com "
-                    "acesso privilegiado às extensões de virtualização da CPU "
-                    "(Intel VT-x, AMD-V). Exemplos: <strong>KVM</strong> (Linux), VMware ESXi, "
-                    "Microsoft Hyper-V, Xen, AWS Nitro Hypervisor (forquilha custom de KVM). "
-                    "<em>É o que cloud pública usa.</em></li>"
-                    "<li><strong>Tipo 2 (hosted)</strong>: roda como aplicação dentro de um SO "
-                    "convencional. Exemplos: VirtualBox, VMware Workstation, Parallels. Útil "
-                    "em desktop, ineficiente em servidor.</li>"
-                    "</ul>"
-                    "<p>Cada VM tem kernel próprio, drivers virtualizados (paravirtualização: "
-                    "<code>virtio</code>), endereço IP próprio. Você pode rodar Windows, Linux "
-                    "e BSD lado a lado no mesmo host físico.</p>"
+                """<h3>1. Da máquina física à VM: hypervisor</h3>
+<p>Antes de cloud existir, cada workload ocupava um servidor físico
+inteiro, e a utilização típica desses servidores girava em torno de
+apenas 10-15% da capacidade real — a maior parte do hardware ficava
+ociosa a maior parte do tempo. O <strong>hypervisor</strong> resolve
+exatamente esse desperdício: é o software que cria múltiplas máquinas
+virtuais compartilhando o mesmo hardware físico. O tipo 1
+(<strong>bare-metal</strong>) roda direto sobre o hardware, com acesso
+privilegiado às extensões de virtualização da própria CPU (Intel VT-x,
+AMD-V) — KVM (Linux), VMware ESXi, Microsoft Hyper-V, Xen e o AWS Nitro
+Hypervisor (uma bifurcação customizada do KVM) seguem esse modelo, e é
+exatamente o que toda cloud pública usa por trás dos panos. O tipo 2
+(<strong>hosted</strong>) roda como uma aplicação comum dentro de um
+sistema operacional já existente — VirtualBox, VMware Workstation,
+Parallels — útil em desktop, mas ineficiente demais para servidor de
+produção. Cada VM carrega seu próprio kernel, drivers virtualizados
+(paravirtualização via <code>virtio</code>) e endereço IP próprio — o
+que permite rodar Windows, Linux e BSD lado a lado, isolados, no mesmo
+host físico.</p>
 
-                    "<h3>2. Container ≠ VM</h3>"
-                    "<p>Comparação direta:</p>"
-                    "<table>"
-                    "<tr><th></th><th>VM</th><th>Container</th></tr>"
-                    "<tr><td>Kernel</td><td>próprio</td><td>compartilhado com host</td></tr>"
-                    "<tr><td>Boot</td><td>segundos a minutos</td><td>milissegundos</td></tr>"
-                    "<tr><td>Tamanho</td><td>GBs</td><td>dezenas a centenas de MB</td></tr>"
-                    "<tr><td>Isolamento</td><td>forte (boundary do hypervisor)</td>"
-                    "<td>processo (namespaces + cgroups + seccomp)</td></tr>"
-                    "<tr><td>SO no guest</td><td>qualquer</td><td>mesmo kernel do host</td></tr>"
-                    "</table>"
-                    "<p>Containers são processos isolados, não máquinas. Em Linux usam:</p>"
-                    "<ul>"
-                    "<li><strong>Namespaces</strong>: isolam visão de PID, mount, rede, IPC, "
-                    "user, UTS. Cada container 'vê' só o seu mundo.</li>"
-                    "<li><strong>cgroups</strong>: limitam recursos (CPU, RAM, IO).</li>"
-                    "<li><strong>seccomp / AppArmor / SELinux</strong>: restringem syscalls "
-                    "que o container pode chamar.</li>"
-                    "</ul>"
-                    "<p>Para isolamento mais forte que container puro mas mais leve que VM "
-                    "completa, <strong>microVMs</strong> (Firecracker da AWS, Kata Containers) "
-                    "rodam um kernel mínimo dentro de KVM em centenas de ms.</p>"
+<h3>2. Container ≠ VM</h3>
+<table>
+<tr><th></th><th>VM</th><th>Container</th></tr>
+<tr><td>Kernel</td><td>próprio</td><td>compartilhado com host</td></tr>
+<tr><td>Boot</td><td>segundos a minutos</td><td>milissegundos</td></tr>
+<tr><td>Tamanho</td><td>GBs</td><td>dezenas a centenas de MB</td></tr>
+<tr><td>Isolamento</td><td>forte (boundary do hypervisor)</td>
+<td>processo (namespaces + cgroups + seccomp)</td></tr>
+<tr><td>SO no guest</td><td>qualquer</td><td>mesmo kernel do host</td></tr>
+</table>
+<p>A diferença fundamental é que um container é um PROCESSO isolado,
+não uma máquina separada — e é exatamente por isso que ele inicia em
+milissegundos em vez de minutos. Em Linux, essa ilusão de isolamento
+vem de três mecanismos do próprio kernel: <strong>namespaces</strong>
+isolam a VISÃO que cada container tem de PID, mount, rede, IPC, user e
+UTS — cada um "enxerga" só o próprio mundo, mesmo compartilhando o
+mesmo kernel físico; <strong>cgroups</strong> limitam quanto de CPU,
+RAM e I/O cada container pode consumir do host; e
+<strong>seccomp/AppArmor/SELinux</strong> restringem quais syscalls o
+processo dentro do container tem permissão de chamar. Para um
+isolamento mais forte que container puro, mas ainda muito mais leve
+que uma VM completa, <strong>microVMs</strong> (Firecracker da AWS,
+Kata Containers) rodam um kernel mínimo dentro do próprio KVM,
+inicializando em centenas de milissegundos.</p>
 
-                    "<h3>3. O que cloud adiciona sobre virtualização</h3>"
-                    "<ul>"
-                    "<li><strong>API everywhere</strong>: provisionar VM, rede, storage, banco "
-                    "via chamada HTTP autenticada. Em VMware tradicional você abre ticket; em "
-                    "AWS você roda <code>aws ec2 run-instances</code>.</li>"
-                    "<li><strong>Pay-as-you-go</strong>: cobrança por hora, segundo, milissegundo "
-                    "(Lambda) ou byte (S3). Capex vira opex.</li>"
-                    "<li><strong>Multi-tenancy</strong>: muitos clientes na mesma infra "
-                    "física, isolados por software.</li>"
-                    "<li><strong>Serviços gerenciados</strong>: RDS, Cloud SQL, DynamoDB, "
-                    "EKS, você paga uma camada acima da VM.</li>"
-                    "<li><strong>Geo-distribuição</strong>: dezenas de regiões, dezenas de "
-                    "AZs por região, edges em todo o mundo.</li>"
-                    "<li><strong>Composição via IaC</strong>: Terraform, CloudFormation, "
-                    "Pulumi descrevem infra inteira em texto versionado.</li>"
-                    "</ul>"
+<h3>3. O que cloud adiciona sobre virtualização</h3>
+<p>Virtualização sozinha já existia décadas antes da cloud pública —
+o que a cloud acrescenta é uma camada inteira de automação por cima.
+API em tudo significa provisionar VM, rede, storage ou banco via uma
+chamada HTTP autenticada — no VMware tradicional você abria um ticket
+para um time de infraestrutura, na AWS você roda <code>aws ec2
+run-instances</code> e recebe o recurso em segundos. Pay-as-you-go
+cobra por hora, segundo, milissegundo (no caso do Lambda) ou byte
+(no caso do S3) — capex vira opex, sem investimento inicial em
+hardware. Multi-tenancy coloca muitos clientes diferentes na mesma
+infraestrutura física, isolados apenas por software, o que é o que
+torna o preço por unidade tão mais baixo do que hardware dedicado.
+Serviços gerenciados (RDS, Cloud SQL, DynamoDB, EKS) cobram uma camada
+inteira acima da VM crua, tirando de você a operação do banco ou do
+cluster em si. Geo-distribuição oferece dezenas de regiões, dezenas de
+AZs por região, e edge em praticamente todo o mundo. E composição via
+IaC (Terraform, CloudFormation, Pulumi) permite descrever a
+infraestrutura inteira como texto versionado, revisável e
+reproduzível — o assunto central da Fase 3.</p>
 
-                    "<h3>4. IaaS vs PaaS vs SaaS, o trade-off de controle</h3>"
-                    "<p>A diferença é <em>quem opera o quê</em>:</p>"
-                    "<table>"
-                    "<tr><th></th><th>IaaS</th><th>PaaS</th><th>SaaS</th></tr>"
-                    "<tr><td>Você controla</td><td>SO, runtime, app, dados</td>"
-                    "<td>app, dados</td><td>config, dados</td></tr>"
-                    "<tr><td>Provedor controla</td><td>hardware, hypervisor</td>"
-                    "<td>hardware, hypervisor, SO, runtime</td><td>tudo</td></tr>"
-                    "<tr><td>Exemplos</td><td>EC2, GCE, Azure VM</td>"
-                    "<td>App Engine, Heroku, Cloud Run, App Service</td>"
-                    "<td>Gmail, Notion, GitHub, Salesforce</td></tr>"
-                    "<tr><td>Esforço operacional</td><td>alto</td><td>médio</td><td>quase zero</td></tr>"
-                    "<tr><td>Lock-in</td><td>baixo</td><td>alto</td><td>muito alto</td></tr>"
-                    "<tr><td>Granularidade</td><td>total</td><td>limitada</td><td>nenhuma</td></tr>"
-                    "</table>"
-                    "<p>Tendências recentes: <strong>serverless</strong> (Lambda, Cloud "
-                    "Functions, Cloud Run) e <strong>containers as a service</strong> (Fargate, "
-                    "Cloud Run) ficam entre PaaS e IaaS, você entrega uma imagem ou função, "
-                    "provedor cuida do resto.</p>"
+<h3>4. IaaS vs PaaS vs SaaS, o trade-off de controle</h3>
+<table>
+<tr><th></th><th>IaaS</th><th>PaaS</th><th>SaaS</th></tr>
+<tr><td>Você controla</td><td>SO, runtime, app, dados</td>
+<td>app, dados</td><td>config, dados</td></tr>
+<tr><td>Provedor controla</td><td>hardware, hypervisor</td>
+<td>hardware, hypervisor, SO, runtime</td><td>tudo</td></tr>
+<tr><td>Exemplos</td><td>EC2, GCE, Azure VM</td>
+<td>App Engine, Heroku, Cloud Run, App Service</td>
+<td>Gmail, Notion, GitHub, Salesforce</td></tr>
+<tr><td>Esforço operacional</td><td>alto</td><td>médio</td><td>quase zero</td></tr>
+<tr><td>Lock-in</td><td>baixo</td><td>alto</td><td>muito alto</td></tr>
+<tr><td>Granularidade</td><td>total</td><td>limitada</td><td>nenhuma</td></tr>
+</table>
+<p>A diferença central entre as três camadas é literalmente QUEM opera
+cada parte da pilha — quanto mais o provedor assume, menos esforço
+operacional sobra para você, mas também menos controle e mais lock-in.
+Duas tendências recentes ficam num meio-termo deliberado:
+<strong>serverless</strong> (Lambda, Cloud Functions, Cloud Run) e
+<strong>containers as a service</strong> (Fargate, Cloud Run) — você
+entrega uma imagem ou uma função, e o provedor cuida de tudo entre isso
+e o hardware, sem virar PaaS completo nem exigir gerenciar servidor.</p>
 
-                    "<h3>5. Anatomia de uma região AWS (e equivalentes)</h3>"
-                    "<pre><code>Region (ex.: us-east-1, sa-east-1, eu-west-3)\n"
-                    "├── AZ a (datacenter A)        ← latência ~1-2ms intra-AZ\n"
-                    "├── AZ b (datacenter B)        ← latência ~1-2ms intra-AZ\n"
-                    "└── AZ c (datacenter C)        ← latência ~1-2ms entre-AZ\n"
-                    "    │\n"
-                    "    └── Edges (POPs / CloudFront / Global Accelerator)\n"
-                    "         espalhados por dezenas de cidades</code></pre>"
-                    "<p>Termos:</p>"
-                    "<ul>"
-                    "<li><strong>Region</strong>: conjunto de datacenters em uma localidade "
-                    "geográfica (us-east-1 = Northern Virginia).</li>"
-                    "<li><strong>Availability Zone (AZ)</strong>: um ou mais datacenters "
-                    "isolados, diferentes power, cooling, network. Falha de uma AZ não "
-                    "afeta as outras (em tese).</li>"
-                    "<li><strong>Edge / POP</strong>: ponto de presença para CDN e "
-                    "aceleração, não roda toda a sua app, mas cacheia conteúdo perto do "
-                    "usuário.</li>"
-                    "</ul>"
-                    "<p>HA básico = multi-AZ. HA serious = multi-region (com replicação "
-                    "ativa-ativa ou ativa-passiva). Multi-region é caro e complexo, ative só "
-                    "se SLA exigir.</p>"
+<h3>5. Anatomia de uma região AWS (e equivalentes)</h3>
+<pre><code>Region (ex.: us-east-1, sa-east-1, eu-west-3)
+├── AZ a (datacenter A)        ← latência ~1-2ms intra-AZ
+├── AZ b (datacenter B)        ← latência ~1-2ms intra-AZ
+└── AZ c (datacenter C)        ← latência ~1-2ms entre-AZ
+    │
+    └── Edges (POPs / CloudFront / Global Accelerator)
+         espalhados por dezenas de cidades</code></pre>
+<p>Uma <strong>Region</strong> é um conjunto de datacenters numa
+localidade geográfica específica — us-east-1, por exemplo, fica no
+norte da Virgínia. Uma <strong>Availability Zone</strong> (AZ) é um ou
+mais datacenters isolados entre si em energia, refrigeração e rede — a
+falha de uma AZ, em tese, não deveria afetar as outras dentro da mesma
+região. E um <strong>Edge/POP</strong> é um ponto de presença dedicado
+a CDN e aceleração — não roda a aplicação inteira, mas cacheia conteúdo
+fisicamente perto do usuário final. Alta disponibilidade básica
+significa multi-AZ; alta disponibilidade séria significa multi-region,
+com replicação ativa-ativa ou ativa-passiva — muito mais caro e
+complexo, e só faz sentido ativar se o SLA contratado realmente
+exigir esse nível.</p>
 
-                    "<h3>6. Os 'Big 3' e os outros</h3>"
-                    "<table>"
-                    "<tr><th></th><th>AWS</th><th>Azure</th><th>GCP</th></tr>"
-                    "<tr><td>Computação</td><td>EC2</td><td>VM</td><td>Compute Engine</td></tr>"
-                    "<tr><td>Container managed</td><td>EKS / Fargate</td>"
-                    "<td>AKS / Container Apps</td><td>GKE / Cloud Run</td></tr>"
-                    "<tr><td>Object Storage</td><td>S3</td><td>Blob Storage</td><td>GCS</td></tr>"
-                    "<tr><td>SQL gerenciado</td><td>RDS</td><td>Azure SQL / DB</td>"
-                    "<td>Cloud SQL / AlloyDB</td></tr>"
-                    "<tr><td>NoSQL</td><td>DynamoDB</td><td>Cosmos DB</td><td>Bigtable / Firestore</td></tr>"
-                    "<tr><td>Serverless function</td><td>Lambda</td>"
-                    "<td>Functions</td><td>Cloud Functions / Run</td></tr>"
-                    "<tr><td>Identidade</td><td>IAM</td><td>Entra ID</td><td>IAM</td></tr>"
-                    "<tr><td>Rede</td><td>VPC</td><td>VNet</td><td>VPC</td></tr>"
-                    "</table>"
-                    "<p>Alternativas relevantes: DigitalOcean (developer-friendly), Linode/"
-                    "Akamai, Hetzner (preço imbatível na Europa), Oracle Cloud (free tier "
-                    "generoso), Cloudflare (edge-first), Fly.io (deploy de containers "
-                    "globalmente).</p>"
+<h3>6. Os 'Big 3' e os outros</h3>
+<table>
+<tr><th></th><th>AWS</th><th>Azure</th><th>GCP</th></tr>
+<tr><td>Computação</td><td>EC2</td><td>VM</td><td>Compute Engine</td></tr>
+<tr><td>Container managed</td><td>EKS / Fargate</td>
+<td>AKS / Container Apps</td><td>GKE / Cloud Run</td></tr>
+<tr><td>Object Storage</td><td>S3</td><td>Blob Storage</td><td>GCS</td></tr>
+<tr><td>SQL gerenciado</td><td>RDS</td><td>Azure SQL / DB</td>
+<td>Cloud SQL / AlloyDB</td></tr>
+<tr><td>NoSQL</td><td>DynamoDB</td><td>Cosmos DB</td><td>Bigtable / Firestore</td></tr>
+<tr><td>Serverless function</td><td>Lambda</td>
+<td>Functions</td><td>Cloud Functions / Run</td></tr>
+<tr><td>Identidade</td><td>IAM</td><td>Entra ID</td><td>IAM</td></tr>
+<tr><td>Rede</td><td>VPC</td><td>VNet</td><td>VPC</td></tr>
+</table>
+<p>Fora dos três grandes, várias alternativas atendem nicho
+específico: DigitalOcean é conhecida por experiência amigável a
+desenvolvedor; Linode/Akamai e Hetzner competem em preço, especialmente
+Hetzner na Europa; a Oracle Cloud oferece um free tier
+particularmente generoso; Cloudflare aposta tudo em edge-first; e o
+Fly.io foca em deploy de container distribuído globalmente com pouco
+esforço de configuração.</p>
 
-                    "<h3>7. Tipos de cloud: pública, privada, híbrida, edge</h3>"
-                    "<ul>"
-                    "<li><strong>Pública</strong>: AWS/Azure/GCP. Compartilhada. Maior "
-                    "elasticidade, melhor preço por TB.</li>"
-                    "<li><strong>Privada</strong>: datacenter próprio com VMware/OpenStack, ou "
-                    "VPC/dedicated em provedor. Isolamento legal/regulatório, mas perde "
-                    "elasticidade.</li>"
-                    "<li><strong>Híbrida</strong>: combina ambos via VPN/Direct Connect/ "
-                    "Outposts. Útil em transição ou para dados que <em>não podem</em> sair "
-                    "(LGPD, soberania).</li>"
-                    "<li><strong>Edge</strong>: computação perto do usuário final. "
-                    "Cloudflare Workers, AWS Lambda@Edge, Fastly Compute@Edge. Latência de "
-                    "&lt;50ms globalmente.</li>"
-                    "<li><strong>Multi-cloud</strong>: vários provedores simultaneamente. "
-                    "Hype passou; complexidade real é alta.</li>"
-                    "</ul>"
+<h3>7. Tipos de cloud: pública, privada, híbrida, edge</h3>
+<p>A cloud <strong>pública</strong> (AWS, Azure, GCP) é compartilhada
+entre clientes, e por isso oferece a maior elasticidade e o melhor
+preço por terabyte. A cloud <strong>privada</strong> — datacenter
+próprio com VMware ou OpenStack, ou uma VPC/instância dedicada num
+provedor público — garante isolamento exigido por regulação legal, ao
+custo de perder boa parte da elasticidade que torna a nuvem pública
+atraente. O modelo <strong>híbrido</strong> combina os dois via VPN,
+Direct Connect ou Outposts, útil especificamente durante transição
+gradual ou quando um dado específico não PODE sair do país (LGPD,
+questões de soberania de dado). O modelo <strong>edge</strong> — como
+Cloudflare Workers, AWS Lambda@Edge, Fastly Compute@Edge — coloca
+computação fisicamente perto do usuário final, entregando latência
+abaixo de 50ms em escala global. E <strong>multi-cloud</strong> —
+vários provedores ao mesmo tempo — teve seu momento de hype, mas a
+complexidade operacional real de manter consistência entre provedores
+diferentes se mostrou alta o bastante para esfriar bastante o
+entusiasmo inicial.</p>
 
-                    "<h3>8. Trade-offs reais que ninguém explica no marketing</h3>"
-                    "<ul>"
-                    "<li><strong>Egress é caro</strong>: AWS cobra ~9¢/GB para tráfego saindo. "
-                    "Aplicação que serve muito vídeo paga uma fortuna. Cloudflare R2 e "
-                    "alternativas zeram egress como diferencial.</li>"
-                    "<li><strong>Lock-in é real</strong>: usar DynamoDB ou BigQuery 'até o "
-                    "fim' significa que migrar é projeto de meses. Avalie 'como saio?' antes "
-                    "de adotar serviço gerenciado proprietário.</li>"
-                    "<li><strong>Falhas existem</strong>: us-east-1 já caiu por horas várias "
-                    "vezes (2017, 2021, 2023). Multi-region não é luxo em sistemas "
-                    "críticos.</li>"
-                    "<li><strong>Latência da AZ-distante</strong>: ~1-2ms intra-AZ vs "
-                    "~10-100ms cross-region. Banco de dados pode degradar.</li>"
-                    "<li><strong>FinOps fica caro</strong>: depois de 6 meses, contas com "
-                    "milhares de recursos órfãos viram normal sem disciplina.</li>"
-                    "</ul>"
+<h3>8. Trade-offs reais que ninguém explica no marketing</h3>
+<p>Cinco trade-offs raramente aparecem no material promocional de
+qualquer provedor. Egress é caro de verdade: a AWS cobra cerca de 9
+centavos de dólar por GB de tráfego saindo — uma aplicação que serve
+muito vídeo paga uma fortuna nessa única linha, o que abriu espaço para
+alternativas como Cloudflare R2 competirem diretamente zerando esse
+custo. Lock-in é real, não FUD de concorrente: adotar DynamoDB ou
+BigQuery "até o fim" significa que migrar depois é literalmente um
+projeto de meses — vale perguntar "como eu saio disso?" ANTES de
+adotar um serviço gerenciado proprietário, não depois. Falha acontece
+mesmo na infraestrutura mais madura: us-east-1 já ficou fora do ar por
+horas em mais de uma ocasião (2017, 2021, 2023) — multi-region deixa de
+ser luxo em qualquer sistema realmente crítico. Latência entre AZ
+distante importa: cerca de 1-2ms dentro da mesma AZ contra 10-100ms
+entre regiões diferentes, o suficiente para degradar performance de
+banco de dados se a arquitetura não considerar isso desde o início. E
+FinOps fica caro sem disciplina: depois de seis meses, uma conta com
+milhares de recursos órfãos esquecidos rodando silenciosamente se torna
+o padrão, não a exceção.</p>
 
-                    "<h3>9. Caso real: o jornalista que ganhou um datacenter</h3>"
-                    "<p>Em 2017, um jornalista holandês colocou seu site novo na AWS "
-                    "(s3+CloudFront). Hospedagem custaria ~US$ 5/mês para uns 10k "
-                    "visitantes/dia. Ele esqueceu o write em DynamoDB sem rate-limit, e um "
-                    "bug em loop fez milhões de writes por minuto. Em 24h: US$ 14k de fatura. "
-                    "Lições: configure budgets/alertas <em>antes</em> do primeiro deploy, "
-                    "rate-limit em <em>tudo</em>, soft-delete em vez de write-loop.</p>"
+<h3>9. Caso real: o jornalista que ganhou um datacenter</h3>
+<p>Em 2017, um jornalista holandês colocou um site novo na AWS
+(S3 + CloudFront), esperando um custo de hospedagem em torno de US$ 5
+por mês para cerca de 10 mil visitantes por dia. Um bug de loop
+esqueceu de aplicar rate-limit num write para o DynamoDB, e o sistema
+passou a fazer milhões de escritas por minuto sem nenhum limite
+contendo isso. Em 24 horas, a fatura chegou a US$ 14 mil. As lições
+ficam diretas: configurar budget e alerta ANTES do primeiro deploy,
+nunca depois; aplicar rate-limit em TUDO que aceita escrita repetida; e
+preferir soft-delete a um loop de write que pode escapar de controle
+silenciosamente.</p>
 
-                    "<h3>10. Quando cloud não é a resposta</h3>"
-                    "<p>Casos onde on-prem ainda ganha:</p>"
-                    "<ul>"
-                    "<li>Workload de utilização constante e previsível (DB sempre cheio): "
-                    "hardware comprado uma vez é mais barato em 3 anos.</li>"
-                    "<li>Dados que não podem sair do país (algumas regulações).</li>"
-                    "<li>Latência ultra-baixa (HFT trading).</li>"
-                    "<li>Cargas com I/O massivo de armazenamento (cloud cobra caro por "
-                    "IOPS).</li>"
-                    "</ul>"
-                    "<p>Para tudo o resto, startup nova, app web típica, batch ML, "
-                    "site/blog, cloud é geralmente a escolha óbvia.</p>"
+<h3>10. Quando cloud não é a resposta</h3>
+<p>Quatro cenários específicos ainda favorecem infraestrutura
+on-premise sobre cloud: workload com utilização constante e previsível
+(um banco de dados sempre no limite da capacidade), onde comprar o
+hardware uma vez sai mais barato em três anos do que pagar por
+elasticidade que nunca é usada; dado que não pode sair do país por
+regulação específica; latência ultra-baixa que a distância física até
+o datacenter da cloud simplesmente não permite (trading de alta
+frequência, por exemplo); e carga com I/O de armazenamento massivo,
+onde a cloud cobra caro justamente por IOPS. Para praticamente todo o
+resto — startup nova, aplicação web típica, batch de machine learning,
+site ou blog — cloud continua sendo a escolha mais óbvia na maioria dos
+casos.</p>"""
                 ),
                 "practical": (
                     "(1) Crie uma conta AWS free tier (ou GCP / Azure equivalente).<br>"
@@ -313,179 +333,192 @@ PHASE2 = {
                     "do seu stack."
                 ),
                 "body": (
-                    "<h3>1. A linha móvel: quanto mais alto o serviço, mais o provedor cobre</h3>"
-                    "<p>A divisão muda conforme o nível de abstração. Em geral:</p>"
-                    "<table>"
-                    "<tr><th>Camada</th><th>On-prem</th><th>IaaS</th><th>PaaS</th><th>SaaS</th></tr>"
-                    "<tr><td>Datacenter, energia</td><td>você</td><td>provedor</td><td>provedor</td><td>provedor</td></tr>"
-                    "<tr><td>Rede física, hardware</td><td>você</td><td>provedor</td><td>provedor</td><td>provedor</td></tr>"
-                    "<tr><td>Hypervisor</td><td>você</td><td>provedor</td><td>provedor</td><td>provedor</td></tr>"
-                    "<tr><td>SO, patches</td><td>você</td><td>VOCÊ</td><td>provedor</td><td>provedor</td></tr>"
-                    "<tr><td>Runtime (libs, JVM, Python)</td><td>você</td><td>VOCÊ</td><td>provedor</td><td>provedor</td></tr>"
-                    "<tr><td>Aplicação</td><td>você</td><td>VOCÊ</td><td>VOCÊ</td><td>provedor</td></tr>"
-                    "<tr><td>Configuração de segurança</td><td>você</td><td>VOCÊ</td><td>VOCÊ</td><td>VOCÊ</td></tr>"
-                    "<tr><td>Identidades, MFA</td><td>você</td><td>VOCÊ</td><td>VOCÊ</td><td>VOCÊ</td></tr>"
-                    "<tr><td>Dados</td><td>você</td><td>VOCÊ</td><td>VOCÊ</td><td>VOCÊ</td></tr>"
-                    "</table>"
-                    "<p>Note como <strong>identidade, configuração e dados</strong> nunca "
-                    "saem do cliente, em <em>nenhum</em> modelo. Esse é o ponto mais "
-                    "importante.</p>"
+                """<h3>1. A linha móvel: quanto mais alto o serviço, mais o provedor cobre</h3>
+<p>A divisão de responsabilidade muda de acordo com o nível de
+abstração escolhido:</p>
+<table>
+<tr><th>Camada</th><th>On-prem</th><th>IaaS</th><th>PaaS</th><th>SaaS</th></tr>
+<tr><td>Datacenter, energia</td><td>você</td><td>provedor</td><td>provedor</td><td>provedor</td></tr>
+<tr><td>Rede física, hardware</td><td>você</td><td>provedor</td><td>provedor</td><td>provedor</td></tr>
+<tr><td>Hypervisor</td><td>você</td><td>provedor</td><td>provedor</td><td>provedor</td></tr>
+<tr><td>SO, patches</td><td>você</td><td>VOCÊ</td><td>provedor</td><td>provedor</td></tr>
+<tr><td>Runtime (libs, JVM, Python)</td><td>você</td><td>VOCÊ</td><td>provedor</td><td>provedor</td></tr>
+<tr><td>Aplicação</td><td>você</td><td>VOCÊ</td><td>VOCÊ</td><td>provedor</td></tr>
+<tr><td>Configuração de segurança</td><td>você</td><td>VOCÊ</td><td>VOCÊ</td><td>VOCÊ</td></tr>
+<tr><td>Identidades, MFA</td><td>você</td><td>VOCÊ</td><td>VOCÊ</td><td>VOCÊ</td></tr>
+<tr><td>Dados</td><td>você</td><td>VOCÊ</td><td>VOCÊ</td><td>VOCÊ</td></tr>
+</table>
+<p>O detalhe mais importante dessa tabela não é onde a linha se move —
+é onde ela NUNCA se move: identidade, configuração de segurança e dado
+permanecem do lado do cliente em absolutamente todos os quatro modelos,
+até no SaaS mais gerenciado que existe.</p>
 
-                    "<h3>2. Os três grandes, visão oficial</h3>"
-                    "<ul>"
-                    "<li><strong>AWS</strong>: Security <em>OF</em> the Cloud (provedor) vs "
-                    "Security <em>IN</em> the Cloud (você).</li>"
-                    "<li><strong>Azure</strong>: 'Shared Responsibility' com matriz "
-                    "específica por serviço.</li>"
-                    "<li><strong>GCP</strong>: 'Shared Responsibility &amp; Shared Fate', "
-                    "Google se compromete <em>ativamente</em> em ajudar você a fazer "
-                    "certo, com defaults seguros.</li>"
-                    "</ul>"
-                    "<p>O modelo do GCP é mais novo e reconhece que 'jogar a responsabilidade "
-                    "para o cliente' não basta, provedores precisam ser parceiros ativos "
-                    "para reduzir misconfiguration.</p>"
+<h3>2. Os três grandes, visão oficial</h3>
+<p>Cada provedor formula o mesmo princípio com ênfase ligeiramente
+diferente. A AWS separa Security <em>OF</em> the Cloud (o provedor
+protege a infraestrutura em si) de Security <em>IN</em> the Cloud (você
+protege o que roda dentro dela). O Azure documenta uma matriz de
+"Shared Responsibility" detalhada serviço por serviço. E o GCP vai um
+passo além com "Shared Responsibility &amp; Shared Fate" — um
+compromisso ativo de ajudar o cliente a acertar, com default já
+configurado de forma mais segura, em vez de simplesmente empurrar a
+responsabilidade inteira para o outro lado e esperar que a
+documentação seja lida.</p>
 
-                    "<h3>3. Caso a caso: o que muda por serviço</h3>"
-                    "<p>Mesmo dentro do mesmo provedor, a divisão varia:</p>"
-                    "<table>"
-                    "<tr><th>Serviço</th><th>Você cuida de</th><th>Provedor cuida de</th></tr>"
-                    "<tr><td>EC2 (IaaS)</td><td>SO, patches, app, dados, IAM, SG, dados</td>"
-                    "<td>hypervisor, hardware, rede física</td></tr>"
-                    "<tr><td>RDS (PaaS-DB)</td><td>schema, queries, backup config, IAM, "
-                    "dados, encryption keys</td>"
-                    "<td>SO, patches do MySQL/PG, replicação, HA, hardware</td></tr>"
-                    "<tr><td>Lambda (FaaS)</td><td>código, deps, IAM, segredos, dados</td>"
-                    "<td>SO, runtime, escala, hardware, isolamento</td></tr>"
-                    "<tr><td>S3 (object storage)</td><td>policy, encryption keys, public access, "
-                    "lifecycle, conteúdo dos objetos</td>"
-                    "<td>durabilidade, hardware, encryption infra</td></tr>"
-                    "<tr><td>EKS (managed K8s)</td><td>worker nodes, workloads, RBAC, network "
-                    "policy, dados</td>"
-                    "<td>control plane, etcd, upgrades do plane</td></tr>"
-                    "<tr><td>M365 (SaaS)</td><td>identidades, compartilhamentos, retenção, "
-                    "DLP, MFA</td>"
-                    "<td>app, infra, disponibilidade</td></tr>"
-                    "</table>"
+<h3>3. Caso a caso: o que muda por serviço</h3>
+<p>Mesmo dentro do mesmo provedor, a divisão exata varia bastante
+conforme o serviço específico:</p>
+<table>
+<tr><th>Serviço</th><th>Você cuida de</th><th>Provedor cuida de</th></tr>
+<tr><td>EC2 (IaaS)</td><td>SO, patches, app, dados, IAM, SG, dados</td>
+<td>hypervisor, hardware, rede física</td></tr>
+<tr><td>RDS (PaaS-DB)</td><td>schema, queries, backup config, IAM,
+dados, encryption keys</td>
+<td>SO, patches do MySQL/PG, replicação, HA, hardware</td></tr>
+<tr><td>Lambda (FaaS)</td><td>código, deps, IAM, segredos, dados</td>
+<td>SO, runtime, escala, hardware, isolamento</td></tr>
+<tr><td>S3 (object storage)</td><td>policy, encryption keys, public access,
+lifecycle, conteúdo dos objetos</td>
+<td>durabilidade, hardware, encryption infra</td></tr>
+<tr><td>EKS (managed K8s)</td><td>worker nodes, workloads, RBAC, network
+policy, dados</td>
+<td>control plane, etcd, upgrades do plane</td></tr>
+<tr><td>M365 (SaaS)</td><td>identidades, compartilhamentos, retenção,
+DLP, MFA</td>
+<td>app, infra, disponibilidade</td></tr>
+</table>
 
-                    "<h3>4. O que SEMPRE é seu, em qualquer serviço</h3>"
-                    "<ol>"
-                    "<li><strong>Identidades e acesso</strong>: usuários, roles, MFA, "
-                    "policies. Mesmo no Gmail, sua MFA é problema seu.</li>"
-                    "<li><strong>Classificação e proteção de dados</strong>: 'dado público "
-                    "vs interno vs PII vs financeiro'. Mecanismos de DLP existem, mas "
-                    "configurá-los é seu.</li>"
-                    "<li><strong>Configuração de segurança</strong>: bucket público? SG "
-                    "<code>0.0.0.0/0</code>? RDS sem encryption? Sempre seu.</li>"
-                    "<li><strong>Backup configurável</strong>: retention, frequência, "
-                    "cross-region. Defaults dos provedores são minimalistas.</li>"
-                    "<li><strong>Logging e monitoring</strong>: CloudTrail, CloudWatch, "
-                    "GuardDuty existem mas você precisa habilitá-los e mandar para um "
-                    "lugar seguro.</li>"
-                    "<li><strong>Compliance dos seus controles</strong>: o provedor "
-                    "tem SOC 2 dele; você precisa do <em>seu</em>.</li>"
-                    "</ol>"
+<h3>4. O que SEMPRE é seu, em qualquer serviço</h3>
+<p>Seis áreas permanecem responsabilidade do cliente independentemente
+de quão gerenciado o serviço seja. Identidade e acesso — usuário,
+role, MFA, policy — continuam seus mesmo no Gmail, onde configurar sua
+própria MFA continua sendo problema seu, não do Google. Classificação e
+proteção de dado exige decidir explicitamente o que é público, interno,
+PII ou financeiro — a ferramenta de DLP existe, mas configurá-la de
+acordo com essa classificação é trabalho seu. Configuração de segurança
+— bucket público, security group aberto para <code>0.0.0.0/0</code>,
+RDS sem encryption — é sempre sua, porque só você conhece o contexto de
+negócio de cada recurso. Backup configurável — retenção, frequência,
+replicação cross-region — precisa de ajuste ativo, porque o default do
+provedor tende a ser minimalista por design. Log e monitoramento
+(CloudTrail, CloudWatch, GuardDuty) existem prontos, mas alguém precisa
+habilitá-los e mandar o output para um lugar seguro e monitorado. E
+compliance dos SEUS controles específicos não se resolve pela
+certificação do provedor — o SOC 2 da AWS não certifica automaticamente
+a sua própria configuração dentro dela.</p>
 
-                    "<h3>5. Misconfiguration é a causa #1, dados</h3>"
-                    "<p>Verizon DBIR 2024: 31% das violações de cloud envolveram "
-                    "<strong>misconfiguration</strong>. Gartner: 99% dos incidentes em cloud "
-                    "até 2025 serão culpa do cliente.</p>"
-                    "<p>Top misconfigurations recorrentes:</p>"
-                    "<ul>"
-                    "<li>S3 com leitura pública (Verizon, Accenture, Capital One, todos).</li>"
-                    "<li>SG com SSH/RDP em <code>0.0.0.0/0</code>.</li>"
-                    "<li>Conta root sem MFA.</li>"
-                    "<li>Access keys hard-coded no GitHub público (~50k vazadas/ano).</li>"
-                    "<li>RDS sem encryption at rest, sem backup configurado, sem snapshot "
-                    "cross-region.</li>"
-                    "<li>IAM com <code>AdministratorAccess</code> em apps.</li>"
-                    "<li>Public IP em containers/funções 'só para teste' nunca removidos.</li>"
-                    "<li>Logs (CloudTrail) desligados na conta.</li>"
-                    "</ul>"
+<h3>5. Misconfiguration é a causa #1, dados</h3>
+<p>O Verizon DBIR de 2024 aponta que 31% das violações em cloud
+envolveram misconfiguration — não exploit sofisticado, mas
+configuração simplesmente errada. O Gartner projeta que 99% dos
+incidentes em cloud até 2025 serão atribuíveis ao cliente, não ao
+provedor. Os padrões recorrentes formam uma lista quase repetitiva de
+incidente para incidente: bucket S3 com leitura pública (Verizon,
+Accenture, Capital One — todos passaram por isso); security group com
+SSH ou RDP aberto para <code>0.0.0.0/0</code>; conta root sem MFA;
+access key hard-coded acabando em repositório público do GitHub (cerca
+de 50 mil vazam por ano); RDS sem encryption at rest, sem backup
+configurado, sem snapshot cross-region; IAM com
+<code>AdministratorAccess</code> concedido a uma aplicação; IP público
+em container ou função deixado "só para teste" e nunca removido depois;
+e CloudTrail simplesmente desligado na conta inteira.</p>
 
-                    "<h3>6. Guard-rails: prevenir em vez de detectar</h3>"
-                    "<p>Em vez de torcer para os times configurarem certo, configure "
-                    "<strong>guard-rails</strong> que <em>impedem</em> configurações "
-                    "inseguras:</p>"
-                    "<ul>"
-                    "<li><strong>AWS</strong>: SCPs (Service Control Policies) em Organizations. "
-                    "AWS Config Rules + Conformance Packs. Trusted Advisor. Security Hub.</li>"
-                    "<li><strong>Azure</strong>: Azure Policy (deny/audit/append). "
-                    "Defender for Cloud.</li>"
-                    "<li><strong>GCP</strong>: Organization Policies. Security Command Center.</li>"
-                    "<li><strong>Multi-cloud</strong>: <strong>Cloud Custodian</strong> "
-                    "(open source), Wiz, Prisma Cloud, Lacework.</li>"
-                    "</ul>"
-                    "<p>Exemplo de SCP que impede S3 público:</p>"
-                    "<pre><code>{\n"
-                    "  \"Version\": \"2012-10-17\",\n"
-                    "  \"Statement\": [{\n"
-                    "    \"Effect\": \"Deny\",\n"
-                    "    \"Action\": [\"s3:PutBucketPublicAccessBlock\"],\n"
-                    "    \"Resource\": \"*\",\n"
-                    "    \"Condition\": {\n"
-                    "      \"StringNotEquals\": {\"s3:PublicAccessBlock\": \"true\"}\n"
-                    "    }\n"
-                    "  }]\n"
-                    "}</code></pre>"
+<h3>6. Guard-rails: prevenir em vez de detectar</h3>
+<p>Em vez de torcer para cada time configurar certo manualmente,
+guard-rail IMPEDE a configuração insegura antes dela existir. Na AWS,
+isso é SCP (Service Control Policy) em Organizations, AWS Config Rules
+combinado com Conformance Packs, Trusted Advisor e Security Hub. No
+Azure, é Azure Policy (nos modos deny, audit ou append) combinado com
+Defender for Cloud. No GCP, são Organization Policies combinadas com
+Security Command Center. E em ambiente multi-cloud, ferramentas como
+Cloud Custodian (open source), Wiz, Prisma Cloud ou Lacework cobrem o
+mesmo papel de forma unificada entre provedores diferentes. Um exemplo
+concreto de SCP que impede desligar o Block Public Access de qualquer
+bucket:</p>
+<pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Deny",
+    "Action": ["s3:PutBucketPublicAccessBlock"],
+    "Resource": "*",
+    "Condition": {
+      "StringNotEquals": {"s3:PublicAccessBlock": "true"}
+    }
+  }]
+}</code></pre>
 
-                    "<h3>7. Como ler a documentação do provedor</h3>"
-                    "<p>Cada serviço tem matriz de responsabilidade. Em ambientes regulados:</p>"
-                    "<ul>"
-                    "<li>Service Specific Terms (AWS) / Service Description (Azure).</li>"
-                    "<li>Data Processing Addendum (DPA), exigência LGPD/GDPR.</li>"
-                    "<li>Trust &amp; Compliance Center: ISO 27001, SOC 2, PCI, HIPAA.</li>"
-                    "<li>Customer Compliance Guides: o que é seu e o que é deles.</li>"
-                    "</ul>"
-                    "<p>Não assine contrato sem ler isso. Em incidente, a primeira pergunta "
-                    "do auditor é 'mostre o contrato e o controle correspondente'.</p>"
+<h3>7. Como ler a documentação do provedor</h3>
+<p>Cada serviço publica sua própria matriz de responsabilidade
+específica, e em ambiente regulado essa leitura deixa de ser opcional:
+os Service Specific Terms da AWS (ou Service Description no Azure)
+detalham o serviço em si; o Data Processing Addendum (DPA) é exigência
+direta de LGPD e GDPR; o Trust &amp; Compliance Center de cada provedor
+lista certificação como ISO 27001, SOC 2, PCI e HIPAA; e os Customer
+Compliance Guides deixam explícito o que é seu e o que é do provedor
+para cada serviço específico. Não assinar contrato sem ler essa
+documentação evita a situação mais desconfortável possível: num
+incidente real, a primeira pergunta de um auditor costuma ser
+literalmente "mostre o contrato e o controle correspondente".</p>
 
-                    "<h3>8. Modelo PaaS = mais cuidado, não menos</h3>"
-                    "<p>'Lambda é serverless, não tem servidor para patchear, então não "
-                    "preciso de nada', <strong>mito</strong>. Em FaaS você ainda é "
-                    "responsável por:</p>"
-                    "<ul>"
-                    "<li>Vulnerabilidades nas suas dependências (Log4Shell em Lambda Java).</li>"
-                    "<li>Permissões IAM (role da Lambda com S3:* é receita de SSRF).</li>"
-                    "<li>Validação de input.</li>"
-                    "<li>Segredos e gestão de chaves.</li>"
-                    "<li>Logs e monitoring (sim, Lambda também precisa).</li>"
-                    "</ul>"
-                    "<p>O provedor cuida de menos camadas, mas o que sobra é exatamente "
-                    "onde estão as 10 vulnerabilidades mais comuns (OWASP Top 10).</p>"
+<h3>8. Modelo PaaS = mais cuidado, não menos</h3>
+<p>Um mito perigoso e recorrente: "Lambda é serverless, não tem
+servidor para eu mesmo aplicar patch, então não preciso me preocupar
+com mais nada". Em FaaS, cinco responsabilidades continuam
+inteiramente do lado do cliente: vulnerabilidade nas próprias
+dependências (o Log4Shell afetava função Lambda em Java exatamente da
+mesma forma que qualquer outro ambiente Java); permissão IAM da função
+(uma role de Lambda com <code>S3:*</code> concedido é receita pronta
+para um SSRF virar exfiltração total, como no caso Capital One da seção
+9); validação de input; gestão de segredo e chave; e log e
+monitoramento, que sim, continuam necessários mesmo sem servidor
+visível para o cliente administrar diretamente. O provedor cobre menos
+CAMADAS em FaaS, mas o que sobra é justamente onde vivem as
+vulnerabilidades mais comuns do OWASP Top 10.</p>
 
-                    "<h3>9. Caso real: Capital One 2019, anatomia de uma violação cloud</h3>"
-                    "<ol>"
-                    "<li>WAF mal configurado (problema do <em>cliente</em>) permitia SSRF.</li>"
-                    "<li>SSRF para <code>http://169.254.169.254/latest/meta-data/iam/...</code> "
-                    "(metadata service da AWS) retornou credenciais temporárias da role da "
-                    "EC2.</li>"
-                    "<li>Role tinha <code>s3:ListAllMyBuckets</code> e "
-                    "<code>s3:GetObject</code> em <em>todos os buckets da empresa</em>, "
-                    "violação de PoLP (problema do <em>cliente</em>).</li>"
-                    "<li>Atacante listou e baixou, 100M de registros vazados.</li>"
-                    "</ol>"
-                    "<p>Em <strong>nenhum</strong> momento a AWS falhou. A 'cloud' funcionou "
-                    "perfeitamente. Os controles do <em>cliente</em> que falharam: WAF, IAM, "
-                    "rede, monitoring (não detectou exfiltração).</p>"
-                    "<p>Resposta da AWS depois disso: lançou IMDSv2 (token-based, requer "
-                    "<code>PUT</code>) que mitiga SSRF; ativou Block Public Access default "
-                    "em buckets novos; lançou IAM Access Analyzer. Mas nenhuma dessas "
-                    "mudanças <em>tira</em> sua responsabilidade, só facilita acertar.</p>"
+<h3>9. Caso real: Capital One 2019, anatomia de uma violação cloud</h3>
+<p>A cadeia completa do incidente segue quatro passos, e nenhum deles
+é falha da AWS: um WAF mal configurado — problema do CLIENTE — permitia
+SSRF; o SSRF apontado para
+<code>http://169.254.169.254/latest/meta-data/iam/...</code> (o
+serviço de metadados da própria AWS) devolveu credencial temporária da
+role atrelada à instância EC2; essa role tinha
+<code>s3:ListAllMyBuckets</code> e <code>s3:GetObject</code> liberado
+para TODOS os buckets da empresa — uma violação direta do princípio do
+menor privilégio, de novo problema do cliente, não do provedor; e o
+atacante, com essa credencial em mãos, listou e baixou 100 milhões de
+registros. Em nenhum momento a AWS falhou tecnicamente — a
+infraestrutura funcionou exatamente como projetada. Os controles que
+falharam foram todos do lado do cliente: WAF, IAM, rede e monitoramento
+(que sequer detectou a exfiltração enquanto acontecia). A resposta da
+AWS depois desse incidente incluiu lançar o IMDSv2 (baseado em token,
+exigindo <code>PUT</code> explícito, o que mitiga esse tipo específico
+de SSRF), ativar Block Public Access como default em bucket novo, e
+lançar o IAM Access Analyzer — mas nenhuma dessas mudanças TIRA a
+responsabilidade do cliente, elas só tornam mais fácil configurar
+certo desde o início.</p>
 
-                    "<h3>10. Checklist mensal de Shared Responsibility</h3>"
-                    "<ol>"
-                    "<li>Conta root tem MFA hardware? (Não use root no dia-a-dia.)</li>"
-                    "<li>CloudTrail ativo em <em>todas</em> as regiões? Logs em bucket "
-                    "imutável separado?</li>"
-                    "<li>Block Public Access ativado em conta inteira?</li>"
-                    "<li>SCP/Policy bloqueando criação de recursos sem encryption?</li>"
-                    "<li>SCP/Policy bloqueando regiões fora das aprovadas?</li>"
-                    "<li>Security Hub / Defender / SCC habilitado e revisado?</li>"
-                    "<li>GuardDuty / Defender for Cloud / SCC com alerta crítico encaminhado?</li>"
-                    "<li>Backups configurados e <em>testados</em> em todos os RDS?</li>"
-                    "<li>Access keys do IAM com idade &gt; 90 dias rotacionadas?</li>"
-                    "<li>Resources tagueados com <code>Owner</code> e <code>Environment</code>?</li>"
-                    "</ol>"
+<h3>10. Checklist mensal de Shared Responsibility</h3>
+<ol>
+<li>Conta root tem MFA hardware? (Root nunca deveria ser usado no
+dia a dia.)</li>
+<li>CloudTrail está ativo em TODAS as regiões, com log num bucket
+imutável e separado?</li>
+<li>Block Public Access está ativado para a conta inteira, não só
+bucket por bucket?</li>
+<li>Existe SCP ou Policy bloqueando criação de recurso sem
+encryption?</li>
+<li>Existe SCP ou Policy bloqueando região fora das aprovadas
+explicitamente?</li>
+<li>Security Hub, Defender ou Security Command Center está habilitado
+E sendo revisado de fato, não só ligado?</li>
+<li>GuardDuty, Defender for Cloud ou SCC tem alerta crítico
+efetivamente encaminhado para alguém agir?</li>
+<li>Backup está configurado E testado — não só configurado — em todo
+RDS?</li>
+<li>Access key do IAM com mais de 90 dias já foi rotacionada?</li>
+<li>Todo recurso está tagueado com <code>Owner</code> e
+<code>Environment</code>?</li>
+</ol>"""
                 ),
                 "practical": (
                     "Crie um spreadsheet 3x10:<br>"
