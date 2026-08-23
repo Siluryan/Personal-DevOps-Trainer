@@ -24,177 +24,216 @@ PHASE1 = {
                     "começa exatamente aqui."
                 ),
                 "body": (
-                    "<h3>1. Filosofia: tudo é arquivo</h3>"
-                    "<p>O lema do Unix vale também no Linux: <strong>tudo é representado como "
-                    "arquivo</strong>. Disco (<code>/dev/sda</code>), socket de rede "
-                    "(<code>/proc/net/tcp</code>), processos rodando (<code>/proc/&lt;pid&gt;</code>), "
-                    "configuração do kernel (<code>/sys</code>), até dispositivos USB e GPIOs. "
-                    "Isso significa que o mesmo modelo de permissões (rwx + dono/grupo) controla "
-                    "literalmente <em>tudo</em>. Quando um atacante explora uma vulnerabilidade "
-                    "para escrever em <code>/dev/mem</code> ou <code>/proc/sys/kernel/core_pattern</code>, "
-                    "ele está apenas usando o modelo de arquivos para subverter o kernel.</p>"
-                    "<p>Aprender Linux fundo é, em larga medida, aprender quais arquivos importam "
-                    "e quem deveria poder ler/escrever em cada um.</p>"
+                """<h3>1. Filosofia: tudo é arquivo</h3>
+<p>O lema clássico do Unix se aplica integralmente no Linux: tudo é
+representado como arquivo — disco (<code>/dev/sda</code>), socket de
+rede (<code>/proc/net/tcp</code>), processo rodando
+(<code>/proc/&lt;pid&gt;</code>), configuração do próprio kernel
+(<code>/sys</code>), até dispositivo USB e GPIO. A consequência prática
+é que o MESMO modelo de permissão (rwx combinado com dono e grupo)
+controla literalmente tudo isso de uma vez, sem exceção especial para
+cada tipo de recurso. Quando um atacante explora uma vulnerabilidade
+para escrever em <code>/dev/mem</code> ou
+<code>/proc/sys/kernel/core_pattern</code>, ele está usando exatamente
+esse modelo de arquivo unificado para subverter o kernel — não um
+mecanismo diferente. Aprender Linux a fundo é, em boa medida, aprender
+quais arquivos específicos importam e quem deveria ter permissão de ler
+ou escrever em cada um.</p>
 
-                    "<h3>2. Modelo de identidade: UID, GID e processos</h3>"
-                    "<p>Cada processo é executado em nome de um <strong>UID</strong> (effective "
-                    "user id) e tem um <strong>GID</strong> primário mais um conjunto de grupos "
-                    "suplementares. Todo processo herda do pai, o init/<code>systemd</code> roda "
-                    "como UID 0 (root) e os filhos vão derivando.</p>"
-                    "<ul>"
-                    "<li><strong>UID 0</strong>: <code>root</code>, ignora todo check de "
-                    "permissão. É o motivo de não rodar serviços expostos à internet como root.</li>"
-                    "<li><strong>UID 1-999</strong>: usuários de sistema (criados pelos pacotes: "
-                    "<code>www-data</code>, <code>postgres</code>, <code>nobody</code>...).</li>"
-                    "<li><strong>UID ≥ 1000</strong>: usuários humanos (em distros modernas).</li>"
-                    "</ul>"
-                    "<p>Inspecione com:</p>"
-                    "<pre><code>id                 # quem sou eu (uid, gid, grupos)\n"
-                    "id deploy          # idem para outro usuário\n"
-                    "ps -eo pid,uid,user,cmd | head\n"
-                    "cat /etc/passwd    # mapeamento UID ↔ login ↔ shell\n"
-                    "cat /etc/group     # mapeamento GID ↔ nome do grupo</code></pre>"
-                    "<p>Senhas <strong>nunca</strong> ficam em <code>/etc/passwd</code> em sistemas "
-                    "modernos: o hash mora em <code>/etc/shadow</code>, legível só pelo root. "
-                    "Usar <code>/etc/passwd</code> como atalho leitor está bem; vazar "
-                    "<code>/etc/shadow</code> para outro usuário é incidente de segurança.</p>"
+<h3>2. Modelo de identidade: UID, GID e processos</h3>
+<p>Todo processo roda em nome de um <strong>UID</strong> (effective
+user id) e carrega um <strong>GID</strong> primário mais um conjunto de
+grupo suplementar. Cada processo HERDA essa identidade do próprio pai
+— o init/<code>systemd</code> começa como UID 0 (root), e todo processo
+filho deriva dessa raiz. Três faixas de UID têm significado
+convencional: <strong>UID 0</strong> é o próprio root, que ignora
+literalmente todo check de permissão — é exatamente por isso que
+serviço exposto à internet nunca deveria rodar sob esse UID; UID entre
+1 e 999 são usuários de sistema criados pelos próprios pacotes
+(<code>www-data</code>, <code>postgres</code>, <code>nobody</code>); e
+UID a partir de 1000 são usuários humanos em distribuição moderna.
+Inspecionar essa identidade é direto:</p>
+<pre><code>id                 # quem sou eu (uid, gid, grupos)
+id deploy          # idem para outro usuário
+ps -eo pid,uid,user,cmd | head
+cat /etc/passwd    # mapeamento UID ↔ login ↔ shell
+cat /etc/group     # mapeamento GID ↔ nome do grupo</code></pre>
+<p>Um detalhe de segurança que muita gente ignora: senha NUNCA fica em
+<code>/etc/passwd</code> em sistema moderno — o hash mora
+especificamente em <code>/etc/shadow</code>, legível só pelo root. Usar
+<code>/etc/passwd</code> como referência de leitura geral é normal e
+esperado; vazar <code>/etc/shadow</code> para outro usuário já é
+incidente de segurança propriamente dito.</p>
 
-                    "<h3>3. Permissões clássicas: o modelo rwx</h3>"
-                    "<p>Cada arquivo tem dono, grupo e três classes de permissão "
-                    "(<em>user / group / other</em>) em três bits cada (<code>r</code>=4, "
-                    "<code>w</code>=2, <code>x</code>=1). Em octal:</p>"
-                    "<pre><code>chmod 750 deploy.sh\n"
-                    "  └ user 7 = r+w+x\n"
-                    "  └ group 5 = r+x  (sem write)\n"
-                    "  └ other 0 = nada\n\n"
-                    "ls -l deploy.sh\n"
-                    "-rwxr-x---  1 deploy web  142 Apr 25 16:12 deploy.sh</code></pre>"
-                    "<p>Para diretórios, o significado é diferente: <code>r</code> permite "
-                    "<em>listar</em> nomes, <code>x</code> permite <em>entrar</em>, e "
-                    "<code>w</code> permite <em>criar/remover</em> arquivos lá dentro. É "
-                    "perfeitamente possível ter um diretório com permissão <code>x</code> mas "
-                    "sem <code>r</code>, você consegue acessar arquivos por nome conhecido, "
-                    "mas não consegue listar.</p>"
-                    "<p>O modo simbólico costuma ser mais legível para mudanças incrementais:</p>"
-                    "<pre><code>chmod g+rw arquivo       # add read+write para o grupo\n"
-                    "chmod o-x  diretorio/     # remove execute do 'other'\n"
-                    "chmod -R u+rwX,g+rX,o-rwx /srv/app/   # X executa só em diretórios</code></pre>"
+<h3>3. Permissões clássicas: o modelo rwx</h3>
+<p>Todo arquivo carrega dono, grupo, e três classes de permissão
+(user, group, other), cada uma com três bits (<code>r</code>=4,
+<code>w</code>=2, <code>x</code>=1) representáveis em octal:</p>
+<pre><code>chmod 750 deploy.sh
+  └ user 7 = r+w+x
+  └ group 5 = r+x  (sem write)
+  └ other 0 = nada
 
-                    "<h3>4. Bits especiais: setuid, setgid, sticky</h3>"
-                    "<p>Três bits 'extras' alteram comportamento de execução:</p>"
-                    "<ul>"
-                    "<li><strong>setuid (4xxx)</strong>: o programa, ao ser executado, roda "
-                    "com privilégio do <em>dono</em> do arquivo, não de quem o invocou. É como "
-                    "<code>passwd</code> consegue alterar <code>/etc/shadow</code> sendo "
-                    "executado por usuário comum. Mal usado, é vetor clássico de escalada, "
-                    "todo binário setuid mantido na sua máquina deveria estar em uma whitelist.</li>"
-                    "<li><strong>setgid (2xxx)</strong>: idem, mas com privilégio do grupo. Em "
-                    "diretórios, garante que arquivos novos herdem o grupo do diretório (útil "
-                    "para diretórios compartilhados de equipe).</li>"
-                    "<li><strong>sticky bit (1xxx)</strong>: em diretórios, só o dono do arquivo "
-                    "(ou do diretório) pode apagá-lo. Por isso <code>/tmp</code> tem modo "
-                    "<code>1777</code>: qualquer um cria, mas só o criador apaga.</li>"
-                    "</ul>"
-                    "<pre><code>find / -perm -4000 -type f 2&gt;/dev/null   # binários setuid\n"
-                    "find / -perm -2000 -type f 2&gt;/dev/null   # binários setgid</code></pre>"
+ls -l deploy.sh
+-rwxr-x---  1 deploy web  142 Apr 25 16:12 deploy.sh</code></pre>
+<p>Em diretório, o significado muda de forma sutil e importante:
+<code>r</code> permite LISTAR nomes de arquivo dentro, <code>x</code>
+permite ENTRAR no diretório, e <code>w</code> permite CRIAR ou
+REMOVER arquivo ali. Isso torna perfeitamente possível ter um
+diretório com <code>x</code> mas sem <code>r</code> — nesse caso, é
+possível acessar um arquivo específico se você já souber o nome exato,
+mas impossível listar o conteúdo do diretório para descobrir esse nome
+por conta própria. Para mudança incremental, o modo simbólico costuma
+ser mais legível que recalcular o octal inteiro:</p>
+<pre><code>chmod g+rw arquivo       # add read+write para o grupo
+chmod o-x  diretorio/     # remove execute do 'other'
+chmod -R u+rwX,g+rX,o-rwx /srv/app/   # X executa só em diretórios</code></pre>
 
-                    "<h3>5. Para além de rwx: ACLs e capabilities</h3>"
-                    "<p>O modelo rwx tem só três classes, quando você precisa de granularidade "
-                    "mais fina, use <strong>ACLs POSIX</strong>:</p>"
-                    "<pre><code>setfacl -m u:carlos:r-- /srv/data/relatorio.csv\n"
-                    "setfacl -m g:auditoria:r-x /srv/scripts/\n"
-                    "getfacl /srv/data/relatorio.csv</code></pre>"
-                    "<p>Já as <strong>Linux capabilities</strong> decompõem o poder de root em "
-                    "~40 grãos (<code>man capabilities(7)</code>): em vez de dar root inteiro a "
-                    "um binário web só para ele bindar a porta 80, você concede só "
-                    "<code>CAP_NET_BIND_SERVICE</code>:</p>"
-                    "<pre><code>setcap cap_net_bind_service=+ep /usr/local/bin/myserver\n"
-                    "getcap /usr/local/bin/myserver</code></pre>"
-                    "<p>Esse é o mecanismo por trás de imagens Docker bem feitas que rodam como "
-                    "não-root mas conseguem escutar em portas privilegiadas.</p>"
+<h3>4. Bits especiais: setuid, setgid, sticky</h3>
+<p>Três bits adicionais alteram como um binário se comporta em
+execução. O <strong>setuid</strong> (4xxx) faz o programa rodar com o
+privilégio do DONO do arquivo, não de quem o invocou na prática — é
+exatamente assim que o comando <code>passwd</code> consegue alterar
+<code>/etc/shadow</code> mesmo sendo executado por um usuário comum sem
+privilégio nenhum. Mal aplicado, é um vetor clássico de escalada de
+privilégio — todo binário com setuid presente numa máquina deveria
+estar numa whitelist auditada, não deixado ao acaso. O
+<strong>setgid</strong> (2xxx) segue a mesma lógica, mas com o grupo em
+vez do dono; em diretório, garante que todo arquivo NOVO criado ali
+herda automaticamente o grupo do diretório, útil especificamente para
+área compartilhada de equipe. E o <strong>sticky bit</strong> (1xxx),
+aplicado a diretório, restringe quem pode APAGAR um arquivo àquele que
+o criou (ou ao dono do próprio diretório) — é exatamente por isso que
+<code>/tmp</code> roda com modo <code>1777</code>: qualquer usuário
+cria arquivo ali livremente, mas só quem criou consegue apagar o
+próprio arquivo depois.</p>
+<pre><code>find / -perm -4000 -type f 2&gt;/dev/null   # binários setuid
+find / -perm -2000 -type f 2&gt;/dev/null   # binários setgid</code></pre>
 
-                    "<h3>6. Processos, sinais e systemd</h3>"
-                    "<p>Cada processo tem um <strong>PID</strong>, um pai (<strong>PPID</strong>) "
-                    "e um estado (<code>R</code>=running, <code>S</code>=sleeping, "
-                    "<code>D</code>=disk wait, <code>Z</code>=zombie). Inspecione com "
-                    "<code>ps auxf</code> ou interativamente com <code>htop</code>.</p>"
-                    "<p>O kernel se comunica com processos via <strong>sinais</strong>:</p>"
-                    "<ul>"
-                    "<li><code>SIGTERM (15)</code>, pede para terminar; processo bem-comportado "
-                    "fecha conexões, salva estado e sai. Sempre tente esse primeiro.</li>"
-                    "<li><code>SIGKILL (9)</code>, termina imediatamente; processo não tem "
-                    "chance de cleanup. Use só quando SIGTERM não responde.</li>"
-                    "<li><code>SIGHUP (1)</code>, historicamente 'hangup'; serviços usam para "
-                    "<em>recarregar configuração</em> sem reiniciar.</li>"
-                    "<li><code>SIGINT (2)</code>, Ctrl+C no terminal.</li>"
-                    "<li><code>SIGSTOP/SIGCONT</code>, pausa/retoma o processo.</li>"
-                    "</ul>"
-                    "<p>Em distros modernas, todo serviço é gerenciado pelo "
-                    "<strong>systemd</strong> via <em>units</em>:</p>"
-                    "<pre><code>systemctl status nginx\n"
-                    "systemctl restart nginx\n"
-                    "systemctl reload nginx       # equivale a SIGHUP, sem downtime\n"
-                    "journalctl -u nginx -f       # logs em tempo real\n"
-                    "systemctl list-units --failed</code></pre>"
+<h3>5. Para além de rwx: ACLs e capabilities</h3>
+<p>O modelo rwx tem apenas três classes fixas de permissão — quando
+isso não basta, as ACLs POSIX permitem granularidade por usuário ou
+grupo específico, além do dono e grupo padrão do arquivo:</p>
+<pre><code>setfacl -m u:carlos:r-- /srv/data/relatorio.csv
+setfacl -m g:auditoria:r-x /srv/scripts/
+getfacl /srv/data/relatorio.csv</code></pre>
+<p>As Linux capabilities resolvem um problema diferente: decompõem o
+poder inteiro de root em cerca de 40 grãos individuais
+(<code>man capabilities(7)</code>). Em vez de conceder root completo a
+um binário web só porque ele precisa bindar na porta 80 (abaixo de
+1024, restrita por padrão a root), é possível conceder apenas
+<code>CAP_NET_BIND_SERVICE</code>, exatamente a fração de privilégio
+necessária:</p>
+<pre><code>setcap cap_net_bind_service=+ep /usr/local/bin/myserver
+getcap /usr/local/bin/myserver</code></pre>
+<p>Esse é justamente o mecanismo por trás de imagem Docker bem
+construída que consegue escutar em porta privilegiada mesmo rodando
+como usuário não-root dentro do container.</p>
 
-                    "<h3>7. Filesystem hierarchy padrão (FHS)</h3>"
-                    "<p>Saber onde cada coisa mora economiza horas de busca:</p>"
-                    "<ul>"
-                    "<li><code>/etc</code>, configuração do sistema. Apenas root escreve.</li>"
-                    "<li><code>/usr/bin</code>, <code>/usr/sbin</code>, binários do sistema.</li>"
-                    "<li><code>/usr/local/bin</code>, binários instalados manualmente.</li>"
-                    "<li><code>/var</code>, dados <em>variáveis</em>: logs, caches, spool, "
-                    "bancos de dados. Faz sentido em FS separado em produção.</li>"
-                    "<li><code>/home</code>, dados de usuários humanos.</li>"
-                    "<li><code>/srv</code>, dados servidos por serviços (web, ftp).</li>"
-                    "<li><code>/opt</code>, software de terceiros 'self-contained'.</li>"
-                    "<li><code>/proc</code>, <code>/sys</code>, pseudo-FS exposto pelo kernel.</li>"
-                    "<li><code>/dev</code>, dispositivos.</li>"
-                    "<li><code>/run</code>, <code>/tmp</code>, efêmeros (zerados ao reboot).</li>"
-                    "</ul>"
+<h3>6. Processos, sinais e systemd</h3>
+<p>Todo processo carrega um <strong>PID</strong>, um pai
+(<strong>PPID</strong>), e um estado — <code>R</code> (running),
+<code>S</code> (sleeping), <code>D</code> (disk wait), <code>Z</code>
+(zombie) — inspecionável via <code>ps auxf</code> ou interativamente
+via <code>htop</code>. O kernel se comunica com processo através de
+<strong>sinais</strong>, cada um com um significado convencional
+específico: <code>SIGTERM (15)</code> pede terminação educada — um
+processo bem-comportado fecha conexão, salva estado e sai sozinho, e
+deveria ser sempre o primeiro tentado; <code>SIGKILL (9)</code> termina
+imediatamente sem NENHUMA chance de cleanup, reservado para quando
+SIGTERM já não responde; <code>SIGHUP (1)</code>, historicamente
+"hangup", virou o sinal convencional para recarregar configuração sem
+reiniciar o processo inteiro; <code>SIGINT (2)</code> é o Ctrl+C do
+terminal; e <code>SIGSTOP/SIGCONT</code> pausam e retomam a execução.
+Em distribuição moderna, todo serviço é gerenciado pelo systemd através
+de units:</p>
+<pre><code>systemctl status nginx
+systemctl restart nginx
+systemctl reload nginx       # equivale a SIGHUP, sem downtime
+journalctl -u nginx -f       # logs em tempo real
+systemctl list-units --failed</code></pre>
 
-                    "<h3>8. Anti-patterns clássicos</h3>"
-                    "<ul>"
-                    "<li><strong><code>chmod 777 /srv/app</code></strong>: qualquer usuário do "
-                    "sistema escreve. Atacante com qualquer outra conta no mesmo host injeta "
-                    "payload no app legítimo, escalada trivial.</li>"
-                    "<li><strong>Rodar serviços como root</strong>: cada bug no serviço "
-                    "(Heartbleed, Log4Shell, etc.) vira RCE como root e portanto comprometimento "
-                    "total da máquina. Use usuário dedicado + <code>User=</code> no systemd.</li>"
-                    "<li><strong>Adicionar usuário ao grupo <code>sudo</code> sem regras "
-                    "específicas</strong>: dá poder total. Prefira drops em "
-                    "<code>/etc/sudoers.d/</code> liberando comandos específicos.</li>"
-                    "<li><strong>Editar arquivo de config como root sem backup</strong>: um "
-                    "<code>vim /etc/sshd_config</code> esquecendo o <code>PermitRootLogin</code> "
-                    "e você acabou de se trancar fora do servidor de produção. Sempre "
-                    "<code>cp arquivo arquivo.bak</code> antes.</li>"
-                    "<li><strong>Esquecer permissão em <code>~/.ssh</code></strong>: o sshd "
-                    "<em>silenciosamente</em> recusa autenticação se o diretório/arquivo tiver "
-                    "permissão frouxa. Você só descobre olhando <code>journalctl -u sshd</code>.</li>"
-                    "</ul>"
+<h3>7. Filesystem hierarchy padrão (FHS)</h3>
+<p>Saber de antemão onde cada tipo de arquivo mora economiza tempo real
+de busca em qualquer investigação. <code>/etc</code> guarda
+configuração do sistema, editável apenas por root. <code>/usr/bin</code>
+e <code>/usr/sbin</code> guardam binário do sistema, enquanto
+<code>/usr/local/bin</code> é reservado para binário instalado
+manualmente fora do gerenciador de pacote. <code>/var</code> guarda
+dado VARIÁVEL — log, cache, spool, banco de dados — e faz sentido
+morar num filesystem separado em produção, justamente porque cresce de
+forma imprevisível. <code>/home</code> guarda dado de usuário humano.
+<code>/srv</code> guarda dado servido diretamente por um serviço (web,
+FTP). <code>/opt</code> guarda software de terceiro "self-contained",
+empacotado de forma independente do resto do sistema. <code>/proc</code>
+e <code>/sys</code> são pseudo-filesystems expostos diretamente pelo
+kernel, sem existir fisicamente em disco. <code>/dev</code> representa
+dispositivo. E <code>/run</code> e <code>/tmp</code> são efêmeros,
+zerados a cada reboot.</p>
 
-                    "<h3>9. Caso real: o ataque no <code>/tmp</code></h3>"
-                    "<p>Em 2016, várias distros tiveram que mudar o default de <code>/tmp</code> "
-                    "para um <em>tmpfs</em> isolado por usuário porque o <code>/tmp</code> "
-                    "compartilhado virou vetor recorrente: serviço A criava arquivo previsível "
-                    "(<code>/tmp/upload.txt</code>); atacante criava antes um symlink apontando "
-                    "para <code>/etc/shadow</code>; o serviço, rodando como root, sobrescrevia "
-                    "shadow. Daí veio a popularização do <code>PrivateTmp=true</code> no systemd, "
-                    "que monta um <code>/tmp</code> exclusivo por serviço, pequena mudança no "
-                    "kernel/systemd que matou uma classe inteira de bugs.</p>"
+<h3>8. Anti-patterns clássicos</h3>
+<ul>
+<li><strong><code>chmod 777 /srv/app</code></strong>: qualquer usuário
+do mesmo sistema ganha permissão de escrita — um atacante com QUALQUER
+outra conta na mesma máquina consegue injetar payload direto na
+aplicação legítima, uma escalada trivial de executar.</li>
+<li><strong>Rodar serviço como root</strong>: qualquer bug conhecido
+no serviço (Heartbleed, Log4Shell) vira automaticamente RCE como
+root, e portanto comprometimento total da máquina — usuário dedicado
+combinado com <code>User=</code> no systemd fecha essa lacuna
+diretamente.</li>
+<li><strong>Adicionar usuário ao grupo <code>sudo</code> sem regra
+específica</strong>: concede poder total quando provavelmente só um
+comando pontual era realmente necessário — prefira um drop-in em
+<code>/etc/sudoers.d/</code> liberando exatamente o comando
+específico.</li>
+<li><strong>Editar arquivo de configuração como root sem backup
+antes</strong>: um <code>vim /etc/sshd_config</code> esquecendo de
+revisar <code>PermitRootLogin</code> pode trancar o próprio operador
+fora do servidor de produção sem aviso — <code>cp arquivo
+arquivo.bak</code> antes de qualquer edição custa segundos e evita
+esse cenário inteiro.</li>
+<li><strong>Esquecer a permissão correta em <code>~/.ssh</code></strong>:
+o sshd recusa autenticação SILENCIOSAMENTE quando o diretório ou
+arquivo tem permissão frouxa demais — a única forma de descobrir isso é
+olhando <code>journalctl -u sshd</code> depois que a autenticação já
+falhou sem mensagem clara na tela do cliente.</li>
+</ul>
 
-                    "<h3>10. Checklist mental ao se conectar a um host novo</h3>"
-                    "<ol>"
-                    "<li><code>uname -a</code>, kernel e arquitetura.</li>"
-                    "<li><code>cat /etc/os-release</code>, qual distro/versão.</li>"
-                    "<li><code>id</code> e <code>sudo -l</code>, quem sou e o que posso.</li>"
-                    "<li><code>ss -tulpn</code>, quais portas estão abertas e quem escuta.</li>"
-                    "<li><code>systemctl list-units --type=service --state=running</code>.</li>"
-                    "<li><code>df -h</code> e <code>free -h</code>, disco e memória.</li>"
-                    "<li><code>journalctl -p err -S 'today'</code>, erros recentes do sistema.</li>"
-                    "</ol>"
-                    "<p>Em 2 minutos você sabe se está em terreno familiar ou se pisou em uma "
-                    "máquina já comprometida.</p>"
+<h3>9. Caso real: o ataque no <code>/tmp</code></h3>
+<p>Em 2016, várias distribuições precisaram mudar o comportamento
+padrão de <code>/tmp</code> para um tmpfs isolado por usuário, porque
+um <code>/tmp</code> compartilhado entre todos os processos virou vetor
+recorrente de ataque: um serviço A criava um arquivo com nome
+PREVISÍVEL (<code>/tmp/upload.txt</code>); um atacante, sabendo disso
+de antemão, criava ANTES um symlink com esse mesmo nome apontando para
+<code>/etc/shadow</code>; e o serviço, rodando como root, ao "criar"
+seu próprio arquivo temporário, na verdade sobrescrevia o shadow
+inteiro através do symlink já plantado. Foi exatamente esse padrão de
+ataque que popularizou o <code>PrivateTmp=true</code> no systemd —
+uma mudança relativamente pequena no kernel e no systemd que eliminou
+uma classe inteira de bug de uma vez, sem exigir que cada serviço
+individual fosse corrigido separadamente.</p>
+
+<h3>10. Checklist mental ao se conectar a um host novo</h3>
+<ol>
+<li><code>uname -a</code>, para conhecer kernel e arquitetura.</li>
+<li><code>cat /etc/os-release</code>, para saber qual distribuição e
+versão exatamente.</li>
+<li><code>id</code> e <code>sudo -l</code>, para saber quem você é e o
+que exatamente pode fazer.</li>
+<li><code>ss -tulpn</code>, para ver quais portas estão abertas e
+quem está escutando cada uma.</li>
+<li><code>systemctl list-units --type=service --state=running</code>,
+para o inventário de serviço ativo.</li>
+<li><code>df -h</code> e <code>free -h</code>, para disco e memória
+disponíveis.</li>
+<li><code>journalctl -p err -S 'today'</code>, para erro recente que
+já pode indicar problema em andamento.</li>
+</ol>
+<p>Em dois minutos rodando essa sequência, dá para saber se está pisando
+em terreno familiar e saudável, ou se a máquina já apresenta sinal de
+algo comprometido antes mesmo de investigar mais a fundo.</p>"""
                 ),
                 "practical": (
                     "Em uma VM ou container limpo:<br>"
@@ -2655,7 +2694,7 @@ manualmente.</li>
                     "</ul>"
                     "<p>Logs que importam em incidente: auth (login, sudo, ssh), audit "
                     "(comandos privilegiados), network (firewall drops, DNS queries), "
-                    "aplicação (errors, anomalias)."
+                    "aplicação (errors, anomalias).</p>"
 
                     "<h3>9. Métricas vs logs vs traces</h3>"
                     "<p>Os três pilares da observabilidade:</p>"
