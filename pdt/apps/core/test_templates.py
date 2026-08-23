@@ -13,6 +13,11 @@ Cobrem duas classes de bugs descobertos na prática:
 2. **Layout das alternativas do simulador (`take.html`)**: as alternativas
    precisam ficar empilhadas (uma embaixo da outra) com o card inteiro
    clicável, não dependendo de classes Tailwind do CDN para isso.
+
+3. **Comentário de cerquilha multilinha**: `{# ... #}` no Django cobre uma
+   linha só. Espalhado por várias, o lexer não o reconhece como comentário
+   e o texto vaza renderizado na página. Em `base.html` isso apareceu no
+   topo de **todas** as páginas do site.
 """
 from __future__ import annotations
 
@@ -265,3 +270,60 @@ class TestInterviewTakeLayout:
                 "x-bind:style do label deve ser um OBJETO `{ ... }`. "
                 f"Hoje está: {value[:120]!r}"
             )
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# 3) Comentário `{# ... #}` espalhado por várias linhas
+# ─────────────────────────────────────────────────────────────────────────
+
+# O lexer do Django casa comentários de cerquilha sem DOTALL, então o ponto
+# não atravessa quebra de linha: `{#` seguido de newline antes de `#}` não
+# vira token de comentário e o conteúdo sai como texto puro na página.
+_HASH_COMMENT_MULTILINE_RE = re.compile(
+    r"\{#(?:(?!#\}).)*?\n(?:(?!#\}).)*?#\}", re.DOTALL
+)
+
+
+def _templates_com_comentario_multilinha(base_dir=None) -> list[str]:
+    base = base_dir or TEMPLATES_DIR
+    achados = []
+    for path in sorted(base.rglob("*.html")):
+        texto = path.read_text(encoding="utf-8")
+        for m in _HASH_COMMENT_MULTILINE_RE.finditer(texto):
+            linha = texto[: m.start()].count("\n") + 1
+            achados.append(f"{path.relative_to(base)}:{linha}: {m.group(0)[:60]!r}")
+    return achados
+
+
+class TestComentariosDeTemplate:
+    """`{# #}` multilinha vira texto visível; para várias linhas use `comment`."""
+
+    def test_helper_detecta_comentario_multilinha(self, tmp_path):
+        (tmp_path / "quebrado.html").write_text(
+            "{# linha um\n   linha dois #}\n<p>oi</p>", encoding="utf-8"
+        )
+        assert _templates_com_comentario_multilinha(tmp_path)
+
+    def test_helper_aceita_comentario_de_uma_linha(self, tmp_path):
+        (tmp_path / "ok.html").write_text(
+            "{# tudo numa linha só #}\n<p>oi</p>", encoding="utf-8"
+        )
+        assert _templates_com_comentario_multilinha(tmp_path) == []
+
+    def test_nenhum_template_tem_comentario_de_cerquilha_multilinha(self):
+        achados = _templates_com_comentario_multilinha()
+        assert not achados, (
+            "Comentário `{# ... #}` espalhado por várias linhas: o Django não "
+            "reconhece e o texto aparece renderizado na página. Troque pela "
+            "tag de bloco `comment`:\n" + "\n".join(achados)
+        )
+
+
+@pytest.mark.django_db
+def test_landing_nao_vaza_sintaxe_de_comentario(client):
+    """Guarda de ponta a ponta na página que todo visitante vê primeiro."""
+    corpo = client.get(reverse("core:landing")).content.decode()
+    assert "{#" not in corpo
+    assert "#}" not in corpo
+    # Trecho do comentário que vazou em base.html e apareceu em todas as páginas.
+    assert "Servidos do próprio host" not in corpo

@@ -24,10 +24,16 @@
       }
     };
   </script>
-  {# Servidos do próprio host, não de CDN: sem entregar IP e navegação do aluno
-     a terceiros, sem depender de rede externa e sem tag flutuante (o antigo
-     alpinejs@3.x.x executava qualquer versão futura). Os arquivos vivem em
-     static/vendor/ e já estavam no repositório. #}
+  {% comment %}
+    Servidos do próprio host, não de CDN: sem entregar IP e navegação do aluno
+    a terceiros, sem depender de rede externa e sem tag flutuante (o antigo
+    alpinejs@3.x.x executava qualquer versão futura). Os arquivos vivem em
+    static/vendor/ e já estavam no repositório.
+
+    Comentário em bloco de propósito: a sintaxe de cerquilha do Django cobre
+    uma linha só, e quando espalhada por várias o lexer não a reconhece —
+    o texto vaza renderizado no topo de todas as páginas.
+  {% endcomment %}
   <script src="{% static 'vendor/tailwind/tailwindcdn.js' %}"></script>
   <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
   <script src="{% static 'vendor/alpine/alpine.min.js' %}" defer></script>
