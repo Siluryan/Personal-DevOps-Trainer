@@ -593,235 +593,260 @@ PHASE2 = {
                     "ao S3-leak da semana."
                 ),
                 "body": (
-                    "<h3>1. Identidades: humanas vs máquina</h3>"
-                    "<p>Existem dois grandes grupos:</p>"
-                    "<ul>"
-                    "<li><strong>Humanas</strong>: devs, ops, financeiro, vendas. Acessam "
-                    "console e CLI. Devem ser federadas via SSO (IAM Identity Center, Entra "
-                    "ID, Google Workspace) com MFA forte (idealmente FIDO2/hardware key).</li>"
-                    "<li><strong>De máquina (workload)</strong>: aplicações, pipelines, "
-                    "agentes. Devem usar credenciais <em>temporárias</em>: roles assumidas "
-                    "via STS, IRSA (EKS), Workload Identity (GKE), Managed Identity (Azure), "
-                    "OIDC para CI/CD.</li>"
-                    "</ul>"
-                    "<p>Anti-pattern grave: humano usar credencial de máquina (chave estática "
-                    "de uma role) ou app usar credencial humana (chave do dev rodando em "
-                    "produção). Cada um tem seu fluxo.</p>"
+                """<h3>1. Identidades: humanas vs máquina</h3>
+<p>Duas categorias de identidade exigem tratamento estruturalmente
+diferente. As <strong>humanas</strong> — dev, ops, financeiro, vendas —
+acessam console e CLI, e devem ser federadas via SSO (IAM Identity
+Center, Entra ID, Google Workspace) com MFA forte, idealmente hardware
+key FIDO2, não SMS. As identidades <strong>de máquina</strong> (workload)
+— aplicação, pipeline, agente — devem usar credencial TEMPORÁRIA por
+padrão: role assumida via STS, IRSA no EKS, Workload Identity no GKE,
+Managed Identity no Azure, OIDC no CI/CD. O anti-pattern grave é
+inverter os dois papéis — um humano usando credencial de máquina
+(chave estática de uma role) ou uma aplicação usando credencial humana
+(a chave pessoal de um dev rodando direto em produção) — cada
+identidade precisa do fluxo desenhado para o seu próprio tipo.</p>
 
-                    "<h3>2. Estrutura de uma policy IAM (AWS)</h3>"
-                    "<p>Policy é um documento JSON. Anatomia:</p>"
-                    "<pre><code>{\n"
-                    "  \"Version\": \"2012-10-17\",\n"
-                    "  \"Statement\": [\n"
-                    "    {\n"
-                    "      \"Sid\": \"ReadReports\",\n"
-                    "      \"Effect\": \"Allow\",\n"
-                    "      \"Action\": [\n"
-                    "        \"s3:GetObject\",\n"
-                    "        \"s3:ListBucket\"\n"
-                    "      ],\n"
-                    "      \"Resource\": [\n"
-                    "        \"arn:aws:s3:::reports-prod\",\n"
-                    "        \"arn:aws:s3:::reports-prod/*\"\n"
-                    "      ],\n"
-                    "      \"Condition\": {\n"
-                    "        \"StringEquals\": {\n"
-                    "          \"aws:SourceVpc\": \"vpc-0abc123\"\n"
-                    "        },\n"
-                    "        \"Bool\": {\n"
-                    "          \"aws:MultiFactorAuthPresent\": \"true\"\n"
-                    "        },\n"
-                    "        \"DateGreaterThan\": {\n"
-                    "          \"aws:CurrentTime\": \"2026-01-01T00:00:00Z\"\n"
-                    "        }\n"
-                    "      }\n"
-                    "    }\n"
-                    "  ]\n"
-                    "}</code></pre>"
-                    "<p>Cada Statement tem:</p>"
-                    "<ul>"
-                    "<li><code>Effect</code>: Allow ou Deny.</li>"
-                    "<li><code>Action</code>: lista de operações (<code>s3:GetObject</code>, "
-                    "<code>ec2:RunInstances</code>...). Use wildcards com cuidado.</li>"
-                    "<li><code>Resource</code>: ARNs específicos.</li>"
-                    "<li><code>Condition</code>: contexto opcional.</li>"
-                    "</ul>"
+<h3>2. Estrutura de uma policy IAM (AWS)</h3>
+<p>Uma policy é um documento JSON declarativo:</p>
+<pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadReports",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::reports-prod",
+        "arn:aws:s3:::reports-prod/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceVpc": "vpc-0abc123"
+        },
+        "Bool": {
+          "aws:MultiFactorAuthPresent": "true"
+        },
+        "DateGreaterThan": {
+          "aws:CurrentTime": "2026-01-01T00:00:00Z"
+        }
+      }
+    }
+  ]
+}</code></pre>
+<p>Cada Statement combina quatro peças: <code>Effect</code> declara
+Allow ou Deny; <code>Action</code> lista as operações específicas
+permitidas ou negadas (<code>s3:GetObject</code>,
+<code>ec2:RunInstances</code>), onde wildcard exige cuidado redobrado
+por abrir mais do que normalmente se pretende; <code>Resource</code>
+especifica exatamente quais ARNs a regra afeta; e <code>Condition</code>
+adiciona contexto opcional que restringe quando a regra se aplica de
+fato.</p>
 
-                    "<h3>3. Avaliação: como o IAM decide</h3>"
-                    "<p>Algoritmo de avaliação (simplificado):</p>"
-                    "<ol>"
-                    "<li>Por padrão, tudo é negado.</li>"
-                    "<li>SCPs (Organizations) restringem o universo do possível. Se SCP "
-                    "negar, acabou, nem o admin da conta pode.</li>"
-                    "<li>Resource policy (ex.: bucket policy) ou identity policy explícita "
-                    "como <em>Allow</em> permite.</li>"
-                    "<li><strong>Qualquer Deny explícito</strong> sobrescreve qualquer Allow.</li>"
-                    "<li>Permission boundaries (em IAM users/roles) são teto adicional.</li>"
-                    "</ol>"
-                    "<p>Resumido: <code>SCP ∩ (Policy ∪ ResourcePolicy) ∩ Boundary − Deny</code>.</p>"
+<h3>3. Avaliação: como o IAM decide</h3>
+<p>O algoritmo de avaliação segue uma ordem específica que muda
+completamente o resultado se mal entendida. Por padrão, TUDO é negado —
+o modelo é opt-in, não opt-out. Uma SCP (a nível de Organizations)
+restringe o universo do possível antes de qualquer outra coisa ser
+avaliada: se a SCP nega, acabou ali mesmo, nem o administrador da conta
+individual consegue contornar. Dentro do que a SCP permite, uma
+resource policy (como bucket policy) ou uma identity policy explícita
+com Allow concede o acesso. Mas QUALQUER Deny explícito, em qualquer
+camada, sobrescreve qualquer Allow — não importa quantas policies
+concedam acesso, um Deny explícito sempre vence. E permission boundaries
+(aplicadas a usuário ou role) funcionam como um teto adicional por cima
+de tudo isso. Resumindo em uma expressão: <code>SCP ∩ (Policy ∪
+ResourcePolicy) ∩ Boundary − Deny</code>.</p>
 
-                    "<h3>4. Roles &gt; usuários, sempre</h3>"
-                    "<p>Diferenças críticas:</p>"
-                    "<table>"
-                    "<tr><th></th><th>User</th><th>Role</th></tr>"
-                    "<tr><td>Credencial</td><td>permanente (chave/senha)</td>"
-                    "<td>temporária (~15min-12h via STS)</td></tr>"
-                    "<tr><td>Quem usa</td><td>geralmente humano</td><td>qualquer principal "
-                    "que assuma (humano, app, outra conta, OIDC)</td></tr>"
-                    "<tr><td>Vazamento</td><td>vale para sempre até rotacionar</td>"
-                    "<td>expira sozinha</td></tr>"
-                    "<tr><td>Auditoria</td><td>'user X fez Y'</td>"
-                    "<td>'user X assumiu role R e fez Y'</td></tr>"
-                    "</table>"
-                    "<p>Recomendação moderna: <strong>zero usuários IAM</strong> em produção. "
-                    "Tudo via federação SSO (humanos) e roles assumidas (apps).</p>"
+<h3>4. Roles &gt; usuários, sempre</h3>
+<table>
+<tr><th></th><th>User</th><th>Role</th></tr>
+<tr><td>Credencial</td><td>permanente (chave/senha)</td>
+<td>temporária (~15min-12h via STS)</td></tr>
+<tr><td>Quem usa</td><td>geralmente humano</td><td>qualquer principal
+que assuma (humano, app, outra conta, OIDC)</td></tr>
+<tr><td>Vazamento</td><td>vale para sempre até rotacionar</td>
+<td>expira sozinha</td></tr>
+<tr><td>Auditoria</td><td>'user X fez Y'</td>
+<td>'user X assumiu role R e fez Y'</td></tr>
+</table>
+<p>A diferença mais crítica dessa tabela é a linha de vazamento: uma
+chave de usuário roubada continua válida indefinidamente até alguém
+perceber e rotacionar manualmente, enquanto uma credencial de role
+expira sozinha em minutos ou horas — mesmo se roubada, o dano tem prazo
+de validade embutido. Isso justifica a recomendação moderna de
+<strong>zero usuários IAM</strong> em produção: tudo passa por
+federação SSO para humano e role assumida para aplicação.</p>
 
-                    "<h3>5. CI/CD com OIDC, fim das chaves estáticas</h3>"
-                    "<p>Anti-pattern clássico: armazenar AWS access key como secret no GitHub "
-                    "Actions / GitLab CI. Vaza, vira RCE permanente em produção.</p>"
-                    "<p>Padrão moderno: <strong>OIDC federation</strong>. O CI provider "
-                    "emite um JWT com claims (repo, branch, workflow); AWS verifica e troca "
-                    "por credenciais temporárias.</p>"
-                    "<pre><code># Trust policy da role (quem pode assumir)\n"
-                    "{\n"
-                    "  \"Version\": \"2012-10-17\",\n"
-                    "  \"Statement\": [{\n"
-                    "    \"Effect\": \"Allow\",\n"
-                    "    \"Principal\": {\n"
-                    "      \"Federated\": \"arn:aws:iam::123:oidc-provider/token.actions.githubusercontent.com\"\n"
-                    "    },\n"
-                    "    \"Action\": \"sts:AssumeRoleWithWebIdentity\",\n"
-                    "    \"Condition\": {\n"
-                    "      \"StringEquals\": {\n"
-                    "        \"token.actions.githubusercontent.com:aud\": \"sts.amazonaws.com\"\n"
-                    "      },\n"
-                    "      \"StringLike\": {\n"
-                    "        \"token.actions.githubusercontent.com:sub\": \"repo:myorg/myrepo:ref:refs/heads/main\"\n"
-                    "      }\n"
-                    "    }\n"
-                    "  }]\n"
-                    "}</code></pre>"
-                    "<pre><code># GitHub Actions workflow\n"
-                    "permissions:\n"
-                    "  id-token: write\n"
-                    "  contents: read\n"
-                    "\n"
-                    "jobs:\n"
-                    "  deploy:\n"
-                    "    runs-on: ubuntu-latest\n"
-                    "    steps:\n"
-                    "      - uses: aws-actions/configure-aws-credentials@v4\n"
-                    "        with:\n"
-                    "          role-to-assume: arn:aws:iam::123:role/github-deploy\n"
-                    "          aws-region: us-east-1\n"
-                    "      - run: aws s3 sync ./dist s3://bucket/</code></pre>"
-                    "<p>Sem chave estática, sem rotação, sem vazamento crítico. O JWT vive "
-                    "minutos.</p>"
+<h3>5. CI/CD com OIDC, fim das chaves estáticas</h3>
+<p>O anti-pattern clássico é armazenar uma access key da AWS como
+secret no GitHub Actions ou GitLab CI — se vazar, vira uma porta de
+entrada permanente em produção, sem data de expiração. O padrão
+moderno, OIDC federation, resolve isso na raiz: o próprio provedor de
+CI emite um JWT contendo claims verificáveis (repositório, branch,
+workflow), e a AWS valida esse token e troca por credencial STS
+temporária — nenhuma chave de longa duração jamais precisa existir:</p>
+<pre><code># Trust policy da role (quem pode assumir)
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Federated": "arn:aws:iam::123:oidc-provider/token.actions.githubusercontent.com"
+    },
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+      },
+      "StringLike": {
+        "token.actions.githubusercontent.com:sub": "repo:myorg/myrepo:ref:refs/heads/main"
+      }
+    }
+  }]
+}</code></pre>
+<pre><code># GitHub Actions workflow
+permissions:
+  id-token: write
+  contents: read
 
-                    "<h3>6. Hierarquia organizacional, guard-rails</h3>"
-                    "<p>Em organizações sérias, contas (AWS) ou subscriptions (Azure) ou "
-                    "projects (GCP) são organizadas em árvore:</p>"
-                    "<pre><code>Root\n"
-                    "├── OU Production\n"
-                    "│   ├── account: prod-app-frontend\n"
-                    "│   └── account: prod-app-backend\n"
-                    "├── OU NonProd\n"
-                    "│   ├── account: staging\n"
-                    "│   └── account: dev\n"
-                    "├── OU Sandbox\n"
-                    "│   └── account: dev-experiments  (alta liberdade, isolada)\n"
-                    "└── OU Security\n"
-                    "    ├── account: log-archive  (CloudTrail centralizado)\n"
-                    "    └── account: audit         (read-only para compliance)</code></pre>"
-                    "<p>SCPs aplicadas em OU descem para todas as contas filhas. Exemplos "
-                    "úteis:</p>"
-                    "<ul>"
-                    "<li>'Negue todas as ações fora das regiões aprovadas.'</li>"
-                    "<li>'Negue criação de IAM user em conta de produção.'</li>"
-                    "<li>'Negue desligar CloudTrail.'</li>"
-                    "<li>'Negue criação de bucket sem encryption.'</li>"
-                    "</ul>"
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123:role/github-deploy
+          aws-region: us-east-1
+      - run: aws s3 sync ./dist s3://bucket/</code></pre>
+<p>O <code>StringLike</code> restringindo o <code>sub</code> ao branch
+<code>main</code> é o que impede qualquer outro branch ou fork de
+assumir essa mesma role — sem essa condição, qualquer PR de qualquer
+pessoa com acesso ao repositório poderia obter a mesma credencial.
+Sem chave estática, não há rotação para esquecer e não há vazamento
+crítico possível — o JWT em si vive apenas minutos.</p>
 
-                    "<h3>7. Conditions: o segredo das policies poderosas</h3>"
-                    "<p>Condition keys mais úteis (AWS):</p>"
-                    "<ul>"
-                    "<li><code>aws:MultiFactorAuthPresent</code> / <code>aws:MultiFactorAuthAge</code></li>"
-                    "<li><code>aws:SourceIp</code> / <code>aws:VpcSourceIp</code></li>"
-                    "<li><code>aws:SourceVpc</code> / <code>aws:SourceVpce</code></li>"
-                    "<li><code>aws:RequestedRegion</code></li>"
-                    "<li><code>aws:CurrentTime</code> (limitar horário)</li>"
-                    "<li><code>aws:ResourceTag/&lt;tag&gt;</code> (ABAC)</li>"
-                    "<li><code>aws:PrincipalTag/&lt;tag&gt;</code></li>"
-                    "<li><code>aws:SecureTransport</code> (forçar HTTPS)</li>"
-                    "</ul>"
-                    "<p>ABAC (Attribute-Based Access Control): em vez de role por equipe, "
-                    "use tags em recursos e principais. Policy: 'usuário com "
-                    "<code>team=alpha</code> pode acessar recurso com "
-                    "<code>team=alpha</code>'. Escala muito melhor.</p>"
+<h3>6. Hierarquia organizacional, guard-rails</h3>
+<p>Em organização séria, conta AWS (ou subscription Azure, ou project
+GCP) se organiza em árvore, não como uma lista plana:</p>
+<pre><code>Root
+├── OU Production
+│   ├── account: prod-app-frontend
+│   └── account: prod-app-backend
+├── OU NonProd
+│   ├── account: staging
+│   └── account: dev
+├── OU Sandbox
+│   └── account: dev-experiments  (alta liberdade, isolada)
+└── OU Security
+    ├── account: log-archive  (CloudTrail centralizado)
+    └── account: audit         (read-only para compliance)</code></pre>
+<p>Uma SCP aplicada numa OU desce automaticamente para todas as contas
+filhas, sem precisar repetir a regra em cada uma — algumas SCPs comuns
+negam qualquer ação fora das regiões aprovadas, negam criação de IAM
+user em conta de produção (forçando o modelo zero-usuário da seção 4),
+negam desligar o CloudTrail (protegendo a própria auditoria de ser
+apagada por um atacante) e negam criação de bucket sem encryption.</p>
 
-                    "<h3>8. Auditoria: CloudTrail, GuardDuty, Access Analyzer</h3>"
-                    "<ul>"
-                    "<li><strong>CloudTrail</strong>: registra cada chamada de API. Habilite "
-                    "trail org-wide encaminhando para bucket em conta separada (log-archive) "
-                    "com object-lock. Sem isso, atacante apaga logs.</li>"
-                    "<li><strong>GuardDuty</strong>: detecção comportamental "
-                    "(API anômala, mineração de crypto, exfiltração).</li>"
-                    "<li><strong>IAM Access Analyzer</strong>: gera relatório do que cada "
-                    "principal <em>realmente usou</em> nos últimos 90 dias. Use para "
-                    "podar permissões não usadas.</li>"
-                    "<li><strong>Access Advisor</strong>: 'serviço Y nunca foi acessado por "
-                    "esta role'. Remova.</li>"
-                    "</ul>"
+<h3>7. Conditions: o segredo das policies poderosas</h3>
+<p>Um conjunto de condition keys da AWS abre controle bem mais fino do
+que Allow/Deny simples: <code>aws:MultiFactorAuthPresent</code> e
+<code>aws:MultiFactorAuthAge</code> exigem MFA recente; <code>aws:SourceIp</code>
+e <code>aws:VpcSourceIp</code> restringem por origem de rede;
+<code>aws:SourceVpc</code> e <code>aws:SourceVpce</code> restringem por
+VPC específica; <code>aws:RequestedRegion</code> restringe região;
+<code>aws:CurrentTime</code> restringe janela de horário;
+<code>aws:ResourceTag/&lt;tag&gt;</code> e
+<code>aws:PrincipalTag/&lt;tag&gt;</code> habilitam ABAC; e
+<code>aws:SecureTransport</code> força HTTPS. O ABAC
+(Attribute-Based Access Control) muda o modelo mental de "uma role por
+equipe" para tag em recurso e em principal: a policy passa a dizer
+"usuário com <code>team=alpha</code> pode acessar recurso com
+<code>team=alpha</code>" — uma única regra que escala automaticamente
+conforme times e recursos novos surgem, sem precisar criar role nova
+para cada combinação.</p>
 
-                    "<h3>9. Azure Entra ID e GCP IAM, equivalentes</h3>"
-                    "<p>Em Azure:</p>"
-                    "<ul>"
-                    "<li><strong>Entra ID</strong> (antigo Azure AD): identidade.</li>"
-                    "<li><strong>RBAC</strong>: built-in roles (Reader, Contributor, Owner) "
-                    "ou custom. Aplica em scope (subscription/resource group/resource).</li>"
-                    "<li><strong>Conditional Access</strong>: 'só permite login se MFA + "
-                    "device compliant + IP corporativo'. Granular e poderoso.</li>"
-                    "<li><strong>PIM</strong> (Privileged Identity Management): just-in-time "
-                    "access, você 'eleva' temporariamente para Owner com aprovação.</li>"
-                    "</ul>"
-                    "<p>Em GCP:</p>"
-                    "<ul>"
-                    "<li>IAM com bindings (member → role → resource). Predefined roles + "
-                    "custom roles.</li>"
-                    "<li>Resource Hierarchy: Organization → Folders → Projects → "
-                    "Resources.</li>"
-                    "<li>Workload Identity: substitui chave de service account.</li>"
-                    "<li>Org Policies: guard-rails.</li>"
-                    "</ul>"
+<h3>8. Auditoria: CloudTrail, GuardDuty, Access Analyzer</h3>
+<p>Quatro ferramentas cobrem auditoria em camadas complementares. O
+<strong>CloudTrail</strong> registra toda chamada de API feita na
+conta — o ideal é um trail org-wide encaminhando para um bucket numa
+conta SEPARADA (log-archive) com object-lock ativado, porque sem esse
+isolamento um atacante que comprometa a conta principal também apaga os
+próprios logs que o denunciariam. O <strong>GuardDuty</strong> faz
+detecção comportamental — API anômala, mineração de criptomoeda,
+padrão de exfiltração — sinalizando o que foge do comportamento normal
+esperado. O <strong>IAM Access Analyzer</strong> gera relatório do que
+cada principal REALMENTE usou nos últimos 90 dias, permitindo podar
+permissão concedida mas nunca exercida. E o <strong>Access
+Advisor</strong> aponta diretamente "o serviço Y nunca foi acessado por
+esta role" — um sinal direto do que remover sem risco.</p>
 
-                    "<h3>10. Anti-patterns clássicos</h3>"
-                    "<ul>"
-                    "<li>Conta root com chaves estáticas em uso diário. <strong>NUNCA.</strong></li>"
-                    "<li>Access key em <code>git push</code> público, vaza em &lt;1h "
-                    "(scanners de bots).</li>"
-                    "<li>Role <code>AdministratorAccess</code> em app de produção 'porque "
-                    "estava dando erro'.</li>"
-                    "<li>Sem MFA em ninguém ou MFA SMS (vulnerável a SIM swap).</li>"
-                    "<li>Permission creep, todo mundo só adiciona, ninguém remove.</li>"
-                    "<li>Sem CloudTrail ou CloudTrail em região única.</li>"
-                    "<li>Mesma role usada por 50 apps diferentes (porque 'é mais simples').</li>"
-                    "<li>Sem rotação de access keys.</li>"
-                    "<li>Senha sem complexidade ou sem rotação periódica.</li>"
-                    "<li>Compartilhamento de credenciais entre humanos ('login do time').</li>"
-                    "</ul>"
+<h3>9. Azure Entra ID e GCP IAM, equivalentes</h3>
+<p>No Azure, o <strong>Entra ID</strong> (antigo Azure AD) cuida da
+identidade em si; o <strong>RBAC</strong> aplica roles built-in
+(Reader, Contributor, Owner) ou custom, sempre em um escopo específico
+(subscription, resource group ou resource individual); o
+<strong>Conditional Access</strong> combina múltiplos fatores numa só
+regra — "só permite login se MFA E device compliant E IP corporativo" —
+granular o bastante para cobrir cenário real de política corporativa; e
+o <strong>PIM</strong> (Privileged Identity Management) implementa
+acesso just-in-time, onde o usuário "eleva" temporariamente para Owner
+mediante aprovação explícita, em vez de manter privilégio elevado
+permanentemente ativo. No GCP, o IAM usa bindings — membro, role e
+recurso combinados — com roles predefinidas ou custom; a Resource
+Hierarchy organiza Organization, Folders, Projects e Resources numa
+árvore equivalente à das OUs da AWS; o Workload Identity substitui a
+chave de service account pelo mesmo princípio de credencial temporária
+da seção 1; e as Org Policies cumprem o papel de guard-rail
+equivalente à SCP.</p>
 
-                    "<h3>11. Caso real: Uber 2022</h3>"
-                    "<p>Atacante comprou credenciais de funcionário Uber na dark web. "
-                    "Bombardeou push notifications de MFA até o funcionário aprovar 'só para "
-                    "parar' (MFA fatigue). Dentro da rede, encontrou um script PowerShell em "
-                    "share interno com credenciais hard-coded de uma conta Privileged Access "
-                    "Management. Com isso, escalou para Vault, AWS, GCP, GSuite. Lições:</p>"
-                    "<ul>"
-                    "<li>MFA SMS / push é vulnerável a fadiga. Use FIDO2/hardware token.</li>"
-                    "<li>Number matching (Microsoft) ou hardware key resolveriam.</li>"
-                    "<li>Credenciais hard-coded em scripts internos = bomba relógio.</li>"
-                    "<li>PAM precisa estar separado, com MFA reforçado.</li>"
-                    "</ul>"
+<h3>10. Anti-patterns clássicos</h3>
+<ul>
+<li><strong>Conta root com chave estática em uso diário</strong>:
+NUNCA — root deveria ficar trancado, usado só em emergência
+extrema.</li>
+<li><strong>Access key em <code>git push</code> público</strong>: vaza
+em menos de uma hora, capturada por bot scanner automatizado.</li>
+<li><strong>Role <code>AdministratorAccess</code> em app de
+produção "porque estava dando erro"</strong>: resolve o sintoma
+imediato e cria um risco permanente muito maior.</li>
+<li><strong>Ninguém com MFA, ou MFA via SMS</strong>: vulnerável a SIM
+swap — prefira FIDO2/hardware key (seção 1).</li>
+<li><strong>Permission creep</strong>: todo mundo só adiciona
+permissão, ninguém remove — o Access Analyzer (seção 8) existe
+justamente para reverter essa tendência.</li>
+<li><strong>Sem CloudTrail, ou CloudTrail numa única região</strong>:
+deixa boa parte da atividade real sem registro nenhum.</li>
+<li><strong>Mesma role usada por 50 aplicações diferentes</strong>
+"porque é mais simples": qualquer uma comprometida herda o acesso de
+todas as outras.</li>
+<li><strong>Sem rotação de access key</strong>: uma chave estática
+esquecida há anos é exatamente o tipo de coisa que ninguém lembra de
+revogar.</li>
+<li><strong>Senha sem complexidade ou sem rotação periódica</strong>:
+abre a porta mais óbvia de força bruta.</li>
+<li><strong>Compartilhamento de credencial entre humanos</strong> ("o
+login do time"): elimina toda rastreabilidade de quem fez o quê.</li>
+</ul>
+
+<h3>11. Caso real: Uber 2022</h3>
+<p>Um atacante comprou credencial de funcionário da Uber vazada na
+dark web, e bombardeou notificação push de MFA repetidamente até o
+funcionário aprovar só para fazer o alarme parar — um ataque conhecido
+como MFA fatigue. Uma vez dentro da rede, o atacante encontrou um
+script PowerShell num compartilhamento interno com credencial
+HARD-CODED de uma conta de Privileged Access Management, e usou isso
+para escalar até Vault, AWS, GCP e GSuite — um único script esquecido
+destrancou praticamente tudo. As lições ficam claras à luz das seções
+anteriores: MFA via SMS ou push simples é vulnerável exatamente a esse
+tipo de fadiga (seção 1), e number matching ou hardware key teriam
+quebrado esse ataque específico; credencial hard-coded em script
+interno é uma bomba-relógio esperando ser encontrada; e uma conta de
+PAM precisa estar isolada com MFA reforçado próprio, não tratada como
+mais uma credencial comum na rede interna.</p>"""
                 ),
                 "practical": (
                     "(1) Crie uma role IAM <code>read-reports</code> que pode apenas "
@@ -941,187 +966,189 @@ PHASE2 = {
                     "caros que pegam quem confia no default."
                 ),
                 "body": (
-                    "<h3>1. Anatomia de uma VPC</h3>"
-                    "<p>Uma VPC é uma rede privada virtual:</p>"
-                    "<ul>"
-                    "<li>CIDR principal (ex.: <code>10.0.0.0/16</code> = 65k IPs).</li>"
-                    "<li>Pode ter CIDRs secundários (até 5).</li>"
-                    "<li>Existe em uma região (cobre todas as AZs dessa região).</li>"
-                    "<li>É isolada por padrão, sem internet, sem outras VPCs.</li>"
-                    "</ul>"
-                    "<p>Dentro da VPC:</p>"
-                    "<ul>"
-                    "<li><strong>Subnets</strong>: blocos CIDR menores, cada um em uma AZ.</li>"
-                    "<li><strong>Route Tables</strong>: para onde vai cada pacote.</li>"
-                    "<li><strong>Internet Gateway (IGW)</strong>: dá conectividade pública.</li>"
-                    "<li><strong>NAT Gateway</strong>: saída privada para internet.</li>"
-                    "<li><strong>Security Groups, NACLs</strong>: filtros (próxima aula).</li>"
-                    "<li><strong>VPC Endpoints</strong>: acesso privado a serviços do "
-                    "provedor.</li>"
-                    "</ul>"
+                """<h3>1. Anatomia de uma VPC</h3>
+<p>Uma VPC é uma rede privada virtual com um CIDR principal (por
+exemplo <code>10.0.0.0/16</code>, oferecendo 65 mil IPs), podendo
+receber até cinco CIDRs secundários adicionais quando o principal fica
+pequeno demais. Ela existe dentro de uma única região, mas cobre todas
+as zonas de disponibilidade (AZs) dessa região, e vem isolada por
+padrão — sem rota para internet, sem rota para outra VPC, até que
+alguém configure explicitamente. Dentro dela, seis peças compõem a
+rede: <strong>subnets</strong> (blocos CIDR menores, cada um confinado
+a uma única AZ), <strong>route tables</strong> (decidem para onde cada
+pacote vai), o <strong>Internet Gateway</strong> (dá conectividade
+pública), o <strong>NAT Gateway</strong> (dá saída privada para
+internet sem expor entrada), <strong>Security Groups e NACLs</strong>
+(filtros de tráfego, detalhados na próxima aula), e os
+<strong>VPC Endpoints</strong> (acesso privado a serviço do próprio
+provedor de nuvem, sem passar pela internet pública).</p>
 
-                    "<h3>2. Planejamento de IP, pense agora, sofra menos depois</h3>"
-                    "<p>Mudar CIDR de VPC ativa é difícil. Planeje com folga:</p>"
-                    "<ul>"
-                    "<li><strong>VPC inteira</strong>: <code>/16</code> (65k IPs) é o "
-                    "padrão razoável.</li>"
-                    "<li><strong>Subnets</strong>: <code>/24</code> (256 IPs) para apps "
-                    "pequenas, <code>/22</code> (1024 IPs) para apps grandes (K8s precisa de "
-                    "muito IP).</li>"
-                    "<li><strong>Reserve faixas</strong>: ambiente prod, staging, dev em "
-                    "ranges diferentes; permite peering futuro sem conflito.</li>"
-                    "<li><strong>Não use ranges populares</strong>: "
-                    "<code>10.0.0.0/16</code>, <code>172.31.0.0/16</code> (default AWS), "
-                    "<code>192.168.1.0/24</code> são candidatos óbvios para conflito com "
-                    "VPN, on-prem ou outras VPCs.</li>"
-                    "</ul>"
-                    "<p>Plano típico para uma org média:</p>"
-                    "<pre><code>10.0.0.0/8       - todo o universo corporativo\n"
-                    "  10.0.0.0/12  - prod   (10.0.0.0  - 10.15.255.255)\n"
-                    "  10.16.0.0/12 - staging\n"
-                    "  10.32.0.0/12 - dev\n"
-                    "  10.48.0.0/12 - sandbox\n"
-                    "Cada VPC: /16 dentro do bloco apropriado\n"
-                    "Cada subnet: /22 ou /24 dentro da VPC</code></pre>"
+<h3>2. Planejamento de IP, pense agora, sofra menos depois</h3>
+<p>Mudar o CIDR de uma VPC já em produção é doloroso o bastante para
+justificar planejar com folga desde o início. Uma VPC inteira em
+<code>/16</code> (65 mil IPs) é o padrão razoável para a maioria dos
+casos; uma subnet em <code>/24</code> (256 IPs) atende aplicação
+pequena, enquanto <code>/22</code> (1024 IPs) atende aplicação grande —
+um cluster Kubernetes, por exemplo, consome IP muito mais rápido do que
+parece à primeira vista. Reservar faixas separadas para produção,
+staging e dev evita conflito quando um peering entre elas se tornar
+necessário no futuro. E vale evitar especificamente os ranges mais
+populares — <code>10.0.0.0/16</code>, <code>172.31.0.0/16</code>
+(default da AWS), <code>192.168.1.0/24</code> — porque são exatamente
+os candidatos mais prováveis a colidir com uma VPN, um ambiente
+on-premise ou outra VPC que alguém vá querer conectar depois:</p>
+<pre><code>10.0.0.0/8       - todo o universo corporativo
+  10.0.0.0/12  - prod   (10.0.0.0  - 10.15.255.255)
+  10.16.0.0/12 - staging
+  10.32.0.0/12 - dev
+  10.48.0.0/12 - sandbox
+Cada VPC: /16 dentro do bloco apropriado
+Cada subnet: /22 ou /24 dentro da VPC</code></pre>
 
-                    "<h3>3. Subnets pública e privada</h3>"
-                    "<p>A diferença é apenas <em>roteamento</em>:</p>"
-                    "<ul>"
-                    "<li><strong>Pública</strong>: route table tem rota "
-                    "<code>0.0.0.0/0 → IGW</code>. Recursos com IP público recebem "
-                    "internet.</li>"
-                    "<li><strong>Privada</strong>: route table tem rota "
-                    "<code>0.0.0.0/0 → NAT Gateway</code>. Saída para internet, sem "
-                    "entrada direta.</li>"
-                    "<li><strong>Isolada</strong>: sem rota para internet. Saída só via "
-                    "VPC Endpoints (S3, DynamoDB, etc.).</li>"
-                    "</ul>"
-                    "<p>Padrão tradicional 'three-tier':</p>"
-                    "<pre><code>VPC 10.0.0.0/16\n"
-                    "├── Public  10.0.1.0/24  (AZ a)  - ALB\n"
-                    "├── Public  10.0.2.0/24  (AZ b)  - ALB\n"
-                    "├── Private 10.0.10.0/24 (AZ a)  - app servers\n"
-                    "├── Private 10.0.11.0/24 (AZ b)  - app servers\n"
-                    "├── Isolated 10.0.20.0/24 (AZ a) - RDS\n"
-                    "└── Isolated 10.0.21.0/24 (AZ b) - RDS</code></pre>"
-                    "<p>ALB recebe internet, fala com app em privada, app fala com banco em "
-                    "isolada. Banco nunca toca internet.</p>"
+<h3>3. Subnets pública e privada</h3>
+<p>A diferença entre os três tipos de subnet é PURAMENTE de
+roteamento, não de configuração especial na própria subnet. Uma subnet
+<strong>pública</strong> tem rota <code>0.0.0.0/0 → IGW</code> na sua
+route table — qualquer recurso com IP público ali recebe internet
+direta. Uma <strong>privada</strong> tem rota <code>0.0.0.0/0 → NAT
+Gateway</code> — consegue SAIR para internet, mas ninguém de fora
+consegue iniciar conexão de entrada. E uma <strong>isolada</strong>
+não tem rota alguma para internet — a única saída possível é via VPC
+Endpoint, para serviços como S3 ou DynamoDB. O padrão "three-tier"
+clássico combina os três:</p>
+<pre><code>VPC 10.0.0.0/16
+├── Public  10.0.1.0/24  (AZ a)  - ALB
+├── Public  10.0.2.0/24  (AZ b)  - ALB
+├── Private 10.0.10.0/24 (AZ a)  - app servers
+├── Private 10.0.11.0/24 (AZ b)  - app servers
+├── Isolated 10.0.20.0/24 (AZ a) - RDS
+└── Isolated 10.0.21.0/24 (AZ b) - RDS</code></pre>
+<p>O load balancer recebe tráfego da internet, fala com a aplicação na
+subnet privada, e a aplicação fala com o banco na subnet isolada — o
+banco nunca toca a internet em nenhum ponto desse caminho.</p>
 
-                    "<h3>4. NAT Gateway, útil mas caro</h3>"
-                    "<p>Permite saída de subnets privadas. Custo na AWS:</p>"
-                    "<ul>"
-                    "<li>~US$ 32/mês por NAT Gateway (apenas existir).</li>"
-                    "<li>+US$ 0.045/GB processado.</li>"
-                    "<li>Multiplique por AZ (HA exige um por AZ).</li>"
-                    "</ul>"
-                    "<p>Em apps que baixam muitos GB de pacotes, isso domina a fatura. "
-                    "Mitigações:</p>"
-                    "<ul>"
-                    "<li><strong>VPC Endpoints (S3, DynamoDB)</strong>: tráfego para esses "
-                    "serviços nem chega no NAT.</li>"
-                    "<li><strong>Mirror interno</strong> de pacotes (Artifactory, ECR).</li>"
-                    "<li><strong>NAT instances customizadas</strong> para volumes grandes "
-                    "(mais barato em alguns casos).</li>"
-                    "<li><strong>Single NAT Gateway</strong> em ambientes não-prod (perde "
-                    "HA mas economiza).</li>"
-                    "</ul>"
+<h3>4. NAT Gateway, útil mas caro</h3>
+<p>O NAT Gateway permite que subnet privada tenha saída para internet,
+mas o custo na AWS soma duas parcelas: cerca de US$ 32 por mês só de
+existir, mais US$ 0,045 por GB processado — e como alta disponibilidade
+exige um NAT Gateway por AZ, esse custo se multiplica pelo número de
+zonas usadas. Em aplicação que baixa muitos gigabytes de pacote, essa
+conta domina a fatura de rede inteira. Quatro mitigações reduzem esse
+custo: VPC Endpoints para S3 e DynamoDB tiram esse tráfego específico
+do caminho do NAT completamente (seção 6); um mirror interno de
+pacote (Artifactory, ECR) evita baixar o mesmo artefato repetidamente
+de fora; NAT instances customizadas podem sair mais baratas em volume
+muito alto; e um único NAT Gateway compartilhado em ambiente não-prod
+troca alta disponibilidade por economia, aceitável fora de
+produção.</p>
 
-                    "<h3>5. Conectividade VPC ↔ VPC ↔ on-prem</h3>"
-                    "<table>"
-                    "<tr><th>Opção</th><th>Caso de uso</th><th>Limite</th></tr>"
-                    "<tr><td>VPC Peering</td><td>Conectar 2 VPCs com IPs distintos</td>"
-                    "<td>1:1, sem trânsito (não 'roteia' entre peerings)</td></tr>"
-                    "<tr><td>Transit Gateway</td><td>Hub-and-spoke para muitas VPCs e "
-                    "on-prem</td><td>Custo por hora + por GB</td></tr>"
-                    "<tr><td>VPN Site-to-Site</td><td>Conectar on-prem via internet "
-                    "(IPsec)</td><td>Latência variável, ~1 Gbps</td></tr>"
-                    "<tr><td>Direct Connect</td><td>Linha dedicada para on-prem</td>"
-                    "<td>Caro, latência baixa, alta banda (até 100 Gbps)</td></tr>"
-                    "<tr><td>VPC Endpoint (Gateway)</td><td>Acesso privado a S3/DynamoDB</td>"
-                    "<td>Só esses dois serviços; gratuito</td></tr>"
-                    "<tr><td>VPC Endpoint (Interface)</td>"
-                    "<td>Acesso privado a outros serviços via PrivateLink</td>"
-                    "<td>~US$ 7/mês por endpoint por AZ</td></tr>"
-                    "<tr><td>PrivateLink</td><td>Expor seu serviço para outras contas "
-                    "privadamente</td><td>Sem trânsito; 1:1</td></tr>"
-                    "</table>"
+<h3>5. Conectividade VPC ↔ VPC ↔ on-prem</h3>
+<table>
+<tr><th>Opção</th><th>Caso de uso</th><th>Limite</th></tr>
+<tr><td>VPC Peering</td><td>Conectar 2 VPCs com IPs distintos</td>
+<td>1:1, sem trânsito (não 'roteia' entre peerings)</td></tr>
+<tr><td>Transit Gateway</td><td>Hub-and-spoke para muitas VPCs e
+on-prem</td><td>Custo por hora + por GB</td></tr>
+<tr><td>VPN Site-to-Site</td><td>Conectar on-prem via internet
+(IPsec)</td><td>Latência variável, ~1 Gbps</td></tr>
+<tr><td>Direct Connect</td><td>Linha dedicada para on-prem</td>
+<td>Caro, latência baixa, alta banda (até 100 Gbps)</td></tr>
+<tr><td>VPC Endpoint (Gateway)</td><td>Acesso privado a S3/DynamoDB</td>
+<td>Só esses dois serviços; gratuito</td></tr>
+<tr><td>VPC Endpoint (Interface)</td>
+<td>Acesso privado a outros serviços via PrivateLink</td>
+<td>~US$ 7/mês por endpoint por AZ</td></tr>
+<tr><td>PrivateLink</td><td>Expor seu serviço para outras contas
+privadamente</td><td>Sem trânsito; 1:1</td></tr>
+</table>
+<p>A linha mais fácil de esquecer nessa tabela é a limitação de
+trânsito do VPC Peering: A conectado a B, e B conectado a C, NÃO
+significa que A alcança C automaticamente — cada peering é estritamente
+ponto a ponto. Quando a topologia cresce além de algumas VPCs, o
+Transit Gateway resolve isso como hub central.</p>
 
-                    "<h3>6. VPC Endpoints, economia e segurança</h3>"
-                    "<p>Sem endpoint: sua EC2 em subnet privada chama S3, tráfego sai pela "
-                    "internet via NAT, ida e volta. Com endpoint: tráfego nunca sai da rede "
-                    "AWS, é mais barato (sem custo de NAT) e mais seguro (não passa por "
-                    "internet).</p>"
-                    "<pre><code>resource \"aws_vpc_endpoint\" \"s3\" {\n"
-                    "  vpc_id            = aws_vpc.main.id\n"
-                    "  service_name      = \"com.amazonaws.us-east-1.s3\"\n"
-                    "  vpc_endpoint_type = \"Gateway\"\n"
-                    "  route_table_ids   = [aws_route_table.private.id]\n"
-                    "  policy = jsonencode({\n"
-                    "    Statement = [{\n"
-                    "      Effect = \"Allow\",\n"
-                    "      Principal = \"*\",\n"
-                    "      Action = [\"s3:GetObject\", \"s3:PutObject\"],\n"
-                    "      Resource = [\n"
-                    "        \"arn:aws:s3:::meus-buckets/*\"\n"
-                    "      ]\n"
-                    "    }]\n"
-                    "  })\n"
-                    "}</code></pre>"
-                    "<p>A policy do endpoint pode <em>limitar</em> qual bucket é acessado, "
-                    "mesmo que IAM permita, se endpoint nega, está negado.</p>"
+<h3>6. VPC Endpoints, economia e segurança</h3>
+<p>Sem endpoint, uma EC2 numa subnet privada que chama S3 manda o
+tráfego pela internet via NAT Gateway — ida e volta, com o custo por GB
+da seção 4 incluído. Com endpoint, o mesmo tráfego nunca sai da rede
+interna da AWS: fica mais barato (sem passar pelo NAT) e mais seguro
+(nunca trafega pela internet pública):</p>
+<pre><code>resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.us-east-1.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id]
+  policy = jsonencode({
+    Statement = [{
+      Effect = "Allow",
+      Principal = "*",
+      Action = ["s3:GetObject", "s3:PutObject"],
+      Resource = [
+        "arn:aws:s3:::meus-buckets/*"
+      ]
+    }]
+  })
+}</code></pre>
+<p>A policy do próprio endpoint pode restringir qual bucket é acessível
+por ali, de forma independente da policy IAM — se o endpoint nega, o
+acesso fica negado mesmo que a policy IAM permitisse, uma camada
+adicional de controle no caminho da rede.</p>
 
-                    "<h3>7. VPC Flow Logs, auditoria</h3>"
-                    "<p>Registra metadados (não payload) de cada pacote em uma ENI:</p>"
-                    "<pre><code>resource \"aws_flow_log\" \"main\" {\n"
-                    "  log_destination = aws_s3_bucket.flow_logs.arn\n"
-                    "  log_destination_type = \"s3\"\n"
-                    "  traffic_type    = \"ALL\"\n"
-                    "  vpc_id          = aws_vpc.main.id\n"
-                    "}</code></pre>"
-                    "<p>Útil para:</p>"
-                    "<ul>"
-                    "<li>Investigar 'por que esse SG está bloqueando?' (REJECT logs).</li>"
-                    "<li>Detectar exfiltração (volume anômalo saindo).</li>"
-                    "<li>Compliance (PCI exige logs de tráfego).</li>"
-                    "<li>Análise de custo (descobrir quem fala com quem).</li>"
-                    "</ul>"
+<h3>7. VPC Flow Logs, auditoria</h3>
+<p>Registra metadado — nunca o payload em si — de cada pacote passando
+por uma interface de rede (ENI):</p>
+<pre><code>resource "aws_flow_log" "main" {
+  log_destination = aws_s3_bucket.flow_logs.arn
+  log_destination_type = "s3"
+  traffic_type    = "ALL"
+  vpc_id          = aws_vpc.main.id
+}</code></pre>
+<p>Esse registro serve para quatro usos distintos: investigar "por que
+esse Security Group está bloqueando" olhando diretamente os REJECT
+registrados; detectar exfiltração observando um volume de saída fora do
+padrão esperado; atender exigência de compliance (PCI, por exemplo,
+exige log de tráfego de rede); e fazer análise de custo, revelando
+exatamente quem fala com quem dentro da infraestrutura.</p>
 
-                    "<h3>8. Limitações e armadilhas</h3>"
-                    "<ul>"
-                    "<li>CIDRs <strong>não podem se sobrepor</strong> entre VPCs que vão "
-                    "se conectar (peering, TGW). Pegou esse problema 6 meses depois? "
-                    "Migração dolorosa.</li>"
-                    "<li>AWS reserva 5 IPs em cada subnet (.0 rede, .1 router, .2 DNS, .3 "
-                    "futuro, último broadcast). <code>/28</code> dá 11 utilizáveis.</li>"
-                    "<li>Subnet existe em apenas <em>uma</em> AZ. HA = mínimo 2 subnets "
-                    "(em AZs diferentes) por camada.</li>"
-                    "<li>Default VPC vem com config insegura, apague em contas de "
-                    "produção (ou pelo menos não use).</li>"
-                    "<li><strong>VPC peering não é transitivo</strong>: A peering B, B "
-                    "peering C, A <em>não</em> fala com C. Use TGW para isso.</li>"
-                    "</ul>"
+<h3>8. Limitações e armadilhas</h3>
+<p>Um CIDR não pode se sobrepor entre VPCs que algum dia vão se
+conectar via peering ou Transit Gateway — descobrir esse conflito seis
+meses depois de ambas já estarem em produção transforma uma decisão de
+planejamento em uma migração dolorosa e arriscada. A AWS reserva 5 IPs
+em toda subnet (endereço de rede, router, DNS, um reservado para uso
+futuro, e o broadcast), o que significa que uma subnet <code>/28</code>
+nominalmente com 16 endereços entrega apenas 11 utilizáveis de fato.
+Uma subnet existe em exatamente UMA AZ — alta disponibilidade exige, no
+mínimo, duas subnets em AZs diferentes por camada da arquitetura. A
+VPC default vem com configuração insegura por padrão, e deveria ser
+apagada (ou pelo menos nunca usada) em conta de produção. E, como já
+visto na seção 5, VPC peering não é transitivo — encadear peerings
+esperando trânsito automático é um erro comum que só aparece quando
+alguém tenta de fato alcançar a terceira ponta.</p>
 
-                    "<h3>9. Segurança em camadas</h3>"
-                    "<p>Defesa em profundidade no nível de rede:</p>"
-                    "<ol>"
-                    "<li><strong>VPC isolada</strong>: dado sensível em VPC dedicada (ex.: "
-                    "PCI scope).</li>"
-                    "<li><strong>Subnet isolada</strong>: banco sem rota para internet.</li>"
-                    "<li><strong>NACL</strong>: bloqueio amplo por subnet.</li>"
-                    "<li><strong>Security Group</strong>: regra fina por instância.</li>"
-                    "<li><strong>Host firewall</strong>: ufw/nftables como rede de segurança.</li>"
-                    "<li><strong>Aplicação</strong>: WAF, autenticação, autorização.</li>"
-                    "</ol>"
-                    "<p>Cada camada deve assumir que a anterior pode falhar.</p>"
+<h3>9. Segurança em camadas</h3>
+<p>Defesa em profundidade a nível de rede empilha seis camadas
+sucessivas, cada uma assumindo que a anterior PODE falhar: uma VPC
+dedicada para dado especialmente sensível (escopo PCI, por exemplo);
+uma subnet isolada para o banco, sem rota nenhuma para internet; uma
+NACL fazendo bloqueio amplo por subnet inteira; um Security Group
+aplicando regra fina por instância individual; um firewall de host
+(ufw, nftables) como rede de segurança adicional mesmo dentro da
+própria máquina; e por fim a própria aplicação com WAF, autenticação e
+autorização. Nenhuma camada isolada deveria ser a única linha de
+defesa.</p>
 
-                    "<h3>10. Caso real: o NAT Gateway de US$ 80k</h3>"
-                    "<p>Em 2022, uma startup compartilhou que tinha conta de US$ 80k em um "
-                    "mês só de NAT Gateway porque o ML pipeline baixava modelos de Hugging "
-                    "Face do S3 público (saía pelo NAT, entrava pelo NAT, voltava por "
-                    "internet). Solução: cache local + VPC Endpoint para S3 (porque a "
-                    "imagem de Hugging Face é hospedada lá). Conta caiu para US$ 200/mês. "
-                    "Lição: cada GB de egress por NAT Gateway é US$ 0.045. Em escala, isso "
-                    "explode rápido.</p>"
+<h3>10. Caso real: o NAT Gateway de US$ 80k</h3>
+<p>Em 2022, uma startup relatou publicamente uma conta de US$ 80 mil
+num único mês, inteiramente de NAT Gateway — o pipeline de machine
+learning baixava modelo do Hugging Face hospedado em S3 público,
+saindo pelo NAT e voltando pela internet num percurso desnecessariamente
+longo. A solução combinou cache local com um VPC Endpoint para S3
+(possível justamente porque a imagem do Hugging Face é hospedada lá), e
+a conta caiu para cerca de US$ 200 por mês. A lição prática direta da
+seção 4: cada gigabyte de egress via NAT Gateway custa US$ 0,045 — em
+escala, isso soma rápido o suficiente para virar a maior linha da
+fatura sem que ninguém perceba a tempo.</p>"""
                 ),
                 "practical": (
                     "Construa via Terraform (ou console) uma VPC <code>10.10.0.0/16</code> "
