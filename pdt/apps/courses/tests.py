@@ -125,6 +125,54 @@ class TestSeedTopicsCommand:
         call_command("seed_topics", verbosity=0)
         assert Topic.objects.count() == primeiro_count
 
+    def test_seed_topics_preserva_aula_editada_pelo_admin(self):
+        """O defeito original: o seed rodava no boot do container e apagava
+        qualquer edição feita pelo admin todo dia. `seed_managed=False`
+        (setado automaticamente ao salvar pelo admin, ver apps.courses.admin)
+        faz o próximo `seed_topics` pular esse registro."""
+        from django.core.management import call_command
+
+        call_command("seed_topics", verbosity=0)
+        lesson = Lesson.objects.first()
+        lesson.body = "<p>Texto editado manualmente pelo mantenedor.</p>"
+        lesson.seed_managed = False
+        lesson.save(update_fields=["body", "seed_managed"])
+
+        call_command("seed_topics", verbosity=0)
+        lesson.refresh_from_db()
+        assert lesson.body == "<p>Texto editado manualmente pelo mantenedor.</p>"
+
+    def test_seed_topics_force_sobrescreve_edicao(self):
+        from django.core.management import call_command
+
+        call_command("seed_topics", verbosity=0)
+        lesson = Lesson.objects.first()
+        body_original = lesson.body
+        lesson.body = "<p>Editado, mas será revertido por --force.</p>"
+        lesson.seed_managed = False
+        lesson.save(update_fields=["body", "seed_managed"])
+
+        call_command("seed_topics", force=True, verbosity=0)
+        lesson.refresh_from_db()
+        assert lesson.body == body_original
+        assert lesson.seed_managed is True
+
+    def test_seed_topics_preserva_questao_e_suas_alternativas_editadas(self):
+        from django.core.management import call_command
+
+        call_command("seed_topics", verbosity=0)
+        question = Question.objects.first()
+        choice_ids_antes = set(question.choices.values_list("id", flat=True))
+        question.statement = "Enunciado corrigido pelo mantenedor."
+        question.seed_managed = False
+        question.save(update_fields=["statement", "seed_managed"])
+
+        call_command("seed_topics", verbosity=0)
+        question.refresh_from_db()
+        assert question.statement == "Enunciado corrigido pelo mantenedor."
+        # As Choice não foram apagadas/recriadas: mesmos IDs de antes.
+        assert set(question.choices.values_list("id", flat=True)) == choice_ids_antes
+
 
 @pytest.mark.django_db
 class TestQuizFlow:
@@ -220,6 +268,34 @@ class TestQuizFlow:
         url = reverse("courses:quiz_result", args=[topic.slug, attempt.id])
         resp = client.get(url)
         assert resp.status_code == 404
+
+    def test_resultado_sobrevive_a_alternativa_apagada_pelo_seed(
+        self, client, admitted_user, seed_phases
+    ):
+        """Regressão: `choice` é SET_NULL. Antes do snapshot, rodar o seed
+        (que apaga e recria as alternativas de uma questão) fazia o histórico
+        de tentativas antigas mostrar "(em branco)" para respostas que o
+        usuário de fato tinha dado — mesmo sem o usuário ter feito nada."""
+        client.force_login(admitted_user)
+        topic = seed_phases["topic"]
+        question = seed_phases["questions"][0]
+        picked = question.choices.get(is_correct=True)
+        texto_respondido = picked.text
+
+        client.post(
+            reverse("courses:quiz", args=[topic.slug]),
+            {f"q_{question.id}": picked.id},
+        )
+        attempt = TopicAttempt.objects.get(user=admitted_user, topic=topic)
+
+        # Simula o que `seed_topics` faz com uma questão seed_managed=True:
+        # apaga todas as Choice da questão.
+        question.choices.all().delete()
+
+        resp = client.get(reverse("courses:quiz_result", args=[topic.slug, attempt.id]))
+        assert resp.status_code == 200
+        assert texto_respondido.encode() in resp.content
+        assert b"(em branco)" not in resp.content
 
 
 @pytest.mark.django_db

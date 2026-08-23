@@ -97,11 +97,9 @@ A cada subida, o `entrypoint.sh`:
 
 ### Semeando o conteúdo
 
-Os seeds **não** rodam sozinhos na partida do container. Eles reescrevem
-aulas, questões e alternativas a partir dos arquivos em `apps/*/seed_data/`,
-apagando qualquer edição feita pelo admin — e como o container sobe a cada
-restart, OOM-kill e boot da máquina, deixá-los no caminho automático
-significava perder o conteúdo editado sem nenhum deploy.
+Os seeds **não** rodam sozinhos na partida do container — e como o container
+sobe a cada restart, OOM-kill e boot da máquina, deixá-los no caminho
+automático significava perder edições sem nenhum deploy.
 
 Para semear um banco novo, rode uma vez:
 
@@ -111,10 +109,17 @@ docker compose exec web python manage.py seed_admission_test
 docker compose exec web python manage.py seed_interviews
 ```
 
-- `seed_topics`: 6 fases, 60 tópicos, materiais e questões.
-- `seed_admission_test`: banco de questões do teste de admissão.
+- `seed_topics`: 6 fases, 60 tópicos, materiais e questões. **Não-destrutivo**:
+  uma aula ou questão editada pelo admin ganha `seed_managed=False`
+  automaticamente e o seed para de sobrescrevê-la. Use `--force` para
+  sincronizar de propósito mesmo assim, ou `--reset-questions` para apagar e
+  recriar questões e materiais do zero (não toca em respostas já dadas).
+- `seed_admission_test`: banco de questões do teste de admissão. Ainda
+  sobrescreve tudo a cada execução — banco pequeno (24 questões), sem a
+  mesma proteção do `seed_topics` por enquanto.
 - `seed_interviews`: 300 questões do simulador (100 por nível), com
   embaralhamento determinístico — mais mistura no pleno, ainda mais no sênior.
+  Também ainda sobrescreve tudo a cada execução.
 
 Também dá para semear junto com a subida, definindo `PDT_RUN_SEED=1` no `.env`.
 Deixe desligado depois da primeira carga.
