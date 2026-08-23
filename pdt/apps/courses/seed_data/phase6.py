@@ -34,6 +34,13 @@ referenciados por nome. Essa uniformidade é o que torna Python tão
 flexível (você pode passar uma função como argumento do mesmo jeito que
 passa um número) e é também a raiz de comportamentos que surpreendem quem
 vem de linguagens com tipos primitivos "de verdade" (seção 2).</p>
+<div class="mermaid">
+flowchart LR
+    A["def f(x=[])"] --> B["Lista criada uma vez, na definição"]
+    B --> C["Toda chamada sem argumento reusa a MESMA lista"]
+    C --> D["Estado vaza entre chamadas"]
+</div>
+
 <pre><code>x: int   = 42
 y: float = 3.14
 s: str   = "hello"
@@ -357,6 +364,12 @@ hash (O(1) esperado), sem percorrer nada. Na prática: qualquer
 candidato imediato a virar <code>set</code> — a mudança de O(n²) total
 para O(n) num laço de milhares de itens é a diferença entre milissegundos
 e minutos.</p>
+<div class="mermaid">
+flowchart LR
+    A["Lista: colchetes"] --> B["Carrega tudo na memória de uma vez"]
+    C["Generator: parênteses"] --> D["Produz um item por vez, sob demanda"]
+</div>
+
 
 <h3>2. Comprehensions: por que a versão "curta" também é mais rápida</h3>
 <pre><code># list
@@ -699,6 +712,13 @@ qualquer leitor treinado no idioma da linguagem. Para uma classe que só
 guarda dados (sem lógica além de acessar campos), escrever
 <code>__init__</code> e <code>__repr__</code> à mão é trabalho que
 <code>@dataclass</code> (visto na aula anterior) já resolve.</p>
+<div class="mermaid">
+flowchart LR
+    A["with obj as f"] --> B["obj.__enter__()"]
+    B --> C["Bloco de código roda"]
+    C --> D["obj.__exit__() roda sempre, mesmo com exceção"]
+</div>
+
 
 <h3>2. Atributo de classe vs. de instância: o bug que parece compartilhamento mágico</h3>
 <pre><code>class Cache:
@@ -1037,6 +1057,13 @@ estrutura, não faz manipulação de string por trás dos panos. É por isso
 que código que mistura <code>os.path</code> com strings manuais tende a
 quebrar silenciosamente em outro sistema operacional, enquanto código
 todo em <code>pathlib</code> costuma simplesmente funcionar nos dois.</p>
+<div class="mermaid">
+flowchart LR
+    CLI["Linha de comando"] --> Parser["argparse.ArgumentParser"]
+    Parser --> Args["Namespace com os argumentos"]
+    Args --> Main["Lógica do programa"]
+</div>
+
 
 <h3>2. Ler arquivos sem se queimar no encoding</h3>
 <pre><code># EVITE: assume locale do sistema (pode ser ASCII em servidor)
@@ -1329,6 +1356,15 @@ sem log de erro nenhum — o pior tipo de falha para diagnosticar, porque nada
 distintas: o tempo para abrir a conexão costuma ser curto e estável; o tempo
 para o servidor responder pode legitimamente ser mais longo (uma API lenta
 processando), então vale limites diferentes.</p>
+<div class="mermaid">
+flowchart LR
+    Client["Cliente"] -- "request" --> API["API"]
+    API -- "5xx" --> Retry{"Tentativas esgotadas?"}
+    Retry -- "Não" --> Client
+    Retry -- "Sim" --> Fail["Levanta exceção"]
+    API -- "2xx" --> Success["Retorna o dado"]
+</div>
+
 <p><code>raise_for_status()</code> resolve um problema sutil: <code>requests</code>
 não levanta exceção sozinho quando a API responde 404 ou 500 — ela devolve
 um objeto <code>Response</code> normal, e cabe a você checar
@@ -1631,6 +1667,14 @@ metacaractere shell dentro do valor vira comando executável. Esse é o
 motivo pelo qual "concatenar comando + input do usuário" é uma das
 classes mais antigas e mais exploradas de vulnerabilidade em ferramentas
 de automação.</p>
+<div class="mermaid">
+flowchart LR
+    Py["Script Python"] --> Sub["subprocess.run com lista de args"]
+    Sub --> Proc["Processo filho"]
+    Proc --> Out["stdout, stderr e returncode"]
+    Out --> Py
+</div>
+
 <p><code>timeout</code> existe pela mesma razão que em chamadas HTTP: um
 processo filho pode travar esperando algo que nunca chega (um prompt
 interativo pedindo confirmação, uma conexão de rede que não cai) e sem
@@ -1925,6 +1969,18 @@ quando liberar um objeto) não é thread-safe por padrão, e o GIL é a
 solução histórica mais simples para isso: em vez de sincronizar cada
 acesso a cada objeto individualmente (caro e complexo), trava tudo com um
 lock só. A consequência prática divide o mundo em dois:</p>
+<div class="mermaid">
+flowchart TD
+    subgraph Threads ["threading, com GIL"]
+        T1["Thread 1"] --> GIL["Só uma roda bytecode Python por vez"]
+        T2["Thread 2"] --> GIL
+    end
+    subgraph Multi ["multiprocessing"]
+        P1["Processo 1, próprio interpretador"]
+        P2["Processo 2, próprio interpretador"]
+    end
+</div>
+
 <ul>
 <li><strong>CPU-bound (cálculo puro)</strong>: threads NÃO ajudam — o
 GIL garante que só uma rode por vez, então 4 threads calculando não são
@@ -2255,6 +2311,15 @@ subexpressão. É por isso que <code>assert response.json() == esperado</code>
 falha mostrando os dois dicts lado a lado, com o campo que diverge destacado
 — sem você jamais ter escrito uma linha de comparação especial. unittest não
 tem esse mecanismo; sua saída de erro é genérica ("False is not true").</p>
+<div class="mermaid">
+flowchart LR
+    A["Escreve o teste"] --> B["Roda pytest"]
+    B --> C{"Passou?"}
+    C -- "Não, vermelho" --> D["Ajusta o código"]
+    D --> B
+    C -- "Sim, verde" --> E["Segue pro próximo caso"]
+</div>
+
 <p>Fora esse detalhe de implementação, o que realmente muda o dia a dia é o
 ecossistema: fixtures componíveis (seção 3), parametrização declarativa
 (seção 4) e um catálogo enorme de plugins (cobertura, asyncio, Django, mock,
@@ -2601,6 +2666,14 @@ dependem de pacotes Python instalados globalmente, e um
 utilitários do SO. Um <code>venv</code> por projeto elimina essa classe
 inteira de conflito: cada ambiente tem seu próprio conjunto de pacotes,
 completamente isolado dos outros.</p>
+<div class="mermaid">
+flowchart LR
+    Src["Código-fonte"] --> Pyproject["pyproject.toml"]
+    Pyproject --> Build["uv build"]
+    Build --> Wheel["wheel e sdist na pasta dist"]
+    Wheel --> Publish["Publica no índice de pacotes"]
+</div>
+
 
 <h3>2. `uv`: o mesmo problema, resolvido sem reescrever o resolvedor de dependências a cada instalação</h3>
 <p><code>uv</code> (da Astral, mesma equipe do ruff) substitui
@@ -2937,6 +3010,13 @@ próxima. Chamar <code>list_objects_v2</code> direto numa conta com
 milhões de objetos devolve só os primeiros mil silenciosamente, sem erro
 algum indicando que faltou o resto; <code>client.get_paginator(...)</code>
 resolve isso internamente, iterando todas as páginas automaticamente.</p>
+<div class="mermaid">
+flowchart LR
+    EC2["Instância EC2"] --> Role["IAM Role anexado"]
+    Role --> IMDS["Credenciais via IMDS"]
+    IMDS --> SDK["boto3 usa automaticamente"]
+</div>
+
 <p>Sobre credenciais: hardcoded no código é a violação mais básica e mais
 citada de segurança em nuvem — qualquer coisa commitada permanece no
 histórico do git mesmo depois de removida num commit seguinte. Rodando
