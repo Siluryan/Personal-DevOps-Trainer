@@ -571,169 +571,217 @@ PHASE1 = {
                     "você deixa rodar como root em produção sem perder o sono."
                 ),
                 "body": (
-                    "<h3>1. Cabeçalho seguro: o 'unsafe at any speed' do bash</h3>"
-                    "<p>Sempre comece com:</p>"
-                    "<pre><code>#!/usr/bin/env bash\n"
-                    "set -euo pipefail\n"
-                    "IFS=$'\\n\\t'</code></pre>"
-                    "<p>Cada flag resolve uma classe de bug:</p>"
-                    "<ul>"
-                    "<li><code>-e</code>: aborta no primeiro comando que retornar erro. Sem "
-                    "isso, o script <em>continua</em> e você pode acabar deletando a base certa "
-                    "depois de falhar criar o backup.</li>"
-                    "<li><code>-u</code>: erro ao referenciar variável não definida. Pega "
-                    "typos antes que virem string vazia em <code>rm -rf $TARGET/*</code>.</li>"
-                    "<li><code>-o pipefail</code>: o status do pipe é o do <em>pior</em> "
-                    "estágio. Sem isso, <code>backup_db | gzip &gt; out.gz</code> retorna 0 "
-                    "mesmo se <code>backup_db</code> falhar.</li>"
-                    "<li><code>IFS=$'\\n\\t'</code>: word-splitting só em quebra de linha e "
-                    "tab. Evita bug clássico de nomes de arquivo com espaço.</li>"
-                    "</ul>"
-                    "<p>Depois você ativa <code>set -x</code> em modo debug e desativa em "
-                    "produção. Para depurar uma seção específica:</p>"
-                    "<pre><code>{ set -x; comando_problematico; } 2&gt;&amp;1 | tee /tmp/debug.log\n"
-                    "set +x</code></pre>"
+                """<h3>1. Cabeçalho seguro: o 'unsafe at any speed' do bash</h3>
+<p>Todo script sério começa com a mesma combinação de três configurações:</p>
+<pre><code>#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\\n\\t'</code></pre>
+<p>Cada flag fecha uma classe específica de bug. O <code>-e</code>
+aborta a execução no primeiro comando que retornar erro — sem ele, o
+script simplesmente CONTINUA depois de uma falha, o que pode significar
+apagar a base de dados errada logo depois de um backup que falhou
+silenciosamente. O <code>-u</code> gera erro ao referenciar uma
+variável não definida — pega um typo antes que ele vire uma string
+vazia dentro de <code>rm -rf $TARGET/*</code>, transformando o comando
+em algo bem mais destrutivo do que pretendido. O <code>-o pipefail</code>
+faz o status do pipe refletir o PIOR estágio, não o último — sem ele,
+<code>backup_db | gzip &gt; out.gz</code> retorna sucesso mesmo que
+<code>backup_db</code> tenha falhado completamente, um silêncio
+perigoso justamente onde o script mais precisaria alertar. E o
+<code>IFS=$'\\n\\t'</code> restringe o word-splitting a quebra de linha
+e tab, evitando o bug clássico de nome de arquivo com espaço quebrando
+em pedaços inesperados. Para depuração pontual, ativar
+<code>set -x</code> temporariamente numa seção específica isola o
+problema sem poluir o log inteiro do script:</p>
+<pre><code>{ set -x; comando_problematico; } 2&gt;&amp;1 | tee /tmp/debug.log
+set +x</code></pre>
 
-                    "<h3>2. Aspas, a primeira regra é citar tudo</h3>"
-                    "<p>O ponto mais comum de bugs em bash é word-splitting e glob expansion "
-                    "inesperado:</p>"
-                    "<pre><code># RUIM: arquivo 'meu doc.txt' vira dois argumentos\n"
-                    "rm $arquivo\n\n"
-                    "# BOM\n"
-                    "rm \"$arquivo\"\n\n"
-                    "# RUIM: se $files for vazio, vira `for f in` (loop não executa, ok)\n"
-                    "#       mas se for um glob solto, expande no momento errado\n"
-                    "for f in $files; do echo $f; done\n\n"
-                    "# BOM: array preserva elementos individualmente\n"
-                    "files=( '/srv/a 1.txt' '/srv/b.txt' )\n"
-                    "for f in \"${files[@]}\"; do echo \"$f\"; done</code></pre>"
-                    "<p>Regra: <strong>cite toda variável ao expandir</strong>, exceto quando "
-                    "você <em>quer</em> word-splitting (raro).</p>"
+<h3>2. Aspas, a primeira regra é citar tudo</h3>
+<p>A fonte mais comum de bug em bash é word-splitting e expansão de
+glob acontecendo num momento inesperado:</p>
+<pre><code># RUIM: arquivo 'meu doc.txt' vira dois argumentos
+rm $arquivo
 
-                    "<h3>3. Estruturas de controle modernas</h3>"
-                    "<p>Prefira <code>[[ ... ]]</code> a <code>[ ... ]</code>, suporta regex, "
-                    "operadores compostos e não tem armadilhas com strings vazias:</p>"
-                    "<pre><code>if [[ -z \"$1\" ]]; then\n"
-                    "  echo 'uso: deploy.sh &lt;ambiente&gt;' &gt;&amp;2\n"
-                    "  exit 64    # EX_USAGE\n"
-                    "fi\n\n"
-                    "if [[ \"$ENV\" =~ ^(dev|staging|prod)$ ]]; then\n"
-                    "  echo \"deploy em $ENV\"\n"
-                    "fi\n\n"
-                    "case \"$ENV\" in\n"
-                    "  dev|staging)  HOST=internal.example.com ;;\n"
-                    "  prod)         HOST=api.example.com ;;\n"
-                    "  *)            echo 'ambiente inválido' &gt;&amp;2; exit 64 ;;\n"
-                    "esac</code></pre>"
+# BOM
+rm "$arquivo"
 
-                    "<h3>4. Iterando arquivos com nome 'esquisito'</h3>"
-                    "<p>Existe basicamente <em>uma</em> forma 100% segura, separador NUL:</p>"
-                    "<pre><code># RUIM: quebra com espaço, tab ou newline no nome\n"
-                    "for f in $(ls *.log); do\n"
-                    "  process \"$f\"\n"
-                    "done\n\n"
-                    "# RUIM ainda: ls não é parseável\n"
-                    "find . -name '*.log' | while read f; do process \"$f\"; done\n\n"
-                    "# BOM: -print0 emite separadores NUL\n"
-                    "find . -type f -name '*.log' -print0 | \\\n"
-                    "  while IFS= read -r -d '' f; do\n"
-                    "    process \"$f\"\n"
-                    "  done\n\n"
-                    "# Alternativa elegante com bash 4+ (mapfile)\n"
-                    "mapfile -d '' -t files &lt; &lt;(find . -type f -name '*.log' -print0)\n"
-                    "for f in \"${files[@]}\"; do process \"$f\"; done</code></pre>"
+# RUIM: se $files for vazio, vira `for f in` (loop não executa, ok)
+#       mas se for um glob solto, expande no momento errado
+for f in $files; do echo $f; done
 
-                    "<h3>5. Funções, retorno e erro propagado</h3>"
-                    "<pre><code>require_env() {\n"
-                    "  local var=$1\n"
-                    "  if [[ -z \"${!var:-}\" ]]; then\n"
-                    "    echo \"FATAL: variável $var não definida\" &gt;&amp;2\n"
-                    "    return 1\n"
-                    "  fi\n"
-                    "}\n\n"
-                    "deploy() {\n"
-                    "  require_env GITHUB_TOKEN\n"
-                    "  require_env DEPLOY_KEY\n"
-                    "  # ...\n"
-                    "}\n\n"
-                    "deploy || { echo 'deploy falhou' &gt;&amp;2; exit 1; }</code></pre>"
-                    "<p>Use <code>local</code> para variáveis dentro de função (evita "
-                    "vazamento global). <code>${!var}</code> faz indireção "
-                    "(referencia a variável cujo nome está em <code>$var</code>).</p>"
+# BOM: array preserva elementos individualmente
+files=( '/srv/a 1.txt' '/srv/b.txt' )
+for f in "${files[@]}"; do echo "$f"; done</code></pre>
+<p>A regra prática é citar TODA variável no momento da expansão, exceto
+no raro caso em que word-splitting é exatamente o comportamento
+desejado.</p>
 
-                    "<h3>6. Trap para cleanup determinístico</h3>"
-                    "<pre><code>tmp=$(mktemp -d)\n"
-                    "trap 'rm -rf \"$tmp\"' EXIT INT TERM\n\n"
-                    "echo 'baixando…' &gt; \"$tmp/log\"\n"
-                    "curl https://api.example.com/dump &gt; \"$tmp/dump.json\"\n"
-                    "process \"$tmp/dump.json\"\n"
-                    "# o trap cuida da limpeza mesmo se algo falhar</code></pre>"
-                    "<p>Sem <code>trap</code>, um <code>exit 1</code> ou Ctrl+C deixa lixo em "
-                    "<code>/tmp</code>. Em scripts longos isso entope disco.</p>"
+<h3>3. Estruturas de controle modernas</h3>
+<p><code>[[ ... ]]</code> deveria ser preferido a <code>[ ... ]</code>
+sempre que possível — suporta regex nativamente, operadores compostos, e
+não carrega as armadilhas clássicas de <code>[ ]</code> com string
+vazia não citada:</p>
+<pre><code>if [[ -z "$1" ]]; then
+  echo 'uso: deploy.sh &lt;ambiente&gt;' &gt;&amp;2
+  exit 64    # EX_USAGE
+fi
 
-                    "<h3>7. Validação de input, trate como hostil</h3>"
-                    "<pre><code># Recebido por argumento ou variável de ambiente\n"
-                    "name=${1:?uso: ./script.sh &lt;nome&gt;}\n\n"
-                    "# Whitelist é melhor que blacklist\n"
-                    "if [[ ! \"$name\" =~ ^[a-zA-Z0-9_-]{1,32}$ ]]; then\n"
-                    "  echo \"nome inválido: $name\" &gt;&amp;2\n"
-                    "  exit 64\n"
-                    "fi\n\n"
-                    "# NUNCA: rm -rf /srv/$name (com $name vazio = rm -rf /srv/)\n"
-                    "# NUNCA: eval \"$name\"\n"
-                    "# NUNCA: bash -c \"echo $name\"   ← injeção de comando</code></pre>"
+if [[ "$ENV" =~ ^(dev|staging|prod)$ ]]; then
+  echo "deploy em $ENV"
+fi
 
-                    "<h3>8. Logging com timestamp e níveis</h3>"
-                    "<pre><code>log() {\n"
-                    "  local level=$1; shift\n"
-                    "  printf '%s [%s] %s\\n' \"$(date -Iseconds)\" \"$level\" \"$*\" &gt;&amp;2\n"
-                    "}\n\n"
-                    "log INFO  'iniciando deploy'\n"
-                    "log WARN  'cache vazio, baixando do registry'\n"
-                    "log ERROR 'falha ao subir container'</code></pre>"
-                    "<p>Logue em <code>stderr</code> para que stdout fique livre para a saída "
-                    "<em>útil</em> do script (que pode ser piped para outro comando).</p>"
+case "$ENV" in
+  dev|staging)  HOST=internal.example.com ;;
+  prod)         HOST=api.example.com ;;
+  *)            echo 'ambiente inválido' &gt;&amp;2; exit 64 ;;
+esac</code></pre>
 
-                    "<h3>9. Anti-patterns que custam caro</h3>"
-                    "<table style='border-collapse:collapse'>"
-                    "<tr><td><code>eval \"$input\"</code></td>"
-                    "<td>RCE garantido se input vier de fora.</td></tr>"
-                    "<tr><td><code>rm -rf $dir/</code></td>"
-                    "<td>Sem checar <code>$dir</code>, com <code>set -u</code> off, vira "
-                    "<code>rm -rf /</code>.</td></tr>"
-                    "<tr><td><code>curl ... | bash</code></td>"
-                    "<td>Executa código remoto sem verificação. Se o servidor for comprometido, "
-                    "RCE no seu host.</td></tr>"
-                    "<tr><td><code>ssh host \"$cmd\"</code></td>"
-                    "<td>Sem aspas adicionais e validação, injeção de comando.</td></tr>"
-                    "<tr><td><code>readlink</code> sem <code>-f</code></td>"
-                    "<td>Não resolve symlinks aninhados.</td></tr>"
-                    "<tr><td><code>cat $file | grep …</code></td>"
-                    "<td>Useless use of cat. Prefira <code>grep … &lt; $file</code>.</td></tr>"
-                    "</table>"
+<h3>4. Iterando arquivos com nome 'esquisito'</h3>
+<p>Existe basicamente uma única forma 100% segura de iterar arquivo por
+arquivo sem quebrar em nome com caractere especial: usar separador NUL
+de ponta a ponta:</p>
+<pre><code># RUIM: quebra com espaço, tab ou newline no nome
+for f in $(ls *.log); do
+  process "$f"
+done
 
-                    "<h3>10. shellcheck, shfmt e quando subir para Python</h3>"
-                    "<p><code>shellcheck</code> pega 95% dos bugs comuns automaticamente. "
-                    "Integre na CI e no editor, falhe o pipeline em qualquer warning. "
-                    "<code>shfmt</code> formata o código.</p>"
-                    "<p>Bash brilha em scripts ≤ 150 linhas. Quando precisa de:</p>"
-                    "<ul>"
-                    "<li>Estruturas de dados não-triviais;</li>"
-                    "<li>Lógica de retry/backoff complexa;</li>"
-                    "<li>Concorrência além de <code>&amp;</code> simples;</li>"
-                    "<li>Testes unitários reais;</li>"
-                    "</ul>"
-                    "<p>...suba para Python (com <code>typer</code>) ou Go. Tempo de manutenção "
-                    "compensa.</p>"
+# RUIM ainda: ls não é parseável
+find . -name '*.log' | while read f; do process "$f"; done
 
-                    "<h3>11. Caso real: o <code>rm -rf $STEAMROOT/*</code> da Steam</h3>"
-                    "<p>Em 2015, o launcher da Steam para Linux trazia um script de "
-                    "desinstalação que continha literalmente <code>rm -rf \"$STEAMROOT/\"*</code>. "
-                    "Quando a variável estava vazia, o comando virava "
-                    "<code>rm -rf \"/\"*</code> e <em>apagava todos os arquivos do usuário</em>, "
-                    "o sistema todo, na verdade. O bug existia há anos. A correção foi de "
-                    "uma linha: validar que <code>$STEAMROOT</code> não está vazio. "
-                    "Isso é o que <code>set -u</code> e validação de input previnem."
+# BOM: -print0 emite separadores NUL
+find . -type f -name '*.log' -print0 | \\
+  while IFS= read -r -d '' f; do
+    process "$f"
+  done
+
+# Alternativa elegante com bash 4+ (mapfile)
+mapfile -d '' -t files &lt; &lt;(find . -type f -name '*.log' -print0)
+for f in "${files[@]}"; do process "$f"; done</code></pre>
+<p>Ambas as versões "RUIM" quebram silenciosamente diante de espaço,
+tab ou quebra de linha embutidos no nome do arquivo — o separador NUL é
+o único caractere garantido a nunca aparecer num nome de arquivo válido
+em sistema POSIX, o que o torna o único delimitador realmente seguro
+para esse propósito.</p>
+
+<h3>5. Funções, retorno e erro propagado</h3>
+<pre><code>require_env() {
+  local var=$1
+  if [[ -z "${!var:-}" ]]; then
+    echo "FATAL: variável $var não definida" &gt;&amp;2
+    return 1
+  fi
+}
+
+deploy() {
+  require_env GITHUB_TOKEN
+  require_env DEPLOY_KEY
+  # ...
+}
+
+deploy || { echo 'deploy falhou' &gt;&amp;2; exit 1; }</code></pre>
+<p>Usar <code>local</code> para toda variável dentro de uma função
+evita que ela vaze para o escopo global sem querer, um efeito colateral
+fácil de esquecer em bash. E <code>${!var}</code> faz indireção —
+referencia a variável cujo NOME está guardado dentro de
+<code>$var</code>, o que é o que permite <code>require_env</code>
+checar dinamicamente qualquer nome de variável passado como
+argumento.</p>
+
+<h3>6. Trap para cleanup determinístico</h3>
+<pre><code>tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT INT TERM
+
+echo 'baixando…' &gt; "$tmp/log"
+curl https://api.example.com/dump &gt; "$tmp/dump.json"
+process "$tmp/dump.json"
+# o trap cuida da limpeza mesmo se algo falhar</code></pre>
+<p>Sem o <code>trap</code>, um <code>exit 1</code> no meio do script ou
+um Ctrl+C do usuário deixa lixo acumulando em <code>/tmp</code> — em
+script rodando com frequência, isso entope disco silenciosamente ao
+longo do tempo, sem nenhum sinal óbvio até o disco realmente encher.</p>
+
+<h3>7. Validação de input, trate como hostil</h3>
+<pre><code># Recebido por argumento ou variável de ambiente
+name=${1:?uso: ./script.sh &lt;nome&gt;}
+
+# Whitelist é melhor que blacklist
+if [[ ! "$name" =~ ^[a-zA-Z0-9_-]{1,32}$ ]]; then
+  echo "nome inválido: $name" &gt;&amp;2
+  exit 64
+fi
+
+# NUNCA: rm -rf /srv/$name (com $name vazio = rm -rf /srv/)
+# NUNCA: eval "$name"
+# NUNCA: bash -c "echo $name"   ← injeção de comando</code></pre>
+<p>A escolha entre whitelist e blacklist não é estilística: uma
+whitelist define explicitamente o que é PERMITIDO, então qualquer coisa
+fora desse padrão falha por padrão; uma blacklist tenta listar o que é
+PROIBIDO, e sempre existe algum caractere ou sequência esquecida que
+escapa da lista — a assimetria entre as duas abordagens é o que torna
+whitelist estruturalmente mais segura.</p>
+
+<h3>8. Logging com timestamp e níveis</h3>
+<pre><code>log() {
+  local level=$1; shift
+  printf '%s [%s] %s\\n' "$(date -Iseconds)" "$level" "$*" &gt;&amp;2
+}
+
+log INFO  'iniciando deploy'
+log WARN  'cache vazio, baixando do registry'
+log ERROR 'falha ao subir container'</code></pre>
+<p>Registrar log no <code>stderr</code> mantém o <code>stdout</code>
+livre exclusivamente para a saída ÚTIL do script — a parte que
+eventualmente vai ser encadeada com pipe para outro comando. Misturar
+log e saída útil no mesmo stream quebra qualquer composição posterior
+do script com outra ferramenta via pipe.</p>
+
+<h3>9. Anti-patterns que custam caro</h3>
+<table style='border-collapse:collapse'>
+<tr><td><code>eval "$input"</code></td>
+<td>RCE garantido se input vier de fora.</td></tr>
+<tr><td><code>rm -rf $dir/</code></td>
+<td>Sem checar <code>$dir</code>, com <code>set -u</code> off, vira
+<code>rm -rf /</code>.</td></tr>
+<tr><td><code>curl ... | bash</code></td>
+<td>Executa código remoto sem verificação. Se o servidor for comprometido,
+RCE no seu host.</td></tr>
+<tr><td><code>ssh host "$cmd"</code></td>
+<td>Sem aspas adicionais e validação, injeção de comando.</td></tr>
+<tr><td><code>readlink</code> sem <code>-f</code></td>
+<td>Não resolve symlinks aninhados.</td></tr>
+<tr><td><code>cat $file | grep …</code></td>
+<td>Useless use of cat. Prefira <code>grep … &lt; $file</code>.</td></tr>
+</table>
+
+<h3>10. shellcheck, shfmt e quando subir para Python</h3>
+<p>O <code>shellcheck</code> pega cerca de 95% dos bugs mais comuns
+automaticamente, sem exigir revisão manual linha por linha — integrar
+no CI e no editor, falhando o pipeline em qualquer warning, transforma
+essa classe inteira de erro em algo pego antes do merge, não depois do
+incidente. O <code>shfmt</code> cuida da formatação de forma
+equivalente. Bash brilha em script de até aproximadamente 150 linhas —
+além desse tamanho, ou quando o script precisa de estrutura de dado
+não-trivial, lógica de retry/backoff mais elaborada, concorrência além
+de um <code>&amp;</code> simples, ou teste unitário de verdade, a
+manutenção em bash puro fica cada vez mais cara — nesse ponto, subir
+para Python (com <code>typer</code>) ou Go compensa o tempo investido
+na migração.</p>
+
+<h3>11. Caso real: o <code>rm -rf $STEAMROOT/*</code> da Steam</h3>
+<p>Em 2015, o launcher da Steam para Linux trazia um script de
+desinstalação contendo literalmente
+<code>rm -rf "$STEAMROOT/"*</code>. Quando a variável
+<code>$STEAMROOT</code> estava vazia — algo que podia acontecer
+dependendo de como o script era invocado — o comando virava
+efetivamente <code>rm -rf "/"*</code>, apagando todo o conteúdo do
+sistema de arquivos acessível pelo usuário, não só os arquivos da
+Steam. O bug existiu no script por anos antes de ser descoberto e
+reportado publicamente. A correção final foi de uma única linha:
+validar explicitamente que <code>$STEAMROOT</code> não está vazio antes
+de qualquer operação destrutiva — exatamente o tipo de proteção que
+<code>set -u</code> (seção 1) e a validação de input (seção 7)
+previnem estruturalmente, em vez de depender de alguém lembrar de
+checar manualmente em cada script novo.</p>"""
                 ),
                 "practical": (
                     "Escreva um script <code>analyze_logs.sh</code> que:<br>"
@@ -1706,227 +1754,269 @@ PHASE1 = {
                     "mais usado na indústria) com pontes para Apache e Caddy."
                 ),
                 "body": (
-                    "<h3>1. Por que ainda existe TLS termination na borda</h3>"
-                    "<p>Mesmo com mTLS dentro do mesh, há motivos para ter um proxy de borda:</p>"
-                    "<ul>"
-                    "<li>Certificado público (Let's Encrypt) gerenciado em um único lugar.</li>"
-                    "<li>HTTP/2 e HTTP/3 (QUIC) por default sem que cada microservice precise "
-                    "implementar.</li>"
-                    "<li>Compressão (gzip, brotli) e cache de respostas.</li>"
-                    "<li>WAF (ModSecurity).</li>"
-                    "<li>Roteamento por path/host com lógica complexa.</li>"
-                    "</ul>"
-                    "<p>Padrão clássico: Nginx em 80/443 → "
-                    "<code>proxy_pass http://127.0.0.1:8000</code> (gunicorn/uvicorn/daphne) "
-                    "ou socket Unix.</p>"
+                """<h3>1. Por que ainda existe TLS termination na borda</h3>
+<p>Mesmo num ambiente com mTLS pleno dentro do mesh, o proxy de borda
+continua justificado por cinco razões concretas: certificado público
+(Let's Encrypt) gerenciado num único lugar central, em vez de espalhado
+por dezenas de microserviços; HTTP/2 e HTTP/3 (QUIC) disponíveis por
+padrão sem que cada serviço individual precise implementar isso
+sozinho; compressão (gzip, brotli) e cache de resposta aplicados numa
+única camada; um WAF (ModSecurity) inspecionando tudo que entra antes
+mesmo de chegar na aplicação; e roteamento por path ou host com lógica
+potencialmente complexa, centralizada num só lugar em vez de
+duplicada. O padrão clássico é o Nginx escutando em 80/443, e fazendo
+<code>proxy_pass http://127.0.0.1:8000</code> para gunicorn, uvicorn ou
+daphne — ou, quando disponível, um socket Unix diretamente.</p>
 
-                    "<h3>2. Configuração mínima viável</h3>"
-                    "<pre><code># /etc/nginx/sites-available/api.example.com\n"
-                    "upstream api_backend {\n"
-                    "  server 127.0.0.1:8000 fail_timeout=5s;\n"
-                    "  keepalive 32;\n"
-                    "}\n"
-                    "\n"
-                    "server {\n"
-                    "  listen 80;\n"
-                    "  listen [::]:80;\n"
-                    "  server_name api.example.com;\n"
-                    "  return 301 https://$host$request_uri;        # força HTTPS\n"
-                    "}\n"
-                    "\n"
-                    "server {\n"
-                    "  listen 443 ssl http2;\n"
-                    "  listen [::]:443 ssl http2;\n"
-                    "  server_name api.example.com;\n"
-                    "  \n"
-                    "  ssl_certificate     /etc/letsencrypt/live/api.example.com/fullchain.pem;\n"
-                    "  ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;\n"
-                    "  \n"
-                    "  # Mozilla 'modern' (apenas TLS 1.3) ou 'intermediate' (1.2+1.3)\n"
-                    "  ssl_protocols TLSv1.3;\n"
-                    "  ssl_prefer_server_ciphers off;\n"
-                    "  ssl_ciphers TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384;\n"
-                    "  ssl_session_timeout 1d;\n"
-                    "  ssl_session_cache shared:SSL:10m;\n"
-                    "  ssl_session_tickets off;\n"
-                    "  ssl_stapling on;\n"
-                    "  ssl_stapling_verify on;\n"
-                    "  \n"
-                    "  # Headers de segurança\n"
-                    "  add_header Strict-Transport-Security \"max-age=63072000; includeSubDomains; preload\" always;\n"
-                    "  add_header X-Frame-Options DENY always;\n"
-                    "  add_header X-Content-Type-Options nosniff always;\n"
-                    "  add_header Referrer-Policy strict-origin-when-cross-origin always;\n"
-                    "  add_header Permissions-Policy \"camera=(), microphone=(), geolocation=()\" always;\n"
-                    "  add_header Content-Security-Policy \"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'\" always;\n"
-                    "  \n"
-                    "  # Esconde versão do Nginx\n"
-                    "  server_tokens off;\n"
-                    "  \n"
-                    "  # Tamanho máximo de body\n"
-                    "  client_max_body_size 5M;\n"
-                    "  \n"
-                    "  # Compressão\n"
-                    "  gzip on;\n"
-                    "  gzip_types text/plain text/css application/json application/javascript;\n"
-                    "  \n"
-                    "  # Rate limit em /login\n"
-                    "  limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;\n"
-                    "  \n"
-                    "  location = /login {\n"
-                    "    limit_req zone=login burst=10 nodelay;\n"
-                    "    proxy_pass http://api_backend;\n"
-                    "  }\n"
-                    "  \n"
-                    "  location / {\n"
-                    "    proxy_http_version 1.1;\n"
-                    "    proxy_set_header Connection \"\";\n"
-                    "    proxy_set_header Host $host;\n"
-                    "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n"
-                    "    proxy_set_header X-Forwarded-Proto $scheme;\n"
-                    "    proxy_set_header X-Real-IP $remote_addr;\n"
-                    "    proxy_pass http://api_backend;\n"
-                    "    proxy_read_timeout 60s;\n"
-                    "  }\n"
-                    "}</code></pre>"
+<h3>2. Configuração mínima viável</h3>
+<pre><code># /etc/nginx/sites-available/api.example.com
+upstream api_backend {
+  server 127.0.0.1:8000 fail_timeout=5s;
+  keepalive 32;
+}
 
-                    "<h3>3. Headers de segurança detalhados</h3>"
-                    "<table>"
-                    "<tr><td><code>Strict-Transport-Security</code></td>"
-                    "<td>Browser vai usar HTTPS por X segundos sem nem tentar HTTP.</td></tr>"
-                    "<tr><td><code>X-Frame-Options DENY</code></td>"
-                    "<td>Mata clickjacking via &lt;iframe&gt;.</td></tr>"
-                    "<tr><td><code>X-Content-Type-Options nosniff</code></td>"
-                    "<td>Browser não 'adivinha' MIME, para upload de avatar virar HTML.</td></tr>"
-                    "<tr><td><code>Content-Security-Policy</code></td>"
-                    "<td>A defesa contra XSS mais poderosa. "
-                    "Define quais origens podem rodar JS, carregar imagem, etc.</td></tr>"
-                    "<tr><td><code>Referrer-Policy</code></td>"
-                    "<td>Controla quanto da URL atual é enviado em <em>navegação</em>.</td></tr>"
-                    "<tr><td><code>Permissions-Policy</code></td>"
-                    "<td>Câmera, microfone, geolocalização, só com opt-in explícito.</td></tr>"
-                    "</table>"
-                    "<p>Audite com <a href='https://securityheaders.com'>securityheaders.com</a> "
-                    "e <a href='https://www.ssllabs.com/ssltest/'>SSL Labs</a>.</p>"
+server {
+  listen 80;
+  listen [::]:80;
+  server_name api.example.com;
+  return 301 https://$host$request_uri;        # força HTTPS
+}
 
-                    "<h3>4. CSP, o headache que vale o esforço</h3>"
-                    "<p>Comece em modo report-only para não quebrar produção:</p>"
-                    "<pre><code>add_header Content-Security-Policy-Report-Only \"\n"
-                    "  default-src 'self';\n"
-                    "  script-src 'self' 'sha256-XXX...';\n"
-                    "  style-src 'self' https://fonts.googleapis.com;\n"
-                    "  img-src 'self' data: https:;\n"
-                    "  connect-src 'self' https://api.example.com;\n"
-                    "  frame-ancestors 'none';\n"
-                    "  report-uri /csp-report;\n"
-                    "\" always;</code></pre>"
-                    "<p>Colete violações por algumas semanas, ajuste, e troque "
-                    "<code>Content-Security-Policy-Report-Only</code> por "
-                    "<code>Content-Security-Policy</code>.</p>"
+server {
+  listen 443 ssl http2;
+  listen [::]:443 ssl http2;
+  server_name api.example.com;
+  
+  ssl_certificate     /etc/letsencrypt/live/api.example.com/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+  
+  # Mozilla 'modern' (apenas TLS 1.3) ou 'intermediate' (1.2+1.3)
+  ssl_protocols TLSv1.3;
+  ssl_prefer_server_ciphers off;
+  ssl_ciphers TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384;
+  ssl_session_timeout 1d;
+  ssl_session_cache shared:SSL:10m;
+  ssl_session_tickets off;
+  ssl_stapling on;
+  ssl_stapling_verify on;
+  
+  # Headers de segurança
+  add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+  add_header X-Frame-Options DENY always;
+  add_header X-Content-Type-Options nosniff always;
+  add_header Referrer-Policy strict-origin-when-cross-origin always;
+  add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+  add_header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'" always;
+  
+  # Esconde versão do Nginx
+  server_tokens off;
+  
+  # Tamanho máximo de body
+  client_max_body_size 5M;
+  
+  # Compressão
+  gzip on;
+  gzip_types text/plain text/css application/json application/javascript;
+  
+  # Rate limit em /login
+  limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
+  
+  location = /login {
+    limit_req zone=login burst=10 nodelay;
+    proxy_pass http://api_backend;
+  }
+  
+  location / {
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_pass http://api_backend;
+    proxy_read_timeout 60s;
+  }
+}</code></pre>
 
-                    "<h3>5. Rate limiting, o ABC contra credential stuffing</h3>"
-                    "<p>Rotas como <code>/login</code>, <code>/register</code>, "
-                    "<code>/forgot-password</code> são alvos óbvios. No Nginx:</p>"
-                    "<pre><code>http {\n"
-                    "  limit_req_zone $binary_remote_addr zone=auth:10m rate=10r/m;\n"
-                    "  limit_req_zone $binary_remote_addr zone=api:10m rate=600r/m;\n"
-                    "}\n"
-                    "\n"
-                    "server {\n"
-                    "  location ~ ^/(login|register|forgot)$ {\n"
-                    "    limit_req zone=auth burst=5 nodelay;\n"
-                    "    proxy_pass http://app;\n"
-                    "  }\n"
-                    "  location /api/ {\n"
-                    "    limit_req zone=api burst=100;\n"
-                    "    proxy_pass http://app;\n"
-                    "  }\n"
-                    "}</code></pre>"
-                    "<p>Combine com rate-limit por usuário/api-key na app, IP-based sozinho "
-                    "é facilmente bypassado com proxy/botnet.</p>"
+<h3>3. Headers de segurança detalhados</h3>
+<table>
+<tr><td><code>Strict-Transport-Security</code></td>
+<td>Browser vai usar HTTPS por X segundos sem nem tentar HTTP.</td></tr>
+<tr><td><code>X-Frame-Options DENY</code></td>
+<td>Mata clickjacking via &lt;iframe&gt;.</td></tr>
+<tr><td><code>X-Content-Type-Options nosniff</code></td>
+<td>Browser não 'adivinha' MIME, para upload de avatar virar HTML.</td></tr>
+<tr><td><code>Content-Security-Policy</code></td>
+<td>A defesa contra XSS mais poderosa.
+Define quais origens podem rodar JS, carregar imagem, etc.</td></tr>
+<tr><td><code>Referrer-Policy</code></td>
+<td>Controla quanto da URL atual é enviado em <em>navegação</em>.</td></tr>
+<tr><td><code>Permissions-Policy</code></td>
+<td>Câmera, microfone, geolocalização, só com opt-in explícito.</td></tr>
+</table>
+<p>Cada um desses headers fecha um vetor de ataque específico que o
+navegador, sozinho, deixaria aberto por default — o
+<code>X-Frame-Options</code>, por exemplo, existe porque sem ele
+qualquer site pode embutir sua página inteira num iframe invisível e
+capturar clique do usuário sem que ele perceba. Auditar tudo isso de
+uma vez via securityheaders.com e SSL Labs revela rapidamente qual
+header está faltando antes de alguém precisar descobrir isso num
+incidente.</p>
 
-                    "<h3>6. Proxy reverso e o problema do IP real</h3>"
-                    "<p>Quando o Nginx faz <code>proxy_pass</code>, a app vê IP "
-                    "<code>127.0.0.1</code>. Para preservar o IP real:</p>"
-                    "<pre><code>proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n"
-                    "proxy_set_header X-Forwarded-Proto $scheme;\n"
-                    "proxy_set_header X-Real-IP $remote_addr;</code></pre>"
-                    "<p>Na app (Django):</p>"
-                    "<pre><code>USE_X_FORWARDED_HOST = True\n"
-                    "SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')</code></pre>"
-                    "<p><strong>NUNCA</strong> confie em <code>X-Forwarded-For</code> vindo "
-                    "diretamente do cliente. Configure o número de hops confiáveis (Nginx: "
-                    "<code>set_real_ip_from</code> + <code>real_ip_recursive on</code>; ALB: "
-                    "trust hops).</p>"
+<h3>4. CSP, o headache que vale o esforço</h3>
+<p>Aplicar Content-Security-Policy direto em modo enforcement corre o
+risco real de quebrar algo em produção sem aviso — o caminho seguro é
+começar em modo report-only, que só REGISTRA violação sem bloquear
+nada:</p>
+<pre><code>add_header Content-Security-Policy-Report-Only "
+  default-src 'self';
+  script-src 'self' 'sha256-XXX...';
+  style-src 'self' https://fonts.googleapis.com;
+  img-src 'self' data: https:;
+  connect-src 'self' https://api.example.com;
+  frame-ancestors 'none';
+  report-uri /csp-report;
+" always;</code></pre>
+<p>Depois de coletar violação real por algumas semanas e ajustar a
+policy conforme o que aparece, trocar
+<code>Content-Security-Policy-Report-Only</code> por
+<code>Content-Security-Policy</code> passa do modo observação para
+bloqueio de verdade, já calibrado contra falso positivo do próprio
+tráfego legítimo.</p>
 
-                    "<h3>7. Caching para performance e proteção</h3>"
-                    "<pre><code># Cache de respostas estáticas\n"
-                    "location ~* \\.(jpg|css|js|woff2)$ {\n"
-                    "  expires 30d;\n"
-                    "  add_header Cache-Control \"public, immutable\";\n"
-                    "}\n"
-                    "\n"
-                    "# Cache de respostas dinâmicas (chamadas idempotentes)\n"
-                    "proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=app:10m max_size=1g;\n"
-                    "\n"
-                    "location /api/products {\n"
-                    "  proxy_cache app;\n"
-                    "  proxy_cache_valid 200 5m;\n"
-                    "  proxy_cache_use_stale error timeout updating;\n"
-                    "  add_header X-Cache-Status $upstream_cache_status;\n"
-                    "  proxy_pass http://app;\n"
-                    "}</code></pre>"
-                    "<p>Cache também é proteção contra DoS, request repetida não chega na "
-                    "app.</p>"
+<h3>5. Rate limiting, o ABC contra credential stuffing</h3>
+<p>Rotas como <code>/login</code>, <code>/register</code> e
+<code>/forgot-password</code> são alvo óbvio de tentativa automatizada
+de login em massa. No Nginx, isso vira uma zona de rate limit
+dedicada:</p>
+<pre><code>http {
+  limit_req_zone $binary_remote_addr zone=auth:10m rate=10r/m;
+  limit_req_zone $binary_remote_addr zone=api:10m rate=600r/m;
+}
 
-                    "<h3>8. ModSecurity, WAF embedded</h3>"
-                    "<p>ModSecurity v3 + OWASP Core Rule Set bloqueia padrões clássicos "
-                    "(SQLi, XSS, path traversal). Cuidado: false positives podem quebrar app "
-                    "legítima. Comece em <code>DetectionOnly</code>:</p>"
-                    "<pre><code># /etc/nginx/modsec/main.conf\n"
-                    "Include /etc/nginx/modsec/coreruleset/crs-setup.conf\n"
-                    "Include /etc/nginx/modsec/coreruleset/rules/*.conf\n"
-                    "SecRuleEngine DetectionOnly\n"
-                    "SecAuditLog /var/log/nginx/modsec_audit.log\n"
-                    "SecAuditLogFormat JSON</code></pre>"
-                    "<p>Após semanas de log, vire <code>SecRuleEngine On</code> e tunne falsos "
-                    "positivos com <code>SecRuleRemoveById</code>.</p>"
+server {
+  location ~ ^/(login|register|forgot)$ {
+    limit_req zone=auth burst=5 nodelay;
+    proxy_pass http://app;
+  }
+  location /api/ {
+    limit_req zone=api burst=100;
+    proxy_pass http://app;
+  }
+}</code></pre>
+<p>Combinar isso com rate-limit adicional por usuário ou api-key
+diretamente na aplicação é importante porque rate-limit baseado só em
+IP é facilmente contornado com proxy rotativo ou botnet distribuído —
+uma segunda camada olhando a IDENTIDADE, não só a origem de rede,
+fecha essa lacuna.</p>
 
-                    "<h3>9. Caddy, alternativa moderna</h3>"
-                    "<p>Caddy faz TLS automático (Let's Encrypt embutido), HTTP/3 default, "
-                    "config simples:</p>"
-                    "<pre><code># Caddyfile\n"
-                    "api.example.com {\n"
-                    "  reverse_proxy 127.0.0.1:8000\n"
-                    "  encode zstd gzip\n"
-                    "  header {\n"
-                    "    Strict-Transport-Security \"max-age=63072000; includeSubDomains; preload\"\n"
-                    "    X-Content-Type-Options nosniff\n"
-                    "  }\n"
-                    "  rate_limit {\n"
-                    "    zone login {\n"
-                    "      key {http.request.remote.host}\n"
-                    "      events 5\n"
-                    "      window 60s\n"
-                    "    }\n"
-                    "  }\n"
-                    "}</code></pre>"
+<h3>6. Proxy reverso e o problema do IP real</h3>
+<p>Quando o Nginx faz <code>proxy_pass</code>, a aplicação por trás
+enxerga o IP <code>127.0.0.1</code> — o endereço do próprio proxy, não
+do cliente real. Preservar o IP verdadeiro exige três headers
+explícitos:</p>
+<pre><code>proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Real-IP $remote_addr;</code></pre>
+<p>E do lado da aplicação (Django, por exemplo), configurar
+explicitamente que confia nesse header:</p>
+<pre><code>USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')</code></pre>
+<p>O detalhe crítico é NUNCA confiar em <code>X-Forwarded-For</code>
+vindo diretamente de um cliente não confiável — sem um proxy
+intermediário validando isso, qualquer cliente pode simplesmente
+FORJAR esse header e se passar por qualquer IP que quiser. Configurar
+explicitamente o número de "hops" confiáveis (via
+<code>set_real_ip_from</code> combinado com
+<code>real_ip_recursive on</code> no Nginx, ou a configuração
+equivalente de trust hops num ALB) garante que só o valor inserido pelo
+proxy legítimo seja aceito como verdadeiro.</p>
 
-                    "<h3>10. Anti-patterns + caso real</h3>"
-                    "<ul>"
-                    "<li><code>autoindex on</code> em produção: lista diretórios, vazamento "
-                    "trivial.</li>"
-                    "<li>Servir <code>.git</code> ou <code>.env</code>: <em>caso real</em>, "
-                    "muitos sites WordPress já vazaram credenciais por isso. Bloqueie em "
-                    "regex.</li>"
-                    "<li>TLS 1.0/1.1: vulnerável (BEAST, POODLE). Desabilite.</li>"
-                    "<li>Sem <code>server_tokens off</code>: revela versão exata do Nginx, "
-                    "facilita CVE matching.</li>"
-                    "<li>Sem <code>client_max_body_size</code>: aberto para DoS por upload "
-                    "gigante.</li>"
-                    "<li>Default config sem testar TLS no SSL Labs: muitos times só descobrem "
-                    "depois que o cliente reclamou.</li>"
-                    "</ul>"
+<h3>7. Caching para performance e proteção</h3>
+<pre><code># Cache de respostas estáticas
+location ~* \\.(jpg|css|js|woff2)$ {
+  expires 30d;
+  add_header Cache-Control "public, immutable";
+}
+
+# Cache de respostas dinâmicas (chamadas idempotentes)
+proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=app:10m max_size=1g;
+
+location /api/products {
+  proxy_cache app;
+  proxy_cache_valid 200 5m;
+  proxy_cache_use_stale error timeout updating;
+  add_header X-Cache-Status $upstream_cache_status;
+  proxy_pass http://app;
+}</code></pre>
+<p>Além do ganho óbvio de performance, cache funciona como proteção
+adicional contra DoS: uma requisição repetida encontra resposta pronta
+no proxy e nunca chega a sobrecarregar a aplicação por trás, mesmo sob
+volume alto de tráfego repetitivo.</p>
+
+<h3>8. ModSecurity, WAF embedded</h3>
+<p>O ModSecurity v3 combinado com o OWASP Core Rule Set bloqueia
+padrão clássico de ataque — SQL injection, XSS, path traversal —
+diretamente na camada do proxy. O risco real é falso positivo
+quebrando funcionalidade legítima da aplicação, o que justifica
+começar em modo <code>DetectionOnly</code>, só registrando sem
+bloquear ainda:</p>
+<pre><code># /etc/nginx/modsec/main.conf
+Include /etc/nginx/modsec/coreruleset/crs-setup.conf
+Include /etc/nginx/modsec/coreruleset/rules/*.conf
+SecRuleEngine DetectionOnly
+SecAuditLog /var/log/nginx/modsec_audit.log
+SecAuditLogFormat JSON</code></pre>
+<p>Depois de algumas semanas analisando o log gerado nesse modo,
+mudar para <code>SecRuleEngine On</code> e ajustar falso positivo
+específico com <code>SecRuleRemoveById</code> completa a transição para
+bloqueio efetivo, já calibrado contra o tráfego real daquela
+aplicação.</p>
+
+<h3>9. Caddy, alternativa moderna</h3>
+<p>O Caddy resolve boa parte da fricção de configuração manual:
+provisiona TLS automaticamente via Let's Encrypt embutido, habilita
+HTTP/3 por padrão, e mantém a sintaxe de configuração deliberadamente
+mais simples que o Nginx equivalente:</p>
+<pre><code># Caddyfile
+api.example.com {
+  reverse_proxy 127.0.0.1:8000
+  encode zstd gzip
+  header {
+    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options nosniff
+  }
+  rate_limit {
+    zone login {
+      key {http.request.remote.host}
+      events 5
+      window 60s
+    }
+  }
+}</code></pre>
+
+<h3>10. Anti-patterns + caso real</h3>
+<ul>
+<li><strong><code>autoindex on</code> em produção</strong>: lista o
+conteúdo do diretório inteiro, um vazamento trivial de estrutura interna
+sem nenhum esforço do atacante.</li>
+<li><strong>Servir <code>.git</code> ou <code>.env</code></strong>:
+caso real e recorrente — muitos site WordPress já vazaram credencial
+inteira exatamente por não bloquear esses caminhos explicitamente via
+regex.</li>
+<li><strong>TLS 1.0/1.1 ainda habilitado</strong>: vulnerável a BEAST
+e POODLE, ataques conhecidos há anos — desabilitar é trivial e sem
+custo real de compatibilidade hoje.</li>
+<li><strong>Sem <code>server_tokens off</code></strong>: revela a
+versão exata do Nginx rodando, facilitando o atacante casar uma CVE
+específica sem precisar adivinhar.</li>
+<li><strong>Sem <code>client_max_body_size</code></strong>: deixa a
+porta aberta para DoS via upload de arquivo desproporcionalmente
+grande.</li>
+<li><strong>Configuração default nunca testada no SSL Labs</strong>:
+muitos times só descobrem a nota real quando um cliente reclama, não
+antes.</li>
+</ul>"""
                 ),
                 "practical": (
                     "(1) Suba uma app simples (FastAPI/Django) na porta 8000.<br>"
