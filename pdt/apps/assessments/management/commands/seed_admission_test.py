@@ -5,19 +5,19 @@ um banco maior do que 10, o seed também é idempotente.
 """
 from __future__ import annotations
 
-import random
-
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from apps.assessments.models import AdmissionChoice, AdmissionQuestion
+from apps.core.seed_utils import shuffle_seeded
 
 
 def _q(area: str, statement: str, correct: str, wrong: list[str], explanation: str = ""):
     choices = [{"text": correct, "correct": True}] + [
         {"text": w, "correct": False} for w in wrong
     ]
-    random.shuffle(choices)
+    # Determinístico por enunciado: a ordem não muda a cada restart do processo.
+    shuffle_seeded(choices, statement)
     return {
         "area": area,
         "statement": statement,
