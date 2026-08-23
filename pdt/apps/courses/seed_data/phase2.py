@@ -1953,192 +1953,229 @@ melhor o mesmo problema.</li>
                     "que pegam quem confia no default."
                 ),
                 "body": (
-                    "<h3>1. Modelo de ameaça: do que cripto protege</h3>"
-                    "<p>Antes de qualquer detalhe técnico, defina o que você está "
-                    "protegendo:</p>"
-                    "<ul>"
-                    "<li><strong>Em repouso</strong>: alguém ganha acesso ao disco/snapshot/"
-                    "backup. Ex.: provedor cloud é comprometido, snapshot é roubado, disco "
-                    "descartado sem wipe.</li>"
-                    "<li><strong>Em trânsito</strong>: alguém intercepta o tráfego "
-                    "(MITM, ISP malicioso, Wi-Fi público). TLS resolve.</li>"
-                    "<li><strong>Em uso</strong>: dados na RAM enquanto sendo processados. "
-                    "Cripto convencional <em>não</em> protege; precisa Confidential "
-                    "Computing (Nitro Enclaves, AMD SEV, Intel SGX).</li>"
-                    "</ul>"
-                    "<p>O que cripto <strong>não</strong> faz:</p>"
-                    "<ul>"
-                    "<li>Não substitui IAM/RBAC. Se o atacante já está autenticado como "
-                    "user válido, ele lê em claro.</li>"
-                    "<li>Não protege contra SQL injection ou bug na app.</li>"
-                    "<li>Não protege metadados (timestamps, tamanho, padrões de acesso).</li>"
-                    "<li>Sem gestão de chave correta, é só caro e inútil.</li>"
-                    "</ul>"
+                """<h3>1. Modelo de ameaça: do que cripto protege</h3>
+<p>Antes de qualquer detalhe técnico, vale separar exatamente o que
+está sendo protegido em cada cenário. <strong>Em repouso</strong>
+significa proteger contra alguém que ganha acesso direto ao disco, ao
+snapshot ou ao backup — um provedor de nuvem comprometido, um snapshot
+roubado, um disco descartado sem wipe antes do descarte.
+<strong>Em trânsito</strong> significa proteger contra alguém
+interceptando o tráfego pelo caminho — um ataque man-in-the-middle, um
+ISP malicioso, um Wi-Fi público — e é exatamente esse cenário que o TLS
+resolve. <strong>Em uso</strong> é o mais difícil dos três: dado
+sendo processado ainda dentro da RAM, num momento em que criptografia
+convencional simplesmente NÃO protege nada — só Confidential Computing
+(Nitro Enclaves, AMD SEV, Intel SGX) endereça esse caso específico.
+Vale igualmente entender o que criptografia NÃO faz: não substitui
+IAM ou RBAC — se o atacante já está autenticado como usuário válido, ele
+lê o dado em claro do mesmo jeito que qualquer usuário legítimo leria;
+não protege contra SQL injection nem bug de aplicação; não protege
+metadado (timestamp, tamanho de arquivo, padrão de acesso continuam
+visíveis mesmo com o conteúdo cifrado); e sem gestão de chave correta,
+vira apenas caro e inútil ao mesmo tempo.</p>
 
-                    "<h3>2. Simétrica vs assimétrica</h3>"
-                    "<table>"
-                    "<tr><th></th><th>Simétrica (AES, ChaCha20)</th>"
-                    "<th>Assimétrica (RSA, ECC, Ed25519)</th></tr>"
-                    "<tr><td>Chave</td><td>uma só</td><td>par público + privado</td></tr>"
-                    "<tr><td>Velocidade</td><td>rápida (~GB/s)</td><td>lenta (~MB/s)</td></tr>"
-                    "<tr><td>Tamanho de chave</td><td>128/256 bits</td>"
-                    "<td>2048-4096 bits (RSA), 256 bits (ECC)</td></tr>"
-                    "<tr><td>Caso de uso</td><td>cifrar dados em volume</td>"
-                    "<td>troca de chave, assinatura</td></tr>"
-                    "</table>"
-                    "<p>TLS combina os dois: handshake assimétrico (RSA/ECDHE) estabelece "
-                    "uma chave simétrica de sessão (AES) que é usada para o tráfego.</p>"
+<h3>2. Simétrica vs assimétrica</h3>
+<table>
+<tr><th></th><th>Simétrica (AES, ChaCha20)</th>
+<th>Assimétrica (RSA, ECC, Ed25519)</th></tr>
+<tr><td>Chave</td><td>uma só</td><td>par público + privado</td></tr>
+<tr><td>Velocidade</td><td>rápida (~GB/s)</td><td>lenta (~MB/s)</td></tr>
+<tr><td>Tamanho de chave</td><td>128/256 bits</td>
+<td>2048-4096 bits (RSA), 256 bits (ECC)</td></tr>
+<tr><td>Caso de uso</td><td>cifrar dados em volume</td>
+<td>troca de chave, assinatura</td></tr>
+</table>
+<p>O TLS na prática combina os dois de propósito: o handshake
+assimétrico (RSA/ECDHE) serve exclusivamente para estabelecer, de
+forma segura, uma chave SIMÉTRICA de sessão — que então é a que
+realmente cifra o volume de tráfego, aproveitando a velocidade da
+simétrica onde importa e a segurança da assimétrica onde é
+necessária.</p>
 
-                    "<h3>3. Algoritmos modernos vs depreciados</h3>"
-                    "<table>"
-                    "<tr><th>Categoria</th><th>Use</th><th>Evite</th></tr>"
-                    "<tr><td>Cifra simétrica</td><td>AES-256-GCM, ChaCha20-Poly1305</td>"
-                    "<td>DES, 3DES, RC4, AES-CBC sem MAC</td></tr>"
-                    "<tr><td>Hash</td><td>SHA-256, SHA-3, BLAKE2/3</td>"
-                    "<td>MD5, SHA-1</td></tr>"
-                    "<tr><td>KDF (senha)</td><td>Argon2id, scrypt, bcrypt</td>"
-                    "<td>MD5/SHA1 puro, PBKDF2 com baixo custo</td></tr>"
-                    "<tr><td>Assimétrica chave</td><td>Ed25519, X25519, ECDSA P-256, RSA-3072+</td>"
-                    "<td>RSA-1024, DSA</td></tr>"
-                    "<tr><td>TLS</td><td>TLS 1.3 (preferível), 1.2 OK</td>"
-                    "<td>TLS 1.0/1.1, SSLv3, SSLv2</td></tr>"
-                    "</table>"
+<h3>3. Algoritmos modernos vs depreciados</h3>
+<table>
+<tr><th>Categoria</th><th>Use</th><th>Evite</th></tr>
+<tr><td>Cifra simétrica</td><td>AES-256-GCM, ChaCha20-Poly1305</td>
+<td>DES, 3DES, RC4, AES-CBC sem MAC</td></tr>
+<tr><td>Hash</td><td>SHA-256, SHA-3, BLAKE2/3</td>
+<td>MD5, SHA-1</td></tr>
+<tr><td>KDF (senha)</td><td>Argon2id, scrypt, bcrypt</td>
+<td>MD5/SHA1 puro, PBKDF2 com baixo custo</td></tr>
+<tr><td>Assimétrica chave</td><td>Ed25519, X25519, ECDSA P-256, RSA-3072+</td>
+<td>RSA-1024, DSA</td></tr>
+<tr><td>TLS</td><td>TLS 1.3 (preferível), 1.2 OK</td>
+<td>TLS 1.0/1.1, SSLv3, SSLv2</td></tr>
+</table>
 
-                    "<h3>4. KMS, gestão de chaves como serviço</h3>"
-                    "<p>KMS resolve o problema crítico: <em>onde guardar a chave?</em> "
-                    "Em vez de em arquivo no disco da app, fica em HSM gerenciado, com:</p>"
-                    "<ul>"
-                    "<li><strong>HSM</strong> (Hardware Security Module): chip dedicado, "
-                    "FIPS 140-2 Level 2 ou 3. Chave nunca sai em claro.</li>"
-                    "<li>API encrypt/decrypt, sua app envia plaintext e recebe ciphertext.</li>"
-                    "<li>Auditoria: cada uso da chave logado em CloudTrail.</li>"
-                    "<li>Rotação automática (anual em CMKs gerenciadas).</li>"
-                    "<li>Revogação: deletar chave torna dados inacessíveis (com janela de "
-                    "espera de 7-30 dias para reverter).</li>"
-                    "<li>Cross-account: bucket em conta A criptografado por chave em "
-                    "conta B (separação de poder).</li>"
-                    "</ul>"
+<h3>4. KMS, gestão de chaves como serviço</h3>
+<p>O KMS resolve o problema crítico de onde efetivamente guardar a
+chave — em vez de num arquivo no disco da própria aplicação, ela fica
+dentro de um HSM (Hardware Security Module) gerenciado, um chip
+dedicado certificado FIPS 140-2 Level 2 ou 3, de onde a chave NUNCA
+sai em texto claro. A aplicação interage com isso via API de
+encrypt/decrypt — envia o texto puro, recebe o cifrado, sem nunca
+manusear a chave diretamente. Cada uso dessa chave fica registrado no
+CloudTrail para auditoria completa. A rotação acontece automaticamente
+(anual, em CMK gerenciada). E deletar a chave torna o dado protegido
+por ela inacessível de propósito — com uma janela de espera de 7 a 30
+dias para reverter uma deleção acidental antes que se torne
+permanente. O KMS também permite configuração cross-account: um bucket
+na conta A criptografado por uma chave gerenciada na conta B, uma
+separação de poder deliberada onde comprometer uma conta não dá acesso
+automático à chave da outra.</p>
 
-                    "<h3>5. Envelope encryption, escala</h3>"
-                    "<p>Ineficiente: para cifrar 1 TB, você não chama KMS para cada bloco. "
-                    "Padrão correto:</p>"
-                    "<ol>"
-                    "<li>Sua app pede uma <strong>data key</strong> ao KMS: ele gera uma "
-                    "chave AES-256 aleatória, cifra ela com a CMK e devolve <em>ambas</em> "
-                    "(plaintext + cipher).</li>"
-                    "<li>App usa a plaintext key para cifrar o dado localmente (rápido).</li>"
-                    "<li>App armazena junto: <code>{ciphertext_data, "
-                    "encrypted_data_key}</code>. Plaintext key joga fora.</li>"
-                    "<li>Para decifrar: pede ao KMS para decifrar a "
-                    "<code>encrypted_data_key</code>; recebe plaintext key; usa para "
-                    "decifrar.</li>"
-                    "</ol>"
-                    "<p>Resultado: chave 'mestre' nunca sai do HSM, mas data keys são "
-                    "armazenadas com o dado. Performance + segurança.</p>"
-                    "<pre><code>import boto3, os\n"
-                    "from cryptography.hazmat.primitives.ciphers.aead import AESGCM\n"
-                    "\n"
-                    "kms = boto3.client('kms')\n"
-                    "\n"
-                    "# Gerar data key\n"
-                    "resp = kms.generate_data_key(KeyId='alias/my-cmk', KeySpec='AES_256')\n"
-                    "plaintext_key = resp['Plaintext']\n"
-                    "encrypted_key = resp['CiphertextBlob']    # armazenar com o dado\n"
-                    "\n"
-                    "# Cifrar com AES-GCM (autenticada)\n"
-                    "aes = AESGCM(plaintext_key)\n"
-                    "nonce = os.urandom(12)\n"
-                    "ciphertext = aes.encrypt(nonce, b'dados sensiveis', associated_data=b'tenant-x')\n"
-                    "\n"
-                    "# Para decifrar:\n"
-                    "plaintext_key = kms.decrypt(CiphertextBlob=encrypted_key)['Plaintext']\n"
-                    "data = AESGCM(plaintext_key).decrypt(nonce, ciphertext, b'tenant-x')</code></pre>"
+<h3>5. Envelope encryption, escala</h3>
+<p>Chamar o KMS diretamente para cada bloco de um terabyte de dado
+seria absurdamente ineficiente — o padrão correto é a envelope
+encryption, em quatro passos. Primeiro, a aplicação pede uma
+<strong>data key</strong> ao KMS: ele gera uma chave AES-256 aleatória,
+cifra essa mesma chave com a CMK, e devolve as DUAS versões — a
+plaintext e a cifrada. Segundo, a aplicação usa a versão plaintext
+dessa data key para cifrar o dado real localmente, com a velocidade
+normal de uma cifra simétrica. Terceiro, a aplicação armazena junto
+apenas <code>{ciphertext_data, encrypted_data_key}</code> — a versão
+plaintext da data key é descartada imediatamente após o uso, nunca
+persistida. Para decifrar depois, o processo se inverte: pede ao KMS
+para decifrar a <code>encrypted_data_key</code>, recebe a versão
+plaintext de volta, e usa ela para decifrar o dado real. O resultado é
+que a chave MESTRE nunca sai do HSM em nenhum momento, enquanto a data
+key específica de cada dado fica armazenada junto dele — ganhando
+performance de cifra local sem abrir mão da segurança centralizada da
+chave mestre:</p>
+<pre><code>import boto3, os
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-                    "<h3>6. TLS 1.3, o melhor jeito de fazer</h3>"
-                    "<p>TLS 1.3 resolveu vários problemas antigos:</p>"
-                    "<ul>"
-                    "<li>Handshake em 1 RTT (vs 2 do 1.2). 0-RTT em sessão retomada.</li>"
-                    "<li>Forward secrecy obrigatório (ECDHE only).</li>"
-                    "<li>Cipher suites legacy removidas (RC4, MD5, SHA1, etc.).</li>"
-                    "<li>Renegociação removida (era vetor de ataque).</li>"
-                    "</ul>"
-                    "<p>Configuração mínima de TLS 'modern' (Mozilla):</p>"
-                    "<pre><code>ssl_protocols TLSv1.3;\n"
-                    "ssl_prefer_server_ciphers off;\n"
-                    "ssl_ciphers TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256;\n"
-                    "ssl_session_timeout 1d;\n"
-                    "ssl_session_cache shared:SSL:10m;\n"
-                    "ssl_session_tickets off;\n"
-                    "ssl_stapling on;\n"
-                    "ssl_stapling_verify on;\n"
-                    "add_header Strict-Transport-Security \"max-age=63072000; includeSubDomains; preload\" always;</code></pre>"
-                    "<p>Audite com <a href='https://www.ssllabs.com/ssltest/'>SSL Labs</a>. "
-                    "Mire em A+.</p>"
+kms = boto3.client('kms')
 
-                    "<h3>7. mTLS, autenticação mútua</h3>"
-                    "<p>TLS comum: cliente verifica servidor (via cert). mTLS: <em>servidor "
-                    "também verifica cliente</em>. Caso de uso típico: comunicação serviço a "
-                    "serviço dentro de mesh.</p>"
-                    "<p>Cada serviço tem certificado emitido por CA interna. Em K8s, o "
-                    "service mesh (Istio, Linkerd) automatiza tudo: cada Pod recebe cert "
-                    "via SPIFFE, rotação a cada 24h, validação automática. Você ganha "
-                    "<em>autenticação criptográfica</em> entre serviços sem mudar código "
-                    "de aplicação.</p>"
+# Gerar data key
+resp = kms.generate_data_key(KeyId='alias/my-cmk', KeySpec='AES_256')
+plaintext_key = resp['Plaintext']
+encrypted_key = resp['CiphertextBlob']    # armazenar com o dado
 
-                    "<h3>8. Hashing de senhas, não é encryption</h3>"
-                    "<p>Hash é unidirecional: dado o hash, não dá para voltar à senha. Mas "
-                    "<strong>não use SHA-256 puro</strong> para senhas, atacante com GPU "
-                    "tenta bilhões/seg. Use KDF de propósito específico:</p>"
-                    "<ul>"
-                    "<li><strong>Argon2id</strong>: vencedor da Password Hashing Competition "
-                    "2015. Memory-hard (caro de paralelizar em GPU). Ajuste parâmetros "
-                    "(memory cost, iterations, parallelism).</li>"
-                    "<li><strong>bcrypt</strong>: clássico, ainda OK. Cost factor &gt; 12.</li>"
-                    "<li><strong>scrypt</strong>: memory-hard como Argon2.</li>"
-                    "</ul>"
-                    "<pre><code>from argon2 import PasswordHasher\n"
-                    "ph = PasswordHasher(memory_cost=65536, time_cost=3, parallelism=4)\n"
-                    "hashed = ph.hash('senha-do-usuario')\n"
-                    "# salva 'hashed' no banco\n"
-                    "ph.verify(hashed, 'senha-do-usuario')</code></pre>"
-                    "<p>Sempre adicione <strong>salt</strong> (Argon2 e bcrypt fazem "
-                    "automaticamente). Sem salt, rainbow tables resolvem.</p>"
+# Cifrar com AES-GCM (autenticada)
+aes = AESGCM(plaintext_key)
+nonce = os.urandom(12)
+ciphertext = aes.encrypt(nonce, b'dados sensiveis', associated_data=b'tenant-x')
 
-                    "<h3>9. Post-quantum: o que vem aí</h3>"
-                    "<p>Computadores quânticos com qubits suficientes vão quebrar RSA e ECC "
-                    "via algoritmo de Shor. Estimativa atual: 10-20 anos. Mas dados "
-                    "criptografados <em>hoje</em> e capturados podem ser decifrados "
-                    "<em>amanhã</em> (harvest now, decrypt later).</p>"
-                    "<p>NIST publicou em 2024 os primeiros padrões post-quantum: ML-KEM "
-                    "(Kyber, troca de chave) e ML-DSA (Dilithium, assinatura). Cloudflare, "
-                    "Google e AWS já oferecem TLS híbrido (clássico + post-quantum) opcional. "
-                    "Comece a olhar agora se seus dados têm valor por &gt;10 anos.</p>"
+# Para decifrar:
+plaintext_key = kms.decrypt(CiphertextBlob=encrypted_key)['Plaintext']
+data = AESGCM(plaintext_key).decrypt(nonce, ciphertext, b'tenant-x')</code></pre>
 
-                    "<h3>10. Caso real: ROCA, chaves quebradas em massa</h3>"
-                    "<p>Em 2017, descobriu-se que uma biblioteca da Infineon (usada em smart "
-                    "cards e TPMs) gerava chaves RSA-2048 com fraqueza matemática que "
-                    "permitia fatoração com ~US$ 38k de cloud. Resultado: chaves de governos "
-                    "(Estônia), corporações e milhões de smart cards tiveram que ser "
-                    "rotacionadas. Lições:</p>"
-                    "<ul>"
-                    "<li>Tamanho de chave não basta, implementação importa.</li>"
-                    "<li>Use libs auditadas (OpenSSL, libsodium, BoringSSL).</li>"
-                    "<li>Mecanismos de rotação devem existir desde o dia 1.</li>"
-                    "<li>HSM com firmware atualizável é vantagem.</li>"
-                    "</ul>"
+<h3>6. TLS 1.3, o melhor jeito de fazer</h3>
+<p>O TLS 1.3 resolveu quatro problemas estruturais das versões
+anteriores: o handshake caiu para 1 round-trip (contra 2 no TLS 1.2),
+com 0-RTT disponível em sessão retomada, reduzindo latência percebida
+na conexão inicial; forward secrecy passou a ser OBRIGATÓRIA, com
+apenas ECDHE permitido — mesmo que a chave privada do servidor vaze no
+futuro, tráfego passado capturado continua indecifrável; cipher suite
+legada (RC4, MD5, SHA1) foi removida completamente do protocolo, sem
+opção de fallback; e a renegociação, que era historicamente um vetor
+de ataque conhecido, foi eliminada de vez. Uma configuração mínima
+"modern" (recomendação da Mozilla) fica assim:</p>
+<pre><code>ssl_protocols TLSv1.3;
+ssl_prefer_server_ciphers off;
+ssl_ciphers TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256;
+ssl_session_timeout 1d;
+ssl_session_cache shared:SSL:10m;
+ssl_session_tickets off;
+ssl_stapling on;
+ssl_stapling_verify on;
+add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;</code></pre>
+<p>Auditar a configuração final no SSL Labs, mirando nota A+, confirma
+que nenhum detalhe ficou esquecido nessa combinação.</p>
 
-                    "<h3>11. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li>Senha em SHA-256 sem salt nem KDF.</li>"
-                    "<li>Chave estática hard-coded no código.</li>"
-                    "<li>TLS com cert auto-assinado em produção.</li>"
-                    "<li>Versão de OpenSSL desatualizada (CVEs antigas).</li>"
-                    "<li>HSTS sem includeSubDomains, sem preload.</li>"
-                    "<li>Cifra simétrica sem autenticação (AES-CBC sem MAC).</li>"
-                    "<li>IV/nonce reusado.</li>"
-                    "<li>Encryption at rest sem encryption at trânsito (faz pouco sentido).</li>"
-                    "<li>'Encriptamos os dados' mas a chave fica no mesmo disco.</li>"
-                    "</ul>"
+<h3>7. mTLS, autenticação mútua</h3>
+<p>Um TLS comum só verifica o SERVIDOR, via certificado — o cliente
+segue anônimo do ponto de vista criptográfico. O mTLS inverte parte
+disso: o servidor TAMBÉM verifica o cliente, criando autenticação nos
+dois sentidos. O caso de uso típico é comunicação serviço-a-serviço
+dentro de um mesh, onde cada serviço carrega um certificado próprio
+emitido por uma CA interna. No Kubernetes, um service mesh (Istio,
+Linkerd) automatiza isso inteiramente: cada Pod recebe certificado via
+SPIFFE, com rotação a cada 24 horas e validação automática — o
+resultado é autenticação criptográfica genuína entre serviços internos,
+sem precisar mudar uma linha de código da aplicação em si.</p>
+
+<h3>8. Hashing de senhas, não é encryption</h3>
+<p>Hash é unidirecional por definição — dado o resultado, não existe
+caminho de volta até a senha original. Mas SHA-256 puro não serve para
+senha: um atacante com GPU tenta bilhões de combinação por segundo
+contra um hash simples demais. A alternativa correta é uma KDF de
+propósito específico, desenhada para ser DELIBERADAMENTE lenta e cara
+de paralelizar: o Argon2id venceu a Password Hashing Competition de
+2015 e é memory-hard, tornando paralelização em GPU cara mesmo com
+hardware dedicado, com parâmetro ajustável de custo de memória,
+iteração e paralelismo; o bcrypt continua uma opção clássica aceitável
+com cost factor acima de 12; e o scrypt oferece a mesma propriedade
+memory-hard do Argon2:</p>
+<pre><code>from argon2 import PasswordHasher
+ph = PasswordHasher(memory_cost=65536, time_cost=3, parallelism=4)
+hashed = ph.hash('senha-do-usuario')
+# salva 'hashed' no banco
+ph.verify(hashed, 'senha-do-usuario')</code></pre>
+<p>Adicionar salt continua essencial (Argon2 e bcrypt já fazem isso
+automaticamente) — sem salt, um atacante resolve o hash inteiro de uma
+vez com uma rainbow table pré-computada, em vez de precisar atacar
+senha por senha individualmente.</p>
+
+<h3>9. Post-quantum: o que vem aí</h3>
+<p>Um computador quântico com qubit suficiente vai quebrar RSA e ECC
+via o algoritmo de Shor — a estimativa atual fica entre 10 e 20 anos
+para isso se tornar prático. O problema real, porém, é anterior a essa
+data: dado criptografado HOJE e capturado por um atacante pode ser
+decifrado no futuro assim que essa capacidade existir — o ataque
+chamado "harvest now, decrypt later" já está acontecendo neste
+momento, mesmo sem o computador quântico capaz de completar a
+decifração ainda existir. O NIST publicou em 2024 os primeiros padrões
+post-quantum oficiais: ML-KEM (Kyber, para troca de chave) e ML-DSA
+(Dilithium, para assinatura). Cloudflare, Google e AWS já oferecem TLS
+híbrido opcional, combinando o algoritmo clássico com o post-quantum ao
+mesmo tempo — vale considerar isso desde já para qualquer dado cujo
+valor de sigilo se estenda além de dez anos no futuro.</p>
+
+<h3>10. Caso real: ROCA, chaves quebradas em massa</h3>
+<p>Em 2017, pesquisadores descobriram que uma biblioteca da Infineon
+— usada em smart card e módulo TPM amplamente distribuído — gerava
+chave RSA-2048 com uma fraqueza matemática específica, permitindo
+fatoração da chave com um custo estimado de cerca de US$ 38 mil em
+processamento de nuvem alugado. O resultado prático foi a necessidade
+de rotacionar chave de governo (incluindo a Estônia inteira), de
+corporação, e de milhões de smart cards individuais ao redor do mundo.
+As lições diretas: o tamanho nominal da chave (2048 bits) não basta
+sozinho — a IMPLEMENTAÇÃO que gera a chave importa tanto quanto o
+tamanho declarado; usar biblioteca já amplamente auditada (OpenSSL,
+libsodium, BoringSSL) reduz drasticamente esse risco específico de
+geração falha; mecanismo de rotação de chave precisa existir desde o
+primeiro dia, não ser adicionado depois de um incidente; e um HSM com
+firmware atualizável se torna uma vantagem real quando uma falha desse
+tipo é descoberta anos depois do deploy original.</p>
+
+<h3>11. Anti-patterns</h3>
+<ul>
+<li><strong>Senha em SHA-256 sem salt nem KDF</strong>: exatamente o
+erro que a seção 8 existe para corrigir.</li>
+<li><strong>Chave estática hard-coded no código</strong>: qualquer um
+com acesso ao repositório extrai a chave imediatamente.</li>
+<li><strong>TLS com certificado auto-assinado em produção</strong>:
+elimina a garantia de identidade que o próprio TLS existe para
+prover.</li>
+<li><strong>Versão de OpenSSL desatualizada</strong>: mantém CVE
+antiga conhecida ativa por escolha, não por acidente.</li>
+<li><strong>HSTS sem <code>includeSubDomains</code> e sem
+<code>preload</code></strong>: deixa subdomínio ou primeira visita fora
+da proteção completa.</li>
+<li><strong>Cifra simétrica sem autenticação</strong> (AES-CBC sem
+MAC): permite adulteração do ciphertext sem detecção.</li>
+<li><strong>IV ou nonce reutilizado</strong>: quebra a garantia de
+segurança de praticamente qualquer cifra moderna que dependa dele ser
+único.</li>
+<li><strong>Encryption at rest sem encryption em trânsito</strong>:
+protege o dado parado mas deixa o mesmo dado exposto exatamente no
+momento em que trafega pela rede.</li>
+<li><strong>"Encriptamos os dados" mas a chave fica no mesmo
+disco</strong>: anula completamente o propósito da criptografia — quem
+rouba o disco rouba a chave junto.</li>
+</ul>"""
                 ),
                 "practical": (
                     "(1) Crie uma CMK em KMS com rotação anual habilitada. Adicione policy "
@@ -2527,188 +2564,192 @@ melhor o mesmo problema.</li>
                     "tornou estudo de caso obrigatório."
                 ),
                 "body": (
-                    "<h3>1. RPO e RTO, as duas métricas-base</h3>"
-                    "<p><strong>RPO</strong> (Recovery Point Objective): quanto de dado é "
-                    "aceitável perder. Se RPO = 1h, você precisa ter backup ou replicação "
-                    "que garanta dados no máximo 1h atrasados.</p>"
-                    "<p><strong>RTO</strong> (Recovery Time Objective): em quanto tempo o "
-                    "serviço deve voltar. Se RTO = 30min, manualidade está fora de questão.</p>"
-                    "<p>Calcule por aplicação:</p>"
-                    "<table>"
-                    "<tr><th>App</th><th>RPO</th><th>RTO</th><th>Estratégia</th></tr>"
-                    "<tr><td>Marketing site (estático)</td><td>24h</td><td>4h</td>"
-                    "<td>backup &amp; restore</td></tr>"
-                    "<tr><td>Blog interno</td><td>24h</td><td>8h</td>"
-                    "<td>backup diário</td></tr>"
-                    "<tr><td>App SaaS pequena</td><td>1h</td><td>1h</td>"
-                    "<td>pilot light multi-region</td></tr>"
-                    "<tr><td>E-commerce</td><td>5min</td><td>30min</td>"
-                    "<td>warm standby</td></tr>"
-                    "<tr><td>Trading platform</td><td>0</td><td>&lt;5min</td>"
-                    "<td>active-active multi-region</td></tr>"
-                    "</table>"
+                """<h3>1. RPO e RTO, as duas métricas-base</h3>
+<p>O <strong>RPO</strong> (Recovery Point Objective) responde "quanto
+dado é aceitável perder": se o RPO é de 1 hora, o backup ou a
+replicação precisam garantir que o dado esteja, no máximo, uma hora
+atrasado em relação ao momento do incidente. O <strong>RTO</strong>
+(Recovery Time Objective) responde "em quanto tempo o serviço precisa
+voltar": se o RTO é de 30 minutos, qualquer processo manual demorado
+já está automaticamente fora de cogitação. Calcular esses dois números
+por APLICAÇÃO — não como um valor único para a empresa inteira — é o
+que permite escolher a estratégia certa para cada caso, sem pagar por
+capacidade de recuperação que uma aplicação de baixo risco nunca vai
+precisar:</p>
+<table>
+<tr><th>App</th><th>RPO</th><th>RTO</th><th>Estratégia</th></tr>
+<tr><td>Marketing site (estático)</td><td>24h</td><td>4h</td>
+<td>backup &amp; restore</td></tr>
+<tr><td>Blog interno</td><td>24h</td><td>8h</td>
+<td>backup diário</td></tr>
+<tr><td>App SaaS pequena</td><td>1h</td><td>1h</td>
+<td>pilot light multi-region</td></tr>
+<tr><td>E-commerce</td><td>5min</td><td>30min</td>
+<td>warm standby</td></tr>
+<tr><td>Trading platform</td><td>0</td><td>&lt;5min</td>
+<td>active-active multi-region</td></tr>
+</table>
 
-                    "<h3>2. Regra 3-2-1 (e variações modernas)</h3>"
-                    "<p>Regra clássica:</p>"
-                    "<ul>"
-                    "<li><strong>3</strong> cópias dos dados (1 produção + 2 backups).</li>"
-                    "<li>Em <strong>2</strong> mídias diferentes (não só disco).</li>"
-                    "<li>Com <strong>1</strong> offsite (outra região, outra cloud, outra "
-                    "empresa).</li>"
-                    "</ul>"
-                    "<p>Modernização <strong>3-2-1-1-0</strong>:</p>"
-                    "<ul>"
-                    "<li>+1 cópia <strong>imutável</strong> (Object Lock, WORM).</li>"
-                    "<li>0 erros após teste de restore.</li>"
-                    "</ul>"
-                    "<p>A imutabilidade é resposta direta a ransomware: atacantes hoje "
-                    "atacam backups primeiro. Cópia que não pode ser apagada nem pelo root "
-                    "&mdash; só com retention period &mdash; sobrevive.</p>"
+<h3>2. Regra 3-2-1 (e variações modernas)</h3>
+<p>A regra clássica de backup pede três cópias do dado (a produção
+mais dois backups), guardadas em duas mídias diferentes (não apenas
+disco), com pelo menos uma delas offsite — outra região, outra cloud,
+outra empresa. A modernização <strong>3-2-1-1-0</strong> acrescenta
+mais duas exigências específicas: uma cópia adicional que seja
+IMUTÁVEL (via Object Lock ou WORM), e zero erro depois de um teste de
+restore real (não presumido). A imutabilidade é resposta direta ao
+padrão de ataque moderno de ransomware, onde o atacante ataca o BACKUP
+primeiro, sabendo que sem ele a vítima fica sem alternativa a pagar o
+resgate — uma cópia que ninguém consegue apagar, nem mesmo o root, até
+o prazo de retenção terminar, sobrevive a esse tipo de ataque
+especificamente.</p>
 
-                    "<h3>3. Estratégias de DR, quanto custo, quanto tempo</h3>"
-                    "<table>"
-                    "<tr><th>Estratégia</th><th>RTO típico</th><th>Custo</th><th>Quando usar</th></tr>"
-                    "<tr><td>Backup &amp; restore</td><td>horas</td><td>baixo</td>"
-                    "<td>apps tolerantes a downtime</td></tr>"
-                    "<tr><td>Pilot light</td><td>30-60min</td><td>baixo-médio</td>"
-                    "<td>infra mínima ligada na região DR (DB replicando)</td></tr>"
-                    "<tr><td>Warm standby</td><td>5-30min</td><td>médio-alto</td>"
-                    "<td>ambiente DR rodando reduzido, escala em caso</td></tr>"
-                    "<tr><td>Multi-site active-active</td><td>&lt;5min</td><td>2x+</td>"
-                    "<td>tráfego distribuído entre regiões em produção</td></tr>"
-                    "</table>"
-                    "<p>Não existe almoço grátis: RTO menor = custo maior + complexidade "
-                    "maior. Escolha por aplicação, não global.</p>"
+<h3>3. Estratégias de DR, quanto custo, quanto tempo</h3>
+<table>
+<tr><th>Estratégia</th><th>RTO típico</th><th>Custo</th><th>Quando usar</th></tr>
+<tr><td>Backup &amp; restore</td><td>horas</td><td>baixo</td>
+<td>apps tolerantes a downtime</td></tr>
+<tr><td>Pilot light</td><td>30-60min</td><td>baixo-médio</td>
+<td>infra mínima ligada na região DR (DB replicando)</td></tr>
+<tr><td>Warm standby</td><td>5-30min</td><td>médio-alto</td>
+<td>ambiente DR rodando reduzido, escala em caso</td></tr>
+<tr><td>Multi-site active-active</td><td>&lt;5min</td><td>2x+</td>
+<td>tráfego distribuído entre regiões em produção</td></tr>
+</table>
+<p>Não existe almoço grátis nessa tabela: cada redução no RTO exige um
+aumento correspondente em custo e complexidade operacional. A decisão
+certa é escolher a estratégia POR aplicação, de acordo com o RPO/RTO
+calculado na seção 1 — não aplicar a mesma estratégia cara a toda a
+infraestrutura, nem a mesma estratégia barata onde ela realmente não
+serve.</p>
 
-                    "<h3>4. Snapshots ≠ backup</h3>"
-                    "<p>EBS snapshot incremental no provedor é cômodo, mas:</p>"
-                    "<ul>"
-                    "<li>Vive na mesma conta. Conta comprometida = snapshot apagado.</li>"
-                    "<li>Vive na mesma região (snapshots base). Falha de região = "
-                    "perdido.</li>"
-                    "<li>Sem object-lock por padrão.</li>"
-                    "</ul>"
-                    "<p>Backup verdadeiro vai para:</p>"
-                    "<ul>"
-                    "<li>Outra <em>conta</em> (cross-account replication, IAM separada).</li>"
-                    "<li>Outra <em>região</em> (cross-region copy).</li>"
-                    "<li>Outro <em>provedor</em> (AWS → Wasabi, ou backup local).</li>"
-                    "<li>Com <strong>retention</strong> imutável.</li>"
-                    "</ul>"
+<h3>4. Snapshots ≠ backup</h3>
+<p>Um snapshot incremental do EBS é conveniente, mas carrega três
+limitações que o desqualificam como backup de verdade sozinho: vive na
+MESMA conta, o que significa que uma conta comprometida perde o
+snapshot junto com o resto; vive na MESMA região por padrão, o que
+significa que uma falha de região inteira o leva junto; e não vem com
+object-lock por padrão, deixando aberto para deleção mesmo acidental.
+Um backup de verdade precisa ir para outra conta (via cross-account
+replication, com IAM totalmente separada), outra região (via
+cross-region copy), ou até outro provedor (AWS migrando para Wasabi, ou
+um backup local independente) — sempre com retenção imutável
+configurada, não apenas presumida.</p>
 
-                    "<h3>5. Ransomware-resistant backup</h3>"
-                    "<p>Atacantes modernos seguem playbook:</p>"
-                    "<ol>"
-                    "<li>Comprometem credencial em phishing.</li>"
-                    "<li>Mapeiam ambiente (active directory, cloud).</li>"
-                    "<li><strong>Apagam ou criptografam backups</strong>.</li>"
-                    "<li>Criptografam dados de produção.</li>"
-                    "<li>Pedem resgate.</li>"
-                    "</ol>"
-                    "<p>Defesas em camada:</p>"
-                    "<ul>"
-                    "<li><strong>Object Lock Compliance</strong>: nem o root pode apagar.</li>"
-                    "<li><strong>MFA Delete</strong>: deleção de versão exige MFA root.</li>"
-                    "<li><strong>Conta separada</strong>: credenciais de produção não "
-                    "alcançam conta de backup.</li>"
-                    "<li><strong>Air gap lógico</strong>: backup em provider diferente, "
-                    "credenciais separadas.</li>"
-                    "<li><strong>Air gap físico</strong>: tape offline (clássico, ainda "
-                    "válido para tier final).</li>"
-                    "<li><strong>Imutability period</strong>: 90+ dias para detectar "
-                    "compromisso silencioso.</li>"
-                    "</ul>"
+<h3>5. Ransomware-resistant backup</h3>
+<p>O playbook típico de um ataque de ransomware moderno segue uma
+sequência bem definida: comprometer credencial via phishing, mapear o
+ambiente inteiro (Active Directory, cloud), APAGAR ou criptografar os
+backups primeiro (exatamente para eliminar a via de fuga da vítima),
+só então criptografar o dado de produção, e finalmente pedir resgate.
+Seis defesas em camada quebram essa sequência em pontos diferentes:
+Object Lock em modo Compliance impede até o root de apagar; MFA Delete
+exige autenticação adicional para deletar qualquer versão; uma conta
+totalmente separada garante que a credencial de produção comprometida
+não alcança a conta de backup; um air gap lógico mantém o backup num
+provedor diferente com credencial independente; um air gap físico —
+fita offline, um método antigo mas ainda válido para o tier final de
+proteção — fica fisicamente desconectado da rede; e um período de
+imutabilidade de 90 dias ou mais dá tempo suficiente para detectar um
+comprometimento silencioso antes que ele afete o backup mais recente
+também.</p>
 
-                    "<h3>6. Backup de banco de dados, não é só copy</h3>"
-                    "<p>Bancos transacionais precisam consistência:</p>"
-                    "<ul>"
-                    "<li><strong>Cold backup</strong>: parar o banco, copiar arquivo. "
-                    "Simples mas downtime.</li>"
-                    "<li><strong>Hot backup</strong>: <code>pg_basebackup</code> em "
-                    "Postgres, <code>mysqldump --single-transaction</code> em MySQL, usa "
-                    "snapshot de transação para consistência.</li>"
-                    "<li><strong>WAL/binlog archiving</strong>: PITR (point-in-time "
-                    "recovery). Backup base + WAL contínuo permite restaurar para qualquer "
-                    "segundo.</li>"
-                    "<li><strong>Logical backup</strong> (pg_dump): mais lento mas "
-                    "portável (versões diferentes, schemas).</li>"
-                    "</ul>"
-                    "<p>RDS faz tudo isso automaticamente: backup automático com retenção "
-                    "configurável, PITR para qualquer segundo dos últimos 35 dias, snapshots "
-                    "manuais. Configure mas <em>teste o restore</em>.</p>"
+<h3>6. Backup de banco de dados, não é só copy</h3>
+<p>Um banco transacional exige consistência que uma cópia simples de
+arquivo não garante. Um <strong>cold backup</strong> — parar o banco e
+copiar o arquivo — é simples mas exige downtime. Um <strong>hot
+backup</strong> (<code>pg_basebackup</code> no Postgres,
+<code>mysqldump --single-transaction</code> no MySQL) usa um snapshot
+de transação para manter consistência mesmo com o banco ativo
+recebendo escrita. O <strong>WAL/binlog archiving</strong> habilita PITR
+(point-in-time recovery) — um backup base combinado com log contínuo de
+transação permite restaurar para qualquer SEGUNDO específico no
+passado, não só para o momento do último backup completo. E o
+<strong>logical backup</strong> (<code>pg_dump</code>) é mais lento na
+execução, mas muito mais portável entre versão diferente do banco ou
+schema diferente. O RDS já automatiza tudo isso — backup automático com
+retenção configurável, PITR para qualquer segundo dos últimos 35 dias,
+snapshot manual sob demanda — mas isso não substitui testar o restore
+de verdade (seção 9), só configurar não é suficiente.</p>
 
-                    "<h3>7. Game days, o teste que separa plano de ficção</h3>"
-                    "<p>Plano só vale se foi testado. Game day: simulação real do que você "
-                    "espera que o time faça. Exemplos:</p>"
-                    "<ul>"
-                    "<li>Mata a região primária via Fault Injection Simulator.</li>"
-                    "<li>Apaga (em ambiente isolado) o banco principal e cronometre o "
-                    "restore.</li>"
-                    "<li>Quebra DNS, rede, certificados.</li>"
-                    "<li>Engenheiro 'de plantão' age sem ajuda; resto observa.</li>"
-                    "</ul>"
-                    "<p>Métricas a coletar:</p>"
-                    "<ul>"
-                    "<li>Tempo até detecção real.</li>"
-                    "<li>Tempo até decisão de failover.</li>"
-                    "<li>Tempo de restore.</li>"
-                    "<li>Quem teve que ser acordado.</li>"
-                    "<li>Documentação que faltava.</li>"
-                    "</ul>"
-                    "<p>Frequência: trimestral em apps tier-1; anual em tier-2. "
-                    "Ferramentas: AWS FIS, Chaos Mesh, Litmus, Gremlin, custom.</p>"
+<h3>7. Game days, o teste que separa plano de ficção</h3>
+<p>Um plano de disaster recovery só vale alguma coisa depois de
+efetivamente testado sob condição realista — um game day é exatamente
+essa simulação: derrubar a região primária via Fault Injection
+Simulator, apagar o banco principal num ambiente isolado e cronometrar
+o restore, quebrar DNS, rede ou certificado deliberadamente, com o
+engenheiro "de plantão" agindo sem ajuda enquanto o resto do time só
+observa e registra. Cinco métricas valem a pena coletar em cada
+exercício: tempo até a detecção real do problema, tempo até a decisão
+de fazer failover, tempo total de restore, quem precisou ser acordado
+fora do horário, e qual documentação estava faltando ou desatualizada
+durante a execução. A frequência recomendada é trimestral para
+aplicação tier-1 e anual para tier-2 — ferramentas como AWS FIS, Chaos
+Mesh, Litmus ou Gremlin automatizam boa parte da injeção de falha
+controlada.</p>
 
-                    "<h3>8. Caso real: GitLab 2017, anatomia da limpa</h3>"
-                    "<p>Em 31/jan/2017, engenheiro do GitLab tentou limpar uma replicação "
-                    "do banco principal. Por engano, rodou <code>rm -rf</code> no "
-                    "<em>banco principal</em> (não na réplica). 300 GB de dados deletados.</p>"
-                    "<p>Eles tinham 5 mecanismos de backup. Quando foram restaurar:</p>"
-                    "<ol>"
-                    "<li>S3 backup automático: <strong>desligado há meses</strong> (config "
-                    "errada não detectada).</li>"
-                    "<li>Daily snapshots LVM: <strong>último era de 24h atrás</strong> e "
-                    "demorava 18h para restaurar.</li>"
-                    "<li>Azure disk snapshot: <strong>nunca ativado</strong>.</li>"
-                    "<li>Replication para staging: <strong>ativa, mas atrás 6h</strong>.</li>"
-                    "<li>Backup pg_dump: <strong>arquivo de 0 bytes, backup quebrado</strong>.</li>"
-                    "</ol>"
-                    "<p>Recuperaram do snapshot LVM com 6h de perda de dados (alguns issues, "
-                    "MRs perdidos). Live-streamed o postmortem como honestidade.</p>"
-                    "<p>Lições documentadas:</p>"
-                    "<ul>"
-                    "<li>5 mecanismos de backup, 4 não funcionavam. <em>Teste teste teste.</em></li>"
-                    "<li>Monitoramento de backup: 'backup não rodou há 24h' deveria ser "
-                    "alerta vermelho.</li>"
-                    "<li>Engenheiro fadigado às 23h, fadiga é fator de incidente.</li>"
-                    "<li>Hostname ambíguo facilitou o erro (db1 vs db2).</li>"
-                    "</ul>"
+<h3>8. Caso real: GitLab 2017, anatomia da limpa</h3>
+<p>Em 31 de janeiro de 2017, um engenheiro do GitLab tentando limpar
+uma réplica do banco principal rodou por engano <code>rm -rf</code>
+direto no BANCO PRINCIPAL, não na réplica — 300 GB de dados apagados
+de uma vez. O GitLab tinha cinco mecanismos de backup diferentes
+configurados, e na hora de restaurar descobriu que quatro deles não
+funcionavam: o backup automático para S3 estava desligado havia meses,
+por uma configuração errada que nunca disparou alerta; o snapshot LVM
+diário mais recente já tinha 24 horas de idade e levaria 18 horas para
+restaurar; o snapshot de disco no Azure nunca chegou a ser ativado; a
+replicação para staging estava ativa, mas 6 horas atrasada; e o backup
+via <code>pg_dump</code> era literalmente um arquivo de 0 bytes,
+quebrado havia tempo sem ninguém perceber. A recuperação final veio do
+snapshot LVM, com 6 horas de dado perdido — algumas issues e merge
+requests desapareceram para sempre. O GitLab transmitiu o próprio
+postmortem ao vivo, um gesto de transparência que virou referência.
+As lições documentadas por eles mesmos: de cinco mecanismos de backup,
+quatro simplesmente não funcionavam — só testar de verdade revela isso;
+"o backup não rodou nas últimas 24h" deveria ser um alerta vermelho
+automático, não algo descoberto só na hora da crise; o engenheiro
+estava fadigado às 23h quando cometeu o erro, e fadiga é um fator de
+incidente real, não só um detalhe anedótico; e um nome de host ambíguo
+(db1 versus db2) facilitou diretamente o erro original.</p>
 
-                    "<h3>9. 'Backup is not done until you've tested restore'</h3>"
-                    "<p>Mensalmente / trimestralmente, em ambiente isolado:</p>"
-                    "<ol>"
-                    "<li>Provisione recurso novo (DB, S3, instance).</li>"
-                    "<li>Restore o backup mais recente.</li>"
-                    "<li>Verifique integridade: schema, contagem de rows, queries de "
-                    "smoke test.</li>"
-                    "<li>Cronometre tempo total.</li>"
-                    "<li>Compare com seu RTO documentado.</li>"
-                    "<li>Documente desvios e ajuste.</li>"
-                    "</ol>"
-                    "<p>Automatize esse processo: AWS Backup tem 'restore testing'. "
-                    "Pipelines em Terraform podem provisionar/restaurar/validar/destruir.</p>"
+<h3>9. 'Backup is not done until you've tested restore'</h3>
+<p>Um ciclo de teste real, rodado mensal ou trimestralmente em
+ambiente isolado, segue seis passos: provisionar um recurso novo (banco,
+bucket, instância); restaurar o backup mais recente disponível ali;
+verificar integridade de verdade — schema correto, contagem de linha
+esperada, uma query de smoke test respondendo; cronometrar o tempo
+total do processo inteiro; comparar esse tempo medido contra o RTO
+documentado (seção 1); e documentar qualquer desvio encontrado, ajustando
+o plano de acordo. Automatizar esse ciclo evita que ele dependa de
+alguém lembrar de rodá-lo manualmente — o AWS Backup já tem "restore
+testing" nativo, e um pipeline em Terraform pode provisionar, restaurar,
+validar e destruir tudo automaticamente em sequência.</p>
 
-                    "<h3>10. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li>Snapshot na mesma conta = backup.</li>"
-                    "<li>Não testar restore.</li>"
-                    "<li>Backup só de banco, não de configuração/secrets.</li>"
-                    "<li>Não criptografar backup (vazou backup, vazou tudo).</li>"
-                    "<li>Retenção sem cap (backup de 5 anos virando custo top-3).</li>"
-                    "<li>Sem RTO/RPO documentado por aplicação.</li>"
-                    "<li>Plano DR existe, mas equipe nunca executou.</li>"
-                    "<li>Backup em região vizinha ('us-east-1' e 'us-east-2'), desastre "
-                    "geo-correlacionado pode pegar as duas.</li>"
-                    "</ul>"
+<h3>10. Anti-patterns</h3>
+<ul>
+<li><strong>Tratar snapshot na mesma conta como se fosse backup
+completo</strong>: não protege contra conta comprometida (seção 4).</li>
+<li><strong>Nunca testar o restore</strong>: o erro central que o caso
+GitLab (seção 8) tornou público de forma exemplar.</li>
+<li><strong>Fazer backup só do banco, esquecendo configuração e
+segredo</strong>: restaurar o dado sem a configuração ao redor não
+recria o sistema funcional inteiro.</li>
+<li><strong>Não criptografar o backup</strong>: se o backup vazar,
+vaza tudo que ele contém, sem exceção.</li>
+<li><strong>Retenção sem limite superior</strong>: um backup de cinco
+anos acumulado sem revisão vira uma das três maiores linhas da fatura,
+sem ninguém perceber quando aconteceu.</li>
+<li><strong>Sem RTO/RPO documentado por aplicação</strong>: sem esse
+número explícito (seção 1), não existe forma objetiva de saber se a
+estratégia atual é suficiente.</li>
+<li><strong>Plano de DR existe no papel, mas nunca foi executado</strong>:
+o mesmo problema da seção 7 — plano não testado é ficção, não
+garantia.</li>
+<li><strong>Backup guardado numa região vizinha</strong> (us-east-1 e
+us-east-2, por exemplo): um desastre geograficamente correlacionado
+pode afetar as duas ao mesmo tempo, anulando o propósito de ter
+distribuído a cópia.</li>
+</ul>"""
                 ),
                 "practical": (
                     "(1) Faça snapshot/backup do seu banco de teste (RDS, Postgres, MySQL "
@@ -2825,227 +2866,249 @@ melhor o mesmo problema.</li>
                     "auto-scaling, e cultura, sem ela, a melhor ferramenta vira shelfware."
                 ),
                 "body": (
-                    "<h3>1. Por que FinOps existe</h3>"
-                    "<p>Em on-prem, comprar hardware era decisão de comitê: 6 meses de "
-                    "discussão, capex, contrato. Você pensava muito antes.</p>"
-                    "<p>Em cloud, qualquer dev provisiona EC2 com um clique. Velocidade "
-                    "aumenta, mas decisões de custo se distribuem para centenas de pessoas. "
-                    "Sem framework, vira o oposto: muitas decisões pequenas e ruins somando "
-                    "fatura mensal absurda.</p>"
-                    "<p>FinOps não é cortar custo. É <em>tomar boas decisões com dados de "
-                    "custo</em>, às vezes a decisão certa é gastar mais (escalar para "
-                    "atender Black Friday). O ponto é estar consciente.</p>"
+                """<h3>1. Por que FinOps existe</h3>
+<p>Em ambiente on-prem, comprar hardware era uma decisão de comitê:
+seis meses de discussão, capex aprovado em orçamento, contrato
+assinado — cada decisão de custo passava por um filtro pesado antes de
+acontecer. Em cloud, qualquer desenvolvedor provisiona uma EC2 com um
+único clique. A velocidade aumenta muito, mas a decisão de custo se
+distribui de repente para centenas de pessoas diferentes, sem o mesmo
+filtro. Sem um framework para acompanhar isso, o resultado inverte: em
+vez de poucas decisões grandes e bem pensadas, surgem muitas decisões
+pequenas e mal calculadas somando uma fatura mensal absurda no fim. O
+ponto central do FinOps não é cortar custo por cortar — às vezes a
+decisão certa é gastar MAIS, escalando de propósito para atender um
+pico previsto como Black Friday. O que FinOps garante é decisão
+CONSCIENTE, tomada com dado de custo real na mesa, não decisão no
+escuro.</p>
 
-                    "<h3>2. Visibilidade primeiro: tagging strategy</h3>"
-                    "<p>Sem tags, você sabe que paga US$ 50k/mês mas não sabe quem usa. "
-                    "Padrão recomendado: defina tags <em>obrigatórias</em> para todo "
-                    "recurso:</p>"
-                    "<table>"
-                    "<tr><th>Tag</th><th>Exemplo</th><th>Para quê</th></tr>"
-                    "<tr><td><code>Environment</code></td><td>prod, staging, dev</td>"
-                    "<td>separar custo por ambiente</td></tr>"
-                    "<tr><td><code>Owner</code></td><td>team-payments@</td>"
-                    "<td>quem responde se algo sumir</td></tr>"
-                    "<tr><td><code>CostCenter</code></td><td>CC-1234</td>"
-                    "<td>chargeback contábil</td></tr>"
-                    "<tr><td><code>Project</code></td><td>checkout-redesign</td>"
-                    "<td>ROI por projeto</td></tr>"
-                    "<tr><td><code>ManagedBy</code></td><td>terraform, manual</td>"
-                    "<td>identificar drift</td></tr>"
-                    "<tr><td><code>ExpiresAt</code></td><td>2026-12-31</td>"
-                    "<td>recursos temporários</td></tr>"
-                    "</table>"
-                    "<p>Imponha via SCP/Org Policy: 'recurso sem tag obrigatória, deny "
-                    "create'. Ative <em>cost allocation tags</em> em AWS Billing (uma vez "
-                    "ativada, vira filtro no Cost Explorer).</p>"
+<h3>2. Visibilidade primeiro: tagging strategy</h3>
+<p>Sem tag, você sabe que está pagando US$ 50 mil por mês, mas não tem
+como saber QUEM está usando esse valor. O padrão recomendado define um
+conjunto de tags obrigatórias para todo recurso criado:</p>
+<table>
+<tr><th>Tag</th><th>Exemplo</th><th>Para quê</th></tr>
+<tr><td><code>Environment</code></td><td>prod, staging, dev</td>
+<td>separar custo por ambiente</td></tr>
+<tr><td><code>Owner</code></td><td>team-payments@</td>
+<td>quem responde se algo sumir</td></tr>
+<tr><td><code>CostCenter</code></td><td>CC-1234</td>
+<td>chargeback contábil</td></tr>
+<tr><td><code>Project</code></td><td>checkout-redesign</td>
+<td>ROI por projeto</td></tr>
+<tr><td><code>ManagedBy</code></td><td>terraform, manual</td>
+<td>identificar drift</td></tr>
+<tr><td><code>ExpiresAt</code></td><td>2026-12-31</td>
+<td>recursos temporários</td></tr>
+</table>
+<p>Impor isso via SCP ou Org Policy — negando a criação de qualquer
+recurso sem a tag obrigatória presente — transforma a exigência de
+convenção seguida por boa vontade em regra estruturalmente aplicada. E
+ativar cost allocation tags no AWS Billing é o passo que finalmente
+torna essas tags filtráveis dentro do Cost Explorer, fechando o ciclo
+entre "marcar o recurso" e "conseguir ver o custo por tag" de verdade.</p>
 
-                    "<h3>3. Modelos de cobrança em AWS (e equivalentes)</h3>"
-                    "<table>"
-                    "<tr><th>Modelo</th><th>Desconto</th><th>Compromisso</th><th>Quando</th></tr>"
-                    "<tr><td>On-demand</td><td>0%</td><td>nenhum</td>"
-                    "<td>desenvolvimento, picos imprevisíveis</td></tr>"
-                    "<tr><td>Reserved Instance (1y)</td><td>até 40%</td><td>1 ano, type fixo</td>"
-                    "<td>baseline previsível</td></tr>"
-                    "<tr><td>Reserved Instance (3y)</td><td>até 60%</td><td>3 anos, type fixo</td>"
-                    "<td>workload core estável</td></tr>"
-                    "<tr><td>Savings Plans</td><td>até 70%</td>"
-                    "<td>1-3 anos, US$/h flexível em type/region</td>"
-                    "<td>baseline mas com flexibilidade</td></tr>"
-                    "<tr><td>Spot Instance</td><td>até 90%</td>"
-                    "<td>nenhum, pode ser interrompida com 2min de aviso</td>"
-                    "<td>batch, CI, ML training, workload tolerante</td></tr>"
-                    "</table>"
-                    "<p>Estratégia típica em produção:</p>"
-                    "<ul>"
-                    "<li>~70% baseline em Savings Plans (compute + Lambda + Fargate).</li>"
-                    "<li>~20% em Spot para workloads tolerantes.</li>"
-                    "<li>~10% on-demand para picos imprevisíveis.</li>"
-                    "</ul>"
+<h3>3. Modelos de cobrança em AWS (e equivalentes)</h3>
+<table>
+<tr><th>Modelo</th><th>Desconto</th><th>Compromisso</th><th>Quando</th></tr>
+<tr><td>On-demand</td><td>0%</td><td>nenhum</td>
+<td>desenvolvimento, picos imprevisíveis</td></tr>
+<tr><td>Reserved Instance (1y)</td><td>até 40%</td><td>1 ano, type fixo</td>
+<td>baseline previsível</td></tr>
+<tr><td>Reserved Instance (3y)</td><td>até 60%</td><td>3 anos, type fixo</td>
+<td>workload core estável</td></tr>
+<tr><td>Savings Plans</td><td>até 70%</td>
+<td>1-3 anos, US$/h flexível em type/region</td>
+<td>baseline mas com flexibilidade</td></tr>
+<tr><td>Spot Instance</td><td>até 90%</td>
+<td>nenhum, pode ser interrompida com 2min de aviso</td>
+<td>batch, CI, ML training, workload tolerante</td></tr>
+</table>
+<p>Uma estratégia típica em produção madura combina os três: cerca de
+70% da carga baseline em Savings Plans (cobrindo compute, Lambda e
+Fargate), cerca de 20% em Spot para workload tolerante a interrupção, e
+apenas 10% em on-demand reservado para pico realmente imprevisível — o
+compromisso de longo prazo cobre o que é previsível, e o restante fica
+flexível.</p>
 
-                    "<h3>4. Right-sizing, a maioria das instâncias está superprovisionada</h3>"
-                    "<p>Análise típica em ambientes maduros: 30-50% das EC2 têm "
-                    "<em>CPU médio &lt; 10%</em> sustentado. Você está pagando por capacidade "
-                    "que não usa.</p>"
-                    "<p>Ferramentas recomendam:</p>"
-                    "<ul>"
-                    "<li><strong>AWS Compute Optimizer</strong>: olha métricas "
-                    "CloudWatch/CloudWatch Agent e sugere instances menores.</li>"
-                    "<li><strong>Azure Advisor</strong>: equivalente.</li>"
-                    "<li><strong>GCP Recommender</strong>: idem.</li>"
-                    "</ul>"
-                    "<p>Estratégias:</p>"
-                    "<ul>"
-                    "<li>Trocar família: <code>m6i</code> (general) → <code>t3</code> (burst) "
-                    "para apps com tráfego variável.</li>"
-                    "<li>Reduzir tamanho: <code>m6i.2xlarge</code> → <code>m6i.large</code> "
-                    "se CPU médio &lt; 30%.</li>"
-                    "<li>Migrar para Graviton (ARM): mesmo desempenho, ~20% mais barato. "
-                    "<code>m6g</code>, <code>c7g</code>, etc. Recompila ou usa imagem "
-                    "multi-arch.</li>"
-                    "<li>Para cargas variáveis: serverless (Lambda, Fargate, Cloud Run) "
-                    "escala a zero.</li>"
-                    "</ul>"
+<h3>4. Right-sizing, a maioria das instâncias está superprovisionada</h3>
+<p>Uma análise típica em ambiente maduro encontra 30% a 50% das
+instâncias EC2 com CPU médio sustentado abaixo de 10% — a empresa está
+pagando integralmente por capacidade que raramente usa de fato. AWS
+Compute Optimizer, Azure Advisor e GCP Recommender fazem esse
+diagnóstico automaticamente, analisando a métrica real do CloudWatch (ou
+equivalente) e sugerindo instância menor. Quatro estratégias resolvem
+o problema uma vez identificado: trocar de família — de
+<code>m6i</code> (uso geral) para <code>t3</code> (burst) numa
+aplicação com tráfego bem variável; reduzir o tamanho diretamente —
+<code>m6i.2xlarge</code> para <code>m6i.large</code> quando a CPU média
+fica abaixo de 30%; migrar para Graviton (ARM) — mesmo desempenho por
+cerca de 20% menos custo, usando famílias <code>m6g</code>,
+<code>c7g</code>, seja recompilando para ARM ou usando uma imagem
+multi-arch já pronta; e, para carga muito variável, migrar para
+serverless (Lambda, Fargate, Cloud Run), que escala até zero quando
+ninguém está usando.</p>
 
-                    "<h3>5. Recursos órfãos, o ralo silencioso</h3>"
-                    "<p>Em qualquer conta &gt; 6 meses, há:</p>"
-                    "<ul>"
-                    "<li>EBS volumes desanexados (instância foi deletada, volume ficou).</li>"
-                    "<li>Snapshots de anos atrás.</li>"
-                    "<li>Elastic IPs não associados (US$ 0.005/h cada).</li>"
-                    "<li>NAT Gateways esquecidos em VPCs sem tráfego.</li>"
-                    "<li>RDS em <code>stopped</code> (cobrança continua de storage).</li>"
-                    "<li>S3 buckets com data lake gigante de POC abandonada.</li>"
-                    "<li>CloudWatch logs sem retention (cresce indefinidamente).</li>"
-                    "<li>Load balancers sem target.</li>"
-                    "<li>Lambdas com retention de log infinito.</li>"
-                    "</ul>"
-                    "<p>Em ambientes grandes, isso vira 5-15% da fatura. Auditoria "
-                    "automatizada com <strong>Cloud Custodian</strong> funciona muito bem:</p>"
-                    "<pre><code># custodian.yml\n"
-                    "policies:\n"
-                    "  - name: ebs-unattached-old\n"
-                    "    resource: ebs\n"
-                    "    filters:\n"
-                    "      - State: available           # desanexado\n"
-                    "      - type: value\n"
-                    "        key: CreateTime\n"
-                    "        op: less-than\n"
-                    "        value_type: age\n"
-                    "        value: 30\n"
-                    "    actions:\n"
-                    "      - type: tag\n"
-                    "        tags:\n"
-                    "          'cleanup': 'pending'\n"
-                    "      - type: notify\n"
-                    "        to: ['platform@example.com']</code></pre>"
-                    "<p>Após review do dono, segunda passada deleta de fato.</p>"
+<h3>5. Recursos órfãos, o ralo silencioso</h3>
+<p>Em qualquer conta com mais de seis meses de uso, um conjunto
+previsível de recurso esquecido se acumula: volume EBS desanexado
+depois que a instância original foi apagada; snapshot de anos atrás
+sem ninguém revisar; Elastic IP não associado, cobrando US$ 0,005 por
+hora mesmo parado; NAT Gateway esquecido numa VPC que não recebe mais
+tráfego nenhum; RDS em estado <code>stopped</code>, que continua
+cobrando storage mesmo parado; bucket S3 com data lake gigante de uma
+prova de conceito abandonada; log do CloudWatch sem retenção
+configurada, crescendo indefinidamente; load balancer sem nenhum target
+atrás dele; e função Lambda com retenção de log infinita. Em ambiente
+grande, isso soma de 5% a 15% da fatura inteira, silenciosamente. Uma
+auditoria automatizada com Cloud Custodian resolve isso de forma
+estruturada:</p>
+<pre><code># custodian.yml
+policies:
+  - name: ebs-unattached-old
+    resource: ebs
+    filters:
+      - State: available           # desanexado
+      - type: value
+        key: CreateTime
+        op: less-than
+        value_type: age
+        value: 30
+    actions:
+      - type: tag
+        tags:
+          'cleanup': 'pending'
+      - type: notify
+        to: ['platform@example.com']</code></pre>
+<p>Após o dono do recurso revisar a marcação, uma segunda passada faz
+a deleção de fato — nunca automática de primeira, para evitar apagar
+algo que na verdade ainda estava em uso legítimo.</p>
 
-                    "<h3>6. Auto-scaling como FinOps</h3>"
-                    "<p>Provisionar para o pico = pagar pico o tempo todo. Auto-scaling "
-                    "ajusta dinamicamente:</p>"
-                    "<ul>"
-                    "<li><strong>EC2 Auto Scaling Groups</strong>: target tracking (ex.: "
-                    "manter CPU médio em 60%).</li>"
-                    "<li><strong>K8s HPA</strong> (Horizontal Pod Autoscaler): scale "
-                    "Pods baseado em métricas custom.</li>"
-                    "<li><strong>K8s Cluster Autoscaler</strong> ou <strong>Karpenter</strong>: "
-                    "adiciona/remove nodes baseado em pending pods.</li>"
-                    "<li><strong>Lambda</strong>: escala a zero quando ninguém chama.</li>"
-                    "<li><strong>Fargate</strong>: paga só pelo container, escala 0-N.</li>"
-                    "</ul>"
-                    "<p>Karpenter (em K8s) é particularmente impressionante: provisiona node "
-                    "exato pro pod (Spot quando possível, certifica family/size por "
-                    "workload), economia substancial vs Cluster Autoscaler clássico.</p>"
+<h3>6. Auto-scaling como FinOps</h3>
+<p>Provisionar capacidade fixa para o pico esperado significa pagar
+pelo pico o tempo INTEIRO, mesmo nas horas de tráfego baixo — o
+auto-scaling resolve isso ajustando capacidade dinamicamente conforme
+demanda real. O EC2 Auto Scaling Group faz target tracking (manter CPU
+média em, digamos, 60%). O HPA do Kubernetes (Horizontal Pod
+Autoscaler) escala pod com base em métrica customizada. O Cluster
+Autoscaler ou o Karpenter no Kubernetes adiciona ou remove NODE
+inteiro conforme pod pendente aparece ou desaparece. O Lambda escala
+até zero quando ninguém está chamando a função. E o Fargate cobra
+apenas pelo container efetivamente rodando, escalando de zero até N
+sem gerenciar nenhum servidor por trás. O Karpenter merece destaque
+específico: ele provisiona o node exato para o pod que precisa dele —
+escolhendo Spot quando possível e a família/tamanho certos para aquela
+carga específica — entregando uma economia substancial comparado ao
+Cluster Autoscaler clássico, que trabalha com grupo de instância mais
+genérico.</p>
 
-                    "<h3>7. Egress, NAT Gateway, e os custos invisíveis</h3>"
-                    "<p>Custos que matam silenciosamente:</p>"
-                    "<table>"
-                    "<tr><th>Item</th><th>$/unidade</th><th>Estimativa de impacto</th></tr>"
-                    "<tr><td>Tráfego saindo da AWS</td><td>~$0.09/GB</td>"
-                    "<td>app que serve vídeo: $$$</td></tr>"
-                    "<tr><td>Tráfego cross-region</td><td>~$0.02/GB</td>"
-                    "<td>replicação descuidada</td></tr>"
-                    "<tr><td>Tráfego cross-AZ</td><td>~$0.01/GB</td>"
-                    "<td>app em K8s sem topology aware routing</td></tr>"
-                    "<tr><td>NAT Gateway</td><td>~$32/mês + $0.045/GB</td>"
-                    "<td>privada → internet caro</td></tr>"
-                    "<tr><td>VPC Endpoint Interface</td><td>~$7/mês por AZ</td>"
-                    "<td>caro em escala mas pode valer</td></tr>"
-                    "</table>"
-                    "<p>Mitigações:</p>"
-                    "<ul>"
-                    "<li>VPC Endpoint Gateway (S3, DynamoDB), gratuito.</li>"
-                    "<li>CloudFront para egress (cobra menos por GB).</li>"
-                    "<li>Compressão (gzip, brotli) em respostas HTTP.</li>"
-                    "<li>Cache em borda.</li>"
-                    "<li>Topology-aware service em K8s (mesma AZ first).</li>"
-                    "</ul>"
+<h3>7. Egress, NAT Gateway, e os custos invisíveis</h3>
+<table>
+<tr><th>Item</th><th>$/unidade</th><th>Estimativa de impacto</th></tr>
+<tr><td>Tráfego saindo da AWS</td><td>~$0.09/GB</td>
+<td>app que serve vídeo: $$$</td></tr>
+<tr><td>Tráfego cross-region</td><td>~$0.02/GB</td>
+<td>replicação descuidada</td></tr>
+<tr><td>Tráfego cross-AZ</td><td>~$0.01/GB</td>
+<td>app em K8s sem topology aware routing</td></tr>
+<tr><td>NAT Gateway</td><td>~$32/mês + $0.045/GB</td>
+<td>privada → internet caro</td></tr>
+<tr><td>VPC Endpoint Interface</td><td>~$7/mês por AZ</td>
+<td>caro em escala mas pode valer</td></tr>
+</table>
+<p>Cinco mitigações reduzem essa categoria de custo silencioso: VPC
+Endpoint Gateway para S3 e DynamoDB (gratuito, e já detalhado na aula
+de VPC); CloudFront cobrando um preço por GB mais baixo do que egress
+direto; compressão HTTP (gzip, brotli) reduzindo o volume real
+transferido; cache na borda evitando repetir a mesma transferência
+várias vezes; e roteamento topology-aware no Kubernetes, priorizando
+tráfego dentro da mesma AZ antes de cruzar para outra.</p>
 
-                    "<h3>8. Budgets, alertas e quotas</h3>"
-                    "<p>Configure ANTES do primeiro deploy:</p>"
-                    "<pre><code>resource \"aws_budgets_budget\" \"monthly\" {\n"
-                    "  name         = \"prod-monthly\"\n"
-                    "  budget_type  = \"COST\"\n"
-                    "  limit_amount = \"5000\"\n"
-                    "  limit_unit   = \"USD\"\n"
-                    "  time_unit    = \"MONTHLY\"\n"
-                    "  \n"
-                    "  notification {\n"
-                    "    comparison_operator = \"GREATER_THAN\"\n"
-                    "    threshold           = 50\n"
-                    "    threshold_type      = \"PERCENTAGE\"\n"
-                    "    notification_type   = \"FORECASTED\"\n"
-                    "    subscriber_email_addresses = [\"finance@example.com\"]\n"
-                    "  }\n"
-                    "  notification {\n"
-                    "    comparison_operator = \"GREATER_THAN\"\n"
-                    "    threshold           = 90\n"
-                    "    notification_type   = \"ACTUAL\"\n"
-                    "    subscriber_email_addresses = [\"oncall@example.com\"]\n"
-                    "  }\n"
-                    "}</code></pre>"
-                    "<p>Em conta de sandbox, considere AWS Budget Action: 'aplica SCP de "
-                    "deny EC2 RunInstances quando atingir 100%'. Evita explosão.</p>"
+<h3>8. Budgets, alertas e quotas</h3>
+<p>Configurar isso ANTES do primeiro deploy — não depois do primeiro
+susto — é o que separa uma fatura administrada de uma surpresa de fim
+de mês:</p>
+<pre><code>resource "aws_budgets_budget" "monthly" {
+  name         = "prod-monthly"
+  budget_type  = "COST"
+  limit_amount = "5000"
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+  
+  notification {
+    comparison_operator = "GREATER_THAN"
+    threshold           = 50
+    threshold_type      = "PERCENTAGE"
+    notification_type   = "FORECASTED"
+    subscriber_email_addresses = ["finance@example.com"]
+  }
+  notification {
+    comparison_operator = "GREATER_THAN"
+    threshold           = 90
+    notification_type   = "ACTUAL"
+    subscriber_email_addresses = ["oncall@example.com"]
+  }
+}</code></pre>
+<p>Numa conta de sandbox especificamente, vale considerar o AWS Budget
+Action — aplicando uma SCP que nega <code>RunInstances</code>
+automaticamente ao atingir 100% do orçamento configurado, evitando que
+um bug em loop (como o caso do jornalista holandês da aula anterior)
+tenha chance de explodir sem nenhum limite prático.</p>
 
-                    "<h3>9. Cultura FinOps: Crawl / Walk / Run</h3>"
-                    "<p>FinOps Foundation define maturity:</p>"
-                    "<ul>"
-                    "<li><strong>Crawl</strong>: visibilidade básica. Tags, Cost Explorer, "
-                    "budgets. KPIs simples.</li>"
-                    "<li><strong>Walk</strong>: otimização contínua. Right-sizing automatizado. "
-                    "Showback por equipe. Anomaly detection (Cost Anomaly).</li>"
-                    "<li><strong>Run</strong>: decisões de produto influenciadas por custo. "
-                    "Chargeback. Forecasting integrado a planning. Unit economics "
-                    "(<code>$ / transação</code>).</li>"
-                    "</ul>"
-                    "<p>Não pule etapas. Sem visibilidade básica, qualquer 'otimização' é "
-                    "torcida.</p>"
+<h3>9. Cultura FinOps: Crawl / Walk / Run</h3>
+<p>A FinOps Foundation define três estágios progressivos de
+maturidade, e pular etapa é o erro mais comum. No estágio
+<strong>Crawl</strong>, o foco é visibilidade básica: tag, Cost
+Explorer, budget configurado, KPI simples acompanhado. No
+<strong>Walk</strong>, entra a otimização contínua: right-sizing
+automatizado, showback por equipe (cada time vendo o próprio custo), e
+detecção de anomalia de custo. No <strong>Run</strong>, a decisão de
+PRODUTO já é diretamente influenciada por custo: chargeback real entre
+áreas, forecasting integrado ao planejamento, e unit economics
+calculada por transação (<code>$ / transação</code>). Sem a
+visibilidade básica do Crawl bem estabelecida primeiro, qualquer
+tentativa de "otimização" no estágio seguinte acaba baseada em dado
+distorcido ou incompleto.</p>
 
-                    "<h3>10. Caso real: Fly.io e a fatura inesperada</h3>"
-                    "<p>Em 2024, Fly.io publicou postmortem público: cliente teve crash "
-                    "loop em VM levando a 50TB de transferência cross-region em 2 dias. "
-                    "Fatura projetada: US$ 70k. Lições documentadas:</p>"
-                    "<ul>"
-                    "<li>Cliente tinha budget mas nunca configurou alerta.</li>"
-                    "<li>Loop demorou 18h para ser detectado pelo time.</li>"
-                    "<li>Fly absorveu 80% do custo (boa relação).</li>"
-                    "<li>Lição da Fly: rate-limit de egress por padrão em novas contas.</li>"
-                    "<li>Lição do cliente: alarme em 'tráfego/min &gt; X' = caro vir do "
-                    "nada.</li>"
-                    "</ul>"
+<h3>10. Caso real: Fly.io e a fatura inesperada</h3>
+<p>Em 2024, a Fly.io publicou um postmortem público sobre um cliente
+cuja VM entrou em crash loop, gerando 50 TB de transferência
+cross-region em apenas dois dias — uma fatura projetada de US$ 70 mil.
+As lições documentadas do incidente: o cliente tinha um budget
+configurado, mas nunca chegou a configurar o ALERTA correspondente,
+tornando o budget inútil na prática; o loop levou 18 horas até ser
+detectado pelo próprio time; a Fly.io absorveu 80% do custo como
+gesto de boa relação com o cliente; a lição que a Fly.io tirou foi
+aplicar rate-limit de egress por padrão em conta nova, prevenindo o
+mesmo cenário estrutural; e a lição do lado do cliente foi configurar
+alerta especificamente em "tráfego por minuto acima de X" — o tipo de
+sinal que teria detectado o problema em minutos, não em horas.</p>
 
-                    "<h3>11. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li>Comprar Reserved 3-year sem analisar uso.</li>"
-                    "<li>Não usar tag, todo recurso é 'misc'.</li>"
-                    "<li>Sem retention em CloudWatch Logs.</li>"
-                    "<li>Snapshot diário de tudo, sem expiração.</li>"
-                    "<li>Provisionar instance grande 'para garantir' sem medir.</li>"
-                    "<li>Spot em workload stateful sem checkpoint.</li>"
-                    "<li>Sem alerta de anomalia (Cost Anomaly Detection é grátis em AWS).</li>"
-                    "<li>Time financeiro sem acesso a Cost Explorer.</li>"
-                    "<li>Showback que ninguém olha.</li>"
-                    "</ul>"
+<h3>11. Anti-patterns</h3>
+<ul>
+<li><strong>Comprar Reserved de 3 anos sem analisar padrão de
+uso</strong>: trava um compromisso longo sobre uma suposição não
+verificada.</li>
+<li><strong>Não usar tag, todo recurso vira "misc"</strong>: elimina a
+visibilidade que sustenta qualquer decisão informada (seção 2).</li>
+<li><strong>Sem retenção configurada no CloudWatch Logs</strong>:
+cresce indefinidamente sem limite, um dos órfãos mais comuns (seção
+5).</li>
+<li><strong>Snapshot diário de tudo sem expiração</strong>: acumula
+custo de storage sem nenhum limite de retenção real.</li>
+<li><strong>Provisionar instância grande "para garantir" sem
+medir</strong>: exatamente o padrão que o right-sizing (seção 4) existe
+para corrigir.</li>
+<li><strong>Spot em workload stateful sem checkpoint</strong>: perde
+progresso inteiro a cada interrupção de 2 minutos de aviso.</li>
+<li><strong>Sem alerta de anomalia configurado</strong>: o Cost
+Anomaly Detection é gratuito na AWS e raramente é ativado mesmo
+assim.</li>
+<li><strong>Time financeiro sem acesso ao Cost Explorer</strong>: quem
+mais precisaria do dado de custo fica sem o acesso direto a ele.</li>
+<li><strong>Showback que ninguém olha</strong>: gerar o relatório não
+basta se ele não influencia decisão real de nenhum time.</li>
+</ul>"""
                 ),
                 "practical": (
                     "(1) Ative cost allocation tags em sua conta AWS. Adicione tag "
