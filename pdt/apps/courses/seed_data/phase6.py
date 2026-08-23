@@ -1035,121 +1035,204 @@ PHASE6 = {
                     "manejo de paginação, separa script frágil de ferramenta confiável."
                 ),
                 "body": (
-                    "<h3>1. <code>requests</code>: o cliente HTTP da prática</h3>"
-                    "<pre><code>import requests\n\n"
-                    "r = requests.get(\n"
-                    "    \"https://api.github.com/repos/python/cpython\",\n"
-                    "    headers={\"User-Agent\": \"my-tool/1.0\", \"Accept\": \"application/vnd.github+json\"},\n"
-                    "    timeout=(3.05, 10),  # (connect, read), SEMPRE\n"
-                    ")\n"
-                    "r.raise_for_status()\n"
-                    "data = r.json()\n"
-                    "print(data[\"stargazers_count\"])</code></pre>"
-                    "<p>Erros que destroem produção:</p>"
-                    "<ul>"
-                    "<li><strong>Sem timeout</strong>: a conexão pode travar para sempre. "
-                    "<code>timeout</code> é <em>obrigatório</em> em produção.</li>"
-                    "<li><strong>Sem <code>raise_for_status()</code></strong>: a request "
-                    "retorna 500 e você processa o body de erro como se fosse sucesso.</li>"
-                    "<li><strong>Sem User-Agent identificável</strong>: APIs como GitHub "
-                    "rejeitam, e quando dá problema ninguém consegue te localizar.</li>"
-                    "</ul>"
+                """<h3>1. `requests`: por que timeout e `raise_for_status` não são opcionais</h3>
+<pre><code>import requests
 
-                    "<h3>2. <code>Session</code>: connection pooling</h3>"
-                    "<pre><code>s = requests.Session()\n"
-                    "s.headers.update({\"User-Agent\": \"my-tool/1.0\",\n"
-                    "                  \"Authorization\": f\"Bearer {token}\"})\n\n"
-                    "for repo in repos:\n"
-                    "    r = s.get(f\"https://api.github.com/repos/{repo}\", timeout=10)\n"
-                    "    r.raise_for_status()</code></pre>"
-                    "<p>Sessions reusam TCP+TLS, em scripts que fazem 100+ chamadas, dá "
-                    "ganho enorme. Sempre use Session quando vier mais de uma chamada.</p>"
+r = requests.get(
+    "https://api.github.com/repos/python/cpython",
+    headers={"User-Agent": "my-tool/1.0", "Accept": "application/vnd.github+json"},
+    timeout=(3.05, 10),  # (connect, read), SEMPRE
+)
+r.raise_for_status()
+data = r.json()
+print(data["stargazers_count"])</code></pre>
+<p>Sem <code>timeout</code>, o socket TCP fica aberto até o sistema
+operacional decidir encerrá-lo — que em muitos ambientes é <em>nunca</em>
+(sem keepalive configurado, pode ficar pendurado por horas). Um script de
+deploy que trava numa chamada HTTP sem timeout não falha visivelmente: ele
+simplesmente para, e quem está olhando o pipeline vê "rodando" indefinidamente,
+sem log de erro nenhum — o pior tipo de falha para diagnosticar, porque nada
+"quebrou". O par <code>(connect, read)</code> existe porque são duas etapas
+distintas: o tempo para abrir a conexão costuma ser curto e estável; o tempo
+para o servidor responder pode legitimamente ser mais longo (uma API lenta
+processando), então vale limites diferentes.</p>
+<p><code>raise_for_status()</code> resolve um problema sutil: <code>requests</code>
+não levanta exceção sozinho quando a API responde 404 ou 500 — ela devolve
+um objeto <code>Response</code> normal, e cabe a você checar
+<code>r.status_code</code>. Sem essa chamada, um código que faz
+<code>data = r.json()</code> direto processa o corpo de um erro 500 (que
+pode nem ser JSON válido, ou ser um JSON de formato de erro totalmente
+diferente do esperado) como se fosse a resposta de sucesso — e o bug só
+aparece muito depois, num <code>KeyError</code> confuso longe de onde o
+problema de verdade está.</p>
 
-                    "<h3>3. Retry com backoff</h3>"
-                    "<p>Erros transitórios (502, 503, 504, timeouts) são previsíveis. "
-                    "Configure retry no transport:</p>"
-                    "<pre><code>from requests.adapters import HTTPAdapter\n"
-                    "from urllib3.util.retry import Retry\n\n"
-                    "retry = Retry(\n"
-                    "    total=5,\n"
-                    "    backoff_factor=0.5,\n"
-                    "    status_forcelist=[429, 500, 502, 503, 504],\n"
-                    "    allowed_methods=[\"GET\", \"POST\"],\n"
-                    ")\n"
-                    "adapter = HTTPAdapter(max_retries=retry)\n"
-                    "s.mount(\"https://\", adapter)\n"
-                    "s.mount(\"http://\", adapter)</code></pre>"
-                    "<p>Para POST/PUT idempotentes (com Idempotency-Key), o retry é "
-                    "seguro. Sem isso, retry pode duplicar pedidos, fique atento.</p>"
+<h3>2. `Session`: reaproveitando a conexão, não só os headers</h3>
+<pre><code>s = requests.Session()
+s.headers.update({"User-Agent": "my-tool/1.0",
+                  "Authorization": f"Bearer {token}"})
 
-                    "<h3>4. Autenticação: Basic, Bearer, OAuth, mTLS</h3>"
-                    "<pre><code># Bearer (mais comum em APIs modernas)\n"
-                    "headers = {\"Authorization\": f\"Bearer {token}\"}\n\n"
-                    "# Basic (legacy)\n"
-                    "from requests.auth import HTTPBasicAuth\n"
-                    "r = requests.get(url, auth=HTTPBasicAuth(user, password))\n\n"
-                    "# mTLS, certificado de cliente\n"
-                    "r = requests.get(url, cert=(\"client.crt\", \"client.key\"), verify=\"ca.pem\")</code></pre>"
-                    "<p>Tokens NUNCA vão em código. Use variáveis de ambiente, secret "
-                    "manager (AWS Secrets Manager, GCP Secret Manager, Vault) ou keyring "
-                    "do SO.</p>"
+for repo in repos:
+    r = s.get(f"https://api.github.com/repos/{repo}", timeout=10)
+    r.raise_for_status()</code></pre>
+<p>O ganho de usar <code>Session</code> em vez de <code>requests.get()</code>
+solto não é só evitar repetir headers: cada chamada de <code>requests.get()</code>
+sem sessão abre uma conexão TCP nova e, se for HTTPS, refaz o handshake TLS
+inteiro — dois ou três round-trips extras de rede <em>por chamada</em>. Numa
+sessão, a conexão fica no pool e é reaproveitada entre requisições ao mesmo
+host. Em um script que faz 100 chamadas à mesma API, a diferença entre
+sessão e chamadas soltas costuma ser a diferença entre segundos e minutos.</p>
 
-                    "<h3>5. Paginação: o detalhe que esquecem</h3>"
-                    "<p>Quase toda API real lista coisas paginadas. Padrões comuns:</p>"
-                    "<ul>"
-                    "<li><strong>Page/per_page</strong>: <code>?page=2&per_page=100</code>.</li>"
-                    "<li><strong>Cursor</strong>: a resposta traz <code>next_cursor</code> "
-                    "que você passa na próxima.</li>"
-                    "<li><strong>Link header</strong>: GitHub usa <code>Link: &lt;...&gt;; rel=\"next\"</code>.</li>"
-                    "</ul>"
-                    "<pre><code>def all_repos(org: str):\n"
-                    "    url = f\"https://api.github.com/orgs/{org}/repos\"\n"
-                    "    while url:\n"
-                    "        r = s.get(url, params={\"per_page\": 100}, timeout=10)\n"
-                    "        r.raise_for_status()\n"
-                    "        yield from r.json()\n"
-                    "        url = r.links.get(\"next\", {}).get(\"url\")</code></pre>"
-                    "<p>Generator + while = memória constante mesmo com milhares de itens.</p>"
+<h3>3. Retry com backoff: só para falhas que valem repetir</h3>
+<p>Erros transitórios (502, 503, 504, timeout de rede) tendem a se resolver
+sozinhos numa nova tentativa — o servidor estava sobrecarregado por um
+instante, não quebrado. Configurar isso no nível de transporte, não em
+laços manuais, garante que a lógica de retry se aplique a toda chamada da
+sessão de forma consistente:</p>
+<pre><code>from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-                    "<h3>6. <code>httpx</code>: o sucessor moderno</h3>"
-                    "<p><code>httpx</code> tem API quase idêntica a <code>requests</code> "
-                    "mas suporta HTTP/2 e <strong>async</strong>:</p>"
-                    "<pre><code>import httpx\n\n"
-                    "async with httpx.AsyncClient(timeout=10.0) as client:\n"
-                    "    tasks = [client.get(u) for u in urls]\n"
-                    "    responses = await asyncio.gather(*tasks)\n"
-                    "    for r in responses:\n"
-                    "        r.raise_for_status()</code></pre>"
-                    "<p>Para fan-out (consultar 50 endpoints em paralelo) é dramaticamente "
-                    "mais rápido que requests síncrono.</p>"
+retry = Retry(
+    total=5,
+    backoff_factor=0.5,
+    status_forcelist=[429, 500, 502, 503, 504],
+    allowed_methods=["GET", "POST"],
+)
+adapter = HTTPAdapter(max_retries=retry)
+s.mount("https://", adapter)
+s.mount("http://", adapter)</code></pre>
+<p><code>backoff_factor</code> cresce exponencialmente entre tentativas
+(0.5s, 1s, 2s, 4s...) — sem esse espaçamento crescente, um retry imediato
+repetido contra um serviço já sobrecarregado piora a sobrecarga em vez de
+esperar ela passar, um efeito conhecido como <em>thundering herd</em>. O
+detalhe perigoso fica em <code>allowed_methods</code> incluir
+<code>"POST"</code>: repetir automaticamente um POST que NÃO é idempotente
+(criar um recurso, disparar um pagamento) pode duplicar o efeito colateral
+se a primeira tentativa teve sucesso no servidor mas a resposta se perdeu
+no caminho de volta. Só inclua POST no retry se a API suportar uma
+<code>Idempotency-Key</code> que deduplique no lado do servidor.</p>
 
-                    "<h3>7. Construindo APIs com FastAPI (visão rápida)</h3>"
-                    "<pre><code>from fastapi import FastAPI, HTTPException\n"
-                    "from pydantic import BaseModel\n\n"
-                    "app = FastAPI()\n\n"
-                    "class Deploy(BaseModel):\n"
-                    "    image: str\n"
-                    "    env:   str\n"
-                    "    replicas: int = 3\n\n"
-                    "@app.post(\"/deploy\")\n"
-                    "def deploy(body: Deploy):\n"
-                    "    if body.replicas &gt; 100:\n"
-                    "        raise HTTPException(400, \"replicas demais\")\n"
-                    "    return {\"status\": \"queued\", \"id\": \"d-123\"}</code></pre>"
-                    "<p>Type hints viram validação automática (Pydantic), documentação "
-                    "OpenAPI (<code>/docs</code>) e auto-complete no cliente. Para "
-                    "ferramentas internas é o jeito mais rápido de expor uma API.</p>"
+<h3>4. Autenticação: Basic, Bearer, mTLS — e onde o token NUNCA vai</h3>
+<pre><code># Bearer (mais comum em APIs modernas)
+headers = {"Authorization": f"Bearer {token}"}
 
-                    "<h3>8. Trabalhando com webhooks</h3>"
-                    "<pre><code>import hmac, hashlib\n\n"
-                    "def verify_github(payload: bytes, signature: str, secret: str) -&gt; bool:\n"
-                    "    expected = \"sha256=\" + hmac.new(\n"
-                    "        secret.encode(), payload, hashlib.sha256\n"
-                    "    ).hexdigest()\n"
-                    "    return hmac.compare_digest(expected, signature)</code></pre>"
-                    "<p><strong>SEMPRE</strong> use <code>hmac.compare_digest</code> "
-                    "para evitar timing attacks. <code>==</code> em strings vaza tempo "
-                    "proporcional ao prefixo igual.</p>"
+# Basic (legacy)
+from requests.auth import HTTPBasicAuth
+r = requests.get(url, auth=HTTPBasicAuth(user, password))
+
+# mTLS, certificado de cliente
+r = requests.get(url, cert=("client.crt", "client.key"), verify="ca.pem")</code></pre>
+<p>Bearer token é hoje o padrão porque é <em>opaco</em> para quem o carrega
+— o cliente não sabe nem precisa saber o que há dentro, só o repassa. Basic
+Auth vai usuário e senha em texto (só protegido pelo TLS do transporte, não
+por si só) a cada requisição, o que aumenta a superfície de exposição se um
+proxy no meio do caminho logar headers. mTLS inverte quem prova identidade:
+em vez do cliente provar quem é, o SERVIDOR também exige provar a dele — útil
+entre serviços internos onde ambos os lados precisam confiar um no outro,
+não só o cliente confiar no servidor.</p>
+<p>Tokens nunca vão em código-fonte, nem "só por enquanto", nem em
+variável hardcoded que você promete remover depois — vão para variável de
+ambiente injetada em runtime, ou um secret manager (AWS Secrets Manager, GCP
+Secret Manager, Vault). O motivo prático: qualquer coisa commitada no git
+continua acessível pelo histórico mesmo depois de "removida" num commit
+seguinte — rotacionar a credencial exposta é a única correção real.</p>
+
+<h3>5. Paginação: por que ignorá-la corrompe dados silenciosamente</h3>
+<p>Quase toda API real que lista recursos limita quantos devolve por
+chamada — geralmente entre 20 e 100. Ignorar isso não dá erro: você recebe
+uma resposta 200 válida com a primeira página, e o script segue achando que
+processou "todos os repositórios" quando processou só os 30 primeiros. Os
+três padrões mais comuns:</p>
+<ul>
+<li><strong>Page/per_page</strong>: <code>?page=2&per_page=100</code> — simples,
+mas pode pular ou repetir itens se a lista mudar entre uma página e
+outra.</li>
+<li><strong>Cursor</strong>: a resposta traz um <code>next_cursor</code>
+opaco que você repassa na próxima chamada — estável mesmo com a lista
+mudando, porque o cursor marca uma posição real, não um número de página
+recalculado.</li>
+<li><strong>Link header</strong>: GitHub e outras APIs HTTP "puras" usam
+<code>Link: &lt;...&gt;; rel="next"</code> no cabeçalho da resposta, em vez
+de um campo no corpo JSON.</li>
+</ul>
+<pre><code>def all_repos(org: str):
+    url = f"https://api.github.com/orgs/{org}/repos"
+    while url:
+        r = s.get(url, params={"per_page": 100}, timeout=10)
+        r.raise_for_status()
+        yield from r.json()
+        url = r.links.get("next", {}).get("url")</code></pre>
+<p>Usar <code>yield</code> em vez de acumular tudo numa lista antes de
+devolver mantém memória constante mesmo com dezenas de milhares de itens —
+o chamador processa item a item conforme cada página chega, sem nunca
+segurar a coleção inteira na RAM de uma vez.</p>
+
+<h3>6. `httpx`: o mesmo modelo, com concorrência real</h3>
+<p><code>httpx</code> tem API quase idêntica à do <code>requests</code>
+(a migração costuma ser trocar o import), mas resolve uma limitação
+estrutural: <code>requests</code> é síncrono por dentro, então consultar 50
+endpoints significa esperar cada resposta chegar antes de disparar a
+próxima. <code>httpx</code> suporta <code>async</code>, permitindo disparar
+todas as chamadas de uma vez e aguardar juntas:</p>
+<pre><code>import httpx
+
+async with httpx.AsyncClient(timeout=10.0) as client:
+    tasks = [client.get(u) for u in urls]
+    responses = await asyncio.gather(*tasks)
+    for r in responses:
+        r.raise_for_status()</code></pre>
+<p>Para I/O de rede (que passa a maior parte do tempo esperando, não
+processando), esse padrão de fan-out concorrente costuma reduzir o tempo
+total de "soma de todas as latências" para "a latência da mais lenta" — a
+diferença entre minutos e segundos ao consultar dezenas de serviços.</p>
+
+<h3>7. Construindo APIs com FastAPI: tipos como contrato, não decoração</h3>
+<pre><code>from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI()
+
+class Deploy(BaseModel):
+    image: str
+    env:   str
+    replicas: int = 3
+
+@app.post("/deploy")
+def deploy(body: Deploy):
+    if body.replicas &gt; 100:
+        raise HTTPException(400, "replicas demais")
+    return {"status": "queued", "id": "d-123"}</code></pre>
+<p>A diferença de FastAPI para escrever um handler HTTP cru é que as type
+hints da classe <code>Deploy</code> não são só documentação para humanos:
+o Pydantic as usa em runtime para VALIDAR o corpo da requisição antes do
+seu código rodar — um POST sem o campo <code>image</code>, ou com
+<code>replicas</code> como string não-numérica, é rejeitado automaticamente
+com um 422 detalhado, sem você escrever nenhuma checagem manual. As mesmas
+anotações geram a documentação OpenAPI navegável em <code>/docs</code>. Para
+ferramentas internas (um endpoint que aciona um deploy, por exemplo), isso
+elimina uma classe inteira de bugs de "esqueci de validar um campo".</p>
+
+<h3>8. Webhooks: por que comparar assinaturas com `==` é uma falha de segurança</h3>
+<pre><code>import hmac, hashlib
+
+def verify_github(payload: bytes, signature: str, secret: str) -&gt; bool:
+    expected = "sha256=" + hmac.new(
+        secret.encode(), payload, hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature)</code></pre>
+<p>Um webhook é uma API invertida: em vez de você chamar o serviço externo,
+ele chama VOCÊ — e como o endpoint precisa ficar público na internet para
+recebê-lo, qualquer um pode mandar uma requisição fingindo ser o GitHub.
+A assinatura HMAC no cabeçalho prova que o corpo veio de quem tem o
+segredo compartilhado, calculando um hash sobre o payload e comparando com
+o que o remetente enviou.</p>
+<p>O detalhe que faz essa comparação valer a pena está em
+<code>hmac.compare_digest</code> em vez de um simples <code>==</code>:
+comparação de string comum no Python para no primeiro caractere diferente,
+então o TEMPO que a comparação leva vaza informação sobre quantos
+caracteres do início já batem — um atacante pode, byte a byte, medir
+minúsculas diferenças de latência e reconstruir a assinatura válida sem
+nunca precisar quebrar o hash em si. <code>compare_digest</code> sempre
+compara em tempo constante, independente de quantos caracteres coincidem.</p>"""
                 ),
                 "practical": (
                     "Implemente <code>gh_repos.py</code> que: (1) lê o token GitHub de "
@@ -1759,133 +1842,250 @@ PHASE6 = {
                     "de pytest, a ferramenta de teste do ecossistema Python."
                 ),
                 "body": (
-                    "<h3>1. Por que pytest e não unittest</h3>"
-                    "<p><code>unittest</code> é stdlib e funciona, mas pytest é o padrão "
-                    "do mercado por:</p>"
-                    "<ul>"
-                    "<li>Sintaxe simples: <code>assert x == y</code> em vez de "
-                    "<code>self.assertEqual(...)</code>.</li>"
-                    "<li>Fixtures parametrizáveis e reutilizáveis.</li>"
-                    "<li>Plugins ricos (cobertura, asyncio, django, mock).</li>"
-                    "<li>Mensagens de erro com diff inteligente.</li>"
-                    "</ul>"
+                """<h3>1. Por que pytest e não unittest</h3>
+<p><code>unittest</code> é stdlib e funciona, mas força um estilo verboso: você
+herda de <code>TestCase</code>, escreve <code>self.assertEqual(a, b)</code> em
+vez de <code>assert a == b</code>, e perde a introspecção de que Python já é
+capaz sozinho. O pytest resolve isso com um truque que vale entender, porque
+explica por que <code>assert</code> puro em pytest te dá um diff detalhado
+igual a uma asserção "rica" de outros frameworks: ao importar um arquivo de
+teste, o pytest reescreve o bytecode de cada <code>assert</code>, trocando a
+expressão booleana por uma versão instrumentada que sabe o valor de cada
+subexpressão. É por isso que <code>assert response.json() == esperado</code>
+falha mostrando os dois dicts lado a lado, com o campo que diverge destacado
+— sem você jamais ter escrito uma linha de comparação especial. unittest não
+tem esse mecanismo; sua saída de erro é genérica ("False is not true").</p>
+<p>Fora esse detalhe de implementação, o que realmente muda o dia a dia é o
+ecossistema: fixtures componíveis (seção 3), parametrização declarativa
+(seção 4) e um catálogo enorme de plugins (cobertura, asyncio, Django, mock,
+retry de teste flaky). unittest exige escrever essa infraestrutura à mão.</p>
 
-                    "<h3>2. Estrutura mínima</h3>"
-                    "<pre><code># app/utils.py\n"
-                    "def parse_image(s: str) -&gt; tuple[str, str]:\n"
-                    "    if \":\" not in s:\n"
-                    "        return s, \"latest\"\n"
-                    "    name, tag = s.rsplit(\":\", 1)\n"
-                    "    return name, tag\n\n"
-                    "# tests/test_utils.py\n"
-                    "from app.utils import parse_image\n\n"
-                    "def test_implicit_latest():\n"
-                    "    assert parse_image(\"web\") == (\"web\", \"latest\")\n\n"
-                    "def test_explicit_tag():\n"
-                    "    assert parse_image(\"web:1.2\") == (\"web\", \"1.2\")\n\n"
-                    "# rodar: pytest -v</code></pre>"
-                    "<p>Convenções: arquivos <code>test_*.py</code>, funções "
-                    "<code>test_*</code>. Arquivo <code>conftest.py</code> em qualquer "
-                    "nível define fixtures auto-descobertas.</p>"
+<h3>2. Descoberta de testes: como o pytest te encontra</h3>
+<p>O pytest não roda "tudo que existe": ele varre diretórios procurando
+arquivos <code>test_*.py</code> ou <code>*_test.py</code>, e dentro deles
+funções <code>test_*</code> (ou métodos <code>test_*</code> em classes
+<code>Test*</code>, sem <code>__init__</code>). Fugir dessa convenção é a
+causa nº 1 de "meu teste não roda e não dá nem erro": um arquivo chamado
+<code>utils_test_helpers.py</code> ou uma função <code>testa_login()</code>
+(sem underscore) são simplesmente invisíveis para o coletor — ele não avisa,
+só não os lista.</p>
+<pre><code># app/utils.py
+def parse_image(s: str) -&gt; tuple[str, str]:
+    if ":" not in s:
+        return s, "latest"
+    name, tag = s.rsplit(":", 1)
+    return name, tag
 
-                    "<h3>3. Fixtures: setup/teardown reutilizável</h3>"
-                    "<pre><code>import pytest, tempfile\n"
-                    "from pathlib import Path\n\n"
-                    "@pytest.fixture\n"
-                    "def tmp_config(tmp_path: Path) -&gt; Path:\n"
-                    "    cfg = tmp_path / \"app.yaml\"\n"
-                    "    cfg.write_text(\"env: test\\nport: 8080\\n\")\n"
-                    "    return cfg\n\n"
-                    "def test_load_config(tmp_config):\n"
-                    "    data = load(tmp_config)\n"
-                    "    assert data[\"port\"] == 8080</code></pre>"
-                    "<p>Fixtures úteis embutidas:</p>"
-                    "<ul>"
-                    "<li><code>tmp_path</code>: <code>Path</code> temporário, único por "
-                    "teste, removido depois.</li>"
-                    "<li><code>monkeypatch</code>: substitui atributos/env vars com "
-                    "rollback automático.</li>"
-                    "<li><code>capsys</code>: captura stdout/stderr para asserções.</li>"
-                    "<li><code>caplog</code>: captura registros de logging.</li>"
-                    "</ul>"
+# tests/test_utils.py
+from app.utils import parse_image
 
-                    "<h3>4. Parametrize: tabela de casos</h3>"
-                    "<pre><code>@pytest.mark.parametrize(\"input,expected\", [\n"
-                    "    (\"web\",       (\"web\", \"latest\")),\n"
-                    "    (\"web:1.2\",   (\"web\", \"1.2\")),\n"
-                    "    (\"r/r:tag\",   (\"r/r\", \"tag\")),\n"
-                    "    (\"\",          (\"\", \"latest\")),\n"
-                    "])\n"
-                    "def test_parse(input, expected):\n"
-                    "    assert parse_image(input) == expected</code></pre>"
-                    "<p>Cada linha vira um teste separado, você vê todos na saída e "
-                    "qual falhou. Acabou a era do <code>for case in cases:</code>.</p>"
+def test_implicit_latest():
+    assert parse_image("web") == ("web", "latest")
 
-                    "<h3>5. Mocks: isolando o que está fora do teste</h3>"
-                    "<p>Testes <strong>não</strong> devem fazer chamadas reais a APIs, "
-                    "DB ou shell. Use <code>unittest.mock</code> via "
-                    "<code>monkeypatch</code> ou <code>pytest-mock</code>:</p>"
-                    "<pre><code>def fetch_user(client, uid: int):\n"
-                    "    r = client.get(f\"/users/{uid}\")\n"
-                    "    r.raise_for_status()\n"
-                    "    return r.json()\n\n"
-                    "def test_fetch_user(mocker):     # pytest-mock\n"
-                    "    fake = mocker.MagicMock()\n"
-                    "    fake.get.return_value.json.return_value = {\"id\": 7, \"name\": \"Ana\"}\n"
-                    "    fake.get.return_value.raise_for_status.return_value = None\n"
-                    "    user = fetch_user(fake, 7)\n"
-                    "    fake.get.assert_called_once_with(\"/users/7\")\n"
-                    "    assert user[\"name\"] == \"Ana\"</code></pre>"
-                    "<p>Para HTTP, prefira <code>responses</code> (requests) ou "
-                    "<code>respx</code> (httpx), mocks específicos do transporte, "
-                    "mais expressivos.</p>"
+def test_explicit_tag():
+    assert parse_image("web:1.2") == ("web", "1.2")
 
-                    "<h3>6. Testando exceções</h3>"
-                    "<pre><code>import pytest\n\n"
-                    "def test_invalid_replicas():\n"
-                    "    with pytest.raises(ValueError, match=r\"replicas.*fora\"):\n"
-                    "        Replica(count=999)</code></pre>"
+# rodar: pytest -v</code></pre>
+<p>Um <code>conftest.py</code> colocado em qualquer nível de diretório é
+carregado automaticamente pelo pytest para todo teste abaixo dele — sem
+import explícito. É o lugar certo para fixtures compartilhadas; import
+manual de fixture entre arquivos de teste é sinal de que ela deveria estar
+ali.</p>
 
-                    "<h3>7. Marks: skip, xfail, slow</h3>"
-                    "<pre><code>@pytest.mark.skipif(sys.platform == \"win32\", reason=\"só Linux\")\n"
-                    "def test_unix_socket(): ...\n\n"
-                    "@pytest.mark.xfail(reason=\"bug conhecido #123\")\n"
-                    "def test_known_bug(): ...\n\n"
-                    "@pytest.mark.slow\n"
-                    "def test_full_pipeline(): ...\n"
-                    "# rodar: pytest -m \"not slow\"</code></pre>"
+<h3>3. Fixtures: injeção de dependência, não decoração</h3>
+<p>Uma fixture não é açúcar sintático para "código que roda antes do teste":
+é um grafo de dependências resolvido por nome. Quando uma função de teste
+declara um parâmetro <code>tmp_config</code>, o pytest procura uma fixture
+com esse nome, executa o que vier antes do <code>yield</code> (ou o
+<code>return</code>), injeta o valor, roda o teste, e só depois executa o
+que vier depois do <code>yield</code> — o teardown. Fixtures podem depender
+de outras fixtures do mesmo jeito, formando uma árvore resolvida na ordem
+certa automaticamente.</p>
+<pre><code>import pytest, tempfile
+from pathlib import Path
 
-                    "<h3>8. Cobertura com <code>coverage.py</code></h3>"
-                    "<pre><code># pyproject.toml\n"
-                    "[tool.pytest.ini_options]\n"
-                    "addopts = \"--cov=app --cov-report=term --cov-report=html\"\n\n"
-                    "# rodar\n"
-                    "pytest                     # tabela no terminal\n"
-                    "open htmlcov/index.html    # report visual</code></pre>"
-                    "<p>Cobertura é guia, não meta. 100% sem teste de borda &lt; 70% com "
-                    "testes pertinentes. Falha em CI quando cair abaixo do threshold "
-                    "(<code>--cov-fail-under=80</code>).</p>"
+@pytest.fixture
+def tmp_config(tmp_path: Path) -&gt; Path:
+    cfg = tmp_path / "app.yaml"
+    cfg.write_text("env: test\\nport: 8080\\n")
+    return cfg
 
-                    "<h3>9. Testes assíncronos</h3>"
-                    "<pre><code># pip install pytest-asyncio\n"
-                    "import pytest\n\n"
-                    "@pytest.mark.asyncio\n"
-                    "async def test_async_fetch():\n"
-                    "    result = await fetch(\"https://example.com\")\n"
-                    "    assert result.status == 200</code></pre>"
+def test_load_config(tmp_config):
+    data = load(tmp_config)
+    assert data["port"] == 8080</code></pre>
+<p>O parâmetro <code>scope</code> ("function", "class", "module", "session")
+decide QUANTAS VEZES a fixture roda — e é onde mora um bug clássico:
+uma fixture <code>session</code>-scoped que devolve um objeto mutável (uma
+lista, um dict, um client HTTP com estado) é <em>compartilhada</em> entre
+todos os testes da sessão. Se o teste A modifica esse objeto e não desfaz,
+o teste B recebe o estado sujo — um vazamento de estado entre testes que
+some quando você roda o arquivo isolado (porque não há teste anterior para
+sujar nada) e só aparece rodando a suíte inteira, o pior tipo de
+intermitência para debugar.</p>
+<p>Fixtures embutidas que valem conhecer de cor:</p>
+<ul>
+<li><code>tmp_path</code>: <code>Path</code> temporário, único por teste,
+removido depois — evita <code>TemporaryDirectory</code> manual e o risco de
+esquecer o cleanup.</li>
+<li><code>monkeypatch</code>: substitui atributo, item de dict ou variável
+de ambiente, com rollback automático no teardown, mesmo se o teste
+falhar.</li>
+<li><code>capsys</code>: captura stdout/stderr para asserção — útil para
+testar CLIs sem redirecionar o terminal de verdade.</li>
+<li><code>caplog</code>: captura registros de <code>logging</code>, para
+afirmar que um WARNING específico foi (ou não) emitido.</li>
+</ul>
 
-                    "<h3>10. Testes de integração vs. unitários</h3>"
-                    "<ul>"
-                    "<li><strong>Unitário</strong>: testa função/método isolado, "
-                    "rápido (&lt;100ms), sem I/O. Roda a cada commit.</li>"
-                    "<li><strong>Integração</strong>: testa contra DB/API real (containers "
-                    "via testcontainers, ou ambiente staging). Mais lento, mais valioso e "
-                    "roda em CI principal.</li>"
-                    "<li><strong>End-to-end</strong>: cenário completo (UI, etc.). Caro; "
-                    "roda em pré-deploy.</li>"
-                    "</ul>"
-                    "<p>Pirâmide saudável: muitos unitários, alguns de integração, "
-                    "raros e2e.</p>"
+<h3>4. Parametrize: uma tabela de casos, não um laço</h3>
+<pre><code>@pytest.mark.parametrize("input,expected", [
+    ("web",       ("web", "latest")),
+    ("web:1.2",   ("web", "1.2")),
+    ("r/r:tag",   ("r/r", "tag")),
+    ("",          ("", "latest")),
+])
+def test_parse(input, expected):
+    assert parse_image(input) == expected</code></pre>
+<p>A diferença para um <code>for case in cases: ...</code> dentro de uma
+função de teste única não é só estética: cada linha do parametrize vira um
+<strong>teste independente</strong> no relatório do pytest, com nome
+próprio (<code>test_parse[web:1.2-expected1]</code>). Se o terceiro caso
+falhar, você vê exatamente qual — com o laço manual, o teste inteiro para
+no primeiro <code>assert</code> que falhar e você não sabe se os outros
+três também quebrariam. O trade-off do parametrize é o oposto: ele tenta
+esconder que aqueles quatro casos têm exatamente a mesma lógica de teste;
+se um dia o comportamento divergir por caso (um precisa de um mock
+diferente, por exemplo), forçar tudo numa tabela produz um teste
+artificialmente genérico. Nesse ponto, separar em funções distintas é mais
+honesto do que espremer no parametrize.</p>
+
+<h3>5. Mocks: isolando o que está fora do teste — e o erro mais comum ao usá-los</h3>
+<p>Testes unitários não devem fazer chamadas reais a API, banco ou shell:
+isso os torna lentos, dependentes de rede e não-determinísticos (a API pode
+estar fora do ar no CI). A solução é substituir a dependência por um dublê
+— mas o detalhe que confunde todo mundo na primeira vez é <strong>onde</strong>
+aplicar o patch: você não faz mock de onde a função foi <em>definida</em>,
+e sim de onde ela foi <em>importada e é chamada</em>. Se
+<code>app/service.py</code> tem <code>from app.client import fetch_user</code>
+e você usa a função dentro de <code>service.py</code>, o alvo do
+<code>monkeypatch</code>/<code>mocker.patch</code> é
+<code>"app.service.fetch_user"</code>, não <code>"app.client.fetch_user"</code>
+— porque <code>service.py</code> já tem sua própria referência ao nome, e
+substituir o original em <code>client.py</code> não afeta quem já importou.</p>
+<pre><code>def fetch_user(client, uid: int):
+    r = client.get(f"/users/{uid}")
+    r.raise_for_status()
+    return r.json()
+
+def test_fetch_user(mocker):     # pytest-mock
+    fake = mocker.MagicMock()
+    fake.get.return_value.json.return_value = {"id": 7, "name": "Ana"}
+    fake.get.return_value.raise_for_status.return_value = None
+    user = fetch_user(fake, 7)
+    fake.get.assert_called_once_with("/users/7")
+    assert user["name"] == "Ana"</code></pre>
+<p>Para HTTP especificamente, prefira <code>responses</code> (requests) ou
+<code>respx</code> (httpx) a mockar o client inteiro à mão: eles simulam a
+camada de transporte, então o resto do código real (serialização, retry,
+headers) continua rodando de verdade — você só substitui a rede. O risco do
+mock genérico com <code>MagicMock</code> é confiança falsa: como qualquer
+atributo ou chamada "funciona" (devolve outro MagicMock), um erro de
+digitação no nome do método invocado passa batido silenciosamente em vez de
+estourar um <code>AttributeError</code> como aconteceria no objeto real.</p>
+
+<h3>6. Testando exceções: `pytest.raises` e a pegadinha do `match`</h3>
+<pre><code>import pytest
+
+def test_invalid_replicas():
+    with pytest.raises(ValueError, match=r"replicas.*fora"):
+        Replica(count=999)</code></pre>
+<p><code>match</code> não compara a mensagem inteira: ele roda
+<code>re.search</code>, então basta a mensagem CONTER o padrão em algum
+lugar. É proposital (a mensagem de erro pode mudar de detalhe sem quebrar o
+teste), mas também mascara: um regex frouxo demais (<code>match="erro"</code>)
+passa mesmo se a exceção certa nunca foi levantada e outra, qualquer uma que
+também contenha a palavra "erro", ocupou o lugar. Prefira um trecho
+específico da mensagem real, não uma palavra genérica.</p>
+
+<h3>7. Marks: organizando a suíte por categoria</h3>
+<pre><code>@pytest.mark.skipif(sys.platform == "win32", reason="só Linux")
+def test_unix_socket(): ...
+
+@pytest.mark.xfail(reason="bug conhecido #123")
+def test_known_bug(): ...
+
+@pytest.mark.slow
+def test_full_pipeline(): ...
+# rodar: pytest -m "not slow"</code></pre>
+<p>Marks arbitrários como <code>slow</code> geram um <code>PytestUnknownMarkWarning</code>
+até serem registrados em <code>pyproject.toml</code>
+(<code>[tool.pytest.ini_options] markers = ["slow: teste lento, roda só no merge"]</code>)
+— sem isso, um typo no nome do mark (<code>@pytest.mark.solw</code>) não
+falha nada, só silenciosamente deixa de filtrar aquele teste, e ele roda
+onde não devia. <code>xfail</code> tem uma armadilha própria: por padrão,
+se o teste marcado "esperado para falhar" passar, o resultado é apenas um
+aviso (XPASS), não uma falha — use <code>strict=True</code> quando quiser
+ser avisado no momento em que o bug for corrigido de verdade.</p>
+
+<h3>8. Cobertura: o que ela mede, e o que ela não mede</h3>
+<pre><code># pyproject.toml
+[tool.pytest.ini_options]
+addopts = "--cov=app --cov-report=term --cov-report=html --cov-branch"
+
+# rodar
+pytest                     # tabela no terminal
+open htmlcov/index.html    # report visual</code></pre>
+<p>Cobertura de LINHA (o padrão) só diz que aquela linha executou pelo menos
+uma vez — não que todos os caminhos por ela passaram. <code>if x &gt; 0:
+resultado = a / x</code> conta como "coberta" mesmo que <code>x</code> nunca
+tenha sido zero no teste, escondendo exatamente o caso que quebraria em
+produção. <code>--cov-branch</code> mede cobertura de RAMO: exige que tanto
+o <code>if</code> quanto o <code>else</code> implícito tenham sido
+exercitados, uma medida mais honesta. De qualquer forma, cobertura é um
+piso, não uma meta: 100% de linhas cobertas por testes que nunca checam o
+valor de retorno (só chamam a função) prova zero sobre correção. Use
+<code>--cov-fail-under=80</code> para o CI reprovar quando a cobertura
+cair, não para persegui-la como número isolado.</p>
+
+<h3>9. Testes assíncronos: o loop de eventos que ninguém vê</h3>
+<pre><code># pip install pytest-asyncio
+import pytest
+
+@pytest.mark.asyncio
+async def test_async_fetch():
+    result = await fetch("https://example.com")
+    assert result.status == 200</code></pre>
+<p><code>pytest-asyncio</code> cria um event loop por teste (ou por módulo,
+dependendo do <code>asyncio_mode</code> configurado) e roda a corrotina
+dentro dele — é por isso que uma função <code>async def</code> sem esse
+plugin simplesmente "passa" sem executar nada: pytest chama a função,
+recebe de volta um objeto corrotina não-aguardado, e um objeto não é
+<code>False</code>, então o teste nem chega a falhar. Configure
+<code>asyncio_mode = "auto"</code> no <code>pyproject.toml</code> para não
+precisar do <code>@pytest.mark.asyncio</code> em cada função — e cuidado ao
+misturar fixture síncrona que abre um recurso (client HTTP, conexão) com
+teste assíncrono: se o recurso não foi criado dentro do mesmo loop, operações
+nele podem travar ou lançar <code>RuntimeError: attached to a different
+loop</code>, um erro que só aparece rodando a suíte inteira em paralelo.</p>
+
+<h3>10. Unitário, integração, e2e: a pirâmide e por que invertê-la é caro</h3>
+<ul>
+<li><strong>Unitário</strong>: testa função/método isolado, rápido
+(&lt;100ms), sem I/O real. Roda a cada commit, em segundos.</li>
+<li><strong>Integração</strong>: testa contra dependência real (banco, fila,
+API), tipicamente com containers efêmeros via <code>testcontainers</code>.
+Mais lento, mas pega bugs que mock nenhum detecta — um schema de banco que
+mudou, uma API que passou a exigir um header novo.</li>
+<li><strong>Ponta a ponta (e2e)</strong>: sobe o sistema inteiro e simula um
+usuário real. O mais caro e o mais frágil: qualquer serviço fora do ar,
+qualquer timing de rede, derruba o teste sem o código ter mudado.</li>
+</ul>
+<p>A pirâmide (muitos unitários na base, menos integração no meio, poucos
+e2e no topo) não é dogma estético: é sobre onde o tempo de CI e a
+estabilidade da suíte vão parar. Uma suíte invertida — poucos unitários,
+muitos e2e — fica lenta (minutos por rodada) e "flaky" (falha
+intermitente sem relação com bug real), e o time aprende a ignorar CI
+vermelho porque "provavelmente é flakiness" — o momento em que os testes
+param de proteger de verdade.</p>"""
                 ),
                 "practical": (
                     "Para o <code>top_users.py</code> que você escreveu na aula 6.2: "
@@ -2004,145 +2204,228 @@ PHASE6 = {
                     "<code>setup.py</code>."
                 ),
                 "body": (
-                    "<h3>1. Ambientes virtuais: <code>venv</code> em 30 segundos</h3>"
-                    "<pre><code>python -m venv .venv\n"
-                    "source .venv/bin/activate         # Linux/Mac\n"
-                    ".venv\\Scripts\\activate            # Windows\n"
-                    "python -m pip install --upgrade pip\n"
-                    "pip install requests pytest</code></pre>"
-                    "<p>Por que isolar: cada projeto tem versões diferentes de libs, e "
-                    "instalar global polui o Python do sistema (pode até quebrar o "
-                    "gerenciador de pacotes do SO).</p>"
+                """<h3>1. Ambientes virtuais: por que isolar é o que evita "funciona na minha máquina"</h3>
+<pre><code>python -m venv .venv
+source .venv/bin/activate         # Linux/Mac
+.venv\\Scripts\\activate            # Windows
+python -m pip install --upgrade pip
+pip install requests pytest</code></pre>
+<p>Sem ambiente isolado, todo <code>pip install</code> vai para o Python
+global do sistema — e como dois projetos raramente concordam na mesma
+versão exata de uma dependência, instalar a versão que o projeto B precisa
+pode silenciosamente quebrar o projeto A, que já estava rodando com outra
+versão minutos antes. Em distros Linux, o problema é pior: ferramentas do
+próprio sistema operacional (como o <code>apt</code> em algumas distros)
+dependem de pacotes Python instalados globalmente, e um
+<code>pip install --upgrade</code> descuidado consegue quebrar
+utilitários do SO. Um <code>venv</code> por projeto elimina essa classe
+inteira de conflito: cada ambiente tem seu próprio conjunto de pacotes,
+completamente isolado dos outros.</p>
 
-                    "<h3>2. <code>uv</code>: o sucessor moderno (2024+)</h3>"
-                    "<p><code>uv</code> (da Astral) substitui pip+virtualenv+pip-tools, "
-                    "10-100× mais rápido:</p>"
-                    "<pre><code>curl -LsSf https://astral.sh/uv/install.sh | sh\n\n"
-                    "uv init meu-projeto && cd meu-projeto\n"
-                    "uv add requests pydantic\n"
-                    "uv add --dev pytest mypy ruff\n"
-                    "uv run pytest                  # roda no env do projeto\n"
-                    "uv lock                        # gera uv.lock determinístico\n"
-                    "uv sync                        # restaura ambiente exato</code></pre>"
-                    "<p>O <code>uv.lock</code> é commitado, ambientes idênticos em CI "
-                    "e dev. <strong>Recomendação para projetos novos.</strong></p>"
+<h3>2. `uv`: o mesmo problema, resolvido sem reescrever o resolvedor de dependências a cada instalação</h3>
+<p><code>uv</code> (da Astral, mesma equipe do ruff) substitui
+pip+virtualenv+pip-tools numa ferramenta só, escrita em Rust — 10 a 100
+vezes mais rápida no caso comum. A diferença de velocidade não é só
+"implementação mais rápida da mesma coisa": pip resolve dependências
+baixando e testando pacotes incrementalmente a cada conflito, enquanto uv
+mantém um cache global de metadados e resolve o grafo inteiro antes de
+baixar qualquer coisa, evitando trabalho repetido entre projetos que
+compartilham dependências.</p>
+<pre><code>curl -LsSf https://astral.sh/uv/install.sh | sh
 
-                    "<h3>3. <code>pyproject.toml</code>: o arquivo central</h3>"
-                    "<pre><code>[project]\n"
-                    "name = \"deploy-tool\"\n"
-                    "version = \"0.3.0\"\n"
-                    "description = \"Internal tool for deploys\"\n"
-                    "readme = \"README.md\"\n"
-                    "requires-python = \">=3.11\"\n"
-                    "dependencies = [\n"
-                    "    \"requests&gt;=2.31\",\n"
-                    "    \"pydantic&gt;=2.0\",\n"
-                    "    \"typer&gt;=0.9\",\n"
-                    "]\n\n"
-                    "[project.optional-dependencies]\n"
-                    "dev = [\"pytest\", \"mypy\", \"ruff\"]\n\n"
-                    "[project.scripts]\n"
-                    "deploy = \"deploy_tool.cli:main\"   # vira comando 'deploy' instalável\n\n"
-                    "[build-system]\n"
-                    "requires = [\"hatchling\"]\n"
-                    "build-backend = \"hatchling.build\"</code></pre>"
-                    "<p>Esse único arquivo substitui <code>setup.py</code>, "
-                    "<code>setup.cfg</code>, <code>requirements.txt</code> separados e "
-                    "configura também ruff, mypy, pytest.</p>"
+uv init meu-projeto && cd meu-projeto
+uv add requests pydantic
+uv add --dev pytest mypy ruff
+uv run pytest                  # roda no env do projeto
+uv lock                        # gera uv.lock determinístico
+uv sync                        # restaura ambiente exato</code></pre>
+<p>O <code>uv.lock</code> gerado é o que resolve o problema clássico de
+"funcionava ontem": ele trava não só a versão de cada dependência direta,
+mas de toda a árvore transitiva, com hash de integridade. Commitado no
+git, garante que o ambiente que roda no CI é bit-a-bit o mesmo que roda na
+sua máquina — sem isso, um <code>pip install -r requirements.txt</code>
+hoje pode trazer uma versão mais nova de uma dependência transitiva do que
+trouxe há um mês, e um bug "que ninguém mexeu" aparece do nada.</p>
 
-                    "<h3>4. Layout recomendado: src layout</h3>"
-                    "<pre><code>meu-projeto/\n"
-                    "├── pyproject.toml\n"
-                    "├── README.md\n"
-                    "├── src/\n"
-                    "│   └── deploy_tool/\n"
-                    "│       ├── __init__.py\n"
-                    "│       ├── cli.py\n"
-                    "│       └── core.py\n"
-                    "└── tests/\n"
-                    "    └── test_core.py</code></pre>"
-                    "<p>Por que <code>src/</code>: força você a instalar o pacote "
-                    "(<code>pip install -e .</code>) para os testes, assim o que é "
-                    "testado é exatamente o que será publicado, não o código avulso.</p>"
+<h3>3. `pyproject.toml`: um arquivo central em vez de três desencontrados</h3>
+<pre><code>[project]
+name = "deploy-tool"
+version = "0.3.0"
+description = "Internal tool for deploys"
+readme = "README.md"
+requires-python = "&gt;=3.11"
+dependencies = [
+    "requests&gt;=2.31",
+    "pydantic&gt;=2.0",
+    "typer&gt;=0.9",
+]
 
-                    "<h3>5. <code>ruff</code>: linter + formatter ultra-rápido</h3>"
-                    "<p><code>ruff</code> substitui flake8, isort, pylint, black em uma "
-                    "ferramenta só, escrita em Rust:</p>"
-                    "<pre><code>ruff check .                  # lint (encontra problemas)\n"
-                    "ruff check --fix .            # lint + correções automáticas\n"
-                    "ruff format .                 # formatador (substitui black)\n\n"
-                    "# pyproject.toml\n"
-                    "[tool.ruff]\n"
-                    "line-length = 100\n"
-                    "target-version = \"py311\"\n\n"
-                    "[tool.ruff.lint]\n"
-                    "select = [\"E\", \"F\", \"I\", \"B\", \"UP\", \"S\"]\n"
-                    "# E = pycodestyle, F = pyflakes, I = isort,\n"
-                    "# B = bugbear, UP = pyupgrade, S = bandit (security)</code></pre>"
+[project.optional-dependencies]
+dev = ["pytest", "mypy", "ruff"]
 
-                    "<h3>6. <code>mypy</code> ou <code>pyright</code>: type checker</h3>"
-                    "<pre><code>mypy src/                   # checa types\n\n"
-                    "# pyproject.toml\n"
-                    "[tool.mypy]\n"
-                    "python_version = \"3.11\"\n"
-                    "strict = true\n"
-                    "ignore_missing_imports = true</code></pre>"
-                    "<p>Em projeto novo, comece com <code>strict = false</code> e ative "
-                    "regra por regra, strict de cara em código legado é frustrante.</p>"
+[project.scripts]
+deploy = "deploy_tool.cli:main"   # vira comando 'deploy' instalável
 
-                    "<h3>7. Pre-commit hooks</h3>"
-                    "<pre><code># .pre-commit-config.yaml\n"
-                    "repos:\n"
-                    "  - repo: https://github.com/astral-sh/ruff-pre-commit\n"
-                    "    rev: v0.5.0\n"
-                    "    hooks:\n"
-                    "      - id: ruff\n"
-                    "        args: [--fix]\n"
-                    "      - id: ruff-format\n"
-                    "  - repo: https://github.com/pre-commit/mirrors-mypy\n"
-                    "    rev: v1.10.0\n"
-                    "    hooks:\n"
-                    "      - id: mypy</code></pre>"
-                    "<pre><code>pre-commit install\n"
-                    "git commit -m \"x\"   # roda lint/format/types antes</code></pre>"
-                    "<p>Garante que código não-formatado nem chega ao remoto.</p>"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"</code></pre>
+<p>Antes deste padrão (formalizado pela PEP 621), um projeto Python
+espalhava a mesma informação em <code>setup.py</code> (metadados +
+lógica de build misturados, executável, logo uma superfície de ataque —
+instalar um pacote malicioso podia rodar código arbitrário só de importar
+o <code>setup.py</code>), <code>setup.cfg</code> e
+<code>requirements.txt</code>. Consolidar tudo num TOML declarativo (sem
+código executável) elimina essa superfície e dá um único lugar onde
+qualquer ferramenta — pip, uv, ruff, mypy, pytest — sabe procurar sua
+configuração.</p>
 
-                    "<h3>8. CI mínima (GitHub Actions)</h3>"
-                    "<pre><code># .github/workflows/ci.yml\n"
-                    "name: CI\n"
-                    "on: [push, pull_request]\n"
-                    "jobs:\n"
-                    "  test:\n"
-                    "    runs-on: ubuntu-latest\n"
-                    "    strategy:\n"
-                    "      matrix:\n"
-                    "        python: [\"3.11\", \"3.12\"]\n"
-                    "    steps:\n"
-                    "      - uses: actions/checkout@v4\n"
-                    "      - uses: astral-sh/setup-uv@v3\n"
-                    "      - run: uv sync --extra dev\n"
-                    "      - run: uv run ruff check .\n"
-                    "      - run: uv run ruff format --check .\n"
-                    "      - run: uv run mypy src/\n"
-                    "      - run: uv run pytest --cov=src --cov-fail-under=80</code></pre>"
+<h3>4. Layout `src/`: por que um diretório a mais evita um bug de import</h3>
+<pre><code>meu-projeto/
+├── pyproject.toml
+├── README.md
+├── src/
+│   └── deploy_tool/
+│       ├── __init__.py
+│       ├── cli.py
+│       └── core.py
+└── tests/
+    └── test_core.py</code></pre>
+<p>Sem o <code>src/</code>, com o pacote direto na raiz do repositório, é
+fácil rodar os testes sem nunca ter instalado o pacote de verdade — o
+Python encontra o código local pelo diretório de trabalho atual, e os
+testes passam mesmo que o <code>pyproject.toml</code> esteja com uma
+dependência faltando ou um caminho de import errado, porque o mecanismo
+que "esconderia" esse erro na instalação de outra pessoa nunca chegou a
+rodar. Com o código dentro de <code>src/</code>, ele só fica importável
+depois de <code>pip install -e .</code> — forçando o teste a validar
+exatamente o que seria publicado e instalado por outra pessoa, não um
+atalho que só existe no seu checkout local.</p>
 
-                    "<h3>9. Distribuição: PyPI e wheels privados</h3>"
-                    "<pre><code>uv build                    # cria dist/*.whl e *.tar.gz\n"
-                    "uv publish                  # publica no PyPI (requer token)\n\n"
-                    "# para repositório privado (CodeArtifact, Artifactory, GCP AR)\n"
-                    "uv publish --publish-url https://my-private/pypi/</code></pre>"
+<h3>5. `ruff`: uma ferramenta em Rust cobrindo o que antes eram quatro em Python</h3>
+<p><code>ruff</code> reimplementa as regras de flake8, isort, pylint e
+black numa única ferramenta compilada — a diferença de velocidade (segundos
+viram milissegundos num projeto grande) importa na prática porque muda o
+que é viável rodar: um linter lento demais para rodar a cada save do editor
+só roda no CI, onde o feedback chega minutos depois, e não no momento em
+que o erro foi escrito.</p>
+<pre><code>ruff check .                  # lint (encontra problemas)
+ruff check --fix .            # lint + correções automáticas
+ruff format .                 # formatador (substitui black)
 
-                    "<h3>10. Resumo: stack mínimo recomendado (2026)</h3>"
-                    "<table>"
-                    "<thead><tr><th>Função</th><th>Ferramenta</th></tr></thead>"
-                    "<tbody>"
-                    "<tr><td>Ambiente + deps</td><td><code>uv</code></td></tr>"
-                    "<tr><td>Build</td><td><code>hatchling</code> (via uv)</td></tr>"
-                    "<tr><td>Linter + formatter</td><td><code>ruff</code></td></tr>"
-                    "<tr><td>Type checker</td><td><code>mypy</code> ou <code>pyright</code></td></tr>"
-                    "<tr><td>Testes</td><td><code>pytest</code> + <code>pytest-cov</code></td></tr>"
-                    "<tr><td>Pre-commit</td><td><code>pre-commit</code></td></tr>"
-                    "</tbody></table>"
+# pyproject.toml
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+# E = pycodestyle, F = pyflakes, I = isort,
+# B = bugbear, UP = pyupgrade, S = bandit (security)</code></pre>
+<p>O conjunto <code>S</code> (regras de segurança, portadas do bandit) é o
+que pega coisas como <code>subprocess.run(cmd, shell=True)</code> com
+input não sanitizado ou uso de <code>eval</code> — vale ativar mesmo em
+projeto interno, porque script de automação de infraestrutura é
+exatamente o tipo de código que, comprometido, tem acesso amplo demais
+para ser tratado como "não é código de produção".</p>
+
+<h3>6. `mypy`: type checking estático, e por que começar `strict` trava o time</h3>
+<pre><code>mypy src/                   # checa types
+
+# pyproject.toml
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true</code></pre>
+<p>Type hints em Python não são checadas em runtime — <code>def f(x: int)</code>
+aceita uma string sem reclamar, a anotação é só metadado. <code>mypy</code>
+analisa o código estaticamente (sem executá-lo) e sinaliza onde os tipos
+declarados não batem com o uso real, pegando uma classe de bug (passar o
+tipo errado para uma função) antes mesmo de rodar um teste. O
+custo-benefício de <code>strict = true</code> muda com a idade do código:
+num projeto novo, sem dívida acumulada, é barato manter tudo tipado desde
+o início. Em código legado sem anotação nenhuma, ligar `strict` de uma vez
+produz centenas de erros simultâneos e o time aprende a ignorar o mypy
+inteiro — melhor ativar módulo por módulo (<code>[[tool.mypy.overrides]]</code>
+por pacote) conforme cada um ganha tipos reais.</p>
+
+<h3>7. Pre-commit hooks: mover a checagem para antes do commit existir</h3>
+<pre><code># .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy</code></pre>
+<pre><code>pre-commit install
+git commit -m "x"   # roda lint/format/types antes</code></pre>
+<p>A diferença entre rodar lint só no CI e rodar via pre-commit é
+QUANDO o autor descobre o problema: no CI, minutos depois, já trocou de
+tarefa, e corrigir exige voltar ao contexto. No pre-commit, o commit
+simplesmente não acontece até o código passar — o feedback chega no
+segundo em que o problema ainda está na cabeça de quem escreveu. O
+trade-off é que hooks lentos demais frustram o fluxo de commit; é por
+isso que ruff (rápido) entra aqui e suítes de teste completas (lentas)
+ficam reservadas para o CI.</p>
+
+<h3>8. CI mínima: repetir localmente o que vai rodar remotamente</h3>
+<pre><code># .github/workflows/ci.yml
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy src/
+      - run: uv run pytest --cov=src --cov-fail-under=80</code></pre>
+<p>Rodar contra uma MATRIZ de versões de Python (3.11 e 3.12 aqui) pega um
+tipo de bug que testar numa versão só nunca revela: comportamento que
+mudou entre versões (ordem de dict em casos extremos, mudanças em stdlib,
+sintaxe nova disponível numa versão mas não na outra). Sem a matriz, o
+projeto só descobre que quebrou em 3.12 quando alguém tenta rodar em
+produção nessa versão — tarde demais para ser um problema de CI.</p>
+
+<h3>9. Distribuição: do wheel local ao registro privado</h3>
+<pre><code>uv build                    # cria dist/*.whl e *.tar.gz
+uv publish                  # publica no PyPI (requer token)
+
+# para repositório privado (CodeArtifact, Artifactory, GCP AR)
+uv publish --publish-url https://my-private/pypi/</code></pre>
+<p>Um <em>wheel</em> (<code>.whl</code>) é um pacote pré-compilado — para
+código puro-Python, "compilado" só significa empacotado com metadados
+prontos, sem precisar rodar <code>setup.py</code> na máquina de quem
+instala (que é justamente a superfície de execução arbitrária que o
+<code>pyproject.toml</code> declarativo elimina, seção 3). Ferramenta
+interna de uma empresa não deveria ir para o PyPI público — um registro
+privado (CodeArtifact na AWS, Artifactory, Google Artifact Registry) dá o
+mesmo fluxo de <code>pip install</code>/<code>uv add</code> sem expor
+nome de projeto, estrutura interna ou, pior, vazar acidentalmente uma
+dependência com segredo embutido para a internet.</p>
+
+<h3>10. Resumo: stack mínimo recomendado (2026)</h3>
+<table>
+<thead><tr><th>Função</th><th>Ferramenta</th></tr></thead>
+<tbody>
+<tr><td>Ambiente + deps</td><td><code>uv</code></td></tr>
+<tr><td>Build</td><td><code>hatchling</code> (via uv)</td></tr>
+<tr><td>Linter + formatter</td><td><code>ruff</code></td></tr>
+<tr><td>Type checker</td><td><code>mypy</code> ou <code>pyright</code></td></tr>
+<tr><td>Testes</td><td><code>pytest</code> + <code>pytest-cov</code></td></tr>
+<tr><td>Pre-commit</td><td><code>pre-commit</code></td></tr>
+</tbody>
+</table>"""
                 ),
                 "practical": (
                     "Crie um projeto novo <code>uv init mytool</code> com src layout. "
