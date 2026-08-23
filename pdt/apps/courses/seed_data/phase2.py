@@ -1295,169 +1295,178 @@ fatura sem que ninguém perceba a tempo.</p>"""
                     "regras de forma escalável."
                 ),
                 "body": (
-                    "<h3>1. Security Group (SG): stateful, por interface</h3>"
-                    "<p>SG é um conjunto de regras Allow associado a uma elastic network "
-                    "interface (ENI). Características:</p>"
-                    "<ul>"
-                    "<li><strong>Stateful</strong>: se inbound 443/tcp é permitido, a "
-                    "resposta sai automaticamente, não precisa regra outbound.</li>"
-                    "<li><strong>Allow-only</strong>: não há regra Deny. Se nenhum SG "
-                    "associado permite, é negado.</li>"
-                    "<li><strong>Default</strong>: inbound nega tudo; outbound permite tudo. "
-                    "Você pode (e deve, em ambientes sensíveis) restringir outbound.</li>"
-                    "<li><strong>Por ENI</strong>: cada interface pode ter até 5 SGs (limite "
-                    "ajustável).</li>"
-                    "<li><strong>Mudança imediata</strong>: regra nova vale em segundos.</li>"
-                    "</ul>"
+                """<h3>1. Security Group (SG): stateful, por interface</h3>
+<p>Um Security Group é um conjunto de regra Allow associado a uma
+interface de rede específica (ENI), com cinco características que
+diferenciam completamente sua operação de um firewall tradicional.
+Ele é <strong>stateful</strong>: se o inbound na porta 443/tcp é
+permitido, a resposta de saída acontece automaticamente, sem precisar
+de nenhuma regra outbound correspondente — o SG entende que aquele
+tráfego de resposta faz parte da mesma conexão já autorizada. Ele é
+<strong>allow-only</strong>: não existe regra de Deny explícita — se
+nenhum SG associado permite algo, esse algo simplesmente fica negado
+por omissão. O default de inbound nega tudo, enquanto o outbound
+permite tudo — e em ambiente sensível, restringir esse outbound
+default é uma boa prática subutilizada (seção 5). Cada interface pode
+carregar até 5 SGs simultaneamente (limite ajustável). E qualquer regra
+nova entra em vigor em segundos, sem nenhum delay de propagação
+perceptível.</p>
 
-                    "<h3>2. NACL: stateless, por subnet</h3>"
-                    "<p>Network ACL é a 'camada de fora' que filtra na borda da subnet:</p>"
-                    "<ul>"
-                    "<li><strong>Stateless</strong>: precisa regras de inbound E outbound "
-                    "para cada fluxo. Esquecer portas efêmeras (1024-65535 outbound) é "
-                    "fonte clássica de 'meu serviço não responde'.</li>"
-                    "<li><strong>Allow e Deny</strong>: avalia regras numericamente até "
-                    "achar match.</li>"
-                    "<li><strong>Default</strong>: NACL default permite tudo. NACLs custom "
-                    "criadas começam negando tudo.</li>"
-                    "<li><strong>Por subnet</strong>: aplica em todo tráfego que entra/sai "
-                    "da subnet.</li>"
-                    "</ul>"
-                    "<p>Use NACL para:</p>"
-                    "<ul>"
-                    "<li>Bloqueio amplo (banir um IP de atacante de toda a subnet).</li>"
-                    "<li>Compliance (regulação exige bloqueio de portas em determinada "
-                    "subnet).</li>"
-                    "<li>Camada extra de defesa (defesa em profundidade).</li>"
-                    "</ul>"
-                    "<p>Não use NACL para controle granular por instância, é o que SG faz "
-                    "melhor.</p>"
+<h3>2. NACL: stateless, por subnet</h3>
+<p>A Network ACL filtra na borda da SUBNET inteira, não da interface
+individual, e se comporta de forma fundamentalmente diferente do SG.
+Ela é <strong>stateless</strong>: cada fluxo precisa de regra explícita
+tanto de entrada quanto de saída — esquecer de liberar a faixa de porta
+efêmera (1024-65535) no outbound é a causa clássica do sintoma "meu
+serviço não responde" mesmo com tudo aparentemente liberado (seção 9).
+Ela suporta tanto <strong>Allow quanto Deny</strong>, avaliadas em
+ordem numérica até encontrar o primeiro match. O default de uma NACL
+gerada automaticamente permite tudo, enquanto uma NACL custom criada do
+zero começa negando tudo. E ela se aplica a TODO tráfego entrando ou
+saindo da subnet, sem exceção por instância individual. NACL é útil
+para bloqueio amplo (banir um IP de atacante de uma subnet inteira de
+uma vez), atender exigência de compliance específica sobre porta
+bloqueada numa subnet determinada, e como camada extra de defesa em
+profundidade — mas não substitui o controle granular por instância, que
+é exatamente o papel do Security Group.</p>
 
-                    "<h3>3. Encadeando SGs por referência (chain de SGs)</h3>"
-                    "<p>Em vez de liberar porta por IP, libere por <strong>SG-id</strong>. "
-                    "Padrão three-tier:</p>"
-                    "<pre><code># SG do ALB\n"
-                    "alb_sg:\n"
-                    "  inbound:\n"
-                    "    - 443/tcp from 0.0.0.0/0       # internet\n"
-                    "    - 80/tcp from 0.0.0.0/0        # redireciona para 443\n"
-                    "  outbound:\n"
-                    "    - all to app_sg                # fala com app\n"
-                    "\n"
-                    "# SG dos app servers\n"
-                    "app_sg:\n"
-                    "  inbound:\n"
-                    "    - 8000/tcp from alb_sg         # tráfego do ALB\n"
-                    "  outbound:\n"
-                    "    - 5432/tcp to db_sg            # postgres\n"
-                    "    - 443/tcp to 0.0.0.0/0         # APIs externas\n"
-                    "\n"
-                    "# SG do banco\n"
-                    "db_sg:\n"
-                    "  inbound:\n"
-                    "    - 5432/tcp from app_sg         # apenas app fala\n"
-                    "  outbound: (nada)</code></pre>"
-                    "<p>Vantagens:</p>"
-                    "<ul>"
-                    "<li>Regras seguem instâncias (auto-scaling adiciona instância? entra "
-                    "no SG, ganha acesso).</li>"
-                    "<li>Legível como diagrama de arquitetura.</li>"
-                    "<li>Sem IP hard-coded.</li>"
-                    "<li>Auditoria fácil.</li>"
-                    "</ul>"
+<h3>3. Encadeando SGs por referência (chain de SGs)</h3>
+<p>Em vez de liberar porta por IP fixo, o padrão mais robusto é liberar
+por SG-ID — referenciando outro Security Group diretamente como
+origem, não um endereço:</p>
+<pre><code># SG do ALB
+alb_sg:
+  inbound:
+    - 443/tcp from 0.0.0.0/0       # internet
+    - 80/tcp from 0.0.0.0/0        # redireciona para 443
+  outbound:
+    - all to app_sg                # fala com app
 
-                    "<h3>4. Bastion vs SSM Session Manager</h3>"
-                    "<p>Como acessar instâncias em subnet privada para SSH?</p>"
-                    "<table>"
-                    "<tr><th>Bastion clássico</th><th>SSM Session Manager (recomendado)</th></tr>"
-                    "<tr><td>VM exposta com SSH em IP corporativo</td>"
-                    "<td>Sem porta aberta; agente faz reverse tunnel</td></tr>"
-                    "<tr><td>Chaves SSH espalhadas</td>"
-                    "<td>Acesso via IAM (sem chave SSH em produção)</td></tr>"
-                    "<tr><td>Auditoria via syslog do bastion</td>"
-                    "<td>Auditoria automática em CloudTrail + S3 (cada comando)</td></tr>"
-                    "<tr><td>Manutenção (patches, upgrades)</td>"
-                    "<td>Sem instância para manter</td></tr>"
-                    "<tr><td>Acesso via internet</td>"
-                    "<td>Acesso via console ou CLI sem expor nada</td></tr>"
-                    "</table>"
-                    "<p>SSM uso:</p>"
-                    "<pre><code>aws ssm start-session --target i-0abc123\n"
-                    "# ou para port-forwarding (acessar RDS pelo seu laptop):\n"
-                    "aws ssm start-session --target i-0abc123 \\\n"
-                    "  --document-name AWS-StartPortForwardingSessionToRemoteHost \\\n"
-                    "  --parameters host=mydb.cluster.us-east-1.rds.amazonaws.com,portNumber=5432,localPortNumber=5432</code></pre>"
+# SG dos app servers
+app_sg:
+  inbound:
+    - 8000/tcp from alb_sg         # tráfego do ALB
+  outbound:
+    - 5432/tcp to db_sg            # postgres
+    - 443/tcp to 0.0.0.0/0         # APIs externas
 
-                    "<h3>5. Outbound, restringir é boa prática</h3>"
-                    "<p>Default do SG é outbound aberto. Em ambientes sensíveis, restrinja:</p>"
-                    "<ul>"
-                    "<li>App fala com banco (porta específica do banco, SG específico).</li>"
-                    "<li>App fala com AWS APIs (use VPC Endpoints).</li>"
-                    "<li>App fala com APIs externas conhecidas (porta 443 para domínios "
-                    "específicos via egress proxy).</li>"
-                    "</ul>"
-                    "<p>Outbound restrito mata uma classe inteira de exfiltração e DNS "
-                    "tunneling.</p>"
+# SG do banco
+db_sg:
+  inbound:
+    - 5432/tcp from app_sg         # apenas app fala
+  outbound: (nada)</code></pre>
+<p>Essa abordagem traz quatro vantagens sobre liberar por IP: a regra
+SEGUE a instância automaticamente — quando o auto-scaling adiciona uma
+instância nova ao grupo, ela já entra com o acesso correto, sem
+reconfigurar nada; a cadeia de SGs se torna literalmente legível como
+um diagrama de arquitetura, ALB → app → banco; nenhum IP fica
+hard-coded em lugar nenhum; e a auditoria fica trivial, porque "quem
+fala com quem" está explícito na própria estrutura de referência entre
+SGs.</p>
 
-                    "<h3>6. Egress filtering com proxy</h3>"
-                    "<p>Para ambientes com compliance pesado, force tráfego HTTPS para sair "
-                    "via proxy explícito (Squid, mitmproxy) que aplica whitelist de domínios. "
-                    "Combinado com SG outbound = só permitido falar com proxy, e proxy só "
-                    "deixa passar para domínios autorizados.</p>"
+<h3>4. Bastion vs SSM Session Manager</h3>
+<table>
+<tr><th>Bastion clássico</th><th>SSM Session Manager (recomendado)</th></tr>
+<tr><td>VM exposta com SSH em IP corporativo</td>
+<td>Sem porta aberta; agente faz reverse tunnel</td></tr>
+<tr><td>Chaves SSH espalhadas</td>
+<td>Acesso via IAM (sem chave SSH em produção)</td></tr>
+<tr><td>Auditoria via syslog do bastion</td>
+<td>Auditoria automática em CloudTrail + S3 (cada comando)</td></tr>
+<tr><td>Manutenção (patches, upgrades)</td>
+<td>Sem instância para manter</td></tr>
+<tr><td>Acesso via internet</td>
+<td>Acesso via console ou CLI sem expor nada</td></tr>
+</table>
+<p>A diferença mais significativa dessa tabela é a linha de superfície
+de ataque: um bastion clássico É uma porta SSH exposta na internet,
+mesmo que restrita a um IP corporativo — ainda é um alvo. O SSM Session
+Manager elimina essa porta inteiramente, usando um agente que faz o
+tunnel reverso a partir de dentro da rede, autenticado por IAM em vez
+de chave SSH:</p>
+<pre><code>aws ssm start-session --target i-0abc123
+# ou para port-forwarding (acessar RDS pelo seu laptop):
+aws ssm start-session --target i-0abc123 \\
+  --document-name AWS-StartPortForwardingSessionToRemoteHost \\
+  --parameters host=mydb.cluster.us-east-1.rds.amazonaws.com,portNumber=5432,localPortNumber=5432</code></pre>
 
-                    "<h3>7. Anti-patterns recorrentes</h3>"
-                    "<table>"
-                    "<tr><td><code>0.0.0.0/0:22</code> em prod</td>"
-                    "<td>Brute force constante. Sempre aparece em incidente.</td></tr>"
-                    "<tr><td><code>0.0.0.0/0:3306</code> ou <code>:5432</code> em prod</td>"
-                    "<td>Banco direto na internet. Ransomware aproveita.</td></tr>"
-                    "<tr><td>SG 'allow-all' usado em tudo</td>"
-                    "<td>Vira 'sem firewall' efetivo.</td></tr>"
-                    "<tr><td>NACL custom com 'allow all' em primeira regra</td>"
-                    "<td>Inútil; tira camada de defesa.</td></tr>"
-                    "<tr><td>Liberar 0.0.0.0/0 'temporariamente' e esquecer</td>"
-                    "<td>Use cron/expiry de tag para alertar regras temporárias.</td></tr>"
-                    "<tr><td>Criar SG via console manual em vez de Terraform</td>"
-                    "<td>Drift, sem auditoria, sem revisão.</td></tr>"
-                    "</table>"
+<h3>5. Outbound, restringir é boa prática</h3>
+<p>O default de um SG é outbound completamente aberto — em ambiente
+sensível, vale a pena restringir isso deliberadamente: a aplicação fala
+com o banco só pela porta específica e SG específico dele; a
+aplicação fala com API da própria AWS via VPC Endpoint (evitando
+inclusive o custo de NAT visto na aula anterior); e a aplicação fala
+com API externa conhecida apenas na porta 443, idealmente restrita a
+domínio específico via proxy de egress. Um outbound restrito elimina
+uma classe inteira de ataque: exfiltração de dado e DNS tunneling
+dependem justamente de conseguir mandar tráfego para fora sem
+restrição nenhuma.</p>
 
-                    "<h3>8. Auditoria contínua</h3>"
-                    "<ul>"
-                    "<li><strong>VPC Flow Logs</strong>: vê tráfego permitido e rejeitado.</li>"
-                    "<li><strong>AWS Config Rules</strong>: regra "
-                    "'restricted-ssh' alerta SG com 22 aberto.</li>"
-                    "<li><strong>Cloud Custodian</strong>: policy 'remediar SG com 0.0.0.0/0 "
-                    "automaticamente após X horas'.</li>"
-                    "<li><strong>Steampipe</strong>: SQL sobre tudo. "
-                    "<code>select * from aws_vpc_security_group_rule where cidr_ipv4 = "
-                    "'0.0.0.0/0' and from_port = 22</code>.</li>"
-                    "<li><strong>Terraform plan</strong> em PR: revisão humana antes de "
-                    "aplicar mudanças.</li>"
-                    "</ul>"
+<h3>6. Egress filtering com proxy</h3>
+<p>Em ambiente com exigência de compliance mais pesada, o tráfego
+HTTPS de saída pode ser forçado a passar por um proxy explícito (Squid,
+mitmproxy) que aplica uma whitelist de domínio permitido. Combinado com
+um SG outbound que só permite falar com o próprio proxy, o resultado é
+uma dupla trava: a aplicação só alcança o proxy, e o proxy só deixa
+passar tráfego para domínio explicitamente autorizado.</p>
 
-                    "<h3>9. NACLs efêmeras e o pegadinha do NAT</h3>"
-                    "<p>Tráfego de saída usando NAT Gateway sai pelo gateway com porta "
-                    "efêmera. Resposta volta para essa porta. Se sua NACL outbound tem "
-                    "'permit all' mas inbound tem só 443: <strong>resposta de uma "
-                    "request HTTPS sua não passa</strong>. Solução: permita inbound "
-                    "1024-65535 também (portas efêmeras).</p>"
-                    "<pre><code># NACL inbound\n"
-                    "100  allow 443/tcp  from 0.0.0.0/0   # se subnet pública\n"
-                    "110  allow 1024-65535/tcp from 0.0.0.0/0  # respostas de outbound</code></pre>"
+<h3>7. Anti-patterns recorrentes</h3>
+<table>
+<tr><td><code>0.0.0.0/0:22</code> em prod</td>
+<td>Brute force constante. Sempre aparece em incidente.</td></tr>
+<tr><td><code>0.0.0.0/0:3306</code> ou <code>:5432</code> em prod</td>
+<td>Banco direto na internet. Ransomware aproveita.</td></tr>
+<tr><td>SG 'allow-all' usado em tudo</td>
+<td>Vira 'sem firewall' efetivo.</td></tr>
+<tr><td>NACL custom com 'allow all' em primeira regra</td>
+<td>Inútil; tira camada de defesa.</td></tr>
+<tr><td>Liberar 0.0.0.0/0 'temporariamente' e esquecer</td>
+<td>Use cron/expiry de tag para alertar regras temporárias.</td></tr>
+<tr><td>Criar SG via console manual em vez de Terraform</td>
+<td>Drift, sem auditoria, sem revisão.</td></tr>
+</table>
 
-                    "<h3>10. Caso real: o RDP exposto</h3>"
-                    "<p>Em 2023, o site Shadowserver reportou ~3.5 <em>milhões</em> de "
-                    "servidores Windows com porta 3389 (RDP) expostos diretamente na "
-                    "internet, incluindo gente em AWS/Azure. Bots automatizados fazem "
-                    "brute-force constante. Em vez de expor RDP:</p>"
-                    "<ul>"
-                    "<li>Use Bastion Host com MFA + log + lockdown.</li>"
-                    "<li>Melhor: AWS SSM ou Azure Bastion.</li>"
-                    "<li>Restrict source IP para corporate VPN.</li>"
-                    "<li>Network Level Authentication (NLA) sempre on.</li>"
-                    "</ul>"
-                    "<p>Custo de tirar RDP da internet: 1 dia de configuração. Custo de não "
-                    "tirar: ransomware.</p>"
+<h3>8. Auditoria contínua</h3>
+<p>Cinco ferramentas cobrem auditoria contínua de regra de rede em
+camadas diferentes: os VPC Flow Logs mostram tanto tráfego permitido
+quanto rejeitado de fato; uma AWS Config Rule como
+"restricted-ssh" dispara alerta assim que um SG surge com a porta 22
+aberta amplamente; o Cloud Custodian pode remediar AUTOMATICAMENTE um
+SG com <code>0.0.0.0/0</code> aberto depois de um prazo definido, sem
+esperar intervenção humana; o Steampipe permite rodar SQL direto sobre
+o estado real da infraestrutura — uma consulta como
+<code>select * from aws_vpc_security_group_rule where cidr_ipv4 =
+'0.0.0.0/0' and from_port = 22</code> encontra imediatamente toda
+exposição desse tipo; e revisar o <code>terraform plan</code> dentro do
+próprio PR garante revisão humana antes de qualquer mudança de regra
+chegar a ser aplicada de fato.</p>
+
+<h3>9. NACLs efêmeras e o pegadinha do NAT</h3>
+<p>Tráfego saindo por um NAT Gateway sai usando uma porta efêmera
+alocada dinamicamente, e a resposta volta endereçada exatamente para
+essa mesma porta. Se a NACL outbound tem "permit all" mas a inbound só
+libera 443, a resposta de uma requisição HTTPS legítima que VOCÊ
+mesmo iniciou simplesmente não consegue voltar — porque ela chega numa
+porta efêmera, não na 443. A correção é liberar também a faixa
+1024-65535 no inbound:</p>
+<pre><code># NACL inbound
+100  allow 443/tcp  from 0.0.0.0/0   # se subnet pública
+110  allow 1024-65535/tcp from 0.0.0.0/0  # respostas de outbound</code></pre>
+
+<h3>10. Caso real: o RDP exposto</h3>
+<p>Em 2023, o Shadowserver Project reportou cerca de 3,5 milhões de
+servidores Windows com a porta 3389 (RDP) exposta diretamente na
+internet, incluindo instâncias rodando em AWS e Azure. Bot automatizado
+faz brute-force constante contra qualquer porta RDP visível
+publicamente, 24 horas por dia. A alternativa correta segue exatamente
+o padrão da seção 4: usar Bastion Host com MFA, log e lockdown
+configurados, ou preferencialmente AWS SSM/Azure Bastion, que elimina a
+porta exposta por completo; restringir o IP de origem à VPN
+corporativa quando um bastion ainda for necessário; e manter Network
+Level Authentication (NLA) sempre ativado como camada adicional. O
+custo de tirar RDP da internet é de aproximadamente um dia de
+configuração — o custo de não tirar é, com frequência crescente,
+ransomware.</p>"""
                 ),
                 "practical": (
                     "(1) Crie um SG <code>web</code> permitindo 443 de 0.0.0.0/0 e 22 "
@@ -1576,224 +1585,255 @@ fatura sem que ninguém perceba a tempo.</p>"""
                     "ser a próxima manchete."
                 ),
                 "body": (
-                    "<h3>1. Modelo de dados: object storage não é filesystem</h3>"
-                    "<p>S3 não é POSIX:</p>"
-                    "<ul>"
-                    "<li>Não há diretórios reais, apenas <em>prefixos</em>. "
-                    "<code>fotos/2025/janeiro/foo.jpg</code> é uma chave única.</li>"
-                    "<li>Não há append nem rename, sobrescrever é re-upload completo.</li>"
-                    "<li>Cada objeto = arquivo + metadados + tags + ACL.</li>"
-                    "<li>Latência de listagem é alta para muitos prefixos; design data lake "
-                    "com particionamento (Hive-style: "
-                    "<code>year=2025/month=04/...</code>).</li>"
-                    "<li>Consistência: read-after-write forte (mesmo após delete).</li>"
-                    "</ul>"
-                    "<p>Para casos onde você precisa de filesystem em S3, há "
-                    "<strong>Mountpoint for S3</strong> ou <strong>s3fs-fuse</strong>, mas "
-                    "saiba que <em>list</em> e <em>rename</em> são operações caras em S3.</p>"
+                """<h3>1. Modelo de dados: object storage não é filesystem</h3>
+<p>S3 quebra a intuição de quem espera um sistema de arquivo
+tradicional. Não existem diretórios de verdade, apenas prefixos —
+<code>fotos/2025/janeiro/foo.jpg</code> é uma chave única, uma string
+inteira, não uma hierarquia real de pastas navegáveis. Não existe
+operação de append nem rename genuíno — sobrescrever significa fazer o
+upload completo do objeto de novo, não editar em lugar. Cada objeto
+combina arquivo, metadado, tag e ACL num único pacote. A latência de
+listagem cresce com o número de prefixos, o que empurra design de data
+lake a usar particionamento estilo Hive
+(<code>year=2025/month=04/...</code>) para manter as listagens
+rápidas. E a consistência é read-after-write forte, inclusive logo após
+um delete — uma garantia que nem todo object storage oferece. Para
+quem precisa mesmo assim de comportamento de filesystem, existem
+Mountpoint for S3 e s3fs-fuse, mas vale saber de antemão que operação
+de <em>list</em> e <em>rename</em> continuam caras nesse modelo, não
+importa a camada de abstração por cima.</p>
 
-                    "<h3>2. Controle de acesso, em ordem cronológica</h3>"
-                    "<p>S3 acumulou camadas ao longo dos anos:</p>"
-                    "<ol>"
-                    "<li><strong>ACLs</strong> (legado): bucket/object owner + grants. "
-                    "Hoje desabilitado por default. <strong>Não use.</strong></li>"
-                    "<li><strong>Bucket Policies</strong> (resource-based): JSON anexado "
-                    "ao bucket. Pode permitir cross-account, anonymous, etc.</li>"
-                    "<li><strong>IAM Policies</strong> (identity-based): permissões da "
-                    "identidade. Combinadas com bucket policy.</li>"
-                    "<li><strong>Block Public Access</strong> (BPA): override 'segurança "
-                    "primeiro'. Bloqueia tudo público mesmo que policies permitam.</li>"
-                    "</ol>"
-                    "<p>Regra de ouro: ative <strong>Block Public Access em conta inteira</strong>; "
-                    "libere bucket público <em>apenas</em> quando o bucket for "
-                    "explicitamente para CDN/site estático.</p>"
+<h3>2. Controle de acesso, em ordem cronológica</h3>
+<p>O S3 acumulou camada sobre camada de controle de acesso ao longo
+dos anos, na ordem em que foram introduzidas: primeiro vieram as
+<strong>ACLs</strong> (legado) — grant por dono de bucket ou objeto,
+hoje desabilitadas por default, e que não deveriam ser usadas em
+projeto novo. Depois vieram as <strong>Bucket Policies</strong>
+(resource-based) — um JSON anexado diretamente ao bucket, capaz de
+permitir acesso cross-account ou até anônimo quando necessário. Em
+paralelo existem as <strong>IAM Policies</strong> (identity-based) —
+permissão atrelada à identidade que faz a chamada, combinada com a
+bucket policy na avaliação final. E por cima de tudo isso está o
+<strong>Block Public Access</strong> (BPA) — um override de "segurança
+primeiro" que bloqueia QUALQUER acesso público mesmo que uma policy
+mais permissiva diga o contrário. A regra de ouro segue direto dessa
+hierarquia: ativar Block Public Access na CONTA inteira por padrão, e
+liberar bucket público apenas quando o bucket for explicitamente
+destinado a CDN ou site estático (seção 8).</p>
 
-                    "<h3>3. Padrões de policy de bucket</h3>"
-                    "<pre><code># Forçar HTTPS em todo o bucket\n"
-                    "{\n"
-                    "  \"Version\": \"2012-10-17\",\n"
-                    "  \"Statement\": [{\n"
-                    "    \"Sid\": \"DenyInsecureConnections\",\n"
-                    "    \"Effect\": \"Deny\",\n"
-                    "    \"Principal\": \"*\",\n"
-                    "    \"Action\": \"s3:*\",\n"
-                    "    \"Resource\": [\n"
-                    "      \"arn:aws:s3:::meu-bucket\",\n"
-                    "      \"arn:aws:s3:::meu-bucket/*\"\n"
-                    "    ],\n"
-                    "    \"Condition\": {\n"
-                    "      \"Bool\": {\"aws:SecureTransport\": \"false\"}\n"
-                    "    }\n"
-                    "  }]\n"
-                    "}\n"
-                    "\n"
-                    "# Cross-account leitura (delegação)\n"
-                    "{\n"
-                    "  \"Version\": \"2012-10-17\",\n"
-                    "  \"Statement\": [{\n"
-                    "    \"Effect\": \"Allow\",\n"
-                    "    \"Principal\": {\"AWS\": \"arn:aws:iam::OUTRA_CONTA:role/data-reader\"},\n"
-                    "    \"Action\": [\"s3:GetObject\", \"s3:ListBucket\"],\n"
-                    "    \"Resource\": [\n"
-                    "      \"arn:aws:s3:::meu-bucket\",\n"
-                    "      \"arn:aws:s3:::meu-bucket/dataset/*\"\n"
-                    "    ]\n"
-                    "  }]\n"
-                    "}</code></pre>"
+<h3>3. Padrões de policy de bucket</h3>
+<pre><code># Forçar HTTPS em todo o bucket
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "DenyInsecureConnections",
+    "Effect": "Deny",
+    "Principal": "*",
+    "Action": "s3:*",
+    "Resource": [
+      "arn:aws:s3:::meu-bucket",
+      "arn:aws:s3:::meu-bucket/*"
+    ],
+    "Condition": {
+      "Bool": {"aws:SecureTransport": "false"}
+    }
+  }]
+}
 
-                    "<h3>4. Upload seguro: presigned URL</h3>"
-                    "<p>Anti-pattern: cliente faz upload via backend, que tunela bytes para "
-                    "S3. Backend vira gargalo, paga banda dupla, e mantém credenciais.</p>"
-                    "<p>Padrão correto: <strong>presigned URL</strong>. Backend gera URL "
-                    "assinada com TTL curto (5min) e parâmetros restritos; cliente faz "
-                    "upload <em>direto</em> para S3.</p>"
-                    "<pre><code>import boto3\n"
-                    "from botocore.config import Config\n"
-                    "\n"
-                    "s3 = boto3.client('s3', config=Config(signature_version='s3v4'))\n"
-                    "\n"
-                    "url = s3.generate_presigned_url(\n"
-                    "    'put_object',\n"
-                    "    Params={\n"
-                    "        'Bucket': 'meu-bucket',\n"
-                    "        'Key': f'uploads/{user_id}/{file_id}.jpg',\n"
-                    "        'ContentType': 'image/jpeg',\n"
-                    "        'ContentLength': 5_000_000,           # max 5 MB\n"
-                    "        'Metadata': {'user-id': str(user_id)},\n"
-                    "    },\n"
-                    "    ExpiresIn=300,                            # 5 minutos\n"
-                    ")\n"
-                    "# Retorna ao cliente; ele faz PUT direto.</code></pre>"
-                    "<p>Para mais segurança, use <strong>presigned POST</strong> que permite "
-                    "policy-based constraints (size limits, content-type whitelist) que o "
-                    "cliente não pode burlar.</p>"
+# Cross-account leitura (delegação)
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"AWS": "arn:aws:iam::OUTRA_CONTA:role/data-reader"},
+    "Action": ["s3:GetObject", "s3:ListBucket"],
+    "Resource": [
+      "arn:aws:s3:::meu-bucket",
+      "arn:aws:s3:::meu-bucket/dataset/*"
+    ]
+  }]
+}</code></pre>
 
-                    "<h3>5. Encryption: SSE-S3, SSE-KMS, SSE-C, client-side</h3>"
-                    "<table>"
-                    "<tr><th>Modo</th><th>Chave gerenciada por</th><th>Auditoria</th><th>Caso de uso</th></tr>"
-                    "<tr><td>SSE-S3</td><td>AWS</td><td>baixa</td>"
-                    "<td>Default 'só ative algo'</td></tr>"
-                    "<tr><td>SSE-KMS (AWS-managed)</td><td>AWS via KMS</td><td>média</td>"
-                    "<td>Encryption padrão</td></tr>"
-                    "<tr><td>SSE-KMS (CMK)</td><td>Você (Customer Managed Key)</td>"
-                    "<td>alta, log de cada uso da key</td>"
-                    "<td>Compliance (PCI/HIPAA), revogação granular</td></tr>"
-                    "<tr><td>SSE-C</td><td>Você manda chave a cada request</td>"
-                    "<td>nenhuma na AWS</td><td>Casos especiais</td></tr>"
-                    "<tr><td>Client-side</td><td>Você criptografa antes</td>"
-                    "<td>nenhuma</td><td>Zero-trust no provedor</td></tr>"
-                    "</table>"
-                    "<p>Em 2023, AWS habilitou SSE-S3 default em todos os buckets. Você ainda "
-                    "deve <em>especificar</em> SSE-KMS com CMK para casos sensíveis.</p>"
+<h3>4. Upload seguro: presigned URL</h3>
+<p>O anti-pattern comum é o cliente fazer upload via backend, que
+tunela os bytes até o S3 — isso transforma o backend num gargalo, paga
+custo de banda em dobro (recebendo do cliente e reenviando ao S3), e
+ainda mantém credencial de S3 no próprio backend desnecessariamente. O
+padrão correto é a <strong>presigned URL</strong>: o backend gera uma
+URL assinada com TTL curto (5 minutos) e parâmetro restrito, e o
+cliente faz upload DIRETO para o S3, sem passar pelo backend em
+nenhum momento:</p>
+<pre><code>import boto3
+from botocore.config import Config
 
-                    "<h3>6. Versionamento + Object Lock = anti-ransomware</h3>"
-                    "<p>Cenário: atacante consegue credenciais com permissão de delete em S3. "
-                    "Apaga tudo. Game over?</p>"
-                    "<p>Não, se você tiver:</p>"
-                    "<ul>"
-                    "<li><strong>Versionamento</strong>: cada PUT cria nova versão; delete "
-                    "cria 'delete marker' (recuperável).</li>"
-                    "<li><strong>MFA Delete</strong>: deletar versão exige MFA do root.</li>"
-                    "<li><strong>Object Lock (Compliance)</strong>: nem o root pode apagar "
-                    "antes do retention period. WORM (Write Once, Read Many).</li>"
-                    "<li><strong>Cross-Region Replication</strong>: cópia em região "
-                    "separada com bucket policy diferente.</li>"
-                    "<li><strong>Cross-Account Replication</strong>: cópia em conta "
-                    "separada (atacante na conta principal não alcança).</li>"
-                    "</ul>"
-                    "<p>Combine os 4 para defesa contra ransomware sério.</p>"
+s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
 
-                    "<h3>7. Lifecycle: economizando 90% em logs antigos</h3>"
-                    "<p>Storage classes do S3, ordenadas por preço:</p>"
-                    "<table>"
-                    "<tr><th>Classe</th><th>$/GB-mês</th><th>Latência</th><th>Caso</th></tr>"
-                    "<tr><td>Standard</td><td>~0.023</td><td>ms</td><td>dados quentes</td></tr>"
-                    "<tr><td>Standard-IA</td><td>~0.0125</td><td>ms</td><td>infrequente, "
-                    "&gt;30d</td></tr>"
-                    "<tr><td>Intelligent-Tiering</td><td>auto</td><td>ms</td><td>quando não "
-                    "sabe o padrão de acesso</td></tr>"
-                    "<tr><td>Glacier Instant</td><td>~0.004</td><td>ms</td>"
-                    "<td>arquivos &gt;90d</td></tr>"
-                    "<tr><td>Glacier Flexible</td><td>~0.0036</td><td>min-horas</td>"
-                    "<td>backup &gt;90d</td></tr>"
-                    "<tr><td>Glacier Deep Archive</td><td>~0.00099</td><td>12h</td>"
-                    "<td>compliance &gt;180d</td></tr>"
-                    "</table>"
-                    "<p>Lifecycle rule típica para logs:</p>"
-                    "<pre><code>{\n"
-                    "  \"Rules\": [{\n"
-                    "    \"ID\": \"logs-tiering\",\n"
-                    "    \"Status\": \"Enabled\",\n"
-                    "    \"Filter\": {\"Prefix\": \"logs/\"},\n"
-                    "    \"Transitions\": [\n"
-                    "      {\"Days\": 30,  \"StorageClass\": \"STANDARD_IA\"},\n"
-                    "      {\"Days\": 90,  \"StorageClass\": \"GLACIER_IR\"},\n"
-                    "      {\"Days\": 180, \"StorageClass\": \"DEEP_ARCHIVE\"}\n"
-                    "    ],\n"
-                    "    \"Expiration\": {\"Days\": 2555}        \n"
-                    "  }]\n"
-                    "}</code></pre>"
-                    "<p>Cuidado com retrieval: Glacier cobra para tirar de lá. Calcule antes.</p>"
+url = s3.generate_presigned_url(
+    'put_object',
+    Params={
+        'Bucket': 'meu-bucket',
+        'Key': f'uploads/{user_id}/{file_id}.jpg',
+        'ContentType': 'image/jpeg',
+        'ContentLength': 5_000_000,           # max 5 MB
+        'Metadata': {'user-id': str(user_id)},
+    },
+    ExpiresIn=300,                            # 5 minutos
+)
+# Retorna ao cliente; ele faz PUT direto.</code></pre>
+<p>Para segurança adicional, um presigned POST vai além, permitindo
+restrição baseada em policy — limite de tamanho, whitelist de
+content-type — que o cliente não consegue burlar mesmo manipulando a
+requisição diretamente.</p>
 
-                    "<h3>8. Site estático + CloudFront: arquitetura segura</h3>"
-                    "<p>Quer hospedar SPA (React, Vue) em S3 + CloudFront? <strong>Não</strong> "
-                    "torne o bucket público. Use Origin Access Control (OAC):</p>"
-                    "<pre><code># Bucket policy permite só CloudFront\n"
-                    "{\n"
-                    "  \"Version\": \"2012-10-17\",\n"
-                    "  \"Statement\": [{\n"
-                    "    \"Effect\": \"Allow\",\n"
-                    "    \"Principal\": {\"Service\": \"cloudfront.amazonaws.com\"},\n"
-                    "    \"Action\": \"s3:GetObject\",\n"
-                    "    \"Resource\": \"arn:aws:s3:::site-bucket/*\",\n"
-                    "    \"Condition\": {\n"
-                    "      \"StringEquals\": {\n"
-                    "        \"AWS:SourceArn\": \"arn:aws:cloudfront::123:distribution/EXXX\"\n"
-                    "      }\n"
-                    "    }\n"
-                    "  }]\n"
-                    "}</code></pre>"
-                    "<p>Bucket fica privado. Apenas o distribution X consegue ler. CloudFront "
-                    "serve com TLS, cache, headers de segurança.</p>"
+<h3>5. Encryption: SSE-S3, SSE-KMS, SSE-C, client-side</h3>
+<table>
+<tr><th>Modo</th><th>Chave gerenciada por</th><th>Auditoria</th><th>Caso de uso</th></tr>
+<tr><td>SSE-S3</td><td>AWS</td><td>baixa</td>
+<td>Default 'só ative algo'</td></tr>
+<tr><td>SSE-KMS (AWS-managed)</td><td>AWS via KMS</td><td>média</td>
+<td>Encryption padrão</td></tr>
+<tr><td>SSE-KMS (CMK)</td><td>Você (Customer Managed Key)</td>
+<td>alta, log de cada uso da key</td>
+<td>Compliance (PCI/HIPAA), revogação granular</td></tr>
+<tr><td>SSE-C</td><td>Você manda chave a cada request</td>
+<td>nenhuma na AWS</td><td>Casos especiais</td></tr>
+<tr><td>Client-side</td><td>Você criptografa antes</td>
+<td>nenhuma</td><td>Zero-trust no provedor</td></tr>
+</table>
+<p>Em 2023, a AWS passou a habilitar SSE-S3 por padrão em todo bucket
+novo, fechando o caso mais básico de "esqueceram de ativar encryption".
+Mesmo assim, para caso sensível de verdade, ainda vale especificar
+explicitamente SSE-KMS com CMK — a diferença de auditoria entre "chave
+gerenciada pela AWS" e "chave gerenciada por você, com log de cada uso"
+é significativa em qualquer investigação de incidente.</p>
 
-                    "<h3>9. Logging e detecção</h3>"
-                    "<ul>"
-                    "<li><strong>S3 Access Logs</strong>: registra cada request, vai para "
-                    "outro bucket. Útil mas atrasado (delivery em horas).</li>"
-                    "<li><strong>CloudTrail Data Events</strong>: registra cada GetObject/"
-                    "PutObject em CloudTrail. Caro em alta escala, habilite só em buckets "
-                    "sensíveis.</li>"
-                    "<li><strong>Macie</strong>: scanner de PII em buckets. Detecta CPF, "
-                    "cartão, email, etc. e classifica risco.</li>"
-                    "<li><strong>GuardDuty S3 Protection</strong>: detecção comportamental "
-                    "(exfiltração, public bucket criado, listagem anômala).</li>"
-                    "</ul>"
+<h3>6. Versionamento + Object Lock = anti-ransomware</h3>
+<p>Cenário concreto: um atacante consegue credencial com permissão de
+delete no S3 e apaga tudo. É o fim? Não, se quatro proteções já
+estiverem em vigor ANTES do incidente. O <strong>versionamento</strong>
+faz cada PUT criar uma versão nova, e um delete gerar apenas um "delete
+marker" recuperável, não uma remoção real. O <strong>MFA Delete</strong>
+exige MFA do root especificamente para apagar uma versão, uma barreira
+extra além da permissão IAM comum. O <strong>Object Lock em modo
+Compliance</strong> impede até o root de apagar antes do prazo de
+retenção configurado — um modelo WORM (Write Once, Read Many) genuíno.
+A <strong>Cross-Region Replication</strong> mantém uma cópia em região
+separada, com bucket policy independente. E a <strong>Cross-Account
+Replication</strong> mantém uma cópia numa conta AWS totalmente
+separada — um atacante que comprometa a conta principal não alcança
+essa cópia. Combinar as quatro é o que realmente sustenta defesa contra
+ransomware sério, não apenas uma delas isolada.</p>
 
-                    "<h3>10. Caso real: Capital One revisitado</h3>"
-                    "<p>O que vazou foi obtido via <code>s3 ls</code> + "
-                    "<code>s3 sync</code> usando credenciais SSRF. 700 buckets. 100M "
-                    "registros. Se houvesse:</p>"
-                    "<ul>"
-                    "<li>Bucket policy restritiva por VPC endpoint;</li>"
-                    "<li>Macie alertando volume anômalo de download;</li>"
-                    "<li>GuardDuty detectando data exfil;</li>"
-                    "<li>VPC sem rota direta para S3 público (via endpoint);</li>"
-                    "</ul>"
-                    "<p>O ataque teria sido detectado em horas, não meses.</p>"
+<h3>7. Lifecycle: economizando 90% em logs antigos</h3>
+<table>
+<tr><th>Classe</th><th>$/GB-mês</th><th>Latência</th><th>Caso</th></tr>
+<tr><td>Standard</td><td>~0.023</td><td>ms</td><td>dados quentes</td></tr>
+<tr><td>Standard-IA</td><td>~0.0125</td><td>ms</td><td>infrequente,
+&gt;30d</td></tr>
+<tr><td>Intelligent-Tiering</td><td>auto</td><td>ms</td><td>quando não
+sabe o padrão de acesso</td></tr>
+<tr><td>Glacier Instant</td><td>~0.004</td><td>ms</td>
+<td>arquivos &gt;90d</td></tr>
+<tr><td>Glacier Flexible</td><td>~0.0036</td><td>min-horas</td>
+<td>backup &gt;90d</td></tr>
+<tr><td>Glacier Deep Archive</td><td>~0.00099</td><td>12h</td>
+<td>compliance &gt;180d</td></tr>
+</table>
+<p>Uma regra de lifecycle típica para log move o dado automaticamente
+entre classes conforme envelhece, sem intervenção manual:</p>
+<pre><code>{
+  "Rules": [{
+    "ID": "logs-tiering",
+    "Status": "Enabled",
+    "Filter": {"Prefix": "logs/"},
+    "Transitions": [
+      {"Days": 30,  "StorageClass": "STANDARD_IA"},
+      {"Days": 90,  "StorageClass": "GLACIER_IR"},
+      {"Days": 180, "StorageClass": "DEEP_ARCHIVE"}
+    ],
+    "Expiration": {"Days": 2555}        
+  }]
+}</code></pre>
+<p>Vale calcular antes o custo de retrieval — o Glacier cobra
+especificamente para TIRAR dado de lá, o que pode anular boa parte da
+economia se o padrão de acesso real for mais frequente do que o
+esperado no planejamento.</p>
 
-                    "<h3>11. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li>Bucket público sem necessidade.</li>"
-                    "<li>Credenciais hardcoded em código mobile/frontend.</li>"
-                    "<li>Sem versionamento.</li>"
-                    "<li>Sem encryption.</li>"
-                    "<li>Bucket name sequencial e adivinhável "
-                    "(<code>backup-prod-1</code>, <code>backup-prod-2</code>), facilita "
-                    "scan.</li>"
-                    "<li>Sem lifecycle: log de 5 anos atrás em Standard.</li>"
-                    "<li>Cross-account sem audit trail.</li>"
-                    "<li>Object ACLs em vez de bucket policy (legado).</li>"
-                    "</ul>"
+<h3>8. Site estático + CloudFront: arquitetura segura</h3>
+<p>Ao hospedar uma SPA (React, Vue) em S3 atrás de CloudFront, o bucket
+NÃO precisa — e não deveria — ser público. O Origin Access Control
+(OAC) resolve isso mantendo o bucket privado e permitindo leitura só a
+partir da distribuição CloudFront específica:</p>
+<pre><code># Bucket policy permite só CloudFront
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Service": "cloudfront.amazonaws.com"},
+    "Action": "s3:GetObject",
+    "Resource": "arn:aws:s3:::site-bucket/*",
+    "Condition": {
+      "StringEquals": {
+        "AWS:SourceArn": "arn:aws:cloudfront::123:distribution/EXXX"
+      }
+    }
+  }]
+}</code></pre>
+<p>Com essa policy, o bucket fica completamente privado e apenas a
+distribuição específica referenciada no <code>SourceArn</code> consegue
+ler seu conteúdo — o CloudFront então serve tudo com TLS, cache e
+cabeçalho de segurança por cima.</p>
+
+<h3>9. Logging e detecção</h3>
+<p>Quatro mecanismos cobrem detecção em diferentes granularidades. Os
+<strong>S3 Access Logs</strong> registram cada requisição, entregues em
+outro bucket, úteis mas com delivery atrasado em horas, não em tempo
+real. Os <strong>CloudTrail Data Events</strong> registram cada
+GetObject ou PutObject diretamente no CloudTrail — caro em alta escala,
+por isso vale habilitar seletivamente só em bucket realmente sensível.
+O <strong>Macie</strong> escaneia buckets em busca de PII — CPF,
+cartão, e-mail — classificando o risco automaticamente sem precisar de
+regra manual escrita à mão. E o <strong>GuardDuty S3 Protection</strong>
+faz detecção comportamental: exfiltração, bucket público criado sem
+autorização, ou padrão de listagem anômalo.</p>
+
+<h3>10. Caso real: Capital One revisitado</h3>
+<p>O que vazou no incidente descrito na aula anterior foi obtido via
+comando simples <code>s3 ls</code> seguido de <code>s3 sync</code>,
+usando a credencial temporária capturada via SSRF — 700 buckets, 100
+milhões de registros. Se algumas das proteções desta aula já
+estivessem em vigor, o desfecho teria sido diferente: uma bucket policy
+restringindo acesso a um VPC Endpoint específico teria negado a
+listagem vinda de fora daquele contexto; o Macie alertando volume de
+download anômalo teria sinalizado o incidente em andamento; o GuardDuty
+detectando exfiltração de dado teria disparado o mesmo alerta por outro
+ângulo; e uma VPC sem rota direta para S3 público, forçando tudo via
+endpoint, teria limitado o próprio caminho de saída do dado. Com
+qualquer uma dessas camadas ativa, o ataque teria sido detectado em
+horas — não nos meses que de fato levou até vir à tona.</p>
+
+<h3>11. Anti-patterns</h3>
+<ul>
+<li><strong>Bucket público sem necessidade real</strong>: a exposição
+mais comum e mais evitável de todas.</li>
+<li><strong>Credencial hard-coded em código mobile ou frontend</strong>:
+qualquer um que descompile o app extrai a chave imediatamente.</li>
+<li><strong>Sem versionamento</strong>: perde a proteção descrita na
+seção 6 contra delete acidental ou malicioso.</li>
+<li><strong>Sem encryption</strong>: mesmo com SSE-S3 hoje default,
+ainda existe bucket antigo criado antes dessa mudança sem nenhuma
+camada de encryption.</li>
+<li><strong>Nome de bucket sequencial e adivinhável</strong>
+(<code>backup-prod-1</code>, <code>backup-prod-2</code>): facilita
+enumeração automatizada por atacante fazendo scan em massa.</li>
+<li><strong>Sem lifecycle</strong>: log de cinco anos atrás continua
+pagando o preço de Standard, sem nenhum motivo técnico.</li>
+<li><strong>Cross-account sem trilha de auditoria</strong>: torna
+impossível responder depois "quem acessou o quê e quando".</li>
+<li><strong>Object ACL em vez de bucket policy</strong>: usa o
+mecanismo legado da seção 2 quando a alternativa moderna já resolve
+melhor o mesmo problema.</li>
+</ul>"""
                 ),
                 "practical": (
                     "(1) Crie um bucket privado, ative Block Public Access (todas as 4 "
