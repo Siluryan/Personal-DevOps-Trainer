@@ -4,9 +4,11 @@
 {% block title %}{{ topic.title }} · PDT{% endblock %}
 
 {% block head_extra %}
-  {# Sem defer, de propósito: define window.labState() sincronamente durante o
-     parse do HTML, garantindo que já existe quando o Alpine (carregado com
-     defer) avaliar o x-data="labState(...)" de cada lab. #}
+  {% comment %}
+    Sem defer, de propósito: define window.labState() sincronamente durante o
+    parse do HTML, garantindo que já existe quando o Alpine (carregado com
+    defer) avaliar o x-data="labState(...)" de cada lab.
+  {% endcomment %}
   <script src="{% static 'js/lab.js' %}"></script>
   {% if topic.lesson %}
     {# Só carrega Mermaid (biblioteca pesada) na página de aula, não no site inteiro. #}
