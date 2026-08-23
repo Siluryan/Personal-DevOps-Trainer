@@ -55,6 +55,14 @@ porta abaixo de 1024) sem ganhar nenhum dos outros poderes de root.
 de chamar ao kernel. E AppArmor/SELinux acrescentam controle de acesso
 obrigatório como camada complementar. Você pode observar esse isolamento
 diretamente:</p>
+<div class="mermaid">
+flowchart LR
+    DF["Dockerfile"] --> Build["docker build"]
+    Build --> Img["Imagem, read-only, em camadas"]
+    Img --> Run["docker run"]
+    Run --> Cont["Container, camada gravável por cima"]
+</div>
+
 <pre><code>$ docker run -d --name web nginx
 $ docker top web
 PID  USER   CMD
@@ -475,6 +483,13 @@ atacante que consiga executar código dentro do container. Uma imagem
 distroless carrega só o runtime e as bibliotecas essenciais, sem shell,
 sem gerenciador de pacotes algum. O espectro de bases disponíveis varia
 enormemente:</p>
+<div class="mermaid">
+flowchart LR
+    A["Imagem base completa"] --> B["Remove shell e package manager"]
+    B --> C["Roda como usuário não-root"]
+    C --> D["Imagem distroless / minimalista"]
+</div>
+
 <table>
 <tr><th>Base</th><th>Tamanho típico</th><th>Trade-off</th></tr>
 <tr><td>ubuntu:22.04</td><td>~80MB</td><td>Familiar; muito que vc não usa.</td></tr>
@@ -859,6 +874,13 @@ scan e replicação sem depender de nuvem nenhuma; e Artifactory/Nexus se
 justificam quando a organização já precisa de um registro multi-formato
 cobrindo não só imagem de container, mas também artefato Maven, pacote
 npm, entre outros, numa única plataforma.</p>
+<div class="mermaid">
+flowchart LR
+    CI["Pipeline de CI"] -- "push com digest" --> Reg["Registry"]
+    Reg -- "pull por digest, imutável" --> Prod["Produção"]
+    Reg -- "pull por tag, pode mudar" --> Dev["Ambiente de dev"]
+</div>
+
 
 <h3>2. Autenticação moderna: por que um token estático é sempre o elo mais fraco</h3>
 <p>Um Personal Access Token (PAT) ou conta de robô com credencial fixa
@@ -1168,6 +1190,15 @@ raio de impacto do outro, sem segmentação nenhuma entre eles.</li>
 próprio CLI do Docker (comando <code>docker compose</code>, com espaço);
 o binário separado antigo (<code>docker-compose</code>, com hífen) está
 oficialmente fora de suporte:</p>
+<div class="mermaid">
+flowchart TD
+    Compose["docker-compose.yml"] --> App["Serviço: app"]
+    Compose --> DB["Serviço: banco"]
+    Compose --> Cache["Serviço: cache"]
+    App --> DB
+    App --> Cache
+</div>
+
 <pre><code># compose.yaml, full example
 services:
   app:
@@ -1592,6 +1623,14 @@ mínimo viável de campos que um SBOM precisa ter: nome do fornecedor,
 nome do componente, versão, identificador único adicional (PURL ou CPE),
 relacionamento de dependência, autor dos dados do SBOM, e timestamp de
 geração.</p>
+<div class="mermaid">
+flowchart LR
+    Build["Build do artefato"] --> Syft["Gera SBOM, ex.: Syft"]
+    Syft --> SBOM["SBOM: lista de componentes"]
+    SBOM --> Scan["Cruza com base de CVE"]
+    Scan --> Alert["Alerta se componente vulnerável"]
+</div>
+
 
 <h3>2. Formatos: CycloneDX para segurança, SPDX para compliance de licença</h3>
 <table>
@@ -1964,6 +2003,14 @@ unificado que responde "quem é dono do serviço X?" em um clique, não uma
 busca em planilha desatualizada; e observabilidade padrão, onde todo
 serviço novo já nasce com dashboard e SLO configurados, sem trabalho
 manual extra.</p>
+<div class="mermaid">
+flowchart LR
+    Dev["Desenvolvedor"] -- "Pede um serviço novo" --> Portal["Portal da IDP"]
+    Portal --> Template["Aplica o golden path"]
+    Template --> Infra["Provisiona infraestrutura"]
+    Infra --> Dev
+</div>
+
 
 <h3>2. Os componentes que compõem uma plataforma completa</h3>
 <table>
@@ -2303,6 +2350,14 @@ controlam o que uma API aceita processar. O valor de aplicar a MESMA
 regra em várias camadas não é redundância por redundância — é defesa em
 profundidade: se uma camada falhar ou for contornada, a próxima ainda
 pega.</p>
+<div class="mermaid">
+flowchart LR
+    Request["Pedido de criar recurso"] --> Admission["Admission controller"]
+    Admission --> Policy{"Passa nas políticas, OPA ou Kyverno?"}
+    Policy -- "Sim" --> Create["Recurso é criado"]
+    Policy -- "Não" --> Reject["Pedido rejeitado"]
+</div>
+
 
 <h3>2. OPA e Rego: uma engine genérica, uma linguagem que pensa em conjuntos</h3>
 <p>Open Policy Agent (projeto CNCF graduado) é uma engine de política de
@@ -2705,6 +2760,12 @@ explorar nada — headers, redirects, defaults expostos. Um DAST "ativo"
 (full scan) faz fuzzing de verdade e tenta ataques reais — nunca rode
 isso contra produção sem autorização explícita, dado o potencial de
 causar dano real.</p>
+<div class="mermaid">
+flowchart LR
+    App["App rodando em ambiente isolado"] --> DAST["Scanner DAST ataca de fora"]
+    DAST --> Report["Reporta a vulnerabilidade encontrada"]
+</div>
+
 
 <h3>2. OWASP ZAP: o canivete suíço gratuito, do scan mais leve ao mais agressivo</h3>
 <p>OWASP ZAP é open source, multiplataforma, e opera em modos com
@@ -3042,6 +3103,15 @@ está deprecado e ROPC (Resource Owner Password Credentials, onde a
 aplicação manuseia a senha do usuário diretamente) só deveria existir em
 sistemas legados que ainda não migraram — ambos expõem mais superfície
 de risco do que os fluxos modernos.</p>
+<div class="mermaid">
+flowchart TD
+    Req["GET /pedidos/123"] --> Auth{"Usuário autenticado?"}
+    Auth -- "Não" --> Deny["401"]
+    Auth -- "Sim" --> Owner{"O pedido 123 pertence a este usuário?"}
+    Owner -- "Não" --> Forbid["403, previne BOLA"]
+    Owner -- "Sim" --> Allow["Retorna o pedido"]
+</div>
+
 <p>Um JWT bem formado carrega estrutura específica que vale entender
 campo a campo:</p>
 <pre><code># Header
@@ -3498,6 +3568,15 @@ para preservar a opção open-source de verdade. E as opções SaaS
 UX geralmente superior, mas custo que escala rápido com volume, e
 retenção padrão frequentemente mais curta do que uma solução self-hosted
 permitiria pelo mesmo orçamento.</p>
+<div class="mermaid">
+flowchart LR
+    S1["Serviço 1"] --> Agent["Agente de coleta"]
+    S2["Serviço 2"] --> Agent
+    S3["Serviço 3"] --> Agent
+    Agent --> Central["Armazenamento centralizado"]
+    Central --> Dash["Dashboard e alerta"]
+</div>
+
 
 <h3>2. Log estruturado: texto livre é para humano ler, JSON é para máquina consultar</h3>
 <p>Um log em texto livre é fácil de escrever e ilegível para uma
