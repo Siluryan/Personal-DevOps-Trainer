@@ -44,6 +44,20 @@ produção. Cada VM carrega seu próprio kernel, drivers virtualizados
 (paravirtualização via <code>virtio</code>) e endereço IP próprio — o
 que permite rodar Windows, Linux e BSD lado a lado, isolados, no mesmo
 host físico.</p>
+<div class="mermaid">
+flowchart TD
+    subgraph VM ["Máquina virtual"]
+        H1["Hardware físico"] --> HV["Hypervisor"]
+        HV --> G1["SO convidado 1"] --> A1["App"]
+        HV --> G2["SO convidado 2"] --> A2["App"]
+    end
+    subgraph CT ["Container"]
+        H2["Hardware físico"] --> SO["SO único, kernel compartilhado"]
+        SO --> C1["Container 1"] --> B1["App"]
+        SO --> C2["Container 2"] --> B2["App"]
+    end
+</div>
+
 
 <h3>2. Container ≠ VM</h3>
 <table>
@@ -336,6 +350,21 @@ casos.</p>"""
                 """<h3>1. A linha móvel: quanto mais alto o serviço, mais o provedor cobre</h3>
 <p>A divisão de responsabilidade muda de acordo com o nível de
 abstração escolhido:</p>
+<div class="mermaid">
+flowchart TD
+    subgraph Provedor ["Responsabilidade do provedor"]
+        P1["Datacenter físico"]
+        P2["Hardware e rede"]
+        P3["Hypervisor"]
+    end
+    subgraph Cliente ["Responsabilidade do cliente"]
+        C1["Configuração de IAM"]
+        C2["Dado armazenado"]
+        C3["Patch do sistema operacional"]
+        C4["Configuração de security group"]
+    end
+</div>
+
 <table>
 <tr><th>Camada</th><th>On-prem</th><th>IaaS</th><th>PaaS</th><th>SaaS</th></tr>
 <tr><td>Datacenter, energia</td><td>você</td><td>provedor</td><td>provedor</td><td>provedor</td></tr>
@@ -639,6 +668,15 @@ inverter os dois papéis — um humano usando credencial de máquina
 (chave estática de uma role) ou uma aplicação usando credencial humana
 (a chave pessoal de um dev rodando direto em produção) — cada
 identidade precisa do fluxo desenhado para o seu próprio tipo.</p>
+<div class="mermaid">
+flowchart TD
+    A["Requisição chega"] --> B{"Identidade autenticada?"}
+    B -- "Não" --> C["Nega acesso, 401"]
+    B -- "Sim" --> D{"Política permite a ação no recurso?"}
+    D -- "Não" --> E["Nega acesso, 403"]
+    D -- "Sim" --> F["Permite a ação"]
+</div>
+
 
 <h3>2. Estrutura de uma policy IAM (AWS)</h3>
 <p>Uma policy é um documento JSON declarativo:</p>
@@ -1015,6 +1053,15 @@ internet sem expor entrada), <strong>Security Groups e NACLs</strong>
 (filtros de tráfego, detalhados na próxima aula), e os
 <strong>VPC Endpoints</strong> (acesso privado a serviço do próprio
 provedor de nuvem, sem passar pela internet pública).</p>
+<div class="mermaid">
+flowchart TD
+    VPC["VPC, 10.0.0.0/16"] --> Pub["Subnet pública, 10.0.1.0/24"]
+    VPC --> Priv["Subnet privada, 10.0.2.0/24"]
+    Pub --> IGW["Internet Gateway"]
+    Priv --> NAT["NAT Gateway"]
+    NAT --> IGW
+</div>
+
 
 <h3>2. Planejamento de IP, pense agora, sofra menos depois</h3>
 <p>Mudar o CIDR de uma VPC já em produção é doloroso o bastante para
@@ -1311,6 +1358,16 @@ default é uma boa prática subutilizada (seção 5). Cada interface pode
 carregar até 5 SGs simultaneamente (limite ajustável). E qualquer regra
 nova entra em vigor em segundos, sem nenhum delay de propagação
 perceptível.</p>
+<div class="mermaid">
+flowchart TB
+    subgraph SG ["Security Group, stateful"]
+        SGIn["Regra de entrada permite porta 443"] --> SGOut["Resposta sai sozinha, sem regra extra"]
+    end
+    subgraph NACL ["Network ACL, stateless"]
+        NIn["Regra de entrada permite porta 443"] --> NOut["Resposta de saída precisa de regra própria"]
+    end
+</div>
+
 
 <h3>2. NACL: stateless, por subnet</h3>
 <p>A Network ACL filtra na borda da SUBNET inteira, não da interface
@@ -1602,6 +1659,13 @@ quem precisa mesmo assim de comportamento de filesystem, existem
 Mountpoint for S3 e s3fs-fuse, mas vale saber de antemão que operação
 de <em>list</em> e <em>rename</em> continuam caras nesse modelo, não
 importa a camada de abstração por cima.</p>
+<div class="mermaid">
+flowchart LR
+    Client["Cliente"] -- "PUT bucket, key" --> API["API do object storage"]
+    API --> Bucket["Bucket"]
+    Bucket --> Obj["Objeto: key + valor + metadado"]
+</div>
+
 
 <h3>2. Controle de acesso, em ordem cronológica</h3>
 <p>O S3 acumulou camada sobre camada de controle de acesso ao longo
@@ -1973,6 +2037,16 @@ não protege contra SQL injection nem bug de aplicação; não protege
 metadado (timestamp, tamanho de arquivo, padrão de acesso continuam
 visíveis mesmo com o conteúdo cifrado); e sem gestão de chave correta,
 vira apenas caro e inútil ao mesmo tempo.</p>
+<div class="mermaid">
+flowchart LR
+    subgraph Transito ["Em trânsito"]
+        A["Cliente"] -- "TLS" --> B["Servidor"]
+    end
+    subgraph Repouso ["Em repouso"]
+        C["Dado gravado em disco"] --> D["Criptografado com chave do KMS"]
+    end
+</div>
+
 
 <h3>2. Simétrica vs assimétrica</h3>
 <table>
@@ -2293,6 +2367,15 @@ rouba o disco rouba a chave junto.</li>
                     "<h3>1. Os 4 sinais de ouro (Google SRE)</h3>"
                     "<p>De todas as métricas que você pode coletar, 4 dizem se um serviço "
                     "está bem ou mal:</p>"
+                    """
+<div class="mermaid">
+flowchart LR
+    App["Aplicação / infra"] --> Metric["Métrica coletada"]
+    Metric --> Threshold{"Ultrapassou o limite configurado?"}
+    Threshold -- "Sim" --> Alert["Dispara alerta"]
+    Threshold -- "Não" --> Metric
+</div>
+"""
                     "<ol>"
                     "<li><strong>Latência</strong>: tempo de resposta. Separe sucesso "
                     "(p50, p99) de erro (latência de 5xx pode ser baixa por timeout rápido, "
@@ -2584,6 +2667,12 @@ por APLICAÇÃO — não como um valor único para a empresa inteira — é o
 que permite escolher a estratégia certa para cada caso, sem pagar por
 capacidade de recuperação que uma aplicação de baixo risco nunca vai
 precisar:</p>
+<div class="mermaid">
+flowchart LR
+    Backup["Último backup"] -- "RPO: dado que pode se perder" --> Incidente["Incidente"]
+    Incidente -- "RTO: tempo até restaurar" --> Restaurado["Serviço restaurado"]
+</div>
+
 <table>
 <tr><th>App</th><th>RPO</th><th>RTO</th><th>Estratégia</th></tr>
 <tr><td>Marketing site (estático)</td><td>24h</td><td>4h</td>
@@ -2889,6 +2978,16 @@ decisão certa é gastar MAIS, escalando de propósito para atender um
 pico previsto como Black Friday. O que FinOps garante é decisão
 CONSCIENTE, tomada com dado de custo real na mesa, não decisão no
 escuro.</p>
+<div class="mermaid">
+flowchart LR
+    A["Provisiona recurso"] --> B["Custo gerado"]
+    B --> C["Visibilidade: tag e dashboard"]
+    C --> D{"Recurso subutilizado?"}
+    D -- "Sim" --> E["Redimensiona ou desliga"]
+    D -- "Não" --> A
+    E --> A
+</div>
+
 
 <h3>2. Visibilidade primeiro: tagging strategy</h3>
 <p>Sem tag, você sabe que está pagando US$ 50 mil por mês, mas não tem
