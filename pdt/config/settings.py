@@ -187,7 +187,20 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# Django 5.1 removeu o shim que lia STATICFILES_STORAGE (setting antiga, só
+# funcionava até o Django 5.0); sem STORAGES explícito, o Django 5.1+ cai
+# silenciosamente no storage padrão sem hash de conteúdo no nome do arquivo.
+# Isso fazia o nginx (Cache-Control: public, immutable; expires 30d) e o
+# Cloudflare guardarem a MESMA URL /static/css/app.css por até 30 dias mesmo
+# depois de um deploy com CSS/JS novo — o "deploy não aparece" recorrente.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
