@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 from django.urls import reverse
 
-from apps.courses.models import Choice, Phase, Question, Topic
+from apps.courses.models import Choice, Lesson, Phase, Question, Topic
 from apps.courses.seed_data import PHASES
 from apps.gamification.models import TopicAttempt, TopicScore
 
@@ -282,10 +282,13 @@ class TestQuizFlow:
         picked = question.choices.get(is_correct=True)
         texto_respondido = picked.text
 
-        client.post(
-            reverse("courses:quiz", args=[topic.slug]),
-            {f"q_{question.id}": picked.id},
-        )
+        # Responde tudo (não só a questão do teste): as outras 9 legitimamente
+        # apareceriam como "(em branco)" se deixadas sem resposta, o que
+        # confundiria uma checagem ingênua de substring na página inteira.
+        post_data = {f"q_{question.id}": picked.id}
+        for outra in seed_phases["questions"][1:]:
+            post_data[f"q_{outra.id}"] = outra.choices.get(is_correct=True).id
+        client.post(reverse("courses:quiz", args=[topic.slug]), post_data)
         attempt = TopicAttempt.objects.get(user=admitted_user, topic=topic)
 
         # Simula o que `seed_topics` faz com uma questão seed_managed=True:
@@ -295,6 +298,10 @@ class TestQuizFlow:
         resp = client.get(reverse("courses:quiz_result", args=[topic.slug, attempt.id]))
         assert resp.status_code == 200
         assert texto_respondido.encode() in resp.content
+
+        resposta = attempt.answers.get(question=question)
+        assert resposta.choice_id is None  # a Choice foi apagada de verdade
+        assert resposta.display_text == texto_respondido
         assert b"(em branco)" not in resp.content
 
 
