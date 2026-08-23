@@ -34,6 +34,20 @@ PHASE3 = {
                     "isso é endereçado por um hash SHA-1 (ou SHA-256 em repos modernos). "
                     "Esse hash é determinístico: mesmo conteúdo + mesmo pai + mesmo autor "
                     "gera mesmo hash.</p>"
+                    """
+<div class="mermaid">
+gitGraph
+   commit id: "commit A"
+   commit id: "commit B"
+   branch feature
+   checkout feature
+   commit id: "commit C"
+   commit id: "commit D"
+   checkout main
+   commit id: "commit E"
+   merge feature
+</div>
+"""
                     "<p>Internamente, o <code>.git/objects/</code> contém quatro tipos:</p>"
                     "<ul>"
                     "<li><strong>blob</strong>: conteúdo de um arquivo.</li>"
@@ -433,6 +447,16 @@ empresas maduras testam esse cenário deliberadamente em "Game Days". E o
 quinto é <strong>compliance</strong>: uma política como "todo bucket deve
 ter encryption" deixa de ser um lembrete em wiki e vira regra executável
 (Sentinel, OPA, tfsec) que barra o `apply` se violada.</p>
+<div class="mermaid">
+flowchart LR
+    A["main.tf"] --> B["terraform plan"]
+    B --> C["Mostra o diff: o que vai mudar"]
+    C --> D{"Aprovado?"}
+    D -- "Sim" --> E["terraform apply"]
+    E --> F["Infraestrutura real atualizada"]
+    D -- "Não" --> A
+</div>
+
 
 <h3>2. Anatomia do Terraform</h3>
 <p>Terraform usa HCL (HashiCorp Configuration Language), uma DSL
@@ -898,6 +922,13 @@ precisa existir lá, ao contrário de Chef e Puppet que exigem um agente
 rodando permanentemente), YAML legível mesmo por quem não escreve
 Ansible no dia a dia, uma comunidade enorme via Galaxy, e integração
 nativa com as principais nuvens.</p>
+<div class="mermaid">
+flowchart LR
+    Control["Nó de controle"] -- "SSH, sem agente" --> H1["Servidor 1"]
+    Control -- "SSH, sem agente" --> H2["Servidor 2"]
+    Control -- "SSH, sem agente" --> H3["Servidor 3"]
+</div>
+
 
 <h3>2. Anatomia: inventário, playbooks, módulos, roles</h3>
 <h4>2.1 Inventário</h4>
@@ -1296,6 +1327,14 @@ AWS, Workload Identity no GCP, Managed Identity na Azure seguem esse
 modelo. E os <strong>certificados</strong> (TLS, mTLS, SSH CA)
 tipicamente vivem de 7 a 90 dias e são renovados automaticamente via
 ACME ou ferramenta equivalente (Vault PKI, smallstep, cert-manager).</p>
+<div class="mermaid">
+flowchart TD
+    App["Aplicação"] -- "Pede segredo em runtime" --> Vault["Cofre de segredos"]
+    Vault --> Auth{"Identidade autorizada?"}
+    Auth -- "Sim" --> Return["Retorna segredo de curta duração"]
+    Auth -- "Não" --> Deny["Nega o acesso"]
+</div>
+
 
 <h3>2. Onde NUNCA guardar segredos</h3>
 <p>Sete lugares parecem convenientes mas garantem vazamento mais cedo
@@ -1606,6 +1645,15 @@ remove até esse último passo manual: todo commit que passa pelo
 pipeline inteiro vai automaticamente para produção, sem intervenção —
 um nível de maturidade que exige teste e telemetria muito robustos antes
 de fazer sentido.</p>
+<div class="mermaid">
+flowchart LR
+    A["Commit"] --> B["Build"]
+    B --> C["Testes automatizados"]
+    C --> D{"Passou?"}
+    D -- "Sim" --> E["Deploy"]
+    D -- "Não" --> F["Notifica o time"]
+</div>
+
 
 <h3>2. Pipeline mínimo de qualidade</h3>
 <pre><code>commit → lint → unit tests → build → security scans →
@@ -2000,6 +2048,14 @@ que verifica se os tipos declarados realmente batem entre si em
 linguagens com type hint. Linter não substitui SAST — mas a fronteira
 entre os dois ficou borrada: Bandit e Semgrep hoje cobrem os dois papéis
 ao mesmo tempo.</p>
+<div class="mermaid">
+flowchart LR
+    A["Código escrito"] --> B["Linter roda"]
+    B --> C{"Viola alguma regra?"}
+    C -- "Sim" --> D["Bloqueia commit ou PR"]
+    C -- "Não" --> E["Segue pro CI"]
+</div>
+
 
 <h3>2. Linters por linguagem</h3>
 <h4>2.1 Python</h4>
@@ -2295,6 +2351,14 @@ chega a fazer algo perigoso (o "sink", como executar SQL, chamar shell,
 rodar `eval`). Se esse valor sujo percorre esse caminho SEM passar por
 nenhuma sanitização no meio, a ferramenta reporta vulnerabilidade —
 mesmo sem nunca ter executado o código de verdade:</p>
+<div class="mermaid">
+flowchart LR
+    A["Código-fonte"] --> B["SAST analisa sem executar"]
+    B --> C{"Encontrou padrão vulnerável?"}
+    C -- "Sim" --> D["Reporta linha e tipo de falha"]
+    C -- "Não" --> E["Aprova o build"]
+</div>
+
 <pre><code>def view(request):
     user_id = request.GET.get('id')        # source: tainted
     query = f"SELECT * FROM u WHERE id={user_id}"   # propaga taint
@@ -2614,6 +2678,15 @@ mantido pela Linux Foundation com foco mais voltado a compliance e
 licenciamento. Ferramentas como <code>syft</code> (Anchore),
 <code>cdxgen</code> (OWASP) e <code>trivy</code> geram esses formatos a
 partir de código ou imagem:</p>
+<div class="mermaid">
+flowchart LR
+    A["Manifesto de dependências"] --> B["SCA lista cada dependência"]
+    B --> C["Cruza com base de CVE conhecida"]
+    C --> D{"Alguma dependência vulnerável?"}
+    D -- "Sim" --> E["Alerta com severidade"]
+    D -- "Não" --> F["Aprova"]
+</div>
+
 <pre><code>$ syft packages docker:nginx:latest -o cyclonedx-json &gt; sbom.json
 $ syft dir:. -o spdx-json &gt; sbom.spdx.json</code></pre>
 <p>Atrelar o SBOM diretamente ao artefato — referenciado no próprio
@@ -2925,6 +2998,15 @@ refactor neutro (rename, mover arquivo), seguido de um PR com a nova
 interface ainda vazia, depois um PR com a implementação em si, e por
 fim um PR de integração — cada um pequeno o bastante para ser revisado
 de verdade.</p>
+<div class="mermaid">
+flowchart LR
+    A["Autor abre o PR"] --> B["Revisor lê o diff"]
+    B --> C{"Precisa de mudança?"}
+    C -- "Sim" --> D["Comenta, autor ajusta"]
+    D --> B
+    C -- "Não" --> E["Aprova e faz merge"]
+</div>
+
 <h4>1.2 Contexto claro</h4>
 <p>Um reviewer não deveria precisar adivinhar "por que esta mudança
 existe" — um template de PR força essa informação a aparecer sempre:</p>
@@ -3228,6 +3310,13 @@ uso ilimitado. O <strong>Harbor</strong>, open source e self-hosted, com
 RBAC, scan de vulnerabilidade e replicação nativos, virou o padrão em
 times que rodam Kubernetes on-premise. E o <strong>Quay</strong> (Red
 Hat) é forte especificamente no ecossistema OpenShift.</p>
+<div class="mermaid">
+flowchart LR
+    Build["Pipeline de build"] --> Sign["Assina o artefato"]
+    Sign --> Push["Push pro registry"]
+    Push --> Pull["Ambiente puxa por digest"]
+</div>
+
 <h4>1.2 Generic / linguagens</h4>
 <p>Para artefato que não é imagem de container, o <strong>JFrog
 Artifactory</strong> é o veterano do mercado — multi-formato (Docker,
