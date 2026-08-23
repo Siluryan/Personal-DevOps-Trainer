@@ -90,7 +90,7 @@ resource "aws_ssm_association" "scan_daily" {
   name                        = "AWS-RunPatchBaseline"
   association_name            = "${var.project_name}-${var.environment}-scan"
   schedule_expression         = "cron(0 13 * * ? *)" # 13:00 UTC = 10:00 BRT (janela 08:00–00:00)
-  apply_only_at_cron_interval = true                # não dispara scan durante bootstrap (evita lock do apt)
+  apply_only_at_cron_interval = true                 # não dispara scan durante bootstrap (evita lock do apt)
 
   targets {
     key    = "InstanceIds"
