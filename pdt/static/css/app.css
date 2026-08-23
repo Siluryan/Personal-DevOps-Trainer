@@ -272,6 +272,44 @@ html { scroll-behavior: smooth; }
   cursor: default;
 }
 
+/* Paginação do corpo da aula (ver apps.core.pagination): cada aula longa vira
+   N páginas por seção, navegadas sem recarregar (Alpine.js controla `page`). */
+.lesson-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--pdt-border);
+}
+.lesson-pagination button {
+  background: var(--pdt-surface2);
+  border: 1px solid var(--pdt-border2);
+  color: var(--pdt-text);
+  font-size: .875rem;
+  font-weight: 600;
+  padding: .5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.lesson-pagination button:hover:not(:disabled) {
+  background: var(--pdt-surface);
+  border-color: var(--pdt-accent);
+  color: var(--pdt-accent-h);
+}
+.lesson-pagination button:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+.lesson-pagination .lesson-page-indicator {
+  color: var(--pdt-text2);
+  font-size: .875rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    SISTEMA LEGADO (prose-invert), mantido para compatibilidade
    ══════════════════════════════════════════════════════════════════════════ */

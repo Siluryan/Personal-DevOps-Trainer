@@ -8,6 +8,7 @@ from django.utils.html import escape, linebreaks
 from django.utils.safestring import mark_safe
 
 from apps.core.glossary import annotate_glossary_terms, get_glossary_terms
+from apps.core.pagination import paginate_html_sections
 
 register = template.Library()
 
@@ -135,21 +136,41 @@ def bold_ticks(value, autoescape=True):
     return mark_safe(out)
 
 
+def _prepare_lesson_html(value: str) -> str:
+    """HTML pronto para exibir: texto puro vira <p>, termos de glossário marcados.
+
+    Compartilhado por `render_lesson` e `paginate_lesson_body` — a anotação de
+    glossário precisa rodar sobre o texto INTEIRO de uma vez (não por página),
+    senão "1ª ocorrência do termo" ficaria por página em vez de por aula.
+    """
+    if not value:
+        return ""
+    stripped = value.strip()
+    html = stripped if stripped.startswith("<") else linebreaks(stripped)
+    return annotate_glossary_terms(html, get_glossary_terms())
+
+
 @register.filter(is_safe=True)
 def render_lesson(value: str) -> str:
-    """Renderiza campo de aula.
+    """Renderiza campo de aula (intro/practical: sempre em uma página só).
 
     - Se o conteúdo já contém HTML (começa com '<'), retorna como safe diretamente.
     - Caso contrário, aplica `linebreaks` (texto puro → <p>) e retorna safe.
     - Em ambos os casos, marca a 1ª ocorrência de cada termo do glossário
       (RCE, IAM, TLS...) com uma caixinha clicável que mostra a definição.
     """
-    if not value:
-        return ""
-    stripped = value.strip()
-    html = stripped if stripped.startswith("<") else linebreaks(stripped)
-    html = annotate_glossary_terms(html, get_glossary_terms())
-    return mark_safe(html)
+    return mark_safe(_prepare_lesson_html(value))
+
+
+@register.filter(is_safe=True)
+def paginate_lesson_body(value: str) -> list:
+    """Corpo da aula (`Lesson.body`) dividido em páginas por seção `<h3>`.
+
+    Aula curta (ou sem `<h3>`) volta como lista de 1 item — o template não
+    precisa de lógica condicional a mais para esse caso, só itera a lista.
+    """
+    html = _prepare_lesson_html(value)
+    return [mark_safe(page) for page in paginate_html_sections(html)]
 
 
 @register.filter
