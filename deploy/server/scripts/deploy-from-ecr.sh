@@ -267,10 +267,21 @@ docker compose -f "$COMPOSE_FILE" up -d web
 
 # Migracao e estaticos dentro do conteiner (mesma imagem usada no run).
 docker compose -f "$COMPOSE_FILE" exec -T web python manage.py migrate --noinput
-docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_topics || true
-docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_admission_test || true
-docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_interviews || true
 docker compose -f "$COMPOSE_FILE" exec -T web python manage.py collectstatic --noinput
+
+# Seeds de conteúdo: opt-in explícito.
+#
+# Reaplicar os seeds sobrescreve aulas, questões e alternativas com os arquivos
+# de seed_data/, descartando edições feitas no admin. Deploy de código não
+# destrói conteúdo; para reaplicar de propósito, use PDT_SEED_ON_DEPLOY=1.
+if [ "${PDT_SEED_ON_DEPLOY:-0}" = "1" ]; then
+  echo ">> PDT_SEED_ON_DEPLOY=1: reaplicando seeds de conteúdo."
+  docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_topics
+  docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_admission_test
+  docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_interviews
+else
+  echo ">> Seeds de conteúdo ignorados (PDT_SEED_ON_DEPLOY!=1)."
+fi
 
 # Nginx le /static e /media (www-data): garante leitura.
 chmod -R a+rX /opt/pdt/app/pdt/staticfiles /opt/pdt/app/pdt/media 2>/dev/null || true

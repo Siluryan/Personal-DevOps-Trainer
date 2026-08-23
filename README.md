@@ -88,20 +88,40 @@ cp .env.example .env       # ajuste o que precisar (segredo, donation, etc.)
 docker compose up --build
 ```
 
-Na primeira subida, o `entrypoint.sh`:
+A cada subida, o `entrypoint.sh`:
 
 1. Espera o Postgres responder.
 2. Aplica as migrações versionadas no repositório.
 3. Coleta arquivos estáticos.
-4. Roda os seeds idempotentes:
-   - `python manage.py seed_topics` (6 fases, 60 tópicos, materiais e
-     questões);
-   - `python manage.py seed_admission_test` (banco de questões do teste
-     de admissão);
-   - `python manage.py seed_interviews` (300 questões do simulador de
-     entrevistas, 100 por nível; embaralha alternativas de forma
-     determinística, com mais mistura no pleno e ainda mais no sênior).
-5. Inicia o Daphne na porta `8000`.
+4. Inicia o Daphne na porta `8000`.
+
+### Semeando o conteúdo
+
+Os seeds **não** rodam sozinhos na partida do container. Eles reescrevem
+aulas, questões e alternativas a partir dos arquivos em `apps/*/seed_data/`,
+apagando qualquer edição feita pelo admin — e como o container sobe a cada
+restart, OOM-kill e boot da máquina, deixá-los no caminho automático
+significava perder o conteúdo editado sem nenhum deploy.
+
+Para semear um banco novo, rode uma vez:
+
+```bash
+docker compose exec web python manage.py seed_topics
+docker compose exec web python manage.py seed_admission_test
+docker compose exec web python manage.py seed_interviews
+```
+
+- `seed_topics`: 6 fases, 60 tópicos, materiais e questões.
+- `seed_admission_test`: banco de questões do teste de admissão.
+- `seed_interviews`: 300 questões do simulador (100 por nível), com
+  embaralhamento determinístico — mais mistura no pleno, ainda mais no sênior.
+
+Também dá para semear junto com a subida, definindo `PDT_RUN_SEED=1` no `.env`.
+Deixe desligado depois da primeira carga.
+
+Em produção, o deploy só reaplica os seeds com `PDT_SEED_ON_DEPLOY=1`; o
+provisionamento inicial (`user_data.sh.tpl`) semeia apenas se o banco estiver
+sem nenhum tópico.
 
 Acesse:
 

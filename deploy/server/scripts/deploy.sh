@@ -23,11 +23,29 @@ cd $APP_REPO_DIR/pdt
 pip install -r requirements.txt
 set -a; . $ENV_FILE; set +a
 python manage.py migrate --noinput
-python manage.py seed_topics || true
-python manage.py seed_admission_test || true
-python manage.py seed_interviews || true
 python manage.py collectstatic --noinput
 EOSU
+
+# Seeds de conteúdo: opt-in explícito.
+#
+# Rodá-los sobrescreve aulas, questões e alternativas com os arquivos de
+# seed_data/, descartando o que tiver sido editado pelo admin. Um deploy de
+# código não deve destruir conteúdo, então só semeia quando quem dispara o
+# deploy pede: PDT_SEED_ON_DEPLOY=1.
+if [ "${PDT_SEED_ON_DEPLOY:-0}" = "1" ]; then
+  logger -t pdt-deploy "PDT_SEED_ON_DEPLOY=1: reaplicando seeds de conteúdo"
+  sudo -u $APP_USER -H bash <<EOSEED
+set -euxo pipefail
+cd $APP_REPO_DIR/pdt
+. /opt/pdt/venv/bin/activate
+set -a; . $ENV_FILE; set +a
+python manage.py seed_topics
+python manage.py seed_admission_test
+python manage.py seed_interviews
+EOSEED
+else
+  logger -t pdt-deploy "seeds de conteúdo ignorados (PDT_SEED_ON_DEPLOY!=1)"
+fi
 
 # Atualiza configs do servidor (nginx + systemd) caso tenham mudado.
 install -m 0644 $APP_REPO_DIR/deploy/server/systemd/pdt-daphne.service \
