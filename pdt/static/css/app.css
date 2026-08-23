@@ -175,17 +175,93 @@ html { scroll-behavior: smooth; }
    overflow-x local (não a página inteira) quando o diagrama é mais largo que
    a coluna de leitura, comum em fluxogramas com muitos nós lado a lado. */
 .lesson-body .mermaid {
+  position: relative;
   display: flex;
   justify-content: center;
   overflow-x: auto;
   margin: 1.5rem 0;
-  padding: 1.25rem;
-  background: var(--pdt-surface);
+  padding: 1.5rem 1.25rem;
+  background: linear-gradient(180deg, var(--pdt-surface2), var(--pdt-surface));
   border: 1px solid var(--pdt-border);
-  border-radius: 8px;
+  border-radius: 12px;
+  cursor: zoom-in;
+  transition: border-color .15s, box-shadow .15s;
+}
+.lesson-body .mermaid:hover,
+.lesson-body .mermaid:focus-visible {
+  border-color: var(--pdt-accent-h);
+  box-shadow: 0 0 0 1px rgba(56,189,248,.25), 0 10px 28px rgba(0,0,0,.4);
+  outline: none;
 }
 .lesson-body .mermaid svg {
   max-width: 100%;
+  height: auto;
+}
+.mermaid-zoom-hint {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: .75rem;
+  line-height: 1;
+  opacity: .6;
+  background: rgba(7,18,42,.75);
+  border: 1px solid var(--pdt-border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  pointer-events: none;
+}
+
+/* lightbox de zoom do diagrama: injetado 1x em document.body por
+   static/js/mermaid-zoom.js, reaproveitado para qualquer <div class="mermaid">
+   clicado — ver comentário no topo daquele arquivo. */
+.mermaid-lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(3,8,20,.94);
+}
+.mermaid-lightbox.is-open { display: block; }
+.mermaid-lightbox-toolbar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+}
+.mermaid-lightbox-toolbar button {
+  min-width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--pdt-border2);
+  background: var(--pdt-surface2);
+  color: #ddeeff;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.mermaid-lightbox-toolbar button:hover { border-color: var(--pdt-accent-h); }
+.mermaid-lightbox-toolbar [data-action="reset"] { min-width: 60px; font-size: .8125rem; }
+.mermaid-lightbox-close { font-size: 1.375rem; }
+.mermaid-lightbox-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+}
+.mermaid-lightbox-inner {
+  transform-origin: center center;
+  transition: transform .05s linear;
+}
+.mermaid-lightbox-inner svg {
+  max-width: none !important;
+  width: min(92vw, 960px);
   height: auto;
 }
 

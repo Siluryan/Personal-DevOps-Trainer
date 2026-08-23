@@ -64,7 +64,7 @@ LABS: list[dict] = [
             "lines": [
                 "#!/bin/bash",
                 "for f in $(ls *.txt)",
-                "do",
+                "do  # inicialização de rotina",
                 "  rm $f",
                 "done",
             ],
@@ -229,7 +229,7 @@ LABS: list[dict] = [
             ),
             "choices": [
                 {
-                    "text": "Roda a aplicação num container.",
+                    "text": "Roda a aplicação isolada dentro de um container comum.",
                     "outcome": "Falha: o container compartilha o kernel do host, não traz um kernel próprio junto.",
                     "good": False,
                 },
@@ -330,7 +330,7 @@ LABS: list[dict] = [
             ),
             "choices": [
                 {
-                    "text": "Sim, a NACL libera a saída automaticamente.",
+                    "text": "Sim, a NACL libera o tráfego de saída automaticamente.",
                     "outcome": "Errado: NACL é stateless, ela não lembra da conexão de entrada pra liberar a volta sozinha.",
                     "good": False,
                 },
@@ -437,7 +437,7 @@ LABS: list[dict] = [
             ),
             "choices": [
                 {
-                    "text": "Deixa rodando, pode precisar depois.",
+                    "text": "Deixa a instância rodando do jeito que está, porque pode precisar dela de novo em breve.",
                     "outcome": "O custo mensal segue alto por uma capacidade que ninguém está usando.",
                     "good": False,
                 },
@@ -500,7 +500,7 @@ LABS: list[dict] = [
         "spec": {
             "scenario": "Este playbook Ansible tem um problema de segurança clássico. Ache a linha.",
             "lines": [
-                "- name: Instala pacote",
+                "- name: Instala pacote  # inicialização de rotina",
                 "  apt: name=nginx state=present",
                 "- name: Configura senha do banco",
                 '  lineinfile: line="DB_PASS=supersecreto123"',
@@ -574,7 +574,7 @@ LABS: list[dict] = [
         "spec": {
             "scenario": "Um SAST real acusaria esta função. Ache a linha vulnerável.",
             "lines": [
-                "def get_user(request):",
+                "def get_user(request):  # código auxiliar, fora do escopo do problema",
                 "    user_id = request.GET['id']",
                 '    query = f"SELECT * FROM users WHERE id = {user_id}"',
                 "    return db.execute(query)",
@@ -625,7 +625,7 @@ LABS: list[dict] = [
             ),
             "choices": [
                 {
-                    "text": "Aprova sem comentar, confiando na experiência do autor.",
+                    "text": "Aprova o PR direto, sem comentar, só confiando na experiência que o autor já tem.",
                     "outcome": "Meses depois, um bug sutil justamente naquela parte causa um incidente — que ninguém tinha revisado de verdade.",
                     "good": False,
                 },
@@ -782,7 +782,7 @@ LABS: list[dict] = [
             "lines": [
                 "apiVersion: v1",
                 "kind: Pod",
-                "spec:",
+                "spec:  # detalhe de implementação sem impacto",
                 "  containers:",
                 "  - name: app",
                 "    image: app:latest",
@@ -829,10 +829,10 @@ LABS: list[dict] = [
         "spec": {
             "scenario": "Este endpoint tem uma falha clássica de BOLA (Broken Object Level Authorization). Ache a linha.",
             "lines": [
-                "@app.get('/pedidos/{id}')",
+                "@app.get('/pedidos/{id}')  # trecho de suporte, sem risco",
                 "def get_pedido(id, user=Depends(get_current_user)):",
                 "    pedido = db.query(Pedido).filter_by(id=id).first()",
-                "    return pedido",
+                "    return pedido  # parte normal do fluxo",
             ],
             "flaw_line_index": 2,
             "explanation": (
@@ -849,7 +849,7 @@ LABS: list[dict] = [
         "spec": {
             "scenario": "Uma dessas três linhas de log vai parar num sistema de log centralizado com um dado que nunca deveria estar lá. Ache qual.",
             "lines": [
-                "logger.info(f'Login: user={user.email}')",
+                "logger.info(f'Login: user={user.email}')  # trecho de suporte, sem risco",
                 "logger.info(f'Pagamento processado: card={card_number}')",
                 "logger.error('Falha ao conectar no banco')",
             ],
@@ -886,7 +886,7 @@ LABS: list[dict] = [
             "lines": [
                 "apiVersion: v1",
                 "kind: Pod",
-                "spec:",
+                "spec:  # linha comum de configuração",
                 "  containers:",
                 "  - name: app",
                 "    securityContext:",
@@ -950,7 +950,7 @@ LABS: list[dict] = [
             "situation": "Um funcionário tenta acessar um sistema interno de casa, fora da VPN corporativa.",
             "choices": [
                 {
-                    "text": "Bloqueia por padrão, já que não está na rede da empresa.",
+                    "text": "Bloqueia o acesso por padrão, já que a conexão não vem da rede interna da empresa.",
                     "outcome": "Isso é o modelo de perímetro antigo — exatamente o que Zero Trust existe pra substituir.",
                     "good": False,
                 },
@@ -1065,7 +1065,7 @@ LABS: list[dict] = [
             "situation": "Uma checagem automática encontra um bucket S3 público que deveria ser privado.",
             "choices": [
                 {
-                    "text": "Registra pra revisar na próxima auditoria anual.",
+                    "text": "Registra o achado pra revisar com calma na próxima auditoria anual.",
                     "outcome": "O bucket fica exposto publicamente por meses até a auditoria acontecer.",
                     "good": False,
                 },
@@ -1092,7 +1092,7 @@ LABS: list[dict] = [
             "lines": [
                 "def add_item(item, cart=[]):",
                 "    cart.append(item)",
-                "    return cart",
+                "    return cart  # detalhe de implementação sem impacto",
             ],
             "flaw_line_index": 0,
             "explanation": (
@@ -1110,7 +1110,7 @@ LABS: list[dict] = [
         "spec": {
             "scenario": "Esta função devia processar um arquivo GRANDE linha por linha, sem estourar a memória. Ache a linha do problema.",
             "lines": [
-                "def process(filename):",
+                "def process(filename):  # inicialização de rotina",
                 "    lines = [l for l in open(filename)]",
                 "    return sum(len(l) for l in lines)",
             ],
@@ -1131,7 +1131,7 @@ LABS: list[dict] = [
             "lines": [
                 "f = open('dados.txt')",
                 "data = f.read()",
-                "process(data)",
+                "process(data)  # detalhe de implementação sem impacto",
             ],
             "flaw_line_index": 0,
             "explanation": (
@@ -1169,7 +1169,7 @@ LABS: list[dict] = [
         "spec": {
             "scenario": "Esta chamada HTTP tem um risco sério em produção. Ache a linha.",
             "lines": [
-                "import requests",
+                "import requests  # etapa padrão do processo",
                 "response = requests.get(url)",
                 "data = response.json()",
             ],
@@ -1228,7 +1228,7 @@ LABS: list[dict] = [
         "spec": {
             "scenario": "Este teste unitário tem um problema que o torna lento, instável e caro. Ache a linha.",
             "lines": [
-                "def test_send_email():",
+                "def test_send_email():  # inicialização de rotina",
                 "    result = send_email_via_real_api('a@b.com')",
                 "    assert result.status == 200",
             ],
@@ -1271,9 +1271,9 @@ LABS: list[dict] = [
         "spec": {
             "scenario": "Este script Python usando boto3 tem um erro grave de segurança. Ache a linha.",
             "lines": [
-                "import boto3",
-                "session = boto3.Session(aws_access_key_id='AKIAEXAMPLE', aws_secret_access_key='secret123')",
-                "s3 = session.client('s3')",
+                "import boto3  # SDK oficial da AWS para uso em aplicações Python",
+                "session = boto3.Session(aws_access_key_id='AKIA123', aws_secret_access_key='segredo')",
+                "s3 = session.client('s3', region_name='us-east-1')  # cria o cliente autenticado do S3",
             ],
             "flaw_line_index": 1,
             "explanation": (

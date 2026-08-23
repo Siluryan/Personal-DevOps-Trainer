@@ -12,15 +12,21 @@
   <script src="{% static 'js/lab.js' %}"></script>
   {% if topic.lesson %}
     {# Só carrega Mermaid (biblioteca pesada) na página de aula, não no site inteiro. #}
+    <script src="{% static 'js/mermaid-zoom.js' %}"></script>
     <script src="{% static 'vendor/mermaid/mermaid.min.js' %}" defer></script>
     <script>
       // Registrado sem defer: garante que este listener existe ANTES do
       // DOMContentLoaded disparar, então quando ele rodar o mermaid.min.js
       // (defer) já terá executado e window.mermaid já existe.
+      //
+      // startOnLoad:false + mermaid.run(...) manual (em vez do scan automático
+      // do mermaid.js) de propósito: precisamos saber quando o render termina
+      // para só então ligar o zoom/lightbox (enhanceMermaidDiagrams), senão
+      // ele rodaria antes do <svg> existir no DOM.
       document.addEventListener('DOMContentLoaded', function () {
         if (window.mermaid) {
           mermaid.initialize({
-            startOnLoad: true,
+            startOnLoad: false,
             theme: 'dark',
             securityLevel: 'strict',
             themeVariables: {
@@ -41,6 +47,9 @@
               noteTextColor: '#ddeeff',
               noteBorderColor: '#253d5e'
             }
+          });
+          mermaid.run({ querySelector: '.mermaid' }).then(function () {
+            if (window.enhanceMermaidDiagrams) enhanceMermaidDiagrams();
           });
         }
       });
@@ -92,7 +101,7 @@
         {% with pages=topic.lesson.body|paginate_lesson_body %}
         <div class="lesson-body mb-2"
              style="{% if topic.lesson.intro %}border-top:none;border-radius:0;{% else %}border-radius:12px 12px 0 0;{% endif %}
-                    {% if not topic.lesson.practical %}border-radius:0 0 12px 12px;{% endif %}"
+                    {% if not topic.lesson.practical and not labs %}border-radius:0 0 12px 12px;{% endif %}"
              x-data="{ page: 0, total: {{ pages|length }},
                         goToPage(n) { this.page = n; this.$refs.lessonTop.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }">
           <h2 x-ref="lessonTop">Aula</h2>
@@ -116,18 +125,19 @@
         {% endwith %}
       {% endif %}
 
+      {% for lab in labs %}
+        {% include "courses/_lab.html" %}
+      {% endfor %}
+
       {% if topic.lesson.practical %}
         <div class="lesson-body"
-             style="border-top:none;border-radius:0 0 12px 12px;
+             style="{% if not labs %}border-top:none;{% endif %}
+                    border-radius:{% if labs %}12px;{% else %}0 0 12px 12px;{% endif %}
                     background:rgba(14,165,233,.04)">
           <h2 style="color:#34d399">Exercício prático</h2>
           {{ topic.lesson.practical|render_lesson }}
         </div>
       {% endif %}
-
-      {% for lab in labs %}
-        {% include "courses/_lab.html" %}
-      {% endfor %}
 
      </div>
 

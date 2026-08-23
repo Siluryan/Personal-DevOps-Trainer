@@ -109,16 +109,39 @@ def _render_term(term: str, definition: str) -> str:
     # position:absolute flutuar por cima do texto — o popover acaba empurrando
     # o parágrafo em vez de sobrepor como balão. Span evita esse problema; os
     # atributos abaixo mantêm a mesma acessibilidade de teclado que um <button>.
+    #
+    # `shift`: o popover nasce centralizado no termo (left:50%;
+    # translateX(-50%)), o que estoura a viewport quando o termo está perto
+    # da borda esquerda ou direita da tela — em mobile isso cria scroll
+    # horizontal que só revela o lado direito do balão, nunca o esquerdo
+    # (não dá pra "scrollar" pra x negativo). `clampPopover()` mede a
+    # posição real depois de abrir e desloca o balão de volta pra dentro
+    # da tela, sem depender de reposicionamento manual por termo.
+    #
+    # Dois requestAnimationFrame em vez de $nextTick: testado ao vivo, o
+    # callback de $nextTick roda ANTES do Alpine aplicar de fato o
+    # display:block do x-show (a troca de estilo em si é agendada por um
+    # microtask separado) — clampPopover media um elemento ainda
+    # display:none (rect zerado) e calculava um shift errado. Dois rAF
+    # garante que o navegador já pintou o popover visível antes de medir.
     safe_term = escape(term)
     safe_def = escape(definition)
     return (
         '<span class="glossary-term" role="button" tabindex="0" '
-        'x-data="{ open: false }" '
-        '@click="open = !open" @click.outside="open = false" '
-        '@keydown.enter="open = !open" @keydown.space.prevent="open = !open" '
+        'x-data="{ open: false, shift: 0, '
+        "toggle() { this.open = !this.open; if (this.open) { this.shift = 0; "
+        "requestAnimationFrame(() => requestAnimationFrame(() => this.clampPopover())); } }, "
+        "clampPopover() { const el = this.$refs.pop; if (!el) return; "
+        "const margin = 8; const rect = el.getBoundingClientRect(); "
+        "if (rect.left < margin) { this.shift = margin - rect.left; } "
+        "else if (rect.right > window.innerWidth - margin) { this.shift = (window.innerWidth - margin) - rect.right; } "
+        '} }" '
+        '@click="toggle()" @click.outside="open = false" '
+        '@keydown.enter="toggle()" @keydown.space.prevent="toggle()" '
         '@keydown.escape="open = false">'
         f"{safe_term}"
-        '<span class="glossary-popover" x-show="open" x-cloak @click.stop role="tooltip">'
+        '<span class="glossary-popover" x-ref="pop" x-show="open" x-cloak @click.stop role="tooltip" '
+        ':style="`transform: translateX(calc(-50% + ${shift}px))`">'
         f"{safe_def}"
         "</span></span>"
     )
