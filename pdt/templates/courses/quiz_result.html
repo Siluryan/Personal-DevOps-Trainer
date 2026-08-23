@@ -22,9 +22,9 @@
         </p>
         <p class="text-sm mt-2" style="color:#8bacc8">
           Sua resposta:
-          {% if ans.choice %}
+          {% if ans.display_text %}
             <span style="font-weight:600;color:{% if ans.is_correct %}#34d399{% else %}#f87171{% endif %}">
-              {{ ans.choice.text|bold_ticks }}
+              {{ ans.display_text|bold_ticks }}
             </span>
           {% else %}
             <span style="color:#5a7a9a">(em branco)</span>

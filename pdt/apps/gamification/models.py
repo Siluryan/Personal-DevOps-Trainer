@@ -32,7 +32,28 @@ class TopicAttemptAnswer(models.Model):
     choice = models.ForeignKey(
         "courses.Choice", on_delete=models.SET_NULL, null=True, blank=True
     )
+    choice_text = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text=(
+            "Snapshot do texto da alternativa marcada, gravado no momento da "
+            "resposta. `choice` é FK para `courses.Choice` e vira NULL quando "
+            "o seed apaga e recria as alternativas — sem este snapshot, o "
+            "histórico de tentativas antigas passava a mostrar '(em branco)' "
+            "para respostas que o usuário de fato tinha dado."
+        ),
+    )
     is_correct = models.BooleanField(default=False)
+
+    @property
+    def display_text(self) -> str:
+        """Texto a mostrar na revisão: o snapshot, com fallback para o texto
+        atual da Choice (registros antigos, antes deste campo existir)."""
+        if self.choice_text:
+            return self.choice_text
+        if self.choice_id:
+            return self.choice.text
+        return ""
 
 
 class TopicScore(models.Model):

@@ -93,6 +93,7 @@ class QuizView(LoginRequiredMixin, TemplateView):
                 attempt=attempt,
                 question=question,
                 choice=choice,
+                choice_text=choice.text if choice else "",
                 is_correct=correct,
             )
         attempt.score = score
