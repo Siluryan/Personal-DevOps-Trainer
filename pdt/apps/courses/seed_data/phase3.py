@@ -844,260 +844,293 @@ aleatório quando uma nova versão muda comportamento sem aviso.</li>
                     "no host gerenciado, só SSH e Python."
                 ),
                 "body": (
-                    "<h3>1. Ansible vs alternativas</h3>"
-                    "<table>"
-                    "<tr><th>Ferramenta</th><th>Modelo</th><th>Linguagem</th><th>Notas</th></tr>"
-                    "<tr><td>Ansible</td><td>Agentless (SSH/WinRM)</td><td>YAML</td><td>Padrão de fato hoje. Curva suave.</td></tr>"
-                    "<tr><td>Chef</td><td>Agente</td><td>Ruby DSL</td><td>Poderoso, complexo. Mais raro hoje.</td></tr>"
-                    "<tr><td>Puppet</td><td>Agente</td><td>DSL própria</td><td>Forte em ambientes regulados/grandes.</td></tr>"
-                    "<tr><td>Salt</td><td>Agente ou agentless</td><td>YAML/Jinja</td><td>Bom em escala (event-driven).</td></tr>"
-                    "</table>"
-                    "<p>Ansible ganhou por: zero footprint no host, YAML legível, "
-                    "comunidade gigante (Galaxy), integração com cloud nativa.</p>"
+                """<h3>1. Ansible vs alternativas</h3>
+<table>
+<tr><th>Ferramenta</th><th>Modelo</th><th>Linguagem</th><th>Notas</th></tr>
+<tr><td>Ansible</td><td>Agentless (SSH/WinRM)</td><td>YAML</td><td>Padrão de fato hoje. Curva suave.</td></tr>
+<tr><td>Chef</td><td>Agente</td><td>Ruby DSL</td><td>Poderoso, complexo. Mais raro hoje.</td></tr>
+<tr><td>Puppet</td><td>Agente</td><td>DSL própria</td><td>Forte em ambientes regulados/grandes.</td></tr>
+<tr><td>Salt</td><td>Agente ou agentless</td><td>YAML/Jinja</td><td>Bom em escala (event-driven).</td></tr>
+</table>
+<p>Ansible se consolidou como padrão por uma combinação simples de
+fatores: zero footprint no host gerenciado (nada além de SSH e Python
+precisa existir lá, ao contrário de Chef e Puppet que exigem um agente
+rodando permanentemente), YAML legível mesmo por quem não escreve
+Ansible no dia a dia, uma comunidade enorme via Galaxy, e integração
+nativa com as principais nuvens.</p>
 
-                    "<h3>2. Anatomia: inventário, playbooks, módulos, roles</h3>"
-                    "<h4>2.1 Inventário</h4>"
-                    "<p>Lista de hosts gerenciados. Estático ou dinâmico:</p>"
-                    "<pre><code># inventory.ini\n"
-                    "[web]\n"
-                    "web1.example.com\n"
-                    "web2.example.com\n"
-                    "\n"
-                    "[db]\n"
-                    "db1.example.com ansible_user=admin\n"
-                    "\n"
-                    "[prod:children]\n"
-                    "web\n"
-                    "db\n"
-                    "\n"
-                    "[prod:vars]\n"
-                    "env=production</code></pre>"
-                    "<p>Inventário dinâmico (essencial em cloud): plugin que consulta AWS, "
-                    "GCP, Azure, GCP, etc. Em vez de manter lista de IPs (que muda com "
-                    "auto-scaling), o inventário é gerado em tempo real.</p>"
-                    "<pre><code># aws_ec2.yml\n"
-                    "plugin: amazon.aws.aws_ec2\n"
-                    "regions: [us-east-1]\n"
-                    "filters:\n"
-                    "  tag:Environment: production\n"
-                    "  instance-state-name: running\n"
-                    "keyed_groups:\n"
-                    "  - key: tags.Role\n"
-                    "    prefix: role</code></pre>"
-                    "<h4>2.2 Playbook</h4>"
-                    "<p>YAML que descreve plays e tasks:</p>"
-                    "<pre><code>---\n"
-                    "- name: Provisionar servidor web\n"
-                    "  hosts: web\n"
-                    "  become: yes\n"
-                    "  vars:\n"
-                    "    nginx_port: 80\n"
-                    "  tasks:\n"
-                    "    - name: Atualiza apt cache\n"
-                    "      ansible.builtin.apt:\n"
-                    "        update_cache: yes\n"
-                    "        cache_valid_time: 3600\n"
-                    "\n"
-                    "    - name: Instala nginx\n"
-                    "      ansible.builtin.apt:\n"
-                    "        name: nginx\n"
-                    "        state: present\n"
-                    "\n"
-                    "    - name: Configura site\n"
-                    "      ansible.builtin.template:\n"
-                    "        src: nginx.conf.j2\n"
-                    "        dest: /etc/nginx/sites-available/app\n"
-                    "        owner: root\n"
-                    "        group: root\n"
-                    "        mode: '0644'\n"
-                    "      notify: reload nginx\n"
-                    "\n"
-                    "    - name: Habilita site\n"
-                    "      ansible.builtin.file:\n"
-                    "        src: /etc/nginx/sites-available/app\n"
-                    "        dest: /etc/nginx/sites-enabled/app\n"
-                    "        state: link\n"
-                    "      notify: reload nginx\n"
-                    "\n"
-                    "    - name: Garante nginx ativo\n"
-                    "      ansible.builtin.systemd:\n"
-                    "        name: nginx\n"
-                    "        state: started\n"
-                    "        enabled: yes\n"
-                    "\n"
-                    "  handlers:\n"
-                    "    - name: reload nginx\n"
-                    "      ansible.builtin.systemd:\n"
-                    "        name: nginx\n"
-                    "        state: reloaded</code></pre>"
-                    "<p><code>notify</code> + <code>handlers</code>: padrão clássico para "
-                    "'recarrega só se alguma coisa mudou'. Roda 1x ao final do play, "
-                    "mesmo que vários tasks notifiquem.</p>"
-                    "<h4>2.3 Módulos</h4>"
-                    "<p>Cada task usa um <em>módulo</em>: <code>apt</code>, <code>yum</code>, "
-                    "<code>copy</code>, <code>template</code>, <code>file</code>, "
-                    "<code>lineinfile</code>, <code>blockinfile</code>, <code>systemd</code>, "
-                    "<code>user</code>, <code>cron</code>, <code>uri</code>, "
-                    "<code>postgresql_db</code>, <code>community.docker.docker_container</code>. "
-                    "São idempotentes, chamadas repetidas convergem para o estado desejado.</p>"
-                    "<h4>2.4 Roles</h4>"
-                    "<p>Role é estrutura padrão para reuso:</p>"
-                    "<pre><code>roles/\n"
-                    "  webserver/\n"
-                    "    tasks/main.yml\n"
-                    "    handlers/main.yml\n"
-                    "    templates/nginx.conf.j2\n"
-                    "    files/index.html\n"
-                    "    vars/main.yml\n"
-                    "    defaults/main.yml   # valores padrão (override-friendly)\n"
-                    "    meta/main.yml       # dependências, autor</code></pre>"
-                    "<p>Uso:</p>"
-                    "<pre><code>- hosts: web\n"
-                    "  roles:\n"
-                    "    - role: common\n"
-                    "    - role: webserver\n"
-                    "      vars:\n"
-                    "        nginx_port: 8080</code></pre>"
+<h3>2. Anatomia: inventário, playbooks, módulos, roles</h3>
+<h4>2.1 Inventário</h4>
+<p>O inventário é a lista de hosts gerenciados, e pode ser estático ou
+dinâmico:</p>
+<pre><code># inventory.ini
+[web]
+web1.example.com
+web2.example.com
 
-                    "<h3>3. Idempotência: o coração do Ansible</h3>"
-                    "<p>Idempotência = aplicar a mesma configuração N vezes resulta no mesmo "
-                    "estado. Crítico para:</p>"
-                    "<ul>"
-                    "<li>Convergência: rode em servidor já configurado, nada quebra.</li>"
-                    "<li>CI: dry-run repetido não causa drift.</li>"
-                    "<li>Self-healing: agente periódico mantém estado.</li>"
-                    "</ul>"
-                    "<p>Módulos nativos do Ansible são geralmente idempotentes:</p>"
-                    "<pre><code># 1ª vez: instala. Demais: 'ok' (não muda nada)\n"
-                    "- ansible.builtin.apt:\n"
-                    "    name: nginx\n"
-                    "    state: present\n"
-                    "\n"
-                    "# Insere linha SE não existir; idempotente\n"
-                    "- ansible.builtin.lineinfile:\n"
-                    "    path: /etc/sysctl.conf\n"
-                    "    line: 'net.ipv4.ip_forward = 1'\n"
-                    "    regexp: '^net.ipv4.ip_forward'</code></pre>"
-                    "<p>Quando precisar do <code>shell</code>/<code>command</code>, use "
-                    "<code>creates</code>, <code>removes</code> ou <code>changed_when</code>:</p>"
-                    "<pre><code>- ansible.builtin.shell: |\n"
-                    "    /opt/setup.sh &amp;&amp; touch /var/lib/setup.done\n"
-                    "  args:\n"
-                    "    creates: /var/lib/setup.done   # só roda se arquivo não existir\n"
-                    "\n"
-                    "- ansible.builtin.command: my-tool status\n"
-                    "  register: result\n"
-                    "  changed_when: \"'CHANGED' in result.stdout\"\n"
-                    "  failed_when: result.rc &gt; 1</code></pre>"
+[db]
+db1.example.com ansible_user=admin
 
-                    "<h3>4. Variáveis: precedência e secrets</h3>"
-                    "<p>Ordem de precedência (parcial, do menor ao maior):</p>"
-                    "<ol>"
-                    "<li>role defaults (<code>defaults/main.yml</code>)</li>"
-                    "<li>inventory vars (group_vars / host_vars)</li>"
-                    "<li>play vars</li>"
-                    "<li>task vars</li>"
-                    "<li><code>--extra-vars</code> (CLI)</li>"
-                    "</ol>"
-                    "<p>Para segredos, há <strong>Ansible Vault</strong>:</p>"
-                    "<pre><code>$ ansible-vault create group_vars/prod/secrets.yml\n"
-                    "Vault password: ****\n"
-                    "$ # editor abre, você escreve em texto, ele criptografa\n"
-                    "$ cat group_vars/prod/secrets.yml\n"
-                    "$ANSIBLE_VAULT;1.1;AES256\n"
-                    "323435...\n"
-                    "$ ansible-playbook site.yml --ask-vault-pass</code></pre>"
-                    "<p>Em produção, prefira lookups para Vault/Secrets Manager:</p>"
-                    "<pre><code>vars:\n"
-                    "  db_password: \"{{ lookup('amazon.aws.aws_secret', 'prod/db/password') }}\"</code></pre>"
+[prod:children]
+web
+db
 
-                    "<h3>5. Templates Jinja2</h3>"
-                    "<pre><code># templates/nginx.conf.j2\n"
-                    "server {\n"
-                    "    listen {{ nginx_port }};\n"
-                    "    server_name {{ ansible_fqdn }};\n"
-                    "\n"
-                    "    {% if env == 'production' %}\n"
-                    "    ssl_certificate /etc/letsencrypt/live/{{ ansible_fqdn }}/fullchain.pem;\n"
-                    "    ssl_certificate_key /etc/letsencrypt/live/{{ ansible_fqdn }}/privkey.pem;\n"
-                    "    {% endif %}\n"
-                    "\n"
-                    "    {% for upstream in upstreams %}\n"
-                    "    upstream {{ upstream.name }} {\n"
-                    "        {% for srv in upstream.servers %}\n"
-                    "        server {{ srv }};\n"
-                    "        {% endfor %}\n"
-                    "    }\n"
-                    "    {% endfor %}\n"
-                    "}</code></pre>"
+[prod:vars]
+env=production</code></pre>
+<p>Em ambiente de nuvem, o inventário dinâmico deixa de ser opcional e
+vira essencial: em vez de manter uma lista de IP fixa que muda a cada
+evento de auto-scaling, um plugin consulta AWS, GCP ou Azure diretamente
+e gera o inventário em tempo real, sempre refletindo o estado atual:</p>
+<pre><code># aws_ec2.yml
+plugin: amazon.aws.aws_ec2
+regions: [us-east-1]
+filters:
+  tag:Environment: production
+  instance-state-name: running
+keyed_groups:
+  - key: tags.Role
+    prefix: role</code></pre>
+<h4>2.2 Playbook</h4>
+<p>Um playbook é o YAML que descreve plays e tasks — o que fazer, em
+qual host, em qual ordem:</p>
+<pre><code>---
+- name: Provisionar servidor web
+  hosts: web
+  become: yes
+  vars:
+    nginx_port: 80
+  tasks:
+    - name: Atualiza apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
 
-                    "<h3>6. Operação em escala</h3>"
-                    "<ul>"
-                    "<li><code>--check</code>: dry-run (não aplica). <code>--diff</code> "
-                    "mostra mudanças propostas em arquivos.</li>"
-                    "<li><code>--limit web1.example.com</code>: roda só em um host.</li>"
-                    "<li><code>--tags install</code> / <code>--skip-tags reboot</code>: "
-                    "controle granular.</li>"
-                    "<li><code>forks</code> (default 5): paralelismo.</li>"
-                    "<li>Strategies: <code>linear</code> (espera todos antes de avançar, "
-                    "padrão), <code>free</code> (cada host segue independente), "
-                    "<code>host_pinned</code>.</li>"
-                    "<li><code>serial: 25%</code>: rolling upgrade (25% por vez).</li>"
-                    "</ul>"
+    - name: Instala nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
 
-                    "<h3>7. Testes: Molecule + ansible-lint</h3>"
-                    "<p><code>molecule</code> roda role em container/VM, valida idempotência "
-                    "e estado.</p>"
-                    "<pre><code># molecule/default/molecule.yml\n"
-                    "driver:\n"
-                    "  name: docker\n"
-                    "platforms:\n"
-                    "  - name: ubuntu-22\n"
-                    "    image: geerlingguy/docker-ubuntu2204-ansible\n"
-                    "verifier:\n"
-                    "  name: ansible</code></pre>"
-                    "<pre><code>$ molecule test\n"
-                    "# create container, converge (rodar a role), idempotence (rodar de novo,\n"
-                    "# verificar que nenhuma task reportou changed=true), verify, destroy</code></pre>"
-                    "<p><code>ansible-lint</code> pega anti-patterns comuns:</p>"
-                    "<pre><code>$ ansible-lint roles/webserver\n"
-                    "WARNING: name[missing] - All tasks should be named\n"
-                    "ERROR: command-instead-of-shell - Use shell only when shell features needed</code></pre>"
+    - name: Configura site
+      ansible.builtin.template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/app
+        owner: root
+        group: root
+        mode: '0644'
+      notify: reload nginx
 
-                    "<h3>8. AWX/Tower e governance</h3>"
-                    "<p>Em escala, rodar <code>ansible-playbook</code> manual vira problema: "
-                    "quem rodou, quando, com que vars? AWX (open source) e Ansible Tower "
-                    "(comercial) dão UI, RBAC, surveys, scheduling, audit log e secret "
-                    "management integrado.</p>"
+    - name: Habilita site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/app
+        dest: /etc/nginx/sites-enabled/app
+        state: link
+      notify: reload nginx
 
-                    "<h3>9. Ansible vs Terraform: complementares, não substitutos</h3>"
-                    "<p>Regra prática:</p>"
-                    "<ul>"
-                    "<li><strong>Terraform</strong>: provisão de recursos cloud (VMs, VPCs, "
-                    "RDS, IAM). Mundo declarativo, state.</li>"
-                    "<li><strong>Ansible</strong>: configuração interna de OS, deploy de app, "
-                    "orquestração de comandos. Mundo procedural mas idempotente.</li>"
-                    "</ul>"
-                    "<p>Padrão comum: Terraform cria EC2 → output IPs → Ansible-pull ou "
-                    "GitHub Actions roda playbooks. Ou: AMI base 'golden' construída com "
-                    "Packer + Ansible, depois Terraform apenas instancia. Imagens "
-                    "imutáveis vs mutáveis é decisão arquitetural importante.</p>"
+    - name: Garante nginx ativo
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+        enabled: yes
 
-                    "<h3>10. Anti-patterns comuns</h3>"
-                    "<ul>"
-                    "<li><strong>Tasks sem <code>name</code></strong>: log impossível "
-                    "de ler.</li>"
-                    "<li><strong>Abusar de <code>shell</code>/<code>command</code></strong>: "
-                    "perde idempotência.</li>"
-                    "<li><strong>Senha em playbook texto puro</strong>: use Vault.</li>"
-                    "<li><strong>Roles sem defaults</strong>: usuários têm que adivinhar "
-                    "todas as vars.</li>"
-                    "<li><strong>Rodar como root sempre</strong>: use <code>become</code> "
-                    "só onde necessário.</li>"
-                    "<li><strong>Inventário gigante e estático em cloud</strong>: use "
-                    "dinâmico.</li>"
-                    "<li><strong>Sem testes (Molecule)</strong>: cada execução é incógnita.</li>"
-                    "</ul>"
+  handlers:
+    - name: reload nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded</code></pre>
+<p>O par <code>notify</code> + <code>handlers</code> resolve um problema
+específico: "recarregue o nginx, mas só se alguma coisa realmente
+mudou" — mesmo que várias tasks disparem o mesmo notify, o handler roda
+uma única vez, ao final do play inteiro, evitando reload redundante.</p>
+<h4>2.3 Módulos</h4>
+<p>Cada task chama um <em>módulo</em> específico —
+<code>apt</code>, <code>yum</code>, <code>copy</code>,
+<code>template</code>, <code>file</code>, <code>lineinfile</code>,
+<code>blockinfile</code>, <code>systemd</code>, <code>user</code>,
+<code>cron</code>, <code>uri</code>, <code>postgresql_db</code>,
+<code>community.docker.docker_container</code>. A propriedade que
+diferencia esses módulos de um script shell equivalente é que eles são
+idempotentes: chamar o mesmo módulo repetidamente sempre converge para
+o mesmo estado, sem efeito colateral cumulativo (seção 3).</p>
+<h4>2.4 Roles</h4>
+<p>Uma role é a estrutura padrão para reuso de configuração entre
+playbooks diferentes:</p>
+<pre><code>roles/
+  webserver/
+    tasks/main.yml
+    handlers/main.yml
+    templates/nginx.conf.j2
+    files/index.html
+    vars/main.yml
+    defaults/main.yml   # valores padrão (override-friendly)
+    meta/main.yml       # dependências, autor</code></pre>
+<pre><code>- hosts: web
+  roles:
+    - role: common
+    - role: webserver
+      vars:
+        nginx_port: 8080</code></pre>
+
+<h3>3. Idempotência: o coração do Ansible</h3>
+<p>Idempotência significa que aplicar a mesma configuração N vezes
+produz sempre o mesmo estado final, não N efeitos acumulados — essa
+propriedade é o que torna Ansible seguro de rodar repetidamente sem
+medo, e sustenta três cenários distintos: convergência (rodar num
+servidor já configurado não quebra nada, só confirma que já está
+certo), CI (um dry-run repetido não causa drift acidental), e
+self-healing (um agente periódico consegue manter o estado desejado
+sozinho, corrigindo qualquer desvio). Módulos nativos do Ansible
+respeitam isso por design:</p>
+<pre><code># 1ª vez: instala. Demais: 'ok' (não muda nada)
+- ansible.builtin.apt:
+    name: nginx
+    state: present
+
+# Insere linha SE não existir; idempotente
+- ansible.builtin.lineinfile:
+    path: /etc/sysctl.conf
+    line: 'net.ipv4.ip_forward = 1'
+    regexp: '^net.ipv4.ip_forward'</code></pre>
+<p>O problema aparece quando é preciso recorrer a
+<code>shell</code>/<code>command</code>, que por natureza NÃO são
+idempotentes — rodar dá o mesmo efeito toda vez, sem checagem prévia de
+estado. A saída é usar <code>creates</code>, <code>removes</code> ou
+<code>changed_when</code> para simular idempotência manualmente:</p>
+<pre><code>- ansible.builtin.shell: |
+    /opt/setup.sh &amp;&amp; touch /var/lib/setup.done
+  args:
+    creates: /var/lib/setup.done   # só roda se arquivo não existir
+
+- ansible.builtin.command: my-tool status
+  register: result
+  changed_when: "'CHANGED' in result.stdout"
+  failed_when: result.rc &gt; 1</code></pre>
+
+<h3>4. Variáveis: precedência e secrets</h3>
+<p>A ordem de precedência determina qual valor vence quando a mesma
+variável é definida em mais de um lugar, do menor peso ao maior:
+role defaults, depois inventory vars (group_vars/host_vars), depois play
+vars, depois task vars, e por fim <code>--extra-vars</code> na linha de
+comando, que sempre vence qualquer outro nível. Para segredo, o
+<strong>Ansible Vault</strong> criptografa o arquivo inteiro em repouso:</p>
+<pre><code>$ ansible-vault create group_vars/prod/secrets.yml
+Vault password: ****
+$ # editor abre, você escreve em texto, ele criptografa
+$ cat group_vars/prod/secrets.yml
+$ANSIBLE_VAULT;1.1;AES256
+323435...
+$ ansible-playbook site.yml --ask-vault-pass</code></pre>
+<p>Em produção, o padrão mais maduro é evitar até o Vault e buscar o
+segredo diretamente de um gerenciador dedicado no momento da execução,
+via lookup:</p>
+<pre><code>vars:
+  db_password: "{{ lookup('amazon.aws.aws_secret', 'prod/db/password') }}"</code></pre>
+
+<h3>5. Templates Jinja2</h3>
+<pre><code># templates/nginx.conf.j2
+server {
+    listen {{ nginx_port }};
+    server_name {{ ansible_fqdn }};
+
+    {% if env == 'production' %}
+    ssl_certificate /etc/letsencrypt/live/{{ ansible_fqdn }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ ansible_fqdn }}/privkey.pem;
+    {% endif %}
+
+    {% for upstream in upstreams %}
+    upstream {{ upstream.name }} {
+        {% for srv in upstream.servers %}
+        server {{ srv }};
+        {% endfor %}
+    }
+    {% endfor %}
+}</code></pre>
+<p>Um template Jinja2 permite gerar arquivo de configuração diferente
+por ambiente a partir de uma única fonte — o mesmo template produz
+config sem SSL em dev e com SSL em produção, controlado inteiramente
+pela variável <code>env</code>.</p>
+
+<h3>6. Operação em escala</h3>
+<p>Rodar Ansible contra dezenas ou centenas de hosts pede controle mais
+fino que "rode em tudo, sempre". A flag <code>--check</code> faz
+dry-run sem aplicar nada de fato, e <code>--diff</code> mostra
+exatamente qual mudança seria feita em cada arquivo. <code>--limit
+web1.example.com</code> restringe a execução a um único host, útil para
+testar antes de aplicar em todos. <code>--tags install</code> ou
+<code>--skip-tags reboot</code> dão controle granular sobre quais tasks
+rodam. O parâmetro <code>forks</code> (padrão 5) controla quantos hosts
+são processados em paralelo. A estratégia de execução importa também:
+<code>linear</code> (o padrão) espera todos os hosts terminarem cada
+task antes de avançar para a próxima, <code>free</code> deixa cada host
+seguir seu próprio ritmo independente, e <code>host_pinned</code> fixa
+cada host a um worker específico. E <code>serial: 25%</code> implementa
+rolling upgrade — aplica em 25% dos hosts por vez, permitindo detectar
+problema antes de afetar a frota inteira.</p>
+
+<h3>7. Testes: Molecule + ansible-lint</h3>
+<p>O <code>molecule</code> roda uma role dentro de container ou VM
+isolada e valida tanto o resultado quanto a idempotência de verdade —
+não basta a role "parecer" idempotente, o Molecule roda duas vezes e
+confirma que a segunda execução não reporta nenhuma mudança:</p>
+<pre><code># molecule/default/molecule.yml
+driver:
+  name: docker
+platforms:
+  - name: ubuntu-22
+    image: geerlingguy/docker-ubuntu2204-ansible
+verifier:
+  name: ansible</code></pre>
+<pre><code>$ molecule test
+# create container, converge (rodar a role), idempotence (rodar de novo,
+# verificar que nenhuma task reportou changed=true), verify, destroy</code></pre>
+<p>O <code>ansible-lint</code> complementa isso pegando anti-pattern
+comum antes mesmo de rodar:</p>
+<pre><code>$ ansible-lint roles/webserver
+WARNING: name[missing] - All tasks should be named
+ERROR: command-instead-of-shell - Use shell only when shell features needed</code></pre>
+
+<h3>8. AWX/Tower e governance</h3>
+<p>Em escala, rodar <code>ansible-playbook</code> manualmente a partir
+do laptop de alguém vira um problema de governança: quem rodou, quando,
+com quais variáveis? AWX (a versão open source) e Ansible Tower (a
+versão comercial) resolvem isso com UI centralizada, RBAC, surveys de
+variável, agendamento, log de auditoria e integração de gerenciamento
+de segredo — tudo rastreável, em vez de depender de disciplina
+individual.</p>
+
+<h3>9. Ansible vs Terraform: complementares, não substitutos</h3>
+<p>A divisão de responsabilidade segue uma regra simples: Terraform
+provisiona o RECURSO na nuvem — VM, VPC, RDS, IAM — num mundo
+declarativo que mantém state (aula anterior); Ansible configura o
+INTERIOR desse recurso já criado — instalar pacote, fazer deploy de
+aplicação, orquestrar comando — num mundo procedural, mas que se
+comporta de forma idempotente (seção 3). O padrão mais comum na prática
+é Terraform criar a instância EC2, expor o IP como output, e então
+Ansible-pull ou uma GitHub Action rodar os playbooks sobre aquele IP
+recém-criado. Uma alternativa mais avançada constrói uma AMI "golden"
+já pronta com Packer + Ansible, deixando o Terraform apenas instanciar
+essa imagem pronta — a escolha entre imagem imutável e servidor mutável
+configurado depois é uma decisão arquitetural com implicações reais em
+velocidade de deploy e superfície de drift.</p>
+
+<h3>10. Anti-patterns comuns</h3>
+<ul>
+<li><strong>Task sem <code>name</code></strong>: o log da execução fica
+impossível de interpretar depois.</li>
+<li><strong>Abusar de <code>shell</code>/<code>command</code></strong>:
+perde a idempotência que é o ponto central do Ansible (seção 3).</li>
+<li><strong>Senha em playbook em texto puro</strong>: use Vault ou
+lookup direto num secrets manager (seção 4).</li>
+<li><strong>Role sem <code>defaults</code></strong>: obriga quem for
+usar a role a adivinhar toda variável necessária, em vez de ter um
+valor sensato pronto.</li>
+<li><strong>Rodar sempre como root</strong>: use <code>become</code>
+apenas nas tasks que realmente exigem privilégio elevado.</li>
+<li><strong>Inventário estático gigante em ambiente de nuvem</strong>:
+use inventário dinâmico (seção 2.1) para nunca ficar desatualizado.</li>
+<li><strong>Nenhum teste automatizado (Molecule)</strong>: cada
+execução vira uma incógnita sobre se a role ainda funciona como
+esperado.</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -1188,176 +1221,211 @@ aleatório quando uma nova versão muda comportamento sem aviso.</li>
                     "secret management."
                 ),
                 "body": (
-                    "<h3>1. Tipos de segredos</h3>"
-                    "<ul>"
-                    "<li><strong>Estáticos</strong>: senha de banco, API key, token de "
-                    "serviço. São criados manualmente e pouco mudam. Devem ir para o cofre "
-                    "e ser rotacionados periodicamente.</li>"
-                    "<li><strong>Dinâmicos</strong>: o cofre cria sob demanda com TTL. "
-                    "Vault gera usuário Postgres temporário com senha aleatória válida por "
-                    "1h, depois revoga. <em>Janela de exposição mínima</em>.</li>"
-                    "<li><strong>Tokens efêmeros</strong>: JWT/STS/OIDC com TTL curto. "
-                    "Sem armazenamento persistente em parte alguma. AssumeRole na AWS, "
-                    "Workload Identity no GCP, Managed Identity na Azure.</li>"
-                    "<li><strong>Certificados</strong>: TLS, mTLS, SSH CA. Geralmente curtos "
-                    "(7-90 dias) e renovados via ACME ou ferramenta similar (Vault PKI, "
-                    "smallstep, cert-manager).</li>"
-                    "</ul>"
+                """<h3>1. Tipos de segredos</h3>
+<p>Nem todo segredo deve ser tratado do mesmo jeito, e a categoria certa
+determina a estratégia de proteção. Os <strong>estáticos</strong> —
+senha de banco, API key, token de serviço — são criados manualmente e
+mudam pouco; devem ir para um cofre e passar por rotação periódica
+mesmo assim, porque "quase nunca muda" não é o mesmo que "nunca precisa
+mudar". Os <strong>dinâmicos</strong> invertem o modelo: o próprio
+cofre cria a credencial sob demanda, com TTL curto — o Vault, por
+exemplo, gera um usuário Postgres temporário com senha aleatória válida
+por uma hora e depois a revoga sozinho, minimizando a janela de
+exposição a praticamente o tempo de uso real. Os <strong>tokens
+efêmeros</strong> (JWT/STS/OIDC) vão além: têm TTL curto e nunca chegam
+a existir como armazenamento persistente em lugar nenhum — AssumeRole na
+AWS, Workload Identity no GCP, Managed Identity na Azure seguem esse
+modelo. E os <strong>certificados</strong> (TLS, mTLS, SSH CA)
+tipicamente vivem de 7 a 90 dias e são renovados automaticamente via
+ACME ou ferramenta equivalente (Vault PKI, smallstep, cert-manager).</p>
 
-                    "<h3>2. Onde NUNCA guardar segredos</h3>"
-                    "<ul>"
-                    "<li><strong>Git</strong>, mesmo em repo privado. Forks, clones, "
-                    "exports, histórico, uma vez lá, está lá para sempre.</li>"
-                    "<li><strong>Slack/Teams/Discord</strong>: logs, integrations, exports "
-                    "de discovery. Empresa pode reter mensagens por anos.</li>"
-                    "<li><strong>Email</strong>: idem, e ainda passa por servidores externos.</li>"
-                    "<li><strong>Dockerfile (ENV/ARG)</strong>: segredo vai parar em "
-                    "<em>layers</em> da imagem. <code>docker history image</code> revela "
-                    "para qualquer um com pull access.</li>"
-                    "<li><strong>Logs</strong>: de aplicação ou de CI. SIEM e SaaS de log "
-                    "guardam por 30+ dias.</li>"
-                    "<li><strong>Variáveis de ambiente em CI sem mask</strong>: aparecem em "
-                    "<code>echo $VAR</code> de algum step.</li>"
-                    "<li><strong>Browser/extensão sincronizada</strong>: vão para a nuvem "
-                    "do navegador.</li>"
-                    "</ul>"
+<h3>2. Onde NUNCA guardar segredos</h3>
+<p>Sete lugares parecem convenientes mas garantem vazamento mais cedo
+ou mais tarde. O <strong>Git</strong> — mesmo em repositório privado —
+nunca esquece: fork, clone, export e histórico preservam o segredo
+indefinidamente, mesmo que o commit seja "revertido" depois. O
+<strong>Slack/Teams/Discord</strong> arquiva mensagem em log,
+integração e export de e-discovery, muitas vezes retido por anos pela
+política de retenção da própria empresa. O <strong>e-mail</strong> tem o
+mesmo problema, ainda passando por servidor externo no caminho. Um
+<code>ENV</code> ou <code>ARG</code> no <strong>Dockerfile</strong>
+grava o segredo direto numa LAYER da imagem — qualquer pessoa com
+permissão de pull consegue extrair rodando
+<code>docker history image</code>. <strong>Logs</strong> de aplicação ou
+de CI acabam retidos por 30 dias ou mais em qualquer SIEM ou SaaS de
+observabilidade padrão. Uma variável de ambiente de CI <strong>sem
+mask</strong> configurado aparece em texto puro assim que algum step
+rodar um <code>echo $VAR</code>, intencional ou não. E até uma extensão
+de navegador com <strong>sincronização em nuvem</strong> ativada pode
+levar o segredo para fora do controle da empresa sem que ninguém
+perceba.</p>
 
-                    "<h3>3. Cofres modernos</h3>"
-                    "<table>"
-                    "<tr><th>Cofre</th><th>Pontos fortes</th></tr>"
-                    "<tr><td>HashiCorp Vault</td><td>Multi-cloud, dynamic secrets, transit, PKI, OIDC. Self-hosted ou Cloud.</td></tr>"
-                    "<tr><td>AWS Secrets Manager</td><td>Integração nativa AWS, rotação automática RDS, cross-region replication.</td></tr>"
-                    "<tr><td>AWS Parameter Store</td><td>Mais barato, mais simples; bom para configs e segredos menos críticos.</td></tr>"
-                    "<tr><td>Azure Key Vault</td><td>Integração Entra ID, HSM-backed.</td></tr>"
-                    "<tr><td>GCP Secret Manager</td><td>Versionamento, replicação, IAM granular.</td></tr>"
-                    "<tr><td>1Password / Bitwarden</td><td>Bom para humanos + secret automation (1Password Connect).</td></tr>"
-                    "<tr><td>Doppler / Infisical</td><td>SaaS pequenos, focados em devex.</td></tr>"
-                    "</table>"
+<h3>3. Cofres modernos</h3>
+<table>
+<tr><th>Cofre</th><th>Pontos fortes</th></tr>
+<tr><td>HashiCorp Vault</td><td>Multi-cloud, dynamic secrets, transit, PKI, OIDC. Self-hosted ou Cloud.</td></tr>
+<tr><td>AWS Secrets Manager</td><td>Integração nativa AWS, rotação automática RDS, cross-region replication.</td></tr>
+<tr><td>AWS Parameter Store</td><td>Mais barato, mais simples; bom para configs e segredos menos críticos.</td></tr>
+<tr><td>Azure Key Vault</td><td>Integração Entra ID, HSM-backed.</td></tr>
+<tr><td>GCP Secret Manager</td><td>Versionamento, replicação, IAM granular.</td></tr>
+<tr><td>1Password / Bitwarden</td><td>Bom para humanos + secret automation (1Password Connect).</td></tr>
+<tr><td>Doppler / Infisical</td><td>SaaS pequenos, focados em devex.</td></tr>
+</table>
 
-                    "<h3>4. Padrão: nunca leia o cofre direto da app (se possível)</h3>"
-                    "<p>App acessar cofre direto exige: cliente, retry, cache, autenticação, "
-                    "tratamento de erro. E em incidente de cofre, app cai junto. Padrões "
-                    "melhores:</p>"
-                    "<h4>4.1 Sidecar/Init container injetor</h4>"
-                    "<p>Outro container puxa do cofre e escreve em arquivo/volume "
-                    "compartilhado. App lê do arquivo. Vault Agent é o exemplo clássico:</p>"
-                    "<pre><code># Pod K8s\n"
-                    "annotations:\n"
-                    "  vault.hashicorp.com/agent-inject: 'true'\n"
-                    "  vault.hashicorp.com/role: 'app'\n"
-                    "  vault.hashicorp.com/agent-inject-secret-db: 'database/creds/app'</code></pre>"
-                    "<h4>4.2 Operator no K8s</h4>"
-                    "<p><strong>External Secrets Operator</strong> (ESO): você cria CR "
-                    "<code>ExternalSecret</code> apontando para cofre; ESO popula um "
-                    "<code>Secret</code> nativo no namespace. App consome como Secret normal:</p>"
-                    "<pre><code>apiVersion: external-secrets.io/v1beta1\n"
-                    "kind: ExternalSecret\n"
-                    "metadata: { name: app-db }\n"
-                    "spec:\n"
-                    "  secretStoreRef: { name: aws-sm, kind: ClusterSecretStore }\n"
-                    "  target: { name: app-db-secret }\n"
-                    "  data:\n"
-                    "    - secretKey: password\n"
-                    "      remoteRef: { key: prod/app/db, property: password }</code></pre>"
-                    "<h4>4.3 OIDC/Workload Identity</h4>"
-                    "<p>Em CI/CD, o melhor é <em>nada armazenado</em>. GitHub Actions emite "
-                    "JWT efêmero; AWS valida via OIDC e devolve credencial STS. Sem secret "
-                    "no GitHub.</p>"
-                    "<pre><code>permissions:\n"
-                    "  id-token: write\n"
-                    "  contents: read\n"
-                    "jobs:\n"
-                    "  deploy:\n"
-                    "    steps:\n"
-                    "      - uses: aws-actions/configure-aws-credentials@v4\n"
-                    "        with:\n"
-                    "          role-to-assume: arn:aws:iam::111111111111:role/gh-deployer\n"
-                    "          aws-region: us-east-1\n"
-                    "      - run: aws s3 sync ./build s3://app-prod   # sem keys!</code></pre>"
+<h3>4. Padrão: nunca leia o cofre direto da app (se possível)</h3>
+<p>Fazer a aplicação acessar o cofre diretamente parece simples, mas
+exige cliente dedicado, retry, cache, autenticação própria e tratamento
+de erro específico — e num incidente do próprio cofre, a aplicação cai
+junto, criando um novo ponto único de falha exatamente onde não devia
+existir um. Três padrões evitam esse acoplamento direto.</p>
+<h4>4.1 Sidecar/Init container injetor</h4>
+<p>Um container separado puxa o segredo do cofre e escreve num
+arquivo ou volume compartilhado; a aplicação só lê o arquivo, sem
+nenhuma lógica de cofre embutida nela mesma. O Vault Agent é o exemplo
+clássico desse padrão:</p>
+<pre><code># Pod K8s
+annotations:
+  vault.hashicorp.com/agent-inject: 'true'
+  vault.hashicorp.com/role: 'app'
+  vault.hashicorp.com/agent-inject-secret-db: 'database/creds/app'</code></pre>
+<h4>4.2 Operator no K8s</h4>
+<p>O <strong>External Secrets Operator</strong> (ESO) segue o mesmo
+espírito, mas de forma nativa ao Kubernetes: você cria um Custom
+Resource <code>ExternalSecret</code> apontando para o cofre, e o ESO
+popula um <code>Secret</code> nativo no namespace, que a aplicação
+consome exatamente como consumiria qualquer Secret comum, sem saber que
+a fonte real é externa:</p>
+<pre><code>apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata: { name: app-db }
+spec:
+  secretStoreRef: { name: aws-sm, kind: ClusterSecretStore }
+  target: { name: app-db-secret }
+  data:
+    - secretKey: password
+      remoteRef: { key: prod/app/db, property: password }</code></pre>
+<h4>4.3 OIDC/Workload Identity</h4>
+<p>Em pipeline de CI/CD, o ideal é não armazenar segredo NENHUM: o
+GitHub Actions emite um JWT efêmero, a AWS valida esse token via OIDC e
+devolve uma credencial STS de curta duração — nenhum secret de longa
+duração jamais fica salvo no GitHub:</p>
+<pre><code>permissions:
+  id-token: write
+  contents: read
+jobs:
+  deploy:
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::111111111111:role/gh-deployer
+          aws-region: us-east-1
+      - run: aws s3 sync ./build s3://app-prod   # sem keys!</code></pre>
 
-                    "<h3>5. Rotação</h3>"
-                    "<p>Política comum:</p>"
-                    "<ul>"
-                    "<li>Credenciais humanas (senha, MFA reset): 90d.</li>"
-                    "<li>Credenciais máquinas estáticas: 30-90d.</li>"
-                    "<li>Credenciais críticas (root, master KMS): cuidado, mas idealmente 365d com auditoria.</li>"
-                    "<li>Após qualquer suspeita: imediata.</li>"
-                    "</ul>"
-                    "<p>Vault dynamic secrets dão rotação 'natural' (TTL curto). Em "
-                    "estáticos, automatize: AWS Secrets Manager rotaciona RDS sozinho "
-                    "se você ativar; é uma Lambda que cria nova senha, atualiza RDS, "
-                    "atualiza secret. App busca via cache com TTL, pega nova senha "
-                    "automaticamente.</p>"
+<h3>5. Rotação</h3>
+<p>Uma política comum diferencia rotação por tipo de credencial:
+credencial humana (senha, reset de MFA) a cada 90 dias; credencial de
+máquina estática entre 30 e 90 dias; credencial crítica (root, chave
+mestra de KMS) com cuidado redobrado, mas idealmente a cada 365 dias com
+auditoria acompanhando; e qualquer suspeita de vazamento dispara rotação
+IMEDIATA, sem esperar o ciclo programado. O Vault com dynamic secrets já
+resolve isso "de graça" — o TTL curto É a rotação. Para segredo
+estático, a automação é o caminho: o AWS Secrets Manager, uma vez
+ativado, roda uma Lambda que cria a senha nova, atualiza o RDS e
+atualiza o próprio secret — a aplicação busca via um cache com TTL e
+recebe a senha nova automaticamente, sem nenhuma intervenção manual no
+momento da troca.</p>
 
-                    "<h3>6. Detecção em PR e em código</h3>"
-                    "<p>Acidentes acontecem. Camadas defensivas:</p>"
-                    "<ul>"
-                    "<li><strong>Pre-commit hook</strong> (gitleaks, trufflehog, "
-                    "detect-secrets): bloqueia push antes de sair do laptop.</li>"
-                    "<li><strong>CI check</strong>: mesmo se pre-commit foi pulado, server "
-                    "pega.</li>"
-                    "<li><strong>GitHub Secret Scanning</strong>: ativo por padrão em "
-                    "público; Advanced Security em privado. Detecta &gt;200 padrões e "
-                    "notifica provider (AWS, Stripe, etc.) que pode revogar automaticamente.</li>"
-                    "<li><strong>Auditoria periódica</strong> de repos antigos com "
-                    "trufflehog/gitleaks-search.</li>"
-                    "</ul>"
-                    "<p>Exemplo gitleaks pre-commit:</p>"
-                    "<pre><code># .pre-commit-config.yaml\n"
-                    "repos:\n"
-                    "  - repo: https://github.com/gitleaks/gitleaks\n"
-                    "    rev: v8.18.0\n"
-                    "    hooks:\n"
-                    "      - id: gitleaks</code></pre>"
+<h3>6. Detecção em PR e em código</h3>
+<p>Acidente acontece mesmo com processo bem desenhado — a defesa real
+está em ter várias camadas capturando o mesmo erro em pontos
+diferentes. O <strong>pre-commit hook</strong> (gitleaks, trufflehog,
+detect-secrets) bloqueia o push antes de sair do laptop do
+desenvolvedor. O <strong>CI check</strong> pega o que passou pelo
+pre-commit pulado — a camada que não tem <code>--no-verify</code>
+disponível. O <strong>GitHub Secret Scanning</strong> já vem ativo por
+padrão em repositório público (e via Advanced Security em privado),
+detecta mais de 200 padrões conhecidos, e em muitos casos notifica o
+próprio provedor (AWS, Stripe) que pode revogar a chave automaticamente
+antes mesmo de alguém perceber o vazamento. E uma <strong>auditoria
+periódica</strong> de repositório antigo com trufflehog ou
+gitleaks-search pega o que ficou esquecido de anos atrás, antes dessas
+camadas existirem:</p>
+<pre><code># .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks</code></pre>
 
-                    "<h3>7. SE um segredo vazou: o que fazer</h3>"
-                    "<ol>"
-                    "<li><strong>Rotacione imediatamente</strong>. Mesmo se vc 'só' deu "
-                    "<code>git rm --cached</code>: o histórico ainda tem.</li>"
-                    "<li><strong>Verifique uso</strong>: logs do provider (CloudTrail, "
-                    "Stripe events, etc.). Talvez já está sendo abusado.</li>"
-                    "<li>Considere remover do histórico (BFG, git filter-repo), mais para "
-                    "limpar do que para 'esconder'. Forks/clones já têm.</li>"
-                    "<li>Comunique ao time/security. Não esconda.</li>"
-                    "<li>Postmortem: como vazou? Como impedir próxima vez?</li>"
-                    "</ol>"
+<h3>7. SE um segredo vazou: o que fazer</h3>
+<ol>
+<li><strong>Rotacione imediatamente</strong>, mesmo que a resposta
+tenha sido só um <code>git rm --cached</code> — o histórico ainda
+carrega o valor original, então a única defesa real é trocar a
+credencial.</li>
+<li><strong>Verifique o uso</strong> nos logs do provedor (CloudTrail,
+eventos do Stripe) — o segredo pode já estar sendo ativamente
+explorado, não só teoricamente exposto.</li>
+<li>Considere remover do histórico (BFG, git filter-repo) — isso limpa
+o repositório principal, mas não desfaz o que forks e clones já
+copiaram, então serve mais para higiene do que para conter o
+vazamento.</li>
+<li>Comunique ao time e à área de segurança — esconder o incidente só
+atrasa a mitigação real.</li>
+<li>Faça o postmortem: como o segredo vazou especificamente, e o que
+muda no processo para que não se repita.</li>
+</ol>
 
-                    "<h3>8. K8s Secrets: cuidados</h3>"
-                    "<p>K8s <code>Secret</code> nativo é apenas <strong>base64</strong>, "
-                    "não criptografado. <code>kubectl get secret -o yaml</code> revela em "
-                    "texto plano. Em multi-tenant ou cluster compartilhado, tratar com "
-                    "cuidado:</p>"
-                    "<ul>"
-                    "<li>Habilite <strong>encryption-at-rest</strong> no etcd "
-                    "(<code>EncryptionConfiguration</code> com KMS).</li>"
-                    "<li>RBAC restritivo: só app namespace lê seus secrets.</li>"
-                    "<li>SealedSecrets (Bitnami) para GitOps: secret cripto pode ser "
-                    "commitado no Git, controller decripta no cluster.</li>"
-                    "<li>SOPS + KMS: arquivos YAML/JSON criptografados commitáveis.</li>"
-                    "<li>External Secrets Operator: padrão moderno para cofre externo.</li>"
-                    "</ul>"
+<h3>8. K8s Secrets: cuidados</h3>
+<p>O <code>Secret</code> nativo do Kubernetes é apenas
+<strong>base64</strong>, não criptografia — <code>kubectl get secret -o
+yaml</code> revela o valor em texto plano para qualquer um com acesso
+de leitura àquele objeto. Em cluster multi-tenant ou compartilhado,
+quatro medidas fecham essa lacuna: habilitar
+<strong>encryption-at-rest</strong> no próprio etcd via
+<code>EncryptionConfiguration</code> com KMS; aplicar RBAC restritivo
+para que só o namespace da aplicação leia seus próprios secrets;
+adotar SealedSecrets (Bitnami) quando o fluxo é GitOps — o secret
+CRIPTOGRAFADO pode ser commitado no Git com segurança, e só o controller
+dentro do cluster consegue decriptar; ou usar SOPS combinado com KMS
+para manter arquivo YAML/JSON criptografado e commitável. O External
+Secrets Operator (seção 4.2) continua sendo o padrão mais moderno
+quando a fonte de verdade é um cofre externo de verdade.</p>
 
-                    "<h3>9. Vault transit engine: criptografia como serviço</h3>"
-                    "<p>Você tem dado sensível em DB (CPF, cartão, prontuário). Em vez de "
-                    "guardar plaintext ou implementar cripto na app, use Vault transit:</p>"
-                    "<pre><code># app envia plaintext, recebe ciphertext\n"
-                    "POST /v1/transit/encrypt/customer-pii\n"
-                    "{ \"plaintext\": \"MTIzNDU2Nzg5\" }   # base64\n"
-                    "→ { \"ciphertext\": \"vault:v2:abc...\" }\n"
-                    "\n"
-                    "# DB armazena 'vault:v2:abc...'\n"
-                    "# Para ler, app chama /decrypt</code></pre>"
-                    "<p>Vantagens: chave nunca sai do Vault, rotação centralizada, "
-                    "auditoria por chamada. Útil para PCI/LGPD/HIPAA.</p>"
+<h3>9. Vault transit engine: criptografia como serviço</h3>
+<p>Quando existe dado sensível para guardar num banco — CPF, cartão,
+prontuário médico — a alternativa a implementar criptografia dentro da
+própria aplicação (com risco real de errar a implementação) é delegar
+isso ao Vault transit: a aplicação envia o texto puro e recebe de
+volta um ciphertext pronto para armazenar, sem NUNCA manusear a chave
+de criptografia diretamente:</p>
+<pre><code># app envia plaintext, recebe ciphertext
+POST /v1/transit/encrypt/customer-pii
+{ "plaintext": "MTIzNDU2Nzg5" }   # base64
+→ { "ciphertext": "vault:v2:abc..." }
 
-                    "<h3>10. Caso real: codecov breach (2021)</h3>"
-                    "<p>Atacantes injetaram código no script bash do Codecov "
-                    "(<code>bash &lt;(curl ...)</code> em CIs do mundo todo). Esse script "
-                    "exfiltrava variáveis de ambiente, incluindo secrets de CI. "
-                    "Resultado: milhares de keys/tokens vazados de centenas de empresas.</p>"
-                    "<p>Lição: secret em variável de ambiente de CI é vulnerável a "
-                    "qualquer script suspeito. OIDC com tokens efêmeros teria limitado o "
-                    "blast radius, mesmo capturando o token, ele expirava em minutos.</p>"
+# DB armazena 'vault:v2:abc...'
+# Para ler, app chama /decrypt</code></pre>
+<p>A chave nunca sai do Vault em nenhum momento desse fluxo, a rotação
+fica centralizada num só lugar, e cada chamada de encrypt/decrypt gera
+um registro de auditoria — um requisito direto de conformidade em
+PCI, LGPD e HIPAA.</p>
+
+<h3>10. Caso real: codecov breach (2021)</h3>
+<p>Atacantes conseguiram injetar código no script bash distribuído
+pelo Codecov (o padrão <code>bash &lt;(curl ...)</code>, rodado
+diretamente em milhares de pipelines de CI ao redor do mundo). Esse
+script comprometido exfiltrava as variáveis de ambiente do CI onde
+rodava — incluindo qualquer segredo armazenado ali. O resultado foi
+milhares de chaves e tokens vazados, espalhados por centenas de
+empresas diferentes que nem sabiam estar expostas até o incidente ser
+publicamente divulgado. A lição prática: segredo guardado como variável
+de ambiente de CI fica vulnerável a QUALQUER script de terceiro que
+rode naquele ambiente, mesmo um script aparentemente inofensivo de
+cobertura de teste. Se o padrão fosse OIDC com token efêmero (seção
+4.3), mesmo um atacante capturando o token teria uma janela de minutos
+antes dele expirar sozinho — limitando drasticamente o blast radius do
+mesmo incidente.</p>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
