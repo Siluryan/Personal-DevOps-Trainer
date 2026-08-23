@@ -312,6 +312,7 @@ if [ "${PDT_SEED_ON_DEPLOY:-1}" = "1" ]; then
   docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_topics
   docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_admission_test
   docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_interviews
+  docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_glossary
 else
   echo ">> Seeds de conteúdo ignorados (PDT_SEED_ON_DEPLOY=0)."
 fi

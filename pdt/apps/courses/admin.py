@@ -4,26 +4,9 @@ from django.core.exceptions import ValidationError
 from django.db.models import TextField
 from django.forms.models import BaseInlineFormSet
 
+from apps.core.admin_mixins import SeedLockingAdminMixin
+
 from .models import Choice, Lesson, Material, Phase, Question, Topic
-
-
-class SeedLockingAdminMixin:
-    """Marca `seed_managed=False` ao editar qualquer campo pelo admin.
-
-    A partir daí, `seed_topics` para de sobrescrever este registro — é o que
-    torna editar uma aula ou questão pelo admin uma mudança que sobrevive ao
-    próximo restart do container, em vez de ser revertida no dia seguinte.
-
-    Se o próprio `seed_managed` foi mexido no formulário, respeita a escolha
-    explícita do mantenedor (ex.: religar o campo para voltar a sincronizar
-    com o seed) em vez de forçá-lo de volta a False — senão o checkbox
-    apareceria no form mas nunca "colaria" o valor marcado.
-    """
-
-    def save_model(self, request, obj, form, change):
-        if "seed_managed" not in form.changed_data and form.changed_data:
-            obj.seed_managed = False
-        super().save_model(request, obj, form, change)
 
 
 class TopicInline(admin.TabularInline):

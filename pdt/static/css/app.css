@@ -47,6 +47,10 @@
 /* ── Override do fundo raiz ──────────────────────────────────────────────── */
 html, body { background-color: var(--pdt-bg) !important; }
 
+/* Alpine.js só remove [x-cloak] depois de inicializar; sem esta regra, todo
+   x-show="..." x-cloak do site pisca visível por um instante antes disso. */
+[x-cloak] { display: none !important; }
+
 /* ── Âncora de scroll suave ──────────────────────────────────────────────── */
 html { scroll-behavior: smooth; }
 
@@ -222,6 +226,50 @@ html { scroll-behavior: smooth; }
   padding: .75rem 1rem;
   margin: 1rem 0;
   color: #e9d5ff;
+}
+
+/* Termo de glossário: sigla/jargão clicável com definição breve numa caixinha.
+   Ver apps.core.glossary — marca a 1ª ocorrência de cada termo conhecido. */
+.glossary-term {
+  position: relative;
+  display: inline;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted var(--pdt-purple);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.glossary-term:hover,
+.glossary-term:focus-visible {
+  color: var(--pdt-purple);
+  outline: none;
+}
+.glossary-popover {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(280px, 80vw);
+  background: var(--pdt-surface2);
+  border: 1px solid var(--pdt-purple);
+  border-radius: 8px;
+  padding: .625rem .75rem;
+  margin: 0;
+  color: #e9d5ff;
+  font-size: .8125rem;
+  font-weight: 400;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: normal;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+  cursor: default;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

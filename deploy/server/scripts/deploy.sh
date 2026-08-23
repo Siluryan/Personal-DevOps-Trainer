@@ -42,6 +42,7 @@ set -a; . $ENV_FILE; set +a
 python manage.py seed_topics
 python manage.py seed_admission_test
 python manage.py seed_interviews
+python manage.py seed_glossary
 EOSEED
 else
   logger -t pdt-deploy "seeds de conteúdo ignorados (PDT_SEED_ON_DEPLOY=0)"

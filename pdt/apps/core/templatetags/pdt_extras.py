@@ -7,6 +7,8 @@ from django import template
 from django.utils.html import escape, linebreaks
 from django.utils.safestring import mark_safe
 
+from apps.core.glossary import annotate_glossary_terms, get_glossary_terms
+
 register = template.Library()
 
 # Separadores comuns nas alternativas do simulador (trecho inicial = “resposta”, resto = contexto).
@@ -139,13 +141,15 @@ def render_lesson(value: str) -> str:
 
     - Se o conteúdo já contém HTML (começa com '<'), retorna como safe diretamente.
     - Caso contrário, aplica `linebreaks` (texto puro → <p>) e retorna safe.
+    - Em ambos os casos, marca a 1ª ocorrência de cada termo do glossário
+      (RCE, IAM, TLS...) com uma caixinha clicável que mostra a definição.
     """
     if not value:
         return ""
     stripped = value.strip()
-    if stripped.startswith("<"):
-        return mark_safe(stripped)
-    return mark_safe(linebreaks(stripped))
+    html = stripped if stripped.startswith("<") else linebreaks(stripped)
+    html = annotate_glossary_terms(html, get_glossary_terms())
+    return mark_safe(html)
 
 
 @register.filter
