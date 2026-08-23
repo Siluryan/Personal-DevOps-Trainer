@@ -95,15 +95,23 @@ class _GlossaryAnnotator(HTMLParser):
 
 
 def _render_term(term: str, definition: str) -> str:
+    # <span role="button">, não <button> de verdade: um <button> nativo cria uma
+    # caixa interna própria que, em vários navegadores, não deixa um filho
+    # position:absolute flutuar por cima do texto — o popover acaba empurrando
+    # o parágrafo em vez de sobrepor como balão. Span evita esse problema; os
+    # atributos abaixo mantêm a mesma acessibilidade de teclado que um <button>.
     safe_term = escape(term)
     safe_def = escape(definition)
     return (
-        '<button type="button" class="glossary-term" x-data="{ open: false }" '
-        '@click="open = !open" @click.outside="open = false" @keydown.escape="open = false">'
+        '<span class="glossary-term" role="button" tabindex="0" '
+        'x-data="{ open: false }" '
+        '@click="open = !open" @click.outside="open = false" '
+        '@keydown.enter="open = !open" @keydown.space.prevent="open = !open" '
+        '@keydown.escape="open = false">'
         f"{safe_term}"
         '<span class="glossary-popover" x-show="open" x-cloak @click.stop role="tooltip">'
         f"{safe_def}"
-        "</span></button>"
+        "</span></span>"
     )
 
 
