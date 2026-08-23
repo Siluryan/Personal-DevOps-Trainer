@@ -38,9 +38,31 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
 
 
 class ProfileDetailView(DetailView):
+    """Perfil de um usuário.
+
+    Antes era aberto na internet, com PK sequencial na URL — dava para varrer
+    1, 2, 3… e listar toda a base, cada um com nome, nível e radar de estudo.
+
+    Agora o acesso anônimo só alcança quem optou por aparecer publicamente
+    (`show_in_leaderboard`). Para os demais, o filtro de queryset devolve 404,
+    igual ao de um PK inexistente — então o visitante anônimo não consegue nem
+    distinguir "não existe" de "existe e é privado", que é o que fecha a
+    enumeração. Quem está logado continua vendo qualquer perfil.
+
+    A flag escolhida é `show_in_leaderboard` porque é a única que já significa
+    "aceito aparecer numa página pública": o ranking é anônimo e linka para
+    estes perfis, então usá-la mantém aqueles links funcionando.
+    """
+
     model = User
     template_name = "accounts/profile_detail.html"
     context_object_name = "profile_user"
+
+    def get_queryset(self):
+        qs = User.objects.all()
+        if not self.request.user.is_authenticated:
+            qs = qs.filter(show_in_leaderboard=True)
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

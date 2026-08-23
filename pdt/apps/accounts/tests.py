@@ -33,11 +33,24 @@ class TestUserManager:
         assert admin.is_superuser is True
         assert admin.admission_passed is True
 
-    def test_display_name_usa_full_name_ou_local_part(self):
+    def test_display_name_usa_full_name_quando_preenchido(self):
         user = User.objects.create_user(email="ana@x.com", password="x", full_name="Ana")
         assert user.display_name == "Ana"
+
+    def test_display_name_nunca_deriva_do_email(self):
+        """Regressão: `display_name` é público e não pode expor o endereço.
+
+        Antes caía em `email.split("@")[0]`, vazando a parte local no ranking,
+        no mapa, no chat de ajuda e na página de perfil.
+        """
         outro = User.objects.create_user(email="bruno@x.com", password="x")
-        assert outro.display_name == "bruno"
+        assert "bruno" not in outro.display_name
+        assert "@" not in outro.display_name
+        assert outro.display_name == f"Aluno #{outro.pk}"
+
+    def test_display_name_ignora_full_name_em_branco(self):
+        user = User.objects.create_user(email="carla@x.com", password="x", full_name="   ")
+        assert "carla" not in user.display_name
 
 
 @pytest.mark.django_db
@@ -112,9 +125,39 @@ class TestProfileViews:
         resp = client.get(reverse("accounts:profile_setup"))
         assert resp.status_code == 302  # redireciona para login
 
-    def test_profile_detail_visivel_publicamente(self, client, admitted_user):
-        url = reverse("accounts:profile", args=[admitted_user.pk])
-        resp = client.get(url)
+    def test_profile_anonimo_nao_ve_quem_nao_optou(self, client, admitted_user):
+        """Sem opt-in, visitante anônimo recebe 404 — não 403, não redirect.
+
+        Devolver 404 é o que fecha a enumeração: a resposta fica idêntica à de
+        um PK inexistente, então varrer /perfil/u/1..N não revela quem existe.
+        """
+        assert admitted_user.show_in_leaderboard is False
+        resp = client.get(reverse("accounts:profile", args=[admitted_user.pk]))
+        assert resp.status_code == 404
+
+    def test_profile_anonimo_e_pk_inexistente_respondem_igual(
+        self, client, admitted_user
+    ):
+        privado = client.get(reverse("accounts:profile", args=[admitted_user.pk]))
+        inexistente = client.get(reverse("accounts:profile", args=[9_999_999]))
+        assert privado.status_code == inexistente.status_code == 404
+
+    def test_profile_anonimo_ve_quem_optou_pelo_ranking_publico(
+        self, client, make_user
+    ):
+        publico = make_user(
+            email="publico@example.com",
+            full_name="Público",
+            show_in_leaderboard=True,
+        )
+        resp = client.get(reverse("accounts:profile", args=[publico.pk]))
+        assert resp.status_code == 200
+        assert publico.display_name.encode() in resp.content
+
+    def test_profile_logado_ve_qualquer_perfil(self, client, admitted_user, make_user):
+        visitante = make_user(email="visitante-logado@example.com")
+        client.force_login(visitante)
+        resp = client.get(reverse("accounts:profile", args=[admitted_user.pk]))
         assert resp.status_code == 200
         assert admitted_user.display_name.encode() in resp.content
 

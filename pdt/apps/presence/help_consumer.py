@@ -55,7 +55,10 @@ class HelpRoomConsumer(AsyncJsonWebsocketConsumer):
             return
 
         self.user = user
-        self.display_name = getattr(user, "display_name", user.get_username())
+        # Sem fallback para get_username(): o USERNAME_FIELD é o e-mail, então
+        # o fallback antigo transmitiria o endereço no chat. `display_name`
+        # sempre existe em accounts.User e é a única fonte de nome público.
+        self.display_name = user.display_name
         self.group = help_group_name(self.help_id)
 
         await self.channel_layer.group_add(self.group, self.channel_name)

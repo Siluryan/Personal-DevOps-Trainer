@@ -125,7 +125,20 @@ class User(AbstractUser):
 
     @property
     def display_name(self) -> str:
-        return self.full_name or self.email.split("@")[0]
+        """Nome público do usuário. NUNCA derivado do e-mail.
+
+        Este valor aparece para outras pessoas (ranking, mapa, sala de ajuda,
+        página de perfil), então não pode conter nem parte do endereço. Antes
+        caía em `email.split("@")[0]`, o que expunha a parte local para
+        qualquer um — e o cadastro só exige e-mail e senha, então a maioria
+        dos usuários caía justamente nesse ramo.
+
+        Quem não preencheu `full_name` recebe um rótulo neutro e estável.
+        """
+        name = (self.full_name or "").strip()
+        if name:
+            return name
+        return f"Aluno #{self.pk}" if self.pk else "Aluno"
 
     @property
     def career_label(self) -> str:
