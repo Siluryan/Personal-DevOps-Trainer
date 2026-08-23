@@ -28,6 +28,14 @@ Você descreve o que quer ("3 réplicas de um Deployment com a imagem
 nginx:1.25, expostas via Service"), envia essa descrição ao API server,
 e dezenas de <em>controllers</em> trabalham em loop infinito para fazer
 a realidade CONVERGIR ao que foi declarado:</p>
+<div class="mermaid">
+flowchart TD
+    Internet["Internet"] --> Ingress["Ingress"]
+    Ingress --> Service["Service"]
+    Service --> Pod1["Pod 1"]
+    Service --> Pod2["Pod 2"]
+</div>
+
 <pre><code># Loop conceitual de qualquer controller K8s
 while True:
     desired = api.get_desired_state()  # do etcd
@@ -598,6 +606,13 @@ habilitada — é, na prática, a maior fonte real de incidentes, muito mais
 comum do que qualquer exploit sofisticado. Nenhum controle isolado
 resolve todos os cinco: hardening funciona como defesa em camadas, onde
 cada camada cobre o que a anterior deixou passar.</p>
+<div class="mermaid">
+flowchart LR
+    User["Usuário / ServiceAccount"] --> Binding["RoleBinding"]
+    Binding --> Role["Role: lista de permissões"]
+    Role --> Resource["Recurso do cluster"]
+</div>
+
 
 <h3>2. RBAC granular: quatro objetos, e o verbo que ignora todos os outros</h3>
 <p>RBAC controla QUEM pode fazer O QUÊ na API do Kubernetes, através de
@@ -1043,6 +1058,17 @@ Cilium, Antrea ou Weave. Por baixo dos panos, o CNI traduz a política
 declarativa em regras de iptables, ipvs ou eBPF (dependendo da
 implementação) — um detalhe que você não precisa gerenciar diretamente,
 só saber que precisa estar presente.</p>
+<div class="mermaid">
+flowchart LR
+    subgraph SemNP ["Sem NetworkPolicy"]
+        A1["Pod A"] --> B1["Pod B"]
+        A1 --> C1["Pod C"]
+    end
+    subgraph ComNP ["Com default-deny + regra explícita"]
+        A2["Pod A"] --> B2["Pod B, permitido"]
+    end
+</div>
+
 
 <h3>2. Anatomia de uma política: seletor, direção, e o que cada campo decide</h3>
 <pre><code>apiVersion: networking.k8s.io/v1
@@ -1427,6 +1453,16 @@ perguntas diferentes, e um usuário com permissão RBAC total ainda pode
 ser barrado por uma política de admission que julga o CONTEÚDO do
 request, não quem o enviou. Se qualquer admission rejeitar, o etcd nunca
 é tocado e o usuário recebe erro imediatamente.</p>
+<div class="mermaid">
+flowchart LR
+    Req["kubectl apply"] --> API["API server"]
+    API --> Mutating["Mutating webhook"]
+    Mutating --> Validating["Validating webhook"]
+    Validating --> Store{"Aprovado?"}
+    Store -- "Sim" --> Etcd["Persistido no etcd"]
+    Store -- "Não" --> Reject["Rejeitado"]
+</div>
+
 
 <h3>2. Três formas de implementar admission</h3>
 <p>Controllers <strong>built-in</strong> vêm compilados diretamente no
@@ -1794,6 +1830,13 @@ implicitamente no software já instalado. Em todos os três casos, o
 perímetro tecnicamente "segurou" — o firewall não foi violado por força
 bruta — porque o atacante já estava do lado de dentro por outro caminho,
 e uma vez lá dentro, nada mais o impedia.</p>
+<div class="mermaid">
+flowchart TD
+    Req["Toda requisição"] --> Verify{"Identidade e contexto verificados agora?"}
+    Verify -- "Sim" --> Grant["Acesso ao recurso específico"]
+    Verify -- "Não" --> Deny["Acesso negado"]
+</div>
+
 
 <h3>2. Os cinco pilares do NIST 800-207</h3>
 <p><strong>Identidade forte</strong> é a base de tudo: SSO combinado com
@@ -2063,6 +2106,14 @@ para instalar — é a mesma tecnologia de base usada por ferramentas de
 observabilidade (Pixie), de rede (Cilium) e de segurança (Falco,
 Tetragon), cada uma aproveitando o mesmo mecanismo eficiente do kernel
 para propósitos diferentes.</p>
+<div class="mermaid">
+flowchart LR
+    Syscalls["Syscalls do container"] --> Falco["Monitor de runtime, ex.: Falco"]
+    Falco --> Rule{"Bate com regra suspeita?"}
+    Rule -- "Sim" --> Alert["Gera alerta ou ação"]
+    Rule -- "Não" --> Syscalls
+</div>
+
 
 <h3>2. Falco: o padrão CNCF para detectar comportamento anômalo em execução</h3>
 <p>Falco lê eventos do kernel via eBPF (ou, em setups mais antigos, via
@@ -2346,6 +2397,18 @@ numa arquitetura com dezenas de microsserviços, investigar um incidente
 usando só um dos três é like tentar reconstruir um crime vendo só a foto,
 só o áudio, ou só o vídeo — os três JUNTOS, correlacionados (seção 8), é
 o que permite raciocínio rápido durante um incidente real.</p>
+<div class="mermaid">
+flowchart LR
+    subgraph Pilares ["Três pilares"]
+        Logs["Logs"]
+        Metrics["Métricas"]
+        Traces["Traces"]
+    end
+    Logs --> Correl["Correlacionados por trace_id"]
+    Metrics --> Correl
+    Traces --> Correl
+</div>
+
 
 <h3>2. Tracing: uma requisição vira árvore, não uma linha de log</h3>
 <p>Uma requisição inteira é um <strong>trace</strong>; cada operação
@@ -2717,6 +2780,14 @@ plataforma específica.</p>"""
 <p>Chaos engineering não é "quebrar coisas para ver o que acontece" — é
 um método científico aplicado a sistemas em produção, com cinco passos
 que, pulados, transformam o experimento em teatro sem valor real:</p>
+<div class="mermaid">
+flowchart LR
+    A["Hipótese: sistema resiste a X"] --> B["Experimento controlado"]
+    B --> C{"Sistema se comportou como esperado?"}
+    C -- "Sim" --> D["Confiança confirmada"]
+    C -- "Não" --> E["Fraqueza real encontrada, corrige"]
+</div>
+
 <ol>
 <li><strong>Defina o estado estável (steady state)</strong>: uma métrica
 MENSURÁVEL de saúde do sistema — taxa de sucesso de requisições, p99 de
@@ -3054,6 +3125,16 @@ o ciclo, alimentando de volta a fase de Preparation com lições
 aprendidas. Um time que pula essa última fase repete os mesmos
 incidentes indefinidamente, porque nunca converte a experiência em
 prevenção.</p>
+<div class="mermaid">
+flowchart LR
+    A["Preparation"] --> B["Detection e Analysis"]
+    B --> C["Containment"]
+    C --> D["Eradication"]
+    D --> E["Recovery"]
+    E --> F["Postmortem"]
+    F --> A
+</div>
+
 
 <h3>2. Papéis num incidente: por que quem decide não deve tocar no teclado</h3>
 <p>Em incidentes pequenos, uma pessoa acumula vários papéis sem problema.
@@ -3408,6 +3489,14 @@ organiza práticas de segurança em cinco funções
 (Identify/Protect/Detect/Respond/Recover) de forma voluntária, e
 <strong>FedRAMP</strong> é o padrão para vender à nuvem do governo
 americano.</p>
+<div class="mermaid">
+flowchart LR
+    Infra["Infraestrutura em produção"] --> Check["Checagem automática contínua"]
+    Check --> Compliant{"Está em conformidade?"}
+    Compliant -- "Sim" --> Evidence["Evidência gerada automaticamente"]
+    Compliant -- "Não" --> Fix["Alerta ou correção automática"]
+</div>
+
 
 <h3>2. Os dez princípios da LGPD: o que cada um proíbe na prática</h3>
 <p>Cada princípio da LGPD existe para bloquear um comportamento
