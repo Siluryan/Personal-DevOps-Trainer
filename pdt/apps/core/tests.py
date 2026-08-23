@@ -111,6 +111,13 @@ class TestDashboardView:
         assert payload[str(aberto.pk)]["profile_url"] == reverse(
             "accounts:profile", args=[aberto.pk]
         )
+        # Regressão: quem não optou não tem os campos de contato NO PAYLOAD.
+        # Antes eles eram serializados para todo mundo e escondidos só no
+        # template, então ficavam legíveis no código-fonte da página.
+        for campo in ("country", "bio", "linkedin", "github"):
+            assert campo not in payload[str(fechado.pk)]
+            assert campo in payload[str(aberto.pk)]
+
         body = resp.content.decode()
         # Terceiro argumento = mesmos pts da linha (inteiro, sem localização)
         assert f"select('{aberto.pk}', true, 9)" in body
