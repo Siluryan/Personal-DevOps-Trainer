@@ -1184,194 +1184,240 @@ checar manualmente em cada script novo.</p>"""
                     "sudo, systemd, containers (Docker/K8s) e cloud (IAM)."
                 ),
                 "body": (
-                    "<h3>1. Por que PoLP é fundamental</h3>"
-                    "<p>Pense em PoLP como <strong>blast radius</strong>: o quanto se "
-                    "compromete quando uma identidade vaza. Se a aplicação web tem credencial "
-                    "<code>AdministratorAccess</code> em AWS e é comprometida, atacante "
-                    "controla toda a conta, derruba banco, exfiltra S3, sobe instância para "
-                    "minerar crypto. Se a mesma app tinha apenas <code>s3:GetObject</code> "
-                    "num bucket específico, o blast radius cabe em um relatório.</p>"
-                    "<p>PoLP é defensa em profundidade <em>posta em prática</em>. Não evita "
-                    "comprometimento; limita as consequências. É o que separa um incidente "
-                    "constrangedor de uma crise de imagem.</p>"
+                """<h3>1. Por que PoLP é fundamental</h3>
+<p>A forma mais útil de pensar em PoLP é como controle de
+<strong>blast radius</strong>: quanto se compromete no momento em que
+uma identidade específica vaza. Se uma aplicação web carrega credencial
+<code>AdministratorAccess</code> na AWS e é comprometida, o atacante
+controla a conta inteira — derruba banco, exfiltra bucket S3, sobe
+instância própria para minerar criptomoeda com o cartão da empresa. Se
+a mesma aplicação tivesse apenas <code>s3:GetObject</code> num bucket
+específico, o vazamento cabe numa única linha de relatório de
+incidente, não numa manchete. PoLP não IMPEDE o comprometimento em si —
+é defesa em profundidade posta em prática, limitando a CONSEQUÊNCIA de
+algo que eventualmente vai acontecer de qualquer forma. É exatamente o
+que separa um incidente constrangedor de uma crise de imagem completa.</p>
 
-                    "<h3>2. PoLP no host Linux: usuários dedicados por serviço</h3>"
-                    "<p>Cada serviço (nginx, postgres, app) deve ter usuário próprio:</p>"
-                    "<pre><code>useradd --system --shell /usr/sbin/nologin --home-dir /var/lib/app app\n"
-                    "chown -R app:app /opt/app /var/lib/app /var/log/app</code></pre>"
-                    "<p>Vantagens:</p>"
-                    "<ul>"
-                    "<li>Compromisso da app não dá acesso a outros serviços.</li>"
-                    "<li>Permissões granulares: app não consegue ler "
-                    "<code>/etc/postgres</code>.</li>"
-                    "<li>Auditoria por usuário: <code>journalctl _UID=$(id -u app)</code>.</li>"
-                    "<li>Limites por usuário (ulimit, cgroups).</li>"
-                    "</ul>"
+<h3>2. PoLP no host Linux: usuários dedicados por serviço</h3>
+<p>Cada serviço — nginx, postgres, a própria aplicação — deveria ter
+seu usuário de sistema próprio, nunca compartilhado:</p>
+<pre><code>useradd --system --shell /usr/sbin/nologin --home-dir /var/lib/app app
+chown -R app:app /opt/app /var/lib/app /var/log/app</code></pre>
+<p>Isso traz quatro vantagens concretas: o comprometimento de uma
+aplicação não dá acesso automático a nenhum outro serviço rodando na
+mesma máquina; a permissão fica granular o suficiente para que a
+aplicação nem consiga LER <code>/etc/postgres</code>, por exemplo;
+auditoria por usuário fica trivial (<code>journalctl
+_UID=$(id -u app)</code> isola exatamente o que aquele processo
+fez); e limite de recurso (ulimit, cgroup) pode ser aplicado por
+usuário individualmente, sem afetar os demais serviços da mesma
+máquina.</p>
 
-                    "<h3>3. systemd hardening: a camada que muita gente ignora</h3>"
-                    "<p>Em <code>/etc/systemd/system/app.service</code>:</p>"
-                    "<pre><code>[Service]\n"
-                    "ExecStart=/opt/app/bin/server\n"
-                    "User=app\n"
-                    "Group=app\n"
-                    "\n"
-                    "# Identidade\n"
-                    "NoNewPrivileges=true       # impede setuid/setcap em descendentes\n"
-                    "\n"
-                    "# Filesystem\n"
-                    "ProtectSystem=strict       # tudo readonly exceto paths permitidos\n"
-                    "ProtectHome=true           # /home, /root, /run/user invisíveis\n"
-                    "PrivateTmp=true            # /tmp isolado por instância\n"
-                    "ReadWritePaths=/var/lib/app /var/log/app\n"
-                    "\n"
-                    "# Capabilities\n"
-                    "CapabilityBoundingSet=     # vazio = abre mão de tudo\n"
-                    "AmbientCapabilities=\n"
-                    "\n"
-                    "# Syscalls (via seccomp-bpf)\n"
-                    "SystemCallFilter=@system-service\n"
-                    "SystemCallErrorNumber=EPERM\n"
-                    "\n"
-                    "# Rede\n"
-                    "RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX\n"
-                    "PrivateNetwork=false       # true = sem acesso de rede algum\n"
-                    "\n"
-                    "# Outros\n"
-                    "ProtectKernelModules=true\n"
-                    "ProtectKernelTunables=true\n"
-                    "ProtectControlGroups=true\n"
-                    "RestrictNamespaces=true\n"
-                    "LockPersonality=true\n"
-                    "MemoryDenyWriteExecute=true</code></pre>"
-                    "<p>Para auditar o que uma unit já tem habilitado:</p>"
-                    "<pre><code>systemd-analyze security app.service</code></pre>"
-                    "<p>Ele dá uma nota de 0 a 10 com sugestões. Mire em &lt; 3 (mais seguro).</p>"
+<h3>3. systemd hardening: a camada que muita gente ignora</h3>
+<p>Em <code>/etc/systemd/system/app.service</code>:</p>
+<pre><code>[Service]
+ExecStart=/opt/app/bin/server
+User=app
+Group=app
 
-                    "<h3>4. sudo, mas com critério</h3>"
-                    "<p><code>ALL=(ALL:ALL) ALL</code> é o atalho mais comum e o pior. Em "
-                    "<code>/etc/sudoers.d/deploy</code>:</p>"
-                    "<pre><code># Usuário deploy só pode reiniciar o nginx, sem senha\n"
-                    "deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx\n"
-                    "deploy ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx\n"
-                    "\n"
-                    "# Negar shell escapes\n"
-                    "Defaults:deploy !requiretty\n"
-                    "Defaults:deploy log_year, logfile=/var/log/sudo-deploy.log</code></pre>"
-                    "<p>Sempre edite com <code>visudo -f /etc/sudoers.d/arquivo</code>, ele "
-                    "valida sintaxe antes de salvar. Sem isso, um typo deixa todo mundo sem "
-                    "sudo.</p>"
+# Identidade
+NoNewPrivileges=true       # impede setuid/setcap em descendentes
 
-                    "<h3>5. PoLP em containers Docker</h3>"
-                    "<pre><code># Dockerfile\n"
-                    "FROM python:3.12-slim\n"
-                    "RUN useradd --uid 10001 --system --no-create-home app\n"
-                    "WORKDIR /app\n"
-                    "COPY --chown=app:app . .\n"
-                    "RUN pip install --no-cache-dir -r requirements.txt\n"
-                    "USER app                          # nunca rode como root\n"
-                    "EXPOSE 8000\n"
-                    "CMD [\"gunicorn\", \"-b\", \"0.0.0.0:8000\", \"app.wsgi\"]</code></pre>"
-                    "<p>No <code>docker run</code>, vá além:</p>"
-                    "<pre><code>docker run --rm \\\n"
-                    "  --user 10001:10001 \\\n"
-                    "  --read-only \\\n"
-                    "  --tmpfs /tmp \\\n"
-                    "  --cap-drop=ALL \\\n"
-                    "  --cap-add=NET_BIND_SERVICE \\\n"
-                    "  --security-opt=no-new-privileges \\\n"
-                    "  --pids-limit 200 \\\n"
-                    "  -p 8000:8000 myapp:1.0</code></pre>"
+# Filesystem
+ProtectSystem=strict       # tudo readonly exceto paths permitidos
+ProtectHome=true           # /home, /root, /run/user invisíveis
+PrivateTmp=true            # /tmp isolado por instância
+ReadWritePaths=/var/lib/app /var/log/app
 
-                    "<h3>6. PoLP em Kubernetes (securityContext)</h3>"
-                    "<pre><code>apiVersion: apps/v1\n"
-                    "kind: Deployment\n"
-                    "metadata: { name: app }\n"
-                    "spec:\n"
-                    "  template:\n"
-                    "    spec:\n"
-                    "      automountServiceAccountToken: false   # se a app não chama K8s API\n"
-                    "      securityContext:\n"
-                    "        runAsNonRoot: true\n"
-                    "        runAsUser: 10001\n"
-                    "        fsGroup: 10001\n"
-                    "        seccompProfile: { type: RuntimeDefault }\n"
-                    "      containers:\n"
-                    "      - name: app\n"
-                    "        image: myapp:1.0\n"
-                    "        securityContext:\n"
-                    "          allowPrivilegeEscalation: false\n"
-                    "          readOnlyRootFilesystem: true\n"
-                    "          capabilities: { drop: [\"ALL\"] }</code></pre>"
-                    "<p>Use <strong>Pod Security Standards</strong> (restricted) no namespace "
-                    "para forçar o padrão em todo deploy:</p>"
-                    "<pre><code>kubectl label ns app pod-security.kubernetes.io/enforce=restricted</code></pre>"
+# Capabilities
+CapabilityBoundingSet=     # vazio = abre mão de tudo
+AmbientCapabilities=
 
-                    "<h3>7. PoLP em Cloud (IAM)</h3>"
-                    "<p>Princípios:</p>"
-                    "<ul>"
-                    "<li><strong>Roles, não chaves estáticas</strong>: workload identity "
-                    "(IRSA na AWS, Workload Identity no GKE, Managed Identity no AKS).</li>"
-                    "<li><strong>Policies granulares</strong>: <code>s3:GetObject</code> em "
-                    "<code>arn:aws:s3:::bucket-x/*</code>, não <code>s3:*</code> em "
-                    "<code>*</code>.</li>"
-                    "<li><strong>Permission Boundaries / SCPs</strong>: guard-rails "
-                    "estruturais que nem o admin de uma sub-conta pode exceder.</li>"
-                    "<li><strong>Condicionais</strong>: <code>aws:SourceVpc</code>, "
-                    "<code>aws:MultiFactorAuthPresent</code>, "
-                    "<code>aws:RequestedRegion</code>.</li>"
-                    "<li><strong>Tempo limitado</strong>: STS AssumeRole com TTL curto.</li>"
-                    "</ul>"
-                    "<pre><code>// IAM policy mínima\n"
-                    "{\n"
-                    "  \"Version\": \"2012-10-17\",\n"
-                    "  \"Statement\": [\n"
-                    "    {\n"
-                    "      \"Effect\": \"Allow\",\n"
-                    "      \"Action\": [\"s3:GetObject\"],\n"
-                    "      \"Resource\": \"arn:aws:s3:::reports-prod/*\",\n"
-                    "      \"Condition\": {\n"
-                    "        \"StringEquals\": {\"aws:SourceVpc\": \"vpc-abc\"}\n"
-                    "      }\n"
-                    "    }\n"
-                    "  ]\n"
-                    "}</code></pre>"
+# Syscalls (via seccomp-bpf)
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
 
-                    "<h3>8. Privilege creep, o inimigo invisível</h3>"
-                    "<p>Sem auditoria, todo mundo só <em>adiciona</em> permissão. Ninguém "
-                    "remove. Em 2 anos, a IAM role 'app-prod' que começou com "
-                    "<code>s3:GetObject</code> em um bucket está com 47 permissões e ninguém "
-                    "sabe quais são realmente usadas.</p>"
-                    "<p>Ferramentas para auditar:</p>"
-                    "<ul>"
-                    "<li><strong>AWS IAM Access Analyzer</strong>: gera relatório do que cada "
-                    "principal <em>realmente</em> usou nos últimos 90 dias.</li>"
-                    "<li><strong>Cloudsplaining</strong> (Salesforce): scanner que avalia "
-                    "policies por risco.</li>"
-                    "<li><strong>Steampipe</strong>: SQL sobre seu cloud, "
-                    "<code>select * from aws_iam_role where assume_role_policy like '%*%'</code>.</li>"
-                    "<li><strong>cloudquery</strong>: catálogo continuamente atualizado.</li>"
-                    "</ul>"
+# Rede
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+PrivateNetwork=false       # true = sem acesso de rede algum
 
-                    "<h3>9. Caso real: Capital One 2019</h3>"
-                    "<p>Atacante explorou um WAF mal configurado (SSRF) para obter "
-                    "credenciais IAM via <code>169.254.169.254</code>. As credenciais tinham "
-                    "permissão <code>s3:ListAllMyBuckets</code> e <code>s3:GetObject</code> "
-                    "<em>em todos os buckets da empresa</em>, para 'simplicidade'. "
-                    "Resultado: 100M de registros de clientes vazados, multa de US$ 80M, "
-                    "CISO demitida. Se a role tivesse acesso só ao bucket que o WAF realmente "
-                    "precisava, o vazamento seria de 1% do que foi.</p>"
+# Outros
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true</code></pre>
+<p>Cada uma dessas diretivas fecha um vetor de escalada específico —
+<code>NoNewPrivileges</code>, por exemplo, impede que um processo
+comprometido ganhe MAIS privilégio do que já tinha via um binário
+setuid encontrado no sistema. Para saber exatamente onde uma unit já
+está, o próprio systemd oferece um auditor embutido:</p>
+<pre><code>systemd-analyze security app.service</code></pre>
+<p>Ele devolve uma nota de 0 a 10 com sugestão concreta do que ainda
+falta endurecer — quanto MENOR a nota, mais seguro o serviço já está
+configurado.</p>
 
-                    "<h3>10. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><code>chmod 777</code> 'porque tava dando erro'.</li>"
-                    "<li><code>kubectl create clusterrolebinding app-admin --clusterrole=cluster-admin</code>.</li>"
-                    "<li>App rodando como root no container 'porque a imagem oficial é assim'.</li>"
-                    "<li>IAM role <code>*</code> em <code>*</code> 'depois eu restrinjo'.</li>"
-                    "<li>Compartilhar credencial de service account entre humanos.</li>"
-                    "<li>Acesso permanente em vez de just-in-time (JIT).</li>"
-                    "</ul>"
-                    "<p>Para cada um deles, há uma alternativa segura que custa minutos a "
-                    "configurar e horas economizadas em incidente.</p>"
+<h3>4. sudo, mas com critério</h3>
+<p>A entrada <code>ALL=(ALL:ALL) ALL</code> é o atalho mais comum e
+também o pior possível — concede exatamente o oposto do que PoLP
+pede. Em <code>/etc/sudoers.d/deploy</code>, a alternativa granular
+concede apenas o comando específico necessário:</p>
+<pre><code># Usuário deploy só pode reiniciar o nginx, sem senha
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
+
+# Negar shell escapes
+Defaults:deploy !requiretty
+Defaults:deploy log_year, logfile=/var/log/sudo-deploy.log</code></pre>
+<p>Editar sempre com <code>visudo -f /etc/sudoers.d/arquivo</code> é
+uma proteção estrutural própria: o comando VALIDA a sintaxe antes de
+salvar — sem essa validação, um typo simples pode deixar o sistema
+inteiro sem ninguém conseguindo usar sudo até alguém corrigir via
+acesso físico ou console de emergência.</p>
+
+<h3>5. PoLP em containers Docker</h3>
+<pre><code># Dockerfile
+FROM python:3.12-slim
+RUN useradd --uid 10001 --system --no-create-home app
+WORKDIR /app
+COPY --chown=app:app . .
+RUN pip install --no-cache-dir -r requirements.txt
+USER app                          # nunca rode como root
+EXPOSE 8000
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "app.wsgi"]</code></pre>
+<p>No momento de rodar o container, ainda há espaço para ir além do
+que o Dockerfile já garante:</p>
+<pre><code>docker run --rm \\
+  --user 10001:10001 \\
+  --read-only \\
+  --tmpfs /tmp \\
+  --cap-drop=ALL \\
+  --cap-add=NET_BIND_SERVICE \\
+  --security-opt=no-new-privileges \\
+  --pids-limit 200 \\
+  -p 8000:8000 myapp:1.0</code></pre>
+<p>O <code>--cap-drop=ALL</code> combinado com um único
+<code>--cap-add</code> específico (aqui, apenas
+<code>NET_BIND_SERVICE</code>, necessário só para bindar em porta
+abaixo de 1024) ilustra o próprio PoLP em ação: em vez de conceder o
+conjunto completo de capability do kernel, concede exatamente a única
+que a aplicação de fato precisa.</p>
+
+<h3>6. PoLP em Kubernetes (securityContext)</h3>
+<pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata: { name: app }
+spec:
+  template:
+    spec:
+      automountServiceAccountToken: false   # se a app não chama K8s API
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+      - name: app
+        image: myapp:1.0
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: { drop: ["ALL"] }</code></pre>
+<p>Os Pod Security Standards, no modo <code>restricted</code>, aplicam
+esse padrão inteiro FORÇADAMENTE em todo deploy dentro do namespace, em
+vez de depender de cada time lembrar de configurar isso manualmente:</p>
+<pre><code>kubectl label ns app pod-security.kubernetes.io/enforce=restricted</code></pre>
+
+<h3>7. PoLP em Cloud (IAM)</h3>
+<p>Cinco princípios sustentam PoLP na camada de nuvem. Preferir role a
+chave estática — via workload identity (IRSA na AWS, Workload Identity
+no GKE, Managed Identity no AKS) — elimina o problema de uma
+credencial de longa duração vazando permanentemente. Policy granular
+concede <code>s3:GetObject</code> num
+<code>arn:aws:s3:::bucket-x/*</code> específico, nunca
+<code>s3:*</code> em <code>*</code> por conveniência. Permission
+Boundaries e SCPs funcionam como guard-rail estrutural que nem o
+administrador de uma sub-conta consegue exceder, mesmo com a melhor das
+intenções. Condicionais (<code>aws:SourceVpc</code>,
+<code>aws:MultiFactorAuthPresent</code>,
+<code>aws:RequestedRegion</code>) restringem QUANDO e DE ONDE uma
+permissão vale, não só O QUE ela permite. E tempo limitado — via STS
+AssumeRole com TTL curto — garante que mesmo uma credencial concedida
+corretamente expire sozinha, reduzindo a janela de exploração em caso
+de vazamento:</p>
+<pre><code>// IAM policy mínima
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::reports-prod/*",
+      "Condition": {
+        "StringEquals": {"aws:SourceVpc": "vpc-abc"}
+      }
+    }
+  ]
+}</code></pre>
+
+<h3>8. Privilege creep, o inimigo invisível</h3>
+<p>Sem auditoria periódica, o padrão natural é todo mundo só
+ADICIONAR permissão nova, e ninguém nunca remover a antiga que deixou
+de ser necessária. Em dois anos, uma role IAM que começou com um único
+<code>s3:GetObject</code> num bucket específico acumula 47 permissões
+diferentes, e ninguém mais consegue dizer com certeza quais delas ainda
+são realmente usadas na prática. Quatro ferramentas resolvem essa
+opacidade: o AWS IAM Access Analyzer gera relatório do que cada
+principal REALMENTE usou nos últimos 90 dias, revelando o que pode ser
+podado com segurança; o Cloudsplaining (originalmente da Salesforce) é
+um scanner que avalia risco diretamente na policy declarada; o
+Steampipe permite rodar SQL direto sobre o estado real da nuvem — uma
+consulta como <code>select * from aws_iam_role where
+assume_role_policy like '%*%'</code> encontra role perigosamente aberta
+em segundos; e o cloudquery mantém um catálogo continuamente atualizado
+para consulta recorrente.</p>
+
+<h3>9. Caso real: Capital One 2019</h3>
+<p>O atacante explorou um WAF mal configurado, permitindo SSRF que
+extraiu credencial IAM temporária via
+<code>169.254.169.254</code> — o serviço de metadados da própria AWS.
+Essa credencial carregava <code>s3:ListAllMyBuckets</code> e
+<code>s3:GetObject</code> liberado em TODOS os buckets da empresa, uma
+decisão justificada internamente como "simplicidade" na hora de
+configurar. O resultado foi 100 milhões de registro de cliente
+vazado, uma multa de US$ 80 milhões, e a demissão da CISO responsável.
+Se a role tivesse acesso restrito apenas ao bucket específico que o
+WAF realmente precisava tocar, o vazamento teria ficado numa fração
+mínima do que de fato aconteceu — o incidente inteiro é, no fundo, um
+caso de PoLP violado desde o desenho original da permissão.</p>
+
+<h3>10. Anti-patterns</h3>
+<ul>
+<li><strong><code>chmod 777</code> "porque tava dando erro"</strong>:
+resolve o sintoma imediato abrindo uma porta permanente que qualquer
+usuário do sistema pode explorar depois.</li>
+<li><strong><code>kubectl create clusterrolebinding app-admin
+--clusterrole=cluster-admin</code></strong>: concede controle total
+sobre o cluster inteiro para resolver um problema que provavelmente
+precisava de uma fração disso.</li>
+<li><strong>Aplicação rodando como root no container "porque a imagem
+oficial é assim"</strong>: aceita o default sem questionar se ele
+atende ao caso de uso real (seção 5).</li>
+<li><strong>IAM role <code>*</code> em <code>*</code> "depois eu
+restrinjo"</strong>: o "depois" quase nunca chega, e o acesso amplo
+vira o estado permanente de fato.</li>
+<li><strong>Compartilhar credencial de service account entre
+humanos</strong>: elimina toda rastreabilidade de quem fez o quê,
+exatamente o oposto do que auditoria por identidade (seção 2)
+propõe.</li>
+<li><strong>Acesso permanente em vez de just-in-time</strong>: mantém
+privilégio elevado ativo o tempo todo, quando ele só é necessário por
+uma janela específica de tempo.</li>
+</ul>
+<p>Para cada um desses padrões, existe uma alternativa segura que
+custa minutos a configurar e potencialmente evita horas — ou dias — de
+resposta a incidente depois.</p>"""
                 ),
                 "practical": (
                     "(1) Pegue um serviço systemd existente em sua máquina e rode "
