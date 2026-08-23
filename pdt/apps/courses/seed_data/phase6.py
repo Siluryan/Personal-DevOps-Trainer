@@ -27,141 +27,208 @@ PHASE6 = {
                     "escrever ferramentas modernas."
                 ),
                 "body": (
-                    "<h3>1. Tipos primitivos e modelo de objeto</h3>"
-                    "<p>Em Python, <strong>tudo é objeto</strong>. Inteiros, strings, funções, "
-                    "classes, todos têm atributos e métodos. Os tipos primitivos importantes:</p>"
-                    "<pre><code>x: int   = 42\n"
-                    "y: float = 3.14\n"
-                    "s: str   = \"hello\"\n"
-                    "b: bool  = True\n"
-                    "n: None  = None  # type literal None == NoneType\n"
-                    "lst: list[int]      = [1, 2, 3]\n"
-                    "tup: tuple[int, str] = (1, \"a\")\n"
-                    "st:  set[str]       = {\"a\", \"b\"}\n"
-                    "d:   dict[str, int] = {\"k\": 1}</code></pre>"
-                    "<p>Diferenças críticas:</p>"
-                    "<ul>"
-                    "<li><code>list</code> é mutável; <code>tuple</code> é imutável (e portanto "
-                    "<em>hashable</em>: pode ser chave de dicionário ou item de set).</li>"
-                    "<li><code>str</code> é imutável, toda 'modificação' cria nova string. "
-                    "Concatenar em loop com <code>+=</code> é O(n²); use "
-                    "<code>\"\".join(list)</code>.</li>"
-                    "<li>Inteiros têm precisão arbitrária (não estouram em 64 bits).</li>"
-                    "</ul>"
+                """<h3>1. Tipos primitivos e o modelo de objeto que explica tudo</h3>
+<p>Em Python, <strong>tudo é objeto</strong> — inteiros, strings, funções e
+classes têm igualmente atributos e métodos, e são todos alocados no heap e
+referenciados por nome. Essa uniformidade é o que torna Python tão
+flexível (você pode passar uma função como argumento do mesmo jeito que
+passa um número) e é também a raiz de comportamentos que surpreendem quem
+vem de linguagens com tipos primitivos "de verdade" (seção 2).</p>
+<pre><code>x: int   = 42
+y: float = 3.14
+s: str   = "hello"
+b: bool  = True
+n: None  = None  # type literal None == NoneType
+lst: list[int]      = [1, 2, 3]
+tup: tuple[int, str] = (1, "a")
+st:  set[str]       = {"a", "b"}
+d:   dict[str, int] = {"k": 1}</code></pre>
+<p>A diferença entre <code>list</code> e <code>tuple</code> não é só
+sintática: <code>tuple</code> é imutável, e por ser imutável é
+<em>hashable</em> — pode virar chave de dicionário ou item de um
+<code>set</code>. <code>list</code> não pode, porque seu conteúdo pode
+mudar depois de inserida, o que quebraria a estrutura de hash que já
+calculou uma posição para ela. Pelo mesmo motivo, <code>str</code> é
+imutável: toda operação que "modifica" uma string na verdade cria uma
+string nova. Isso tem um custo real — concatenar em loop com
+<code>+=</code> aloca uma string nova a cada iteração, um comportamento
+O(n²) para n concatenações; <code>"".join(lista)</code> aloca uma vez só,
+O(n).</p>
 
-                    "<h3>2. Variáveis, escopo e mutabilidade</h3>"
-                    "<p>Variáveis em Python são <em>nomes</em> apontando para objetos. "
-                    "Atribuição não copia:</p>"
-                    "<pre><code>a = [1, 2, 3]\n"
-                    "b = a               # b aponta para o MESMO objeto\n"
-                    "b.append(4)\n"
-                    "print(a)            # [1, 2, 3, 4]  ← surpresa para iniciantes\n\n"
-                    "import copy\n"
-                    "c = copy.copy(a)        # cópia rasa\n"
-                    "d = copy.deepcopy(a)    # cópia profunda</code></pre>"
-                    "<p>Escopo segue a regra <strong>LEGB</strong>: Local → Enclosing → "
-                    "Global → Built-in. Para <em>escrever</em> em escopo externo dentro de "
-                    "função, use <code>global</code> (ruim) ou <code>nonlocal</code> "
-                    "(closures); melhor: receba/retorne valores explicitamente.</p>"
+<h3>2. Variáveis são nomes, não caixas: por que atribuição não copia</h3>
+<p>Quem vem de linguagens onde variável é uma "caixa com valor" leva um
+susto na primeira vez que isso acontece:</p>
+<pre><code>a = [1, 2, 3]
+b = a               # b aponta para o MESMO objeto
+b.append(4)
+print(a)            # [1, 2, 3, 4]  ← surpresa para iniciantes
 
-                    "<h3>3. Controle de fluxo: if, while, for</h3>"
-                    "<p>O <code>for</code> em Python itera sobre <strong>iteráveis</strong>, "
-                    "não sobre índices. O loop com índice (<code>for i in range(len(...))"
-                    "</code>) é code smell, quase sempre dá pra usar <code>enumerate</code> "
-                    "ou <code>zip</code>:</p>"
-                    "<pre><code>servers = [\"web1\", \"web2\", \"db1\"]\n"
-                    "ports   = [80, 80, 5432]\n\n"
-                    "for i, name in enumerate(servers, start=1):\n"
-                    "    print(f\"#{i} {name}\")\n\n"
-                    "for name, port in zip(servers, ports, strict=True):\n"
-                    "    print(f\"{name} :{port}\")</code></pre>"
-                    "<p><strong>Truthiness</strong>: em Python, <code>0</code>, "
-                    "<code>None</code>, listas/dicts/strings vazias, <code>False</code> são "
-                    "todos <em>falsy</em>. Não escreva <code>if len(lst) &gt; 0:</code>, "
-                    "escreva <code>if lst:</code>. E não compare com <code>True/False</code> "
-                    "(<code>if x == True</code>). Compare com <code>None</code> usando "
-                    "<code>is</code>: <code>if x is None</code>.</p>"
+import copy
+c = copy.copy(a)        # cópia rasa
+d = copy.deepcopy(a)    # cópia profunda</code></pre>
+<p>Em Python, uma variável é só um NOME apontando para um objeto que existe
+independente dela. <code>b = a</code> não copia o conteúdo — cria um
+segundo nome apontando para o mesmo objeto na memória. Modificar o objeto
+por qualquer um dos dois nomes afeta o que o outro nome "vê", porque não
+há dois objetos, há um só com dois rótulos. Isso só surpreende com objetos
+MUTÁVEIS (listas, dicts); com <code>int</code> ou <code>str</code>
+(imutáveis) o efeito nunca aparece, porque qualquer "modificação"
+já cria um objeto novo em vez de alterar o existente — daí a confusão de
+quem só testou com números antes de testar com listas.</p>
+<p>Escopo de nome segue a regra <strong>LEGB</strong>: Local → Enclosing →
+Global → Built-in — o interpretador procura nessa ordem até achar o nome.
+Para ESCREVER (não só ler) num escopo externo de dentro de uma função,
+você precisa de <code>global</code> ou <code>nonlocal</code> explícito;
+sem isso, uma atribuição dentro da função sempre cria uma variável LOCAL
+nova, mesmo que exista um nome igual fora — um dos erros mais comuns e
+mais confusos para quem começa (a função parece "não enxergar" a
+variável externa, quando na verdade criou uma sombra local dela).</p>
 
-                    "<h3>4. <code>match</code>: pattern matching estrutural (3.10+)</h3>"
-                    "<p>O <code>match</code> não é um <code>switch</code>: ele faz "
-                    "<em>destructuring</em> + checagem de tipo:</p>"
-                    "<pre><code>def handle(event: dict) -&gt; str:\n"
-                    "    match event:\n"
-                    "        case {\"type\": \"deploy\", \"env\": \"prod\", \"image\": img}:\n"
-                    "            return f\"PROD deploy: {img}\"\n"
-                    "        case {\"type\": \"deploy\", \"env\": env}:\n"
-                    "            return f\"{env} deploy\"\n"
-                    "        case {\"type\": \"rollback\", \"version\": v} if v &lt; 10:\n"
-                    "            return f\"rollback recente para {v}\"\n"
-                    "        case _:\n"
-                    "            return \"unknown\"</code></pre>"
-                    "<p>Útil pra parsear payloads de webhooks, eventos de SQS/PubSub, "
-                    "CloudEvents, etc.</p>"
+<h3>3. `for` itera sobre iteráveis, não sobre posições</h3>
+<pre><code>servers = ["web1", "web2", "db1"]
+ports   = [80, 80, 5432]
 
-                    "<h3>5. Funções: argumentos posicionais, kwargs, defaults</h3>"
-                    "<pre><code>def deploy(\n"
-                    "    image: str,                       # posicional\n"
-                    "    *,                                # tudo depois é keyword-only\n"
-                    "    replicas: int = 3,\n"
-                    "    canary: bool = False,\n"
-                    "    extra_env: dict[str, str] | None = None,\n"
-                    ") -&gt; bool:\n"
-                    "    ...\n\n"
-                    "deploy(\"web:1.2\", replicas=5, canary=True)</code></pre>"
-                    "<p>Boas práticas:</p>"
-                    "<ul>"
-                    "<li>Use <code>*</code> para forçar parâmetros como keyword-only quando "
-                    "houver ambiguidade (ex: 'deploy(\"web\", 5, True)' fica obscuro).</li>"
-                    "<li><strong>Nunca</strong> use objetos mutáveis como default: "
-                    "<code>def f(x=[])</code> compartilha a mesma lista entre chamadas. "
-                    "Use <code>None</code> e crie dentro.</li>"
-                    "<li><code>*args</code> e <code>**kwargs</code> recebem extras. Ótimo para "
-                    "decorators e wrappers; perigoso para APIs públicas (perde-se a "
-                    "documentação).</li>"
-                    "</ul>"
+for i, name in enumerate(servers, start=1):
+    print(f"#{i} {name}")
 
-                    "<h3>6. Type hints e por que escrevê-los</h3>"
-                    "<p>Type hints não afetam o runtime (Python continua dinâmico), mas "
-                    "habilitam ferramentas:</p>"
-                    "<ul>"
-                    "<li><strong>mypy</strong> / <strong>pyright</strong>: pegam bugs na CI "
-                    "(passar <code>None</code> onde se esperava <code>str</code>, esquecer "
-                    "branch, etc.).</li>"
-                    "<li><strong>IDE</strong>: autocomplete real, navegação, refactor seguro.</li>"
-                    "<li><strong>Documentação</strong>: a assinatura já é o contrato.</li>"
-                    "</ul>"
-                    "<pre><code>from typing import Iterable, Protocol\n\n"
-                    "def total(items: Iterable[float]) -&gt; float:\n"
-                    "    return sum(items)\n\n"
-                    "class Storer(Protocol):\n"
-                    "    def save(self, key: str, blob: bytes) -&gt; None: ...\n\n"
-                    "def upload(s: Storer, k: str, b: bytes) -&gt; None:\n"
-                    "    s.save(k, b)   # qualquer classe com .save() compatível serve</code></pre>"
-                    "<p>Em Python 3.10+ você usa <code>X | Y</code> (em vez de "
-                    "<code>Union[X, Y]</code>) e <code>list[int]</code> (em vez de "
-                    "<code>List[int]</code>).</p>"
+for name, port in zip(servers, ports, strict=True):
+    print(f"{name} :{port}")</code></pre>
+<p><code>for i in range(len(lista)): item = lista[i]</code> funciona, mas
+reimplementa manualmente o que <code>enumerate</code> já faz — e sinaliza
+para quem lê o código que talvez você não conheça o idioma da linguagem, o
+que gera desconfiança sobre o resto do código também. <code>zip(...,
+strict=True)</code> (3.10+) é o detalhe que vale conhecer: sem
+<code>strict</code>, zipar duas listas de tamanhos diferentes trunca
+silenciosamente na mais curta — um bug de "por que só processei metade dos
+servidores" que não gera nenhum erro, só resultado incompleto.
+<code>strict=True</code> levanta <code>ValueError</code> se os tamanhos
+não baterem.</p>
+<p><strong>Truthiness</strong>: em Python, <code>0</code>, <code>None</code>,
+coleções vazias e <code>False</code> são todos <em>falsy</em> — não porque
+sejam convertidos para booleano de alguma forma mágica, mas porque todo
+objeto implementa (ou herda) um método <code>__bool__</code> ou
+<code>__len__</code> que decide isso. <code>if len(lst) &gt; 0:</code>
+funciona, mas <code>if lst:</code> usa exatamente esse mecanismo e é o
+idioma esperado. Comparar com <code>True</code>/<code>False</code>
+explicitamente (<code>if x == True</code>) é redundante e frágil: prefira
+<code>if x:</code>, e para <code>None</code> especificamente use
+<code>is None</code> — comparação de identidade, não de valor, porque
+existe exatamente UM objeto <code>None</code> na memória inteira do
+processo.</p>
 
-                    "<h3>7. Strings: f-strings e formatação</h3>"
-                    "<p>F-strings (3.6+) são o padrão. Em 3.12+ aceitam aspas e backslashes:</p>"
-                    "<pre><code>name, port = \"web\", 80\n"
-                    "print(f\"{name}:{port}\")             # web:80\n"
-                    "print(f\"{name:&gt;10}|{port:05d}\")    # padding e zero-pad\n"
-                    "print(f\"{3.14159:.2f}\")             # 3.14\n"
-                    "print(f\"{name=}, {port=}\")           # debug: name='web', port=80</code></pre>"
-                    "<p>Para logs estruturados, prefira <code>logger.info(\"deploying %s\", "
-                    "name)</code> em vez de f-string, assim o log handler decide se "
-                    "renderiza (economia de CPU em DEBUG desativado).</p>"
+<h3>4. `match`: destructuring estrutural, não um switch disfarçado</h3>
+<p>Quem vê <code>match</code> pela primeira vez tende a tratá-lo como um
+<code>switch</code> de C — mas ele faz muito mais: cada <code>case</code>
+tenta DESESTRUTURAR o valor contra um padrão, extraindo variáveis no
+processo, não só comparar igualdade:</p>
+<pre><code>def handle(event: dict) -&gt; str:
+    match event:
+        case {"type": "deploy", "env": "prod", "image": img}:
+            return f"PROD deploy: {img}"
+        case {"type": "deploy", "env": env}:
+            return f"{env} deploy"
+        case {"type": "rollback", "version": v} if v &lt; 10:
+            return f"rollback recente para {v}"
+        case _:
+            return "unknown"</code></pre>
+<p>O primeiro <code>case</code> só casa se o dict tiver EXATAMENTE
+<code>type="deploy"</code> e <code>env="prod"</code>, e nesse casamento já
+extrai <code>img</code> como variável local — sem esse recurso, você
+escreveria três <code>if</code> aninhados checando cada chave manualmente.
+A cláusula <code>if v &lt; 10</code> no terceiro caso (um "guard") permite
+condição adicional além do formato. É o padrão certo para parsear payloads
+de webhook, eventos de fila (SQS, Pub/Sub) ou CloudEvents, onde a forma do
+JSON varia conforme o tipo de evento.</p>
 
-                    "<h3>8. Erros mais comuns para quem vem de outra linguagem</h3>"
-                    "<ul>"
-                    "<li>Comparar floats com <code>==</code>: use <code>math.isclose()</code>.</li>"
-                    "<li>Confundir <code>is</code> com <code>==</code>: <code>is</code> "
-                    "compara identidade (mesmo objeto), <code>==</code> compara valor.</li>"
-                    "<li>Usar <code>type(x) == int</code> em vez de "
-                    "<code>isinstance(x, int)</code>: o segundo aceita subclasses.</li>"
-                    "<li>Não usar context managers: arquivos, locks, conexões "
-                    "<strong>devem</strong> ser usados com <code>with</code>.</li>"
-                    "</ul>"
+<h3>5. Funções: por que `*` existe e por que default mutável é uma armadilha</h3>
+<pre><code>def deploy(
+    image: str,                       # posicional
+    *,                                # tudo depois é keyword-only
+    replicas: int = 3,
+    canary: bool = False,
+    extra_env: dict[str, str] | None = None,
+) -&gt; bool:
+    ...
+
+deploy("web:1.2", replicas=5, canary=True)</code></pre>
+<p>O <code>*</code> sozinho na assinatura não recebe nada — é um marcador:
+tudo que vem depois só pode ser passado por nome na chamada. Sem ele,
+<code>deploy("web", 5, True)</code> compilaria e rodaria, mas ninguém lendo
+essa chamada sabe o que "5" e "True" significam sem ir checar a
+assinatura; forçar keyword-only nesses casos transforma a chamada em
+autodocumentada.</p>
+<p>O bug mais citado da linguagem é <code>def f(x=[]):</code>. O valor
+default de um parâmetro é avaliado UMA VEZ, no momento em que a função é
+definida (não a cada chamada) — então aquela lista vazia é criada uma
+única vez e reutilizada como o MESMO objeto em toda chamada subsequente
+que não passar <code>x</code> explicitamente. Se uma chamada faz
+<code>x.append(1)</code>, a próxima chamada sem argumento recebe a lista já
+com aquele item, um vazamento de estado entre chamadas completamente
+invisível no código de quem só olha a assinatura. O idioma correto é
+<code>def f(x=None): x = x if x is not None else []</code>, criando a lista
+nova a cada chamada de verdade.</p>
+
+<h3>6. Type hints: contrato para ferramentas, não para o interpretador</h3>
+<p>Anotações de tipo NÃO mudam o comportamento em runtime — Python
+continua dinamicamente tipado, e nada impede de fato passar uma string
+onde a assinatura pede um <code>int</code>. O valor está inteiro nas
+ferramentas que leem essas anotações sem executar o código: mypy/pyright
+pegam a incompatibilidade de tipo na revisão (antes de rodar um teste
+sequer), o editor ganha autocomplete real baseado em tipo, e a assinatura
+vira documentação que não pode ficar desatualizada silenciosamente, porque
+o type checker reclama se ela mentir.</p>
+<pre><code>from typing import Iterable, Protocol
+
+def total(items: Iterable[float]) -&gt; float:
+    return sum(items)
+
+class Storer(Protocol):
+    def save(self, key: str, blob: bytes) -&gt; None: ...
+
+def upload(s: Storer, k: str, b: bytes) -&gt; None:
+    s.save(k, b)   # qualquer classe com .save() compatível serve</code></pre>
+<p><code>Protocol</code> é tipagem estrutural — <code>upload</code> aceita
+QUALQUER objeto que tenha um método <code>save(key, blob)</code> com essa
+assinatura, sem precisar herdar de <code>Storer</code> explicitamente
+("se anda como pato..."). Útil para desacoplar código de uma implementação
+concreta (um cliente S3, um cliente de disco local) sem herança forçada.
+Em 3.10+, prefira <code>X | Y</code> a <code>Union[X, Y]</code> e
+<code>list[int]</code> a <code>List[int]</code> — sintaxe nativa, sem
+import extra de <code>typing</code>.</p>
+
+<h3>7. F-strings: formatação e o motivo de evitá-las em log</h3>
+<pre><code>name, port = "web", 80
+print(f"{name}:{port}")             # web:80
+print(f"{name:&gt;10}|{port:05d}")    # padding e zero-pad
+print(f"{3.14159:.2f}")             # 3.14
+print(f"{name=}, {port=}")           # debug: name='web', port=80</code></pre>
+<p>F-strings são avaliadas IMEDIATAMENTE, no ponto em que a linha executa
+— é por isso que <code>logger.info(f"deploying {name}")</code> é uma
+prática desaconselhada: a interpolação (formatar a string) acontece
+sempre, mesmo se o nível de log DEBUG/INFO estiver desativado e a mensagem
+for descartada sem nunca ser escrita. <code>logger.info("deploying %s",
+name)</code> passa os argumentos separados, e o logging só formata a
+string se realmente for emitir o log — economia real de CPU em sistemas
+que geram muitos logs de debug desligados em produção.</p>
+
+<h3>8. Erros clássicos de quem vem de outra linguagem</h3>
+<ul>
+<li>Comparar floats com <code>==</code>: ponto flutuante tem erro de
+arredondamento (<code>0.1 + 0.2 != 0.3</code> em Python, como na maioria
+das linguagens); use <code>math.isclose()</code>.</li>
+<li>Confundir <code>is</code> com <code>==</code>: <code>is</code> compara
+IDENTIDADE (é o mesmo objeto na memória?), <code>==</code> compara VALOR
+(chama <code>__eq__</code>). Dois objetos podem ter o mesmo valor sem
+serem o mesmo objeto.</li>
+<li>Usar <code>type(x) == int</code> em vez de <code>isinstance(x, int)</code>:
+o primeiro rejeita subclasses de <code>int</code>; o segundo as aceita —
+importante em código que recebe objetos de bibliotecas que podem
+subclassificar tipos built-in.</li>
+<li>Não usar context managers: arquivos, locks e conexões abertos sem
+<code>with</code> ficam dependendo do garbage collector para fechar — em
+processos de longa duração (um daemon, um servidor), isso vaza descritores
+de arquivo até o processo cair.</li>
+</ul>"""
                 ),
                 "practical": (
                     "Crie um script <code>checklog.py</code> que: (1) recebe via "
@@ -274,145 +341,241 @@ PHASE6 = {
                     "todos os dias."
                 ),
                 "body": (
-                    "<h3>1. Listas, tuplas, sets, dicts: quando usar cada um</h3>"
-                    "<table>"
-                    "<thead><tr><th>Estrutura</th><th>Acesso</th><th>Mutável</th>"
-                    "<th>Caso típico</th></tr></thead>"
-                    "<tbody>"
-                    "<tr><td><code>list</code></td><td>O(1) por índice</td><td>Sim</td>"
-                    "<td>Coleção ordenada, fila de tarefas, batch.</td></tr>"
-                    "<tr><td><code>tuple</code></td><td>O(1) por índice</td><td>Não</td>"
-                    "<td>Registro fixo (lat, lng), retorno múltiplo.</td></tr>"
-                    "<tr><td><code>set</code></td><td>O(1) <em>in</em></td><td>Sim</td>"
-                    "<td>Deduplicação, testes de pertencimento.</td></tr>"
-                    "<tr><td><code>dict</code></td><td>O(1) por chave</td><td>Sim</td>"
-                    "<td>Mapeamento, contadores, configs.</td></tr>"
-                    "</tbody></table>"
-                    "<p>Regra prática: se você está fazendo <code>x in lista</code> dentro "
-                    "de loop, troque por <code>set</code>, vai de O(n) para O(1).</p>"
+                """<h3>1. Listas, tuplas, sets, dicts: a mesma escolha que decide performance</h3>
+<table>
+<thead><tr><th>Estrutura</th><th>Acesso</th><th>Mutável</th>
+<th>Caso típico</th></tr></thead>
+<tbody>
+<tr><td><code>list</code></td><td>O(1) por índice</td><td>Sim</td>
+<td>Coleção ordenada, fila de tarefas, batch.</td></tr>
+<tr><td><code>tuple</code></td><td>O(1) por índice</td><td>Não</td>
+<td>Registro fixo (lat, lng), retorno múltiplo.</td></tr>
+<tr><td><code>set</code></td><td>O(1) <em>in</em></td><td>Sim</td>
+<td>Deduplicação, testes de pertencimento.</td></tr>
+<tr><td><code>dict</code></td><td>O(1) por chave</td><td>Sim</td>
+<td>Mapeamento, contadores, configs.</td></tr>
+</tbody></table>
+<p>O que faz <code>list</code> e <code>dict</code>/<code>set</code>
+divergirem tanto em desempenho para busca é a estrutura por baixo:
+<code>list</code> é um array contíguo, então achar um item exige
+percorrer posição por posição (O(n)) até encontrar ou chegar ao fim; dict
+e set usam tabela hash, calculam a posição do item direto a partir do seu
+hash (O(1) esperado), sem percorrer nada. Na prática: qualquer
+<code>x in colecao</code> dentro de um loop que roda muitas vezes é
+candidato imediato a virar <code>set</code> — a mudança de O(n²) total
+para O(n) num laço de milhares de itens é a diferença entre milissegundos
+e minutos.</p>
 
-                    "<h3>2. Comprehensions: o pão com manteiga</h3>"
-                    "<pre><code># list\n"
-                    "ips = [host[\"ip\"] for host in hosts if host[\"alive\"]]\n\n"
-                    "# dict\n"
-                    "by_name = {h[\"name\"]: h for h in hosts}\n\n"
-                    "# set\n"
-                    "unique_envs = {h[\"env\"] for h in hosts}\n\n"
-                    "# generator (lazy)\n"
-                    "total = sum(h[\"cpu\"] for h in hosts)</code></pre>"
-                    "<p>Diretrizes:</p>"
-                    "<ul>"
-                    "<li>Comprehension é mais rápida que <code>for + append</code>.</li>"
-                    "<li>Não escreva comprehension de comprehension de comprehension. "
-                    "Se passou de duas linhas, vire um <code>for</code>.</li>"
-                    "<li>Para acumulação com efeito colateral (gravar em log, escrever "
-                    "no banco), use loop normal, não comprehension.</li>"
-                    "</ul>"
+<h3>2. Comprehensions: por que a versão "curta" também é mais rápida</h3>
+<pre><code># list
+ips = [host["ip"] for host in hosts if host["alive"]]
 
-                    "<h3>3. Generators: lazy evaluation</h3>"
-                    "<p>Generators produzem itens sob demanda (não constroem a lista "
-                    "inteira em memória). Essenciais para arquivos grandes:</p>"
-                    "<pre><code>def parse_log(path: str):\n"
-                    "    with open(path) as f:\n"
-                    "        for line in f:\n"
-                    "            if \"ERROR\" in line:\n"
-                    "                yield line.strip()\n\n"
-                    "for err in parse_log(\"/var/log/app.log\"):\n"
-                    "    print(err)</code></pre>"
-                    "<p>O arquivo pode ter 50 GB, só uma linha por vez na memória. "
-                    "Equivalentes idiomáticos:</p>"
-                    "<pre><code>errors = (line for line in open(\"app.log\") if \"ERROR\" in line)\n"
-                    "first_5 = list(itertools.islice(errors, 5))</code></pre>"
+# dict
+by_name = {h["name"]: h for h in hosts}
 
-                    "<h3>4. <code>collections</code>: a stdlib que ninguém lê</h3>"
-                    "<pre><code>from collections import Counter, defaultdict, deque, namedtuple, OrderedDict\n\n"
-                    "# Counter, conta ocorrências em uma linha\n"
-                    "c = Counter(line.split()[0] for line in open(\"access.log\"))\n"
-                    "c.most_common(10)        # top 10 IPs\n\n"
-                    "# defaultdict, sem precisar checar 'if key not in d'\n"
-                    "by_status = defaultdict(list)\n"
-                    "for req in requests:\n"
-                    "    by_status[req.status].append(req)\n\n"
-                    "# deque, fila com pop/append O(1) em ambas pontas\n"
-                    "rolling = deque(maxlen=100)   # janela deslizante\n"
-                    "for v in stream: rolling.append(v)\n\n"
-                    "# namedtuple, registro imutável com nomes\n"
-                    "Host = namedtuple(\"Host\", [\"name\", \"ip\", \"port\"])\n"
-                    "h = Host(\"web1\", \"10.0.1.5\", 80)\n"
-                    "print(h.ip)</code></pre>"
+# set
+unique_envs = {h["env"] for h in hosts}
 
-                    "<h3>5. <code>itertools</code>: combinatória e iteração eficiente</h3>"
-                    "<pre><code>import itertools as it\n\n"
-                    "# chain: concatenar iteráveis\n"
-                    "for x in it.chain(list_a, list_b, list_c): ...\n\n"
-                    "# groupby: agrupa adjacentes (precisa estar ordenado)\n"
-                    "logs.sort(key=lambda l: l.host)\n"
-                    "for host, entries in it.groupby(logs, key=lambda l: l.host):\n"
-                    "    print(host, sum(1 for _ in entries))\n\n"
-                    "# product: produto cartesiano\n"
-                    "for env, region in it.product([\"dev\",\"prod\"], [\"us-east\",\"sa-east\"]):\n"
-                    "    deploy(env, region)\n\n"
-                    "# islice: paginação\n"
-                    "page = list(it.islice(big_iter, 100, 200))   # itens 100..199</code></pre>"
+# generator (lazy)
+total = sum(h["cpu"] for h in hosts)</code></pre>
+<p>Comprehension não é só sintaxe compacta: o laço explícito
+<code>for item in x: resultado.append(f(item))</code> faz uma chamada de
+método (<code>.append</code>) por iteração, resolvida em Python puro; a
+comprehension é compilada para um bytecode dedicado que evita essa
+chamada repetida, executando mais perto do C internamente — o ganho de
+velocidade é real, não só estético. O limite é legibilidade: uma
+comprehension aninhada com dois filtros já é mais difícil de ler que um
+<code>for</code> equivalente, e nesse ponto a "elegância" vira o oposto —
+código que exige reler duas vezes para entender o que filtra e o que
+transforma. Para acumulação com efeito colateral (gravar em log, escrever
+no banco a cada item), use loop normal: o valor de uma comprehension é a
+lista que ela produz, e usá-la só pelo efeito colateral descartando o
+resultado confunde quem lê o motivo dela existir.</p>
 
-                    "<h3>6. <code>dataclasses</code>: o jeito moderno de criar registros</h3>"
-                    "<pre><code>from dataclasses import dataclass, field\n\n"
-                    "@dataclass(frozen=True, slots=True)\n"
-                    "class Host:\n"
-                    "    name: str\n"
-                    "    ip: str\n"
-                    "    port: int = 22\n"
-                    "    tags: tuple[str, ...] = ()\n\n"
-                    "h = Host(\"web1\", \"10.0.1.5\", tags=(\"prod\", \"web\"))\n"
-                    "# __init__, __repr__, __eq__ gerados automaticamente\n"
-                    "# frozen=True torna imutável (hashable)\n"
-                    "# slots=True economiza memória (sem __dict__)</code></pre>"
-                    "<p>Para validação automática + serialização, considere "
-                    "<strong>Pydantic v2</strong> (compatível com type hints).</p>"
+<h3>3. Generators: por que "não carrega tudo em memória" é literal</h3>
+<pre><code>def parse_log(path: str):
+    with open(path) as f:
+        for line in f:
+            if "ERROR" in line:
+                yield line.strip()
 
-                    "<h3>7. Slicing e desempacotamento</h3>"
-                    "<pre><code>lst = [10, 20, 30, 40, 50]\n"
-                    "lst[1:3]      # [20, 30]\n"
-                    "lst[::2]      # [10, 30, 50], step 2\n"
-                    "lst[::-1]     # [50, 40, 30, 20, 10], invertido\n\n"
-                    "# Desempacotamento estendido\n"
-                    "first, *middle, last = lst\n"
-                    "# first=10, middle=[20,30,40], last=50\n\n"
-                    "# Em dicts (3.5+)\n"
-                    "merged = {**defaults, **user_overrides, \"build\": 42}</code></pre>"
+for err in parse_log("/var/log/app.log"):
+    print(err)</code></pre>
+<p>Uma função com <code>yield</code> não roda quando chamada — chamar
+<code>parse_log(path)</code> devolve um objeto generator, e o CORPO da
+função só avança até o próximo <code>yield</code> quando alguém pede o
+próximo item (via <code>for</code>, <code>next()</code>, etc.). É por
+isso que um arquivo de 50 GB pode ser processado assim mantendo só UMA
+linha na memória por vez: o generator nunca materializa a lista inteira,
+processa e descarta linha a linha conforme o consumidor avança.</p>
+<pre><code>errors = (line for line in open("app.log") if "ERROR" in line)
+first_5 = list(itertools.islice(errors, 5))</code></pre>
+<p>A expressão geradora (parênteses em vez de colchetes) tem exatamente a
+mesma economia de memória de uma função com <code>yield</code>, útil
+quando o pipeline cabe numa linha.</p>
 
-                    "<h3>8. <code>enum.Enum</code> e <code>StrEnum</code> (3.11+)</h3>"
-                    "<pre><code>from enum import StrEnum, auto\n\n"
-                    "class Severity(StrEnum):\n"
-                    "    INFO  = \"info\"\n"
-                    "    WARN  = \"warn\"\n"
-                    "    ERROR = \"error\"\n"
-                    "    CRIT  = auto()\n\n"
-                    "if level &gt;= Severity.WARN:   # comparações como string\n"
-                    "    alert(level)</code></pre>"
-                    "<p>Substitui <em>magic strings</em> ('error', 'warn'...) por "
-                    "constantes type-safe.</p>"
+<h3>4. `collections`: nomes que resolvem padrões que todo mundo reinventa</h3>
+<pre><code>from collections import Counter, defaultdict, deque, namedtuple, OrderedDict
 
-                    "<h3>9. Caso real: pipeline de processamento de logs</h3>"
-                    "<pre><code>from collections import Counter\n"
-                    "import itertools as it, gzip, re\n\n"
-                    "PAT = re.compile(r'^(\\S+) .* \"(\\w+) (\\S+) HTTP/.*\" (\\d+)')\n\n"
-                    "def open_log(p):\n"
-                    "    return gzip.open(p, 'rt') if p.endswith('.gz') else open(p)\n\n"
-                    "def lines(paths):\n"
-                    "    for p in paths:\n"
-                    "        with open_log(p) as f:\n"
-                    "            yield from f\n\n"
-                    "def parsed(lines):\n"
-                    "    for ln in lines:\n"
-                    "        if (m := PAT.match(ln)):\n"
-                    "            yield m.group(1), m.group(2), m.group(3), int(m.group(4))\n\n"
-                    "files = [\"a.log\", \"b.log.gz\", \"c.log\"]\n"
-                    "errors = (r for r in parsed(lines(files)) if r[3] &gt;= 500)\n"
-                    "top = Counter(r[0] for r in it.islice(errors, 10000)).most_common(5)\n"
-                    "print(top)</code></pre>"
-                    "<p>Tudo lazy: lê só o necessário, processa em pipeline, sem carregar "
-                    "GB em memória.</p>"
+# Counter, conta ocorrências em uma linha
+c = Counter(line.split()[0] for line in open("access.log"))
+c.most_common(10)        # top 10 IPs
+
+# defaultdict, sem precisar checar 'if key not in d'
+by_status = defaultdict(list)
+for req in requests:
+    by_status[req.status].append(req)
+
+# deque, fila com pop/append O(1) em ambas pontas
+rolling = deque(maxlen=100)   # janela deslizante
+for v in stream: rolling.append(v)
+
+# namedtuple, registro imutável com nomes
+Host = namedtuple("Host", ["name", "ip", "port"])
+h = Host("web1", "10.0.1.5", 80)
+print(h.ip)</code></pre>
+<p><code>defaultdict</code> não é mágica: ao acessar uma chave ausente, ela
+chama a factory (<code>list</code>, <code>int</code>, o que você passar) e
+INSERE o resultado no dict antes de devolvê-lo — é por isso que checar
+<code>len(by_status)</code> depois de só LER uma chave inexistente pode
+mostrar uma entrada a mais do que você esperava, uma pegadinha comum. Já
+<code>deque</code> resolve um problema de desempenho que uma lista comum
+tem escondido: <code>list.pop(0)</code> (remover do início) é O(n) porque
+todo o resto do array precisa deslocar uma posição; <code>deque</code> é
+implementada como lista duplamente encadeada por blocos, com O(1) em
+ambas as pontas — essencial para filas e janelas deslizantes de tamanho
+fixo (<code>maxlen</code> descarta o item mais antigo automaticamente).</p>
+
+<h3>5. `itertools`: combinar iteráveis sem nunca materializar a combinação</h3>
+<pre><code>import itertools as it
+
+# chain: concatenar iteráveis
+for x in it.chain(list_a, list_b, list_c): ...
+
+# groupby: agrupa adjacentes (precisa estar ordenado)
+logs.sort(key=lambda l: l.host)
+for host, entries in it.groupby(logs, key=lambda l: l.host):
+    print(host, sum(1 for _ in entries))
+
+# product: produto cartesiano
+for env, region in it.product(["dev","prod"], ["us-east","sa-east"]):
+    deploy(env, region)
+
+# islice: paginação
+page = list(it.islice(big_iter, 100, 200))   # itens 100..199</code></pre>
+<p>O detalhe que pega quem usa <code>groupby</code> pela primeira vez:
+ele só agrupa itens ADJACENTES com a mesma chave — não agrupa a coleção
+inteira por chave como um <code>defaultdict</code> faria. Por isso o
+<code>logs.sort(...)</code> antes é obrigatório: sem ordenar primeiro, o
+mesmo host aparecendo em duas posições não-adjacentes vira dois grupos
+separados, um bug silencioso (o código roda, só produz contagens erradas)
+fácil de não perceber até alguém comparar com o total esperado.</p>
+
+<h3>6. `dataclasses`: registros com igualdade e repr de graça</h3>
+<pre><code>from dataclasses import dataclass, field
+
+@dataclass(frozen=True, slots=True)
+class Host:
+    name: str
+    ip: str
+    port: int = 22
+    tags: tuple[str, ...] = ()
+
+h = Host("web1", "10.0.1.5", tags=("prod", "web"))
+# __init__, __repr__, __eq__ gerados automaticamente
+# frozen=True torna imutável (hashable)
+# slots=True economiza memória (sem __dict__)</code></pre>
+<p>Sem <code>@dataclass</code>, uma classe de dados pura ainda precisa de
+<code>__init__</code> escrito à mão (atribuindo cada campo), e sem
+<code>__eq__</code> dois objetos com os MESMOS valores comparam como
+diferentes (comparação de identidade padrão), o que costuma surpreender
+em teste ("por que <code>Host(...) == Host(...)</code> deu False?").
+<code>slots=True</code> resolve um custo escondido: por padrão toda
+instância Python carrega um <code>__dict__</code> interno para permitir
+atributos dinâmicos — <code>slots</code> elimina esse dicionário e
+declara os atributos de antemão, economizando memória real quando você
+cria milhares de instâncias (um registro por linha de log, por exemplo).
+Para validação automática de tipo em runtime (rejeitar
+<code>port="oitenta"</code> na criação) e serialização para JSON,
+Pydantic v2 estende essa mesma ideia com verificação ativa.</p>
+
+<h3>7. Slicing e desempacotamento: os idiomas que substituem laços inteiros</h3>
+<pre><code>lst = [10, 20, 30, 40, 50]
+lst[1:3]      # [20, 30]
+lst[::2]      # [10, 30, 50], step 2
+lst[::-1]     # [50, 40, 30, 20, 10], invertido
+
+# Desempacotamento estendido
+first, *middle, last = lst
+# first=10, middle=[20,30,40], last=50
+
+# Em dicts (3.5+)
+merged = {**defaults, **user_overrides, "build": 42}</code></pre>
+<p><code>{**a, **b}</code> resolve conflito de chave por ORDEM de
+aparição: se a mesma chave existe em <code>a</code> e <code>b</code>, o
+valor de <code>b</code> vence — porque o dict resultante é construído
+inserindo as chaves de <code>a</code> primeiro e depois as de
+<code>b</code>, e inserir de novo uma chave existente sobrescreve.
+É o padrão idiomático para "config default + override do usuário",
+DESDE que o override venha depois no merge — inverter a ordem inverte
+qual lado ganha, um erro sutil de copiar o padrão sem pensar em qual
+dict deveria prevalecer.</p>
+
+<h3>8. `enum.Enum`/`StrEnum`: eliminar o typo que o interpretador não pega</h3>
+<pre><code>from enum import StrEnum, auto
+
+class Severity(StrEnum):
+    INFO  = "info"
+    WARN  = "warn"
+    ERROR = "error"
+    CRIT  = auto()
+
+if level &gt;= Severity.WARN:   # comparações como string
+    alert(level)</code></pre>
+<p>Uma "magic string" como <code>"eror"</code> (com erro de digitação)
+passa despercebida até o runtime — e às vezes nem aí, se a comparação
+simplesmente nunca casar e o código seguir por um caminho errado sem
+levantar exceção nenhuma. Um <code>Enum</code> transforma esse erro num
+<code>AttributeError</code> imediato (<code>Severity.EROR</code> não
+existe) já na revisão de código ou no primeiro type-check — o erro migra
+de "silencioso em produção" para "óbvio antes de commitar".
+<code>StrEnum</code> (3.11+) especificamente permite comparar e formatar
+os valores como string normal, útil quando o valor precisa ir para um
+log ou JSON sem conversão extra.</p>
+
+<h3>9. Caso real: um pipeline de log que nunca carrega o arquivo inteiro</h3>
+<pre><code>from collections import Counter
+import itertools as it, gzip, re
+
+PAT = re.compile(r'^(\\S+) .* "(\\w+) (\\S+) HTTP/.*" (\\d+)')
+
+def open_log(p):
+    return gzip.open(p, 'rt') if p.endswith('.gz') else open(p)
+
+def lines(paths):
+    for p in paths:
+        with open_log(p) as f:
+            yield from f
+
+def parsed(lines):
+    for ln in lines:
+        if (m := PAT.match(ln)):
+            yield m.group(1), m.group(2), m.group(3), int(m.group(4))
+
+files = ["a.log", "b.log.gz", "c.log"]
+errors = (r for r in parsed(lines(files)) if r[3] &gt;= 500)
+top = Counter(r[0] for r in it.islice(errors, 10000)).most_common(5)
+print(top)</code></pre>
+<p>Todo elo dessa cadeia é lazy: <code>lines()</code> abre um arquivo por
+vez e só lê a próxima linha quando pedida (via <code>yield from</code>,
+que repassa a iteração para o generator interno sem materializar nada);
+<code>parsed()</code> processa uma linha por vez; a expressão geradora
+<code>errors</code> filtra sem gerar lista intermediária. Nenhum ponto
+dessa cadeia carrega mais de uma linha na memória — é o motivo pelo qual
+esse padrão processa gigabytes de log com uso de memória constante e
+minúsculo, o oposto de <code>lines = open(f).readlines()</code>, que
+materializaria o arquivo inteiro de uma vez antes de processar qualquer
+coisa.</p>"""
                 ),
                 "practical": (
                     "Escreva <code>top_users.py</code> que lê um <code>access.log</code> "
@@ -529,155 +692,230 @@ PHASE6 = {
                     "para garantir cleanup."
                 ),
                 "body": (
-                    "<h3>1. Classes básicas</h3>"
-                    "<pre><code>class Server:\n"
-                    "    def __init__(self, name: str, ip: str, port: int = 22) -&gt; None:\n"
-                    "        self.name = name\n"
-                    "        self.ip   = ip\n"
-                    "        self.port = port\n\n"
-                    "    def url(self) -&gt; str:\n"
-                    "        return f\"ssh://{self.ip}:{self.port}\"\n\n"
-                    "s = Server(\"web1\", \"10.0.1.5\")\n"
-                    "print(s.url())</code></pre>"
-                    "<p>Pontos importantes:</p>"
-                    "<ul>"
-                    "<li><code>__init__</code> NÃO é o construtor, é o inicializador. O "
-                    "construtor real é <code>__new__</code> (raro mexer).</li>"
-                    "<li><code>self</code> é convenção, não palavra reservada. Mas todo "
-                    "mundo espera ver <code>self</code>.</li>"
-                    "<li>Em classes que viram registro/struct, prefira "
-                    "<code>@dataclass</code> em vez de escrever <code>__init__</code> e "
-                    "<code>__repr__</code> à mão.</li>"
-                    "</ul>"
+                """<h3>1. Classes: `__init__` inicializa, não constrói</h3>
+<pre><code>class Server:
+    def __init__(self, name: str, ip: str, port: int = 22) -&gt; None:
+        self.name = name
+        self.ip   = ip
+        self.port = port
 
-                    "<h3>2. Atributos de classe vs. de instância</h3>"
-                    "<pre><code>class Cache:\n"
-                    "    DEFAULT_TTL = 60                  # atributo de classe (compartilhado)\n\n"
-                    "    def __init__(self):\n"
-                    "        self.store = {}               # atributo de instância (próprio)\n"
-                    "\n"
-                    "Cache.DEFAULT_TTL = 120              # muda para todo mundo\n"
-                    "Cache().DEFAULT_TTL = 30             # cria instância: shadow!</code></pre>"
-                    "<p>Erro clássico: usar <code>list</code> como atributo de classe, "
-                    "vira estado global compartilhado entre todas as instâncias.</p>"
+    def url(self) -&gt; str:
+        return f"ssh://{self.ip}:{self.port}"
 
-                    "<h3>3. Herança e <code>super()</code></h3>"
-                    "<pre><code>class HTTPError(Exception):\n"
-                    "    pass\n\n"
-                    "class RetryableHTTPError(HTTPError):\n"
-                    "    def __init__(self, status: int, body: str):\n"
-                    "        super().__init__(f\"retryable {status}\")\n"
-                    "        self.status = status\n"
-                    "        self.body   = body</code></pre>"
-                    "<p>Herança múltipla existe e é útil para mixins (ex: "
-                    "<code>LoggingMixin</code>); evite hierarquias profundas.</p>"
+s = Server("web1", "10.0.1.5")
+print(s.url())</code></pre>
+<p>A distinção entre <code>__new__</code> (constrói o objeto, aloca a
+memória) e <code>__init__</code> (inicializa o que já foi alocado) raramente
+importa no dia a dia — mas explica por que subclassificar tipos imutáveis
+(<code>str</code>, <code>int</code>, <code>tuple</code>) exige sobrescrever
+<code>__new__</code>: nessas classes o VALOR é fixado na construção, antes
+de <code>__init__</code> rodar, então tentar mudar o valor em
+<code>__init__</code> simplesmente não tem efeito. <code>self</code> é só
+uma convenção de nome (o primeiro parâmetro de um método sempre recebe a
+instância, chame-o do que quiser), mas quebrar essa convenção confunde
+qualquer leitor treinado no idioma da linguagem. Para uma classe que só
+guarda dados (sem lógica além de acessar campos), escrever
+<code>__init__</code> e <code>__repr__</code> à mão é trabalho que
+<code>@dataclass</code> (visto na aula anterior) já resolve.</p>
 
-                    "<h3>4. Dunder methods que valem decorar</h3>"
-                    "<table>"
-                    "<thead><tr><th>Método</th><th>Para quê</th></tr></thead>"
-                    "<tbody>"
-                    "<tr><td><code>__repr__</code></td><td>Representação de debug. Sempre defina.</td></tr>"
-                    "<tr><td><code>__str__</code></td><td>Para humanos (<code>str(x)</code>, <code>print</code>).</td></tr>"
-                    "<tr><td><code>__eq__</code>, <code>__hash__</code></td><td>Igualdade e uso em set/dict.</td></tr>"
-                    "<tr><td><code>__len__</code>, <code>__contains__</code>, <code>__iter__</code></td><td>Coleções customizadas.</td></tr>"
-                    "<tr><td><code>__enter__</code>, <code>__exit__</code></td><td>Context manager (<code>with</code>).</td></tr>"
-                    "<tr><td><code>__call__</code></td><td>Faz a instância ser chamável como função.</td></tr>"
-                    "</tbody></table>"
+<h3>2. Atributo de classe vs. de instância: o bug que parece compartilhamento mágico</h3>
+<pre><code>class Cache:
+    DEFAULT_TTL = 60                  # atributo de classe (compartilhado)
 
-                    "<h3>5. Properties: getters/setters bem feitos</h3>"
-                    "<pre><code>class Replica:\n"
-                    "    def __init__(self, count: int):\n"
-                    "        self._count = 0\n"
-                    "        self.count = count   # passa pelo setter\n\n"
-                    "    @property\n"
-                    "    def count(self) -&gt; int:\n"
-                    "        return self._count\n\n"
-                    "    @count.setter\n"
-                    "    def count(self, v: int) -&gt; None:\n"
-                    "        if v &lt; 0 or v &gt; 100:\n"
-                    "            raise ValueError(f\"replicas {v} fora do range\")\n"
-                    "        self._count = v</code></pre>"
-                    "<p>Use property quando precisa validar ou calcular, não para todo "
-                    "atributo. Atributo público é a maneira pythonic; só promova a "
-                    "property quando há regra.</p>"
+    def __init__(self):
+        self.store = {}               # atributo de instância (próprio)
 
-                    "<h3>6. Hierarquia de exceções</h3>"
-                    "<p>Exceções são objetos de classes que descendem de "
-                    "<code>BaseException</code>:</p>"
-                    "<pre><code>BaseException\n"
-                    "├── SystemExit         # sys.exit(), não capture genericamente\n"
-                    "├── KeyboardInterrupt  # Ctrl+C, não capture genericamente\n"
-                    "├── GeneratorExit\n"
-                    "└── Exception          # ← capture este\n"
-                    "    ├── ValueError\n"
-                    "    ├── TypeError\n"
-                    "    ├── KeyError\n"
-                    "    ├── OSError\n"
-                    "    │   ├── FileNotFoundError\n"
-                    "    │   ├── PermissionError\n"
-                    "    │   ├── ConnectionError\n"
-                    "    │   └── TimeoutError\n"
-                    "    └── ...</code></pre>"
-                    "<p>Regras:</p>"
-                    "<ul>"
-                    "<li>Capture o <strong>mais específico</strong> que você sabe tratar. "
-                    "<code>except Exception</code> só na borda do programa (handlers HTTP, "
-                    "main loop). <code>except:</code> sem nada é proibido, captura até "
-                    "<code>KeyboardInterrupt</code>.</li>"
-                    "<li>Re-lançar com contexto: <code>raise NewError(...) from old</code>. "
-                    "O traceback fica encadeado, ótimo para debugging.</li>"
-                    "<li>Crie suas próprias classes para erros do domínio: "
-                    "<code>class DeployError(Exception): ...</code>.</li>"
-                    "</ul>"
+Cache.DEFAULT_TTL = 120              # muda para todo mundo
+Cache().DEFAULT_TTL = 30             # cria instância: shadow!</code></pre>
+<p>Um atributo definido no corpo da classe (fora de <code>__init__</code>)
+vive num único lugar — o objeto CLASSE, não em cada instância — e toda
+instância que não tem um atributo com esse nome próprio "enxerga" o valor
+da classe através dele. O erro mais citado da linguagem sai exatamente
+daqui: <code>class Cache: items = []</code> cria UMA lista compartilhada
+por todas as instâncias; <code>instancia.items.append(x)</code> modifica
+essa lista única, então uma segunda instância criada depois já nasce
+"vendo" os itens que a primeira inseriu — parece um bug de referência
+compartilhada porque é exatamente isso. A correção é declarar
+<code>self.items = []</code> dentro de <code>__init__</code>, criando uma
+lista nova por instância.</p>
 
-                    "<h3>7. <code>try / except / else / finally</code></h3>"
-                    "<pre><code>try:\n"
-                    "    cfg = load_config(path)\n"
-                    "except FileNotFoundError:\n"
-                    "    cfg = default_config()\n"
-                    "except OSError as e:\n"
-                    "    log.error(\"erro de I/O\", exc_info=e)\n"
-                    "    raise\n"
-                    "else:\n"
-                    "    log.info(\"config carregada\")    # só se NÃO houve exceção\n"
-                    "finally:\n"
-                    "    cleanup()                          # sempre roda</code></pre>"
-                    "<p>O <code>else</code> ajuda a manter o try com a operação "
-                    "<em>arriscada</em> apenas, facilita ver onde a exceção pode vir.</p>"
+<h3>3. Herança e `super()`: reaproveitar comportamento sem reescrevê-lo</h3>
+<pre><code>class HTTPError(Exception):
+    pass
 
-                    "<h3>8. Context managers e o <code>with</code></h3>"
-                    "<p>Garantem cleanup mesmo em caso de erro. O padrão é o "
-                    "<code>open()</code>:</p>"
-                    "<pre><code>with open(\"/etc/passwd\") as f:\n"
-                    "    data = f.read()\n"
-                    "# arquivo fechado AQUI, com ou sem exceção</code></pre>"
-                    "<p>Para criar o seu, use <code>contextlib.contextmanager</code>:</p>"
-                    "<pre><code>from contextlib import contextmanager\n"
-                    "import time\n\n"
-                    "@contextmanager\n"
-                    "def timer(label: str):\n"
-                    "    t = time.perf_counter()\n"
-                    "    try:\n"
-                    "        yield\n"
-                    "    finally:\n"
-                    "        print(f\"{label}: {time.perf_counter()-t:.3f}s\")\n\n"
-                    "with timer(\"deploy\"):\n"
-                    "    run_deploy()</code></pre>"
-                    "<p>Combinar múltiplos:</p>"
-                    "<pre><code>with open(\"a\") as a, open(\"b\") as b, lock:\n"
-                    "    process(a, b)</code></pre>"
+class RetryableHTTPError(HTTPError):
+    def __init__(self, status: int, body: str):
+        super().__init__(f"retryable {status}")
+        self.status = status
+        self.body   = body</code></pre>
+<p><code>super().__init__(...)</code> chama o inicializador da classe PAI
+antes de adicionar o comportamento próprio da subclasse — sem essa
+chamada, o <code>Exception</code> base nunca recebe a mensagem, e
+<code>str(erro)</code> viria vazio mesmo com <code>status</code> e
+<code>body</code> preenchidos. Herança múltipla existe em Python e é
+usada de forma legítima para mixins (uma classe pequena que só adiciona
+um comportamento, como <code>LoggingMixin</code>, combinada com a classe
+principal via <code>class Foo(LoggingMixin, Base):</code>) — mas
+hierarquias profundas (herança de herança de herança) tornam difícil
+saber de onde um método realmente vem, e a maioria dos designers de
+API modernos prefere composição (uma classe que GUARDA outra como
+atributo) a herança nesses casos.</p>
 
-                    "<h3>9. ExceptionGroup (3.11+) e <code>except*</code></h3>"
-                    "<p>Quando uma operação produz <em>vários</em> erros simultâneos "
-                    "(asyncio.gather, TaskGroup), use <code>ExceptionGroup</code>:</p>"
-                    "<pre><code>try:\n"
-                    "    async with asyncio.TaskGroup() as tg:\n"
-                    "        tg.create_task(fetch_a())\n"
-                    "        tg.create_task(fetch_b())\n"
-                    "except* ConnectionError as eg:\n"
-                    "    log.warn(\"conexão: %d falhas\", len(eg.exceptions))\n"
-                    "except* TimeoutError as eg:\n"
-                    "    log.warn(\"timeout: %d\", len(eg.exceptions))</code></pre>"
+<h3>4. Dunder methods: o contrato que faz sua classe se comportar como as nativas</h3>
+<table>
+<thead><tr><th>Método</th><th>Para quê</th></tr></thead>
+<tbody>
+<tr><td><code>__repr__</code></td><td>Representação de debug. Sempre defina.</td></tr>
+<tr><td><code>__str__</code></td><td>Para humanos (<code>str(x)</code>, <code>print</code>).</td></tr>
+<tr><td><code>__eq__</code>, <code>__hash__</code></td><td>Igualdade e uso em set/dict.</td></tr>
+<tr><td><code>__len__</code>, <code>__contains__</code>, <code>__iter__</code></td><td>Coleções customizadas.</td></tr>
+<tr><td><code>__enter__</code>, <code>__exit__</code></td><td>Context manager (<code>with</code>).</td></tr>
+<tr><td><code>__call__</code></td><td>Faz a instância ser chamável como função.</td></tr>
+</tbody></table>
+<p>Sem <code>__repr__</code>, imprimir um objeto no console ou num log
+produz algo como <code>&lt;Server object at 0x7f...&gt;</code> — o
+endereço de memória, zero informação útil para debugar. É a diferença
+entre um log que diz o que quebrou e um que só diz "alguma coisa do tipo
+Server quebrou em algum lugar". <code>__eq__</code> e <code>__hash__</code>
+andam juntos por uma regra que a linguagem impõe: se você define
+<code>__eq__</code> sem <code>__hash__</code>, a classe se torna
+NÃO-hashable automaticamente (Python assume que objetos "iguais" por
+valor não deveriam ter hashes diferentes, e por segurança desativa o hash
+default) — um efeito colateral que quebra silenciosamente qualquer código
+que tentasse usar essa classe como chave de dict ou item de set.</p>
+
+<h3>5. Properties: quando um atributo devia ser uma função disfarçada</h3>
+<pre><code>class Replica:
+    def __init__(self, count: int):
+        self._count = 0
+        self.count = count   # passa pelo setter
+
+    @property
+    def count(self) -&gt; int:
+        return self._count
+
+    @count.setter
+    def count(self, v: int) -&gt; None:
+        if v &lt; 0 or v &gt; 100:
+            raise ValueError(f"replicas {v} fora do range")
+        self._count = v</code></pre>
+<p>A vantagem de <code>@property</code> sobre um getter/setter explícito
+(<code>get_count()</code>/<code>set_count()</code>, comum em outras
+linguagens) é que o CÓDIGO CHAMADOR continua escrevendo
+<code>replica.count = 200</code> — sintaxe de atributo comum — enquanto
+por baixo roda a validação. Isso permite começar uma classe com atributo
+público simples e, se um dia surgir a necessidade de validar ou calcular,
+promover para property SEM quebrar quem já usa a classe (o código
+chamador não muda uma linha). O erro comum é o oposto: criar property
+para TODO atributo "por precaução", adicionando indireção onde não há
+regra nenhuma para justificar.</p>
+
+<h3>6. A hierarquia de exceções, e por que dois ramos são proibidos de capturar</h3>
+<pre><code>BaseException
+├── SystemExit         # sys.exit(), não capture genericamente
+├── KeyboardInterrupt  # Ctrl+C, não capture genericamente
+├── GeneratorExit
+└── Exception          # ← capture este
+    ├── ValueError
+    ├── TypeError
+    ├── KeyError
+    ├── OSError
+    │   ├── FileNotFoundError
+    │   ├── PermissionError
+    │   ├── ConnectionError
+    │   └── TimeoutError
+    └── ...</code></pre>
+<p><code>SystemExit</code> e <code>KeyboardInterrupt</code> herdam de
+<code>BaseException</code> diretamente, FORA da árvore de
+<code>Exception</code> — uma decisão de design deliberada: um
+<code>except Exception:</code> genérico não captura esses dois, então
+<code>sys.exit()</code> e Ctrl+C continuam funcionando mesmo dentro de
+código com tratamento de erro amplo. Um <code>except:</code> nu (sem tipo
+nenhum) captura TUDO, inclusive esses dois — é por isso que ele é proibido
+pelo PEP 8: um processo que deveria morrer com Ctrl+C simplesmente ignora
+o sinal e continua rodando, exigindo <code>kill -9</code> para parar de
+verdade. A regra prática é capturar o tipo MAIS ESPECÍFICO que você sabe
+tratar, deixar o resto propagar, e usar <code>raise NovoErro(...) from
+original</code> ao converter uma exceção de baixo nível numa exceção de
+domínio — o traceback resultante mostra a cadeia completa ("a exceção
+acima foi a causa direta de..."), em vez de esconder a causa raiz.</p>
+
+<h3>7. `try/except/else/finally`: quatro blocos, quatro papéis diferentes</h3>
+<pre><code>try:
+    cfg = load_config(path)
+except FileNotFoundError:
+    cfg = default_config()
+except OSError as e:
+    log.error("erro de I/O", exc_info=e)
+    raise
+else:
+    log.info("config carregada")    # só se NÃO houve exceção
+finally:
+    cleanup()                          # sempre roda</code></pre>
+<p><code>else</code> só executa se o bloco <code>try</code> terminou SEM
+levantar exceção — sua função é separar "o código que pode falhar" (dentro
+do <code>try</code>) de "o que só deveria rodar se deu tudo certo" (no
+<code>else</code>), evitando que uma exceção lançada acidentalmente pelo
+código de sucesso seja capturada pelo <code>except</code> errado, como se
+fosse um erro do <code>load_config</code>. <code>finally</code> roda
+SEMPRE — com exceção, sem exceção, ou mesmo se um <code>return</code>
+aconteceu dentro do <code>try</code> — o lugar certo para cleanup que não
+pode ser pulado de jeito nenhum.</p>
+
+<h3>8. Context managers: `with` como garantia, não como conveniência</h3>
+<p>O padrão mais visto é <code>open()</code>:</p>
+<pre><code>with open("/etc/passwd") as f:
+    data = f.read()
+# arquivo fechado AQUI, com ou sem exceção</code></pre>
+<p>A garantia que <code>with</code> oferece é justamente essa: o método
+<code>__exit__</code> do objeto roda MESMO que uma exceção estoure dentro
+do bloco — algo que um <code>f.close()</code> escrito na linha seguinte ao
+<code>open()</code> não garante, porque uma exceção no meio do caminho pula
+direto para o <code>except</code>/fim de função sem passar por aquele
+<code>close()</code>. Para criar o seu próprio, a forma mais simples é uma
+função geradora decorada:</p>
+<pre><code>from contextlib import contextmanager
+import time
+
+@contextmanager
+def timer(label: str):
+    t = time.perf_counter()
+    try:
+        yield
+    finally:
+        print(f"{label}: {time.perf_counter()-t:.3f}s")
+
+with timer("deploy"):
+    run_deploy()</code></pre>
+<p>O código antes do <code>yield</code> é o <code>__enter__</code>
+implícito; o que vem depois (dentro do <code>finally</code>, para rodar
+mesmo com exceção) é o <code>__exit__</code>. Múltiplos context managers
+podem ser combinados numa linha:</p>
+<pre><code>with open("a") as a, open("b") as b, lock:
+    process(a, b)</code></pre>
+
+<h3>9. `ExceptionGroup` e `except*` (3.11+): quando um erro não basta</h3>
+<p>Operações concorrentes (<code>asyncio.gather</code>,
+<code>TaskGroup</code>, visto na aula de concorrência) podem falhar em
+MAIS DE UMA tarefa ao mesmo tempo — um <code>try/except</code> tradicional
+só sabe lidar com uma exceção por vez, então antes do 3.11 a segunda falha
+simultânea ficava escondida ou exigia agregação manual.
+<code>ExceptionGroup</code> resolve isso agrupando todas as falhas
+ocorridas, e <code>except*</code> permite tratar cada TIPO de erro dentro
+do grupo separadamente:</p>
+<pre><code>try:
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(fetch_a())
+        tg.create_task(fetch_b())
+except* ConnectionError as eg:
+    log.warn("conexão: %d falhas", len(eg.exceptions))
+except* TimeoutError as eg:
+    log.warn("timeout: %d", len(eg.exceptions))</code></pre>
+<p><code>eg.exceptions</code> é uma tupla com TODAS as exceções daquele
+tipo que ocorreram nas tarefas do grupo — se três tarefas falharam com
+<code>ConnectionError</code> e uma com <code>TimeoutError</code>, os dois
+blocos <code>except*</code> rodam, cada um vendo só as exceções do seu
+tipo, sem que uma mascare a outra.</p>"""
                 ),
                 "practical": (
                     "Implemente uma classe <code>RetryableHTTP</code> com método "
@@ -797,133 +1035,206 @@ PHASE6 = {
                     "armadilhas comuns."
                 ),
                 "body": (
-                    "<h3>1. <code>pathlib</code>: o jeito moderno</h3>"
-                    "<p>Esqueça <code>os.path.join</code>. Use <code>Path</code>:</p>"
-                    "<pre><code>from pathlib import Path\n\n"
-                    "root   = Path(\"/var/log\")\n"
-                    "logfile = root / \"app\" / \"app.log\"        # operador / monta path\n"
-                    "logfile.exists()\n"
-                    "logfile.is_file()\n"
-                    "logfile.parent                            # /var/log/app\n"
-                    "logfile.suffix                            # '.log'\n"
-                    "logfile.stem                              # 'app'\n"
-                    "logfile.with_suffix(\".log.1\")             # rotação simples\n\n"
-                    "# Iterar diretório\n"
-                    "for log in Path(\"/var/log\").rglob(\"*.gz\"):\n"
-                    "    print(log, log.stat().st_size)\n\n"
-                    "# Ler/escrever em uma linha\n"
-                    "txt = Path(\"config.toml\").read_text(encoding=\"utf-8\")\n"
-                    "Path(\"out.json\").write_text(json.dumps(d, indent=2))</code></pre>"
-                    "<p>Vantagens: tipo dedicado, métodos descobertos pelo IDE, "
-                    "suporte a Windows e Linux nativo, encoding explícito.</p>"
+                """<h3>1. `pathlib`: um objeto que sabe o que é caminho, não uma string qualquer</h3>
+<pre><code>from pathlib import Path
 
-                    "<h3>2. Lendo arquivos sem se queimar</h3>"
-                    "<p>O grande inimigo é o <strong>encoding</strong>:</p>"
-                    "<pre><code># EVITE: assume locale do sistema (pode ser ASCII em servidor)\n"
-                    "open(\"file.txt\").read()\n\n"
-                    "# CERTO: explicite encoding e modo\n"
-                    "with open(\"file.txt\", encoding=\"utf-8\") as f:\n"
-                    "    data = f.read()</code></pre>"
-                    "<p>Para arquivos binários (imagens, gzip, parquet), use "
-                    "<code>\"rb\"</code> e <em>não</em> defina encoding. "
-                    "Para CSV use <code>csv.DictReader</code> em vez de "
-                    "<code>line.split(\",\")</code>, vírgula dentro de aspas vai "
-                    "estragar seu split.</p>"
+root   = Path("/var/log")
+logfile = root / "app" / "app.log"        # operador / monta path
+logfile.exists()
+logfile.is_file()
+logfile.parent                            # /var/log/app
+logfile.suffix                            # '.log'
+logfile.stem                              # 'app'
+logfile.with_suffix(".log.1")             # rotação simples
 
-                    "<h3>3. Configuração: JSON, YAML, TOML, .env</h3>"
-                    "<pre><code># JSON, stdlib, sem dependência\n"
-                    "import json\n"
-                    "cfg = json.loads(Path(\"cfg.json\").read_text())\n"
-                    "Path(\"out.json\").write_text(json.dumps(cfg, indent=2, sort_keys=True))\n\n"
-                    "# TOML, leitura nativa em 3.11+\n"
-                    "import tomllib\n"
-                    "with open(\"pyproject.toml\", \"rb\") as f:\n"
-                    "    pyproj = tomllib.load(f)\n\n"
-                    "# YAML, pacote externo\n"
-                    "import yaml          # pip install pyyaml\n"
-                    "k = yaml.safe_load(Path(\"deploy.yaml\").read_text())\n\n"
-                    "# .env, uso típico em containers\n"
-                    "from dotenv import load_dotenv  # pip install python-dotenv\n"
-                    "load_dotenv()\n"
-                    "import os; secret = os.environ[\"DB_PASSWORD\"]</code></pre>"
-                    "<p><strong>Importante</strong>: ao parsear YAML <em>sempre</em> use "
-                    "<code>safe_load</code>; <code>load</code> permite construir objetos "
-                    "Python arbitrários, vetor de RCE quando o YAML vem de fora.</p>"
+# Iterar diretório
+for log in Path("/var/log").rglob("*.gz"):
+    print(log, log.stat().st_size)
 
-                    "<h3>4. Argparse: a stdlib do CLI</h3>"
-                    "<pre><code>import argparse\n"
-                    "from pathlib import Path\n\n"
-                    "def main() -&gt; int:\n"
-                    "    p = argparse.ArgumentParser(prog=\"deploy\", description=\"Faz deploy.\")\n"
-                    "    p.add_argument(\"image\", help=\"Imagem Docker, ex: web:1.2\")\n"
-                    "    p.add_argument(\"--env\", choices=[\"dev\",\"stg\",\"prod\"], required=True)\n"
-                    "    p.add_argument(\"--replicas\", type=int, default=3)\n"
-                    "    p.add_argument(\"--config\", type=Path, default=Path(\"deploy.yaml\"))\n"
-                    "    p.add_argument(\"--dry-run\", action=\"store_true\")\n"
-                    "    p.add_argument(\"-v\", \"--verbose\", action=\"count\", default=0)\n"
-                    "    args = p.parse_args()\n"
-                    "    print(args)\n"
-                    "    return 0\n\n"
-                    "if __name__ == \"__main__\":\n"
-                    "    raise SystemExit(main())</code></pre>"
-                    "<p>Detalhes que evitam bug:</p>"
-                    "<ul>"
-                    "<li><code>type=Path</code> dá um objeto pronto.</li>"
-                    "<li><code>choices=[...]</code> valida e gera mensagem de erro humana.</li>"
-                    "<li><code>action=\"store_true\"</code> para flags booleanas.</li>"
-                    "<li><code>action=\"count\"</code> para verbosidade (<code>-v</code>, "
-                    "<code>-vv</code>...).</li>"
-                    "<li>Subcomandos via <code>add_subparsers</code> (mesmo padrão de "
-                    "<code>git commit</code>, <code>git push</code>).</li>"
-                    "</ul>"
+# Ler/escrever em uma linha
+txt = Path("config.toml").read_text(encoding="utf-8")
+Path("out.json").write_text(json.dumps(d, indent=2))</code></pre>
+<p><code>os.path.join("/var/log", "app.log")</code> e string concatenada
+com <code>+</code> parecem equivalentes a <code>Path("/var/log") /
+"app.log"</code>, mas divergem no que fazem quando o caminho tem
+separadores errados (barra em vez de contrabarra no Windows) ou barras
+duplicadas: <code>Path</code> normaliza isso automaticamente, porque
+representa o caminho como estrutura, não como texto — cada operação
+(<code>.parent</code>, <code>.suffix</code>, <code>/</code>) manipula a
+estrutura, não faz manipulação de string por trás dos panos. É por isso
+que código que mistura <code>os.path</code> com strings manuais tende a
+quebrar silenciosamente em outro sistema operacional, enquanto código
+todo em <code>pathlib</code> costuma simplesmente funcionar nos dois.</p>
 
-                    "<h3>5. <code>typer</code> e <code>click</code>: CLIs ergonômicos</h3>"
-                    "<p>Para ferramentas que crescem, <code>typer</code> (que usa type "
-                    "hints) escala melhor:</p>"
-                    "<pre><code>import typer\n"
-                    "app = typer.Typer()\n\n"
-                    "@app.command()\n"
-                    "def deploy(image: str, env: str = \"dev\", replicas: int = 3) -&gt; None:\n"
-                    "    typer.echo(f\"Deploying {image} to {env} ×{replicas}\")\n\n"
-                    "@app.command()\n"
-                    "def rollback(version: int) -&gt; None:\n"
-                    "    typer.echo(f\"Rolling back to {version}\")\n\n"
-                    "if __name__ == \"__main__\":\n"
-                    "    app()</code></pre>"
+<h3>2. Ler arquivos sem se queimar no encoding</h3>
+<pre><code># EVITE: assume locale do sistema (pode ser ASCII em servidor)
+open("file.txt").read()
 
-                    "<h3>6. Logs estruturados</h3>"
-                    "<p>Use <code>logging</code> da stdlib em vez de <code>print()</code>:</p>"
-                    "<pre><code>import logging\n\n"
-                    "logging.basicConfig(\n"
-                    "    level=logging.INFO,\n"
-                    "    format=\"%(asctime)s %(levelname)s %(name)s :: %(message)s\",\n"
-                    ")\n"
-                    "log = logging.getLogger(\"deploy\")\n\n"
-                    "log.info(\"deploying image=%s env=%s\", image, env)   # lazy interpolation\n"
-                    "log.warning(\"replicas=%d acima do recomendado\", n)\n"
-                    "log.error(\"falhou\", exc_info=True)                  # inclui traceback</code></pre>"
-                    "<p>Em produção, troque o handler para emitir JSON "
-                    "(<code>python-json-logger</code>), facilita ingestão em "
-                    "Datadog/Loki/CloudWatch.</p>"
+# CERTO: explicite encoding e modo
+with open("file.txt", encoding="utf-8") as f:
+    data = f.read()</code></pre>
+<p>Sem <code>encoding="utf-8"</code> explícito, Python usa o encoding
+PADRÃO DO SISTEMA OPERACIONAL onde o script roda — que costuma ser UTF-8
+no seu laptop e pode ser ASCII ou latin-1 em algumas configurações de
+servidor Linux minimalista. O bug clássico é "funciona na minha máquina,
+quebra no servidor": um arquivo com acento ou emoji lido sem encoding
+explícito estoura <code>UnicodeDecodeError</code> só no ambiente onde o
+locale padrão diverge — e como isso depende de configuração de sistema,
+não do código em si, é um dos bugs mais frustrantes de reproduzir
+localmente. Para binários (imagem, gzip, parquet), use modo
+<code>"rb"</code> SEM encoding — misturar os dois é erro de tipo, texto
+binário não tem "codificação de caracteres" para decodificar. Para CSV,
+prefira <code>csv.DictReader</code> a <code>linha.split(",")</code>: uma
+vírgula dentro de um campo entre aspas (comum em campos com texto livre)
+quebra o split ingênuo de um jeito que só aparece quando alguém digita um
+valor com vírgula, meses depois do código estar em produção.</p>
 
-                    "<h3>7. Saída para stdout vs. stderr</h3>"
-                    "<p>Convenção: <code>stdout</code> para o resultado do programa "
-                    "(parsável); <code>stderr</code> para diagnóstico humano. Quem usa "
-                    "seu CLI em pipeline depende disso:</p>"
-                    "<pre><code>import sys\n"
-                    "print(json.dumps(result))                # stdout\n"
-                    "print(\"WARN: ...\", file=sys.stderr)      # stderr</code></pre>"
+<h3>3. Configuração: por que YAML tem um modo "seguro" e o outro não deveria existir</h3>
+<pre><code># JSON, stdlib, sem dependência
+import json
+cfg = json.loads(Path("cfg.json").read_text())
+Path("out.json").write_text(json.dumps(cfg, indent=2, sort_keys=True))
 
-                    "<h3>8. Códigos de saída</h3>"
-                    "<p>Convenção POSIX: 0 = sucesso, 1 = erro genérico, 2 = uso "
-                    "incorreto. Documente os outros que você usar:</p>"
-                    "<pre><code>def main() -&gt; int:\n"
-                    "    try: do_work()\n"
-                    "    except ConfigError: return 65   # data format error\n"
-                    "    except NetworkError: return 69  # service unavailable\n"
-                    "    return 0\n\n"
-                    "if __name__ == \"__main__\":\n"
-                    "    raise SystemExit(main())</code></pre>"
+# TOML, leitura nativa em 3.11+
+import tomllib
+with open("pyproject.toml", "rb") as f:
+    pyproj = tomllib.load(f)
+
+# YAML, pacote externo
+import yaml          # pip install pyyaml
+k = yaml.safe_load(Path("deploy.yaml").read_text())
+
+# .env, uso típico em containers
+from dotenv import load_dotenv  # pip install python-dotenv
+load_dotenv()
+import os; secret = os.environ["DB_PASSWORD"]</code></pre>
+<p>O motivo de <code>yaml.safe_load</code> existir como função separada
+de <code>yaml.load</code> é sério: a especificação YAML permite tags como
+<code>!!python/object:algum.modulo.Classe</code> que instruem o parser a
+INSTANCIAR uma classe Python arbitrária com os dados do documento —
+<code>yaml.load</code> (sem o "safe") obedece essa tag, o que significa
+que um YAML malicioso pode fazer o parser executar código Python
+arbitrário só de ser carregado, antes mesmo do seu programa "usar" o
+conteúdo. <code>safe_load</code> restringe a estruturas de dados simples
+(dict, list, str, int...), sem capacidade de instanciar nada. Qualquer
+YAML que vier de fora do seu controle direto (upload de usuário, arquivo
+de outro time, configuração baixada de rede) deve SEMPRE passar por
+<code>safe_load</code>, nunca por <code>load</code>.</p>
+
+<h3>4. `argparse`: a stdlib que documenta a si mesma</h3>
+<pre><code>import argparse
+from pathlib import Path
+
+def main() -&gt; int:
+    p = argparse.ArgumentParser(prog="deploy", description="Faz deploy.")
+    p.add_argument("image", help="Imagem Docker, ex: web:1.2")
+    p.add_argument("--env", choices=["dev","stg","prod"], required=True)
+    p.add_argument("--replicas", type=int, default=3)
+    p.add_argument("--config", type=Path, default=Path("deploy.yaml"))
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument("-v", "--verbose", action="count", default=0)
+    args = p.parse_args()
+    print(args)
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())</code></pre>
+<p>Cada <code>add_argument</code> gera automaticamente a mensagem de
+<code>--help</code>, valida o tipo antes do seu código rodar
+(<code>type=Path</code> entrega um objeto pronto, não uma string que você
+converteria manualmente) e recusa entrada fora de <code>choices</code>
+com mensagem legível — sem <code>argparse</code>, cada uma dessas
+validações seria código manual espalhado pelo <code>main()</code>, fácil
+de esquecer em algum argumento. <code>action="count"</code> para
+verbosidade é o padrão por trás de <code>-v</code>/<code>-vv</code>/<code>-vvv</code>
+que ferramentas Unix usam há décadas: cada ocorrência da flag soma 1 ao
+contador. Subcomandos (<code>add_subparsers</code>) seguem o mesmo padrão
+de <code>git commit</code>/<code>git push</code> — cada subcomando com seu
+próprio conjunto de argumentos, compartilhando só os globais.</p>
+
+<h3>5. `typer`: a mesma coisa, derivada das type hints</h3>
+<pre><code>import typer
+app = typer.Typer()
+
+@app.command()
+def deploy(image: str, env: str = "dev", replicas: int = 3) -&gt; None:
+    typer.echo(f"Deploying {image} to {env} ×{replicas}")
+
+@app.command()
+def rollback(version: int) -&gt; None:
+    typer.echo(f"Rolling back to {version}")
+
+if __name__ == "__main__":
+    app()</code></pre>
+<p>A vantagem de <code>typer</code> sobre <code>argparse</code> cru
+aparece quando o CLI cresce: em vez de declarar cada argumento duas vezes
+(uma no <code>add_argument</code>, outra ao ler <code>args.campo</code>
+no corpo da função), a assinatura da própria função Python — com type
+hints — já É a definição do CLI. Menos código duplicado significa menos
+chance de a validação e o uso divergirem conforme o projeto evolui.</p>
+
+<h3>6. Logging estruturado: por que não é só um `print` mais chique</h3>
+<pre><code>import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s :: %(message)s",
+)
+log = logging.getLogger("deploy")
+
+log.info("deploying image=%s env=%s", image, env)   # lazy interpolation
+log.warning("replicas=%d acima do recomendado", n)
+log.error("falhou", exc_info=True)                  # inclui traceback</code></pre>
+<p>Passar os valores como argumentos separados
+(<code>"%s", image</code>) em vez de já formatados
+(<code>f"...{image}..."</code>) não é estilo — é <em>lazy evaluation</em>:
+o logging só formata a string se o nível configurado realmente for emitir
+aquele log. Com f-string, a interpolação acontece SEMPRE, mesmo que o
+nível DEBUG esteja desativado e a mensagem seja descartada em seguida —
+desperdício real de CPU em sistemas que emitem centenas de logs DEBUG por
+segundo mas rodam em produção com nível INFO. Em produção, trocar o
+handler para emitir JSON estruturado (via <code>python-json-logger</code>)
+facilita a ingestão por Datadog, Loki ou CloudWatch, que esperam campos
+separados (timestamp, nível, mensagem) em vez de uma linha de texto livre
+para fazer parsing.</p>
+
+<h3>7. stdout vs. stderr: o contrato que faz seu CLI compor com outros</h3>
+<pre><code>import sys
+print(json.dumps(result))                # stdout
+print("WARN: ...", file=sys.stderr)      # stderr</code></pre>
+<p>A convenção POSIX reserva <code>stdout</code> para o RESULTADO do
+programa — o que outro programa vai consumir via pipe — e
+<code>stderr</code> para diagnóstico dirigido a um humano. Misturar os
+dois (um <code>print("Iniciando deploy...")</code> solto antes do JSON de
+resultado) quebra qualquer composição com outra ferramenta:
+<code>meu-cli | jq '.status'</code> falha ao tentar parsear "Iniciando
+deploy..." como JSON, porque essa linha nunca deveria ter ido para
+stdout. Todo log de progresso, aviso ou erro que um humano lê no
+terminal — mas que um script consumidor não deveria ver — vai para
+stderr.</p>
+
+<h3>8. Códigos de saída: o protocolo que scripts de automação verificam</h3>
+<pre><code>def main() -&gt; int:
+    try: do_work()
+    except ConfigError: return 65   # data format error
+    except NetworkError: return 69  # service unavailable
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())</code></pre>
+<p>0 significa sucesso; qualquer outro valor significa falha — é o único
+sinal que um script de shell chamando seu CLI (<code>if
+meu-cli; then ...</code>) enxerga sem precisar interpretar a saída de
+texto. Convenção POSIX (definida em <code>sysexits.h</code>) reserva
+faixas específicas — 65 para erro de formato de dados, 69 para serviço
+indisponível — que ferramentas de automação de infraestrutura já
+reconhecem; usar 1 genérico para tudo obriga quem integra seu CLI a ler
+mensagens de texto para saber o que deu errado, em vez de checar o código
+de saída. O padrão <code>def main() -&gt; int: ...</code> +
+<code>raise SystemExit(main())</code> mantém a lógica de saída dentro de
+uma função testável — testar que <code>main()</code> retorna 65 num
+cenário de configuração inválida é trivial; testar que o PROCESSO sai com
+código 65 exigiria rodar um subprocesso de verdade a cada teste.</p>"""
                 ),
                 "practical": (
                     "Crie um CLI <code>diskhog.py</code> que: (1) recebe via "
@@ -1352,129 +1663,216 @@ compara em tempo constante, independente de quantos caracteres coincidem.</p>"""
                     "segurança, lendo saída em tempo real e tratando erros corretamente."
                 ),
                 "body": (
-                    "<h3>1. <code>subprocess.run</code>: o jeito moderno</h3>"
-                    "<pre><code>import subprocess\n\n"
-                    "result = subprocess.run(\n"
-                    "    [\"kubectl\", \"get\", \"pods\", \"-n\", namespace, \"-o\", \"json\"],\n"
-                    "    capture_output=True,\n"
-                    "    text=True,        # decodifica como str (utf-8 default)\n"
-                    "    timeout=30,\n"
-                    "    check=True,       # raise CalledProcessError se exit != 0\n"
-                    ")\n"
-                    "data = json.loads(result.stdout)</code></pre>"
-                    "<p>Detalhes que importam:</p>"
-                    "<ul>"
-                    "<li><strong>Lista, não string</strong>: <code>[\"ls\", \"-l\", path]</code> "
-                    "evita que <code>path = \"; rm -rf /\"</code> vire injeção. "
-                    "<code>shell=True</code> só com input controlado.</li>"
-                    "<li><strong>timeout</strong>: igual em HTTP, comandos podem travar "
-                    "(rede lenta, prompt esperando input).</li>"
-                    "<li><strong>check=True</strong>: sem isso, exit code != 0 passa "
-                    "despercebido.</li>"
-                    "<li><strong>text=True</strong>: dá <code>str</code> em vez de "
-                    "<code>bytes</code>; com <code>encoding=</code> para casos "
-                    "específicos.</li>"
-                    "</ul>"
+                """<h3>1. `subprocess.run`: por que lista de argumentos é a defesa, não um detalhe de estilo</h3>
+<pre><code>import subprocess
 
-                    "<h3>2. Streaming de saída em tempo real</h3>"
-                    "<p>Para processos longos (terraform apply, build), você quer ver "
-                    "logs enquanto rodam, não esperar terminar:</p>"
-                    "<pre><code>p = subprocess.Popen(\n"
-                    "    [\"terraform\", \"apply\", \"-auto-approve\"],\n"
-                    "    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,\n"
-                    ")\n"
-                    "for line in p.stdout:\n"
-                    "    print(line, end=\"\")          # mostra na hora\n"
-                    "    log_file.write(line)\n"
-                    "rc = p.wait(timeout=3600)\n"
-                    "if rc != 0:\n"
-                    "    raise SystemExit(rc)</code></pre>"
+result = subprocess.run(
+    ["kubectl", "get", "pods", "-n", namespace, "-o", "json"],
+    capture_output=True,
+    text=True,        # decodifica como str (utf-8 default)
+    timeout=30,
+    check=True,       # raise CalledProcessError se exit != 0
+)
+data = json.loads(result.stdout)</code></pre>
+<p>Quando você passa uma LISTA de argumentos, cada elemento vai direto
+para o processo filho como um argumento separado — o sistema operacional
+nunca interpreta espaço, ponto-e-vírgula, pipe ou <code>$()</code> dentro
+de um desses elementos como sintaxe especial, porque não existe shell
+nenhum no meio interpretando a string. É por isso que
+<code>["ls", "-l", caminho]</code> é seguro mesmo se
+<code>caminho = "; rm -rf /"</code>: esse valor inteiro vira UM argumento
+literal chamado "; rm -rf /", não uma sequência de comandos. Já
+<code>os.system(f"ls {caminho}")</code> ou <code>subprocess.run(cmd,
+shell=True)</code> passam a string inteira para um shell de verdade
+(<code>/bin/sh</code>) interpretá-la — e nesse ponto, qualquer
+metacaractere shell dentro do valor vira comando executável. Esse é o
+motivo pelo qual "concatenar comando + input do usuário" é uma das
+classes mais antigas e mais exploradas de vulnerabilidade em ferramentas
+de automação.</p>
+<p><code>timeout</code> existe pela mesma razão que em chamadas HTTP: um
+processo filho pode travar esperando algo que nunca chega (um prompt
+interativo pedindo confirmação, uma conexão de rede que não cai) e sem
+timeout o script pai fica pendurado indefinidamente. <code>check=True</code>
+converte um exit code diferente de zero em exceção — sem ele, um comando
+que falhou silenciosamente (o kubectl não achou o namespace, por exemplo)
+deixa <code>result.stdout</code> vazio ou com erro, e o
+<code>json.loads</code> seguinte quebra de um jeito que não deixa claro
+que o comando em si já tinha falhado antes.</p>
 
-                    "<h3>3. Variáveis de ambiente para subprocessos</h3>"
-                    "<pre><code>env = os.environ.copy()       # NUNCA passe os.environ direto e mute\n"
-                    "env[\"KUBECONFIG\"] = \"/etc/k8s/prod.kubeconfig\"\n"
-                    "env[\"AWS_PROFILE\"] = \"prod\"\n"
-                    "subprocess.run([\"kubectl\", \"get\", \"ns\"], env=env, check=True)</code></pre>"
-                    "<p>Cuidado: redirigir <code>env=</code> remove TUDO que não está "
-                    "no dict. Comece com <code>os.environ.copy()</code> e modifique.</p>"
+<h3>2. Streaming: por que esperar o processo terminar às vezes é a escolha errada</h3>
+<pre><code>p = subprocess.Popen(
+    ["terraform", "apply", "-auto-approve"],
+    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+)
+for line in p.stdout:
+    print(line, end="")          # mostra na hora
+    log_file.write(line)
+rc = p.wait(timeout=3600)
+if rc != 0:
+    raise SystemExit(rc)</code></pre>
+<p><code>subprocess.run</code> só devolve controle quando o processo
+termina — para um <code>terraform apply</code> de 20 minutos, isso
+significa ficar sem NENHUM feedback até o fim, sem saber se está
+progredindo ou travado. <code>Popen</code> devolve controle imediatamente
+com um handle para o processo ainda rodando; iterar
+<code>p.stdout</code> linha a linha entrega cada linha assim que o
+processo a produz, permitindo mostrar progresso em tempo real e gravar
+num arquivo de log simultaneamente — o mesmo padrão por trás de qualquer
+ferramenta de CI que mostra logs "ao vivo" em vez de só o resultado
+final.</p>
 
-                    "<h3>4. <code>shell=True</code>: quando e como</h3>"
-                    "<p>Útil para usar pipes ou redirecionamento <em>nativo</em>:</p>"
-                    "<pre><code>cmd = \"ps aux | grep nginx | wc -l\"\n"
-                    "subprocess.run(cmd, shell=True, check=True)</code></pre>"
-                    "<p>Risco: se a string tiver entrada do usuário, é injeção. "
-                    "Alternativa segura para pipes:</p>"
-                    "<pre><code>p1 = subprocess.Popen([\"ps\", \"aux\"], stdout=subprocess.PIPE)\n"
-                    "p2 = subprocess.Popen([\"grep\", \"nginx\"], stdin=p1.stdout, stdout=subprocess.PIPE)\n"
-                    "p1.stdout.close()\n"
-                    "out = p2.communicate()[0]</code></pre>"
-                    "<p>Ou use <code>shlex.quote</code> para escapar quando shell=True "
-                    "for inevitável:</p>"
-                    "<pre><code>import shlex\n"
-                    "subprocess.run(f\"ls {shlex.quote(user_path)}\", shell=True)</code></pre>"
+<h3>3. Variáveis de ambiente do subprocesso: herdar por padrão, sobrescrever com cuidado</h3>
+<pre><code>env = os.environ.copy()       # NUNCA passe os.environ direto e mute
+env["KUBECONFIG"] = "/etc/k8s/prod.kubeconfig"
+env["AWS_PROFILE"] = "prod"
+subprocess.run(["kubectl", "get", "ns"], env=env, check=True)</code></pre>
+<p>O parâmetro <code>env=</code>, quando informado, SUBSTITUI o ambiente
+inteiro do processo filho — não faz merge com o ambiente atual. Passar
+<code>env={"KUBECONFIG": "..."}</code> diretamente (sem o
+<code>.copy()</code> de <code>os.environ</code> antes) apaga
+<code>PATH</code>, <code>HOME</code>, <code>USER</code> e tudo mais que o
+processo filho normalmente herdaria — um erro que se manifesta como o
+subprocesso não encontrando binários que deveriam estar no PATH, um
+sintoma que não aponta óbvio para "esqueci de copiar o ambiente".</p>
 
-                    "<h3>5. Operações de filesystem (<code>shutil</code>, <code>os</code>)</h3>"
-                    "<pre><code>import shutil, os\n\n"
-                    "shutil.copy2(src, dst)            # mantém metadata\n"
-                    "shutil.copytree(src, dst)         # recursivo\n"
-                    "shutil.rmtree(path, ignore_errors=False)\n"
-                    "shutil.move(src, dst)             # atômico no MESMO FS\n"
-                    "shutil.disk_usage(\"/\")            # (total, used, free) bytes\n"
-                    "shutil.which(\"terraform\")         # localiza binário no PATH\n\n"
-                    "os.replace(src, dst)              # move atômico\n"
-                    "os.path.expanduser(\"~/.kube/config\")\n"
-                    "os.environ.get(\"HOME\", \"/root\")</code></pre>"
+<h3>4. `shell=True`: quando o risco vale o benefício, e a alternativa sem shell</h3>
+<pre><code>cmd = "ps aux | grep nginx | wc -l"
+subprocess.run(cmd, shell=True, check=True)</code></pre>
+<p>Pipes e redirecionamento nativos do shell (<code>|</code>,
+<code>&gt;</code>, <code>&amp;&amp;</code>) só existem quando um shell de
+verdade interpreta a string — é o único caso onde <code>shell=True</code>
+economiza trabalho de verdade. O risco é o mesmo da seção 1: se qualquer
+parte dessa string vier de fora (usuário, arquivo, variável de rede), é
+injeção. Para o mesmo resultado sem abrir mão da segurança de listas,
+compõe-se o pipeline manualmente encadeando processos:</p>
+<pre><code>p1 = subprocess.Popen(["ps", "aux"], stdout=subprocess.PIPE)
+p2 = subprocess.Popen(["grep", "nginx"], stdin=p1.stdout, stdout=subprocess.PIPE)
+p1.stdout.close()
+out = p2.communicate()[0]</code></pre>
+<p>Quando <code>shell=True</code> for realmente inevitável (compatibilidade
+com um script legado, por exemplo) e parte do comando vier de fora,
+<code>shlex.quote</code> escapa a string de forma que o shell a trate como
+um único token literal, neutralizando metacaracteres:</p>
+<pre><code>import shlex
+subprocess.run(f"ls {shlex.quote(user_path)}", shell=True)</code></pre>
 
-                    "<h3>6. Tempfiles seguros</h3>"
-                    "<pre><code>import tempfile\n\n"
-                    "# arquivo temporário\n"
-                    "with tempfile.NamedTemporaryFile(\"w\", suffix=\".yaml\", delete=False) as f:\n"
-                    "    f.write(yaml_content)\n"
-                    "    tmp_path = f.name\n"
-                    "try:\n"
-                    "    subprocess.run([\"kubectl\", \"apply\", \"-f\", tmp_path], check=True)\n"
-                    "finally:\n"
-                    "    Path(tmp_path).unlink(missing_ok=True)\n\n"
-                    "# diretório temporário (cleanup automático)\n"
-                    "with tempfile.TemporaryDirectory() as d:\n"
-                    "    Path(d, \"file.txt\").write_text(\"oi\")\n"
-                    "    # diretório removido ao sair</code></pre>"
+<h3>5. Operações de filesystem: `shutil` e as garantias que cada função oferece</h3>
+<pre><code>import shutil, os
 
-                    "<h3>7. SSH remoto e Fabric</h3>"
-                    "<pre><code>from fabric import Connection   # pip install fabric\n\n"
-                    "with Connection(\"deploy@10.0.1.5\", connect_kwargs={\"key_filename\": \"~/.ssh/id_ed25519\"}) as c:\n"
-                    "    r = c.run(\"systemctl status nginx\", warn=True)\n"
-                    "    if r.return_code != 0:\n"
-                    "        c.sudo(\"systemctl restart nginx\")\n"
-                    "    c.put(\"./nginx.conf\", \"/etc/nginx/conf.d/app.conf\")\n"
-                    "    c.run(\"nginx -t && systemctl reload nginx\")</code></pre>"
-                    "<p>Para inventários grandes, <strong>Ansible</strong> sempre será "
-                    "melhor que script Python, mas Fabric vale para tarefas pontuais.</p>"
+shutil.copy2(src, dst)            # mantém metadata
+shutil.copytree(src, dst)         # recursivo
+shutil.rmtree(path, ignore_errors=False)
+shutil.move(src, dst)             # atômico no MESMO FS
+shutil.disk_usage("/")            # (total, used, free) bytes
+shutil.which("terraform")         # localiza binário no PATH
 
-                    "<h3>8. Tratamento de sinais</h3>"
-                    "<p>Em ferramentas longas, capture <code>SIGINT</code>/<code>SIGTERM</code> "
-                    "para fazer cleanup:</p>"
-                    "<pre><code>import signal\n\n"
-                    "shutdown = False\n"
-                    "def _handle(sig, frame):\n"
-                    "    global shutdown; shutdown = True\n\n"
-                    "signal.signal(signal.SIGTERM, _handle)\n"
-                    "signal.signal(signal.SIGINT,  _handle)\n\n"
-                    "while not shutdown:\n"
-                    "    do_iteration()\n"
-                    "cleanup()</code></pre>"
+os.replace(src, dst)              # move atômico
+os.path.expanduser("~/.kube/config")
+os.environ.get("HOME", "/root")</code></pre>
+<p>A palavra "atômico" em <code>shutil.move</code>/<code>os.replace</code>
+tem um limite importante: a operação só é atômica (tudo-ou-nada, sem
+estado intermediário visível) quando origem e destino estão no MESMO
+sistema de arquivos, porque nesse caso o SO só precisa atualizar um
+ponteiro de diretório (a chamada <code>rename(2)</code> do kernel). Entre
+filesystems diferentes (por exemplo, mover de <code>/tmp</code> tmpfs
+para um disco montado), não existe rename direto possível — a biblioteca
+cai automaticamente para copiar e depois apagar o original, uma operação
+que pode ser interrompida no meio, deixando os dois lados parcialmente
+escritos se o processo morrer entre a cópia e a remoção.</p>
 
-                    "<h3>9. Boas práticas para scripts em produção</h3>"
-                    "<ul>"
-                    "<li>Sempre <code>check=True</code>, sempre <code>timeout</code>.</li>"
-                    "<li>Nunca <code>shell=True</code> com input do usuário não escapado.</li>"
-                    "<li>Logue o comando exato (com <code>shlex.join</code>) antes de executar.</li>"
-                    "<li>Para retry, use lib (tenacity), não escreva o seu.</li>"
-                    "<li>Defina <code>cwd=</code> explicitamente quando relevante.</li>"
-                    "<li>Não dependa de <code>$PATH</code> em produção: use caminho "
-                    "absoluto (<code>/usr/local/bin/kubectl</code>) ou "
-                    "<code>shutil.which</code>.</li>"
-                    "</ul>"
+<h3>6. Arquivos temporários: por que `mktemp` foi abandonado</h3>
+<pre><code>import tempfile
+
+# arquivo temporário
+with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+    f.write(yaml_content)
+    tmp_path = f.name
+try:
+    subprocess.run(["kubectl", "apply", "-f", tmp_path], check=True)
+finally:
+    Path(tmp_path).unlink(missing_ok=True)
+
+# diretório temporário (cleanup automático)
+with tempfile.TemporaryDirectory() as d:
+    Path(d, "file.txt").write_text("oi")
+    # diretório removido ao sair</code></pre>
+<p>A função antiga <code>tempfile.mktemp()</code> só GERAVA um nome de
+arquivo supostamente único, sem criar o arquivo — deixando uma janela de
+tempo entre "gerar o nome" e "abrir o arquivo" onde outro processo (ou um
+atacante local) poderia criar um arquivo ou symlink com aquele mesmo nome
+primeiro, uma race condition clássica (a mesma classe de bug do ataque
+histórico em <code>/tmp</code> compartilhado, visto na aula de Linux da
+Fase 1). <code>NamedTemporaryFile</code> resolve isso criando o arquivo
+ATOMICAMENTE já no momento de gerar o nome, sem essa janela.</p>
+
+<h3>7. SSH remoto: Fabric para tarefas pontuais, Ansible para escala</h3>
+<pre><code>from fabric import Connection   # pip install fabric
+
+with Connection("deploy@10.0.1.5", connect_kwargs={"key_filename": "~/.ssh/id_ed25519"}) as c:
+    r = c.run("systemctl status nginx", warn=True)
+    if r.return_code != 0:
+        c.sudo("systemctl restart nginx")
+    c.put("./nginx.conf", "/etc/nginx/conf.d/app.conf")
+    c.run("nginx -t && systemctl reload nginx")</code></pre>
+<p><code>warn=True</code> em <code>c.run</code> é o oposto do
+<code>check=True</code> visto na seção 1: em vez de levantar exceção
+automática num exit code não-zero, deixa o código checar
+<code>r.return_code</code> manualmente e decidir o que fazer — necessário
+aqui porque "nginx não está rodando" é um resultado ESPERADO que o script
+trata (reiniciando), não um erro fatal que deveria abortar. Para um
+inventário de dezenas ou centenas de hosts, Ansible ganha por já ter
+paralelismo, idempotência declarativa e um formato de playbook que
+outra pessoa do time consegue ler sem saber Python — Fabric fica melhor
+para automação pontual onde escrever Python de verdade (com toda a lógica
+condicional da linguagem) compensa o esforço extra.</p>
+
+<h3>8. Sinais: encerrar graciosamente em vez de morrer no meio de uma escrita</h3>
+<pre><code>import signal
+
+shutdown = False
+def _handle(sig, frame):
+    global shutdown; shutdown = True
+
+signal.signal(signal.SIGTERM, _handle)
+signal.signal(signal.SIGINT,  _handle)
+
+while not shutdown:
+    do_iteration()
+cleanup()</code></pre>
+<p>Sem esse handler, um <code>SIGTERM</code> (o sinal padrão que
+<code>systemctl stop</code> ou um orquestrador de containers envia antes
+de matar um processo) interrompe o programa NO PONTO EXATO onde ele
+estava — no meio de uma escrita em arquivo, de uma transação, de uma
+chamada de rede — sem chance de fechar recursos ou salvar estado.
+Registrar um handler transforma o sinal numa flag que o loop principal
+verifica no seu próprio ritmo, terminando a iteração em andamento antes
+de sair. <code>SIGKILL</code> (o "mate agora" do <code>kill -9</code>) não
+pode ser interceptado por nenhum handler — é o sinal de último recurso
+quando um processo ignora <code>SIGTERM</code> repetidamente.</p>
+
+<h3>9. Checklist para scripts que vão rodar em produção</h3>
+<ul>
+<li>Sempre <code>check=True</code>, sempre <code>timeout</code> — as duas
+proteções mais baratas contra as duas falhas mais comuns (erro
+silencioso, travamento indefinido).</li>
+<li>Nunca <code>shell=True</code> com input do usuário não escapado —
+mesmo "só uma vez, script interno" vira problema quando o script cresce e
+alguém adiciona uma fonte de input que você não previu.</li>
+<li>Logue o comando exato (com <code>shlex.join</code>, que faz o inverso
+de <code>shlex.quote</code>) antes de executar — quando algo falhar em
+produção, poder ver o comando literal que rodou economiza horas de
+"reproduzir o bug".</li>
+<li>Para retry, use uma lib madura (tenacity) em vez de reescrever
+backoff exponencial à mão — a versão "rápida" costuma esquecer jitter ou
+limite máximo de tentativas.</li>
+<li>Defina <code>cwd=</code> explicitamente quando o comando depende de
+diretório de trabalho — não assuma que o script sempre roda de onde você
+testou.</li>
+<li>Não dependa de <code>$PATH</code> em produção: use caminho absoluto
+ou <code>shutil.which</code> e falhe cedo se o binário não existir, em
+vez de um erro genérico de "comando não encontrado" no meio da
+execução.</li>
+</ul>"""
                 ),
                 "practical": (
                     "Crie <code>backup_db.py</code> que: (1) executa "
@@ -1593,136 +1991,230 @@ compara em tempo constante, independente de quantos caracteres coincidem.</p>"""
                     "<code>asyncio</code> tomou o mundo de I/O em rede."
                 ),
                 "body": (
-                    "<h3>1. O GIL em uma frase</h3>"
-                    "<p>O <strong>Global Interpreter Lock</strong> é um lock no "
-                    "interpretador CPython que garante que apenas <em>uma</em> thread "
-                    "Python execute bytecode por vez. Consequências:</p>"
-                    "<ul>"
-                    "<li><strong>CPU-bound (cálculo puro)</strong>: threads NÃO ajudam. "
-                    "Use <code>multiprocessing</code> ou bibliotecas em C que liberam o "
-                    "GIL (numpy, polars).</li>"
-                    "<li><strong>I/O-bound (rede, disco)</strong>: threads e asyncio "
-                    "ajudam, durante I/O o GIL é liberado.</li>"
-                    "</ul>"
-                    "<p>Em Python 3.13 começou a aparecer <strong>free-threading</strong> "
-                    "(no-GIL builds), mas para 99% dos times ainda é experimental.</p>"
+                """<h3>1. O GIL: um lock que explica por que "mais threads" às vezes não ajuda nada</h3>
+<p>O <strong>Global Interpreter Lock</strong> é um lock único, dentro do
+próprio interpretador CPython, que garante que apenas UMA thread execute
+bytecode Python por vez — mesmo numa máquina com 32 núcleos, só um núcleo
+está rodando código Python num dado instante. Isso existe porque o
+gerenciamento de memória do CPython (contagem de referências para saber
+quando liberar um objeto) não é thread-safe por padrão, e o GIL é a
+solução histórica mais simples para isso: em vez de sincronizar cada
+acesso a cada objeto individualmente (caro e complexo), trava tudo com um
+lock só. A consequência prática divide o mundo em dois:</p>
+<ul>
+<li><strong>CPU-bound (cálculo puro)</strong>: threads NÃO ajudam — o
+GIL garante que só uma rode por vez, então 4 threads calculando não são
+mais rápidas que 1, só trocam de contexto entre si sem ganho real. Use
+<code>multiprocessing</code> (processos separados, cada um com seu
+próprio interpretador e seu próprio GIL) ou bibliotecas em C que liberam o
+GIL explicitamente durante o cálculo pesado (numpy, polars).</li>
+<li><strong>I/O-bound (rede, disco)</strong>: threads e asyncio ajudam de
+verdade, porque toda chamada de I/O no CPython LIBERA o GIL enquanto
+espera o kernel responder — é justamente essa espera (não o cálculo) que
+domina o tempo de uma chamada de rede, e é nela que outra thread pode
+rodar.</li>
+</ul>
+<p>Python 3.13 introduziu builds experimentais sem GIL
+(<em>free-threading</em>), mas para a maioria dos times ainda é cedo para
+depender disso em produção — o ecossistema de extensões em C ainda está
+migrando para suportar esse modo.</p>
 
-                    "<h3>2. Threads para I/O</h3>"
-                    "<pre><code>from concurrent.futures import ThreadPoolExecutor\n\n"
-                    "def fetch(url: str) -&gt; tuple[str, int]:\n"
-                    "    r = requests.get(url, timeout=10)\n"
-                    "    return url, r.status_code\n\n"
-                    "with ThreadPoolExecutor(max_workers=20) as pool:\n"
-                    "    for url, status in pool.map(fetch, urls):\n"
-                    "        print(url, status)</code></pre>"
-                    "<p><code>ThreadPoolExecutor</code> é a forma idiomática, esquece "
-                    "<code>threading.Thread</code> direto. Para 50 chamadas HTTP em "
-                    "paralelo dá ganho enorme em relação a sequencial.</p>"
+<h3>2. Threads para I/O: o caso simples que resolve 80% dos scripts</h3>
+<pre><code>from concurrent.futures import ThreadPoolExecutor
 
-                    "<h3>3. <code>asyncio</code>: cooperative multitasking</h3>"
-                    "<p>Em vez de threads, uma única thread alterna entre tarefas em "
-                    "pontos de espera (<code>await</code>):</p>"
-                    "<pre><code>import asyncio, httpx\n\n"
-                    "async def fetch(client: httpx.AsyncClient, url: str) -&gt; int:\n"
-                    "    r = await client.get(url, timeout=10)\n"
-                    "    return r.status_code\n\n"
-                    "async def main():\n"
-                    "    async with httpx.AsyncClient() as client:\n"
-                    "        async with asyncio.TaskGroup() as tg:    # 3.11+\n"
-                    "            tasks = [tg.create_task(fetch(client, u)) for u in urls]\n"
-                    "        for t in tasks:\n"
-                    "            print(t.result())\n\n"
-                    "asyncio.run(main())</code></pre>"
-                    "<p>Vantagens sobre threads: menos overhead (10000 tarefas viáveis), "
-                    "estado compartilhado é seguro (sem race), API mais clara. "
-                    "Desvantagem: precisa lib async em todo lugar, chamar função "
-                    "síncrona bloqueante 'congela' o event loop.</p>"
+def fetch(url: str) -&gt; tuple[str, int]:
+    r = requests.get(url, timeout=10)
+    return url, r.status_code
 
-                    "<h3>4. <code>asyncio</code>: padrões essenciais</h3>"
-                    "<pre><code># gather: aguarda várias tarefas, retorna lista\n"
-                    "results = await asyncio.gather(t1, t2, t3, return_exceptions=True)\n\n"
-                    "# wait_for: timeout em uma corrotina\n"
-                    "try:\n"
-                    "    r = await asyncio.wait_for(slow_op(), timeout=5)\n"
-                    "except asyncio.TimeoutError: ...\n\n"
-                    "# semaphore: limita concorrência\n"
-                    "sem = asyncio.Semaphore(10)\n"
-                    "async def fetch(url):\n"
-                    "    async with sem:\n"
-                    "        return await client.get(url)\n\n"
-                    "# cancelar tarefa\n"
-                    "task.cancel()\n"
-                    "try: await task\n"
-                    "except asyncio.CancelledError: ...</code></pre>"
+with ThreadPoolExecutor(max_workers=20) as pool:
+    for url, status in pool.map(fetch, urls):
+        print(url, status)</code></pre>
+<p><code>ThreadPoolExecutor</code> gerencia o ciclo de vida das threads
+(criação, distribuição de trabalho, coleta de resultado, encerramento) —
+usar <code>threading.Thread</code> diretamente exige reimplementar
+manualmente uma fila de trabalho e coordenação de encerramento, trabalho
+que raramente compensa fazer à mão. Para 50 chamadas HTTP sequenciais
+esperando ~200ms cada, o tempo total seria ~10 segundos; com 20 threads
+paralelas, o tempo se aproxima do tempo da chamada MAIS LENTA, não da
+soma — porque enquanto uma thread espera resposta de rede (GIL liberado),
+outra já está fazendo sua própria chamada.</p>
 
-                    "<h3>5. Misturando sync e async</h3>"
-                    "<p>Chamar função sync bloqueante em async <em>congela</em> tudo. "
-                    "Use <code>run_in_executor</code> ou <code>asyncio.to_thread</code> "
-                    "(3.9+):</p>"
-                    "<pre><code>import asyncio\n\n"
-                    "def cpu_bound(n: int) -&gt; int:\n"
-                    "    return sum(range(n))\n\n"
-                    "async def main():\n"
-                    "    r = await asyncio.to_thread(cpu_bound, 10**7)\n"
-                    "    print(r)</code></pre>"
+<h3>3. `asyncio`: uma thread só, alternando em pontos explícitos de espera</h3>
+<p>Em vez de várias threads do sistema operacional, <code>asyncio</code>
+roda tudo numa única thread que alterna entre tarefas exatamente nos
+pontos marcados com <code>await</code> — um modelo cooperativo em vez de
+preemptivo (o sistema operacional decidindo quando trocar de thread):</p>
+<pre><code>import asyncio, httpx
 
-                    "<h3>6. <code>multiprocessing</code> para CPU-bound</h3>"
-                    "<pre><code>from concurrent.futures import ProcessPoolExecutor\n\n"
-                    "def hash_file(path: str) -&gt; tuple[str, str]:\n"
-                    "    import hashlib\n"
-                    "    h = hashlib.sha256(Path(path).read_bytes()).hexdigest()\n"
-                    "    return path, h\n\n"
-                    "with ProcessPoolExecutor() as pool:\n"
-                    "    for p, sha in pool.map(hash_file, files):\n"
-                    "        print(p, sha)</code></pre>"
-                    "<p>Cada worker é um processo Python separado, ignora o GIL e usa "
-                    "todos os cores. Custo: serialização (pickle) entre processos. Não "
-                    "compartilhe objetos grandes; passe paths/IDs.</p>"
+async def fetch(client: httpx.AsyncClient, url: str) -&gt; int:
+    r = await client.get(url, timeout=10)
+    return r.status_code
 
-                    "<h3>7. Sincronização: Lock, Queue, Event</h3>"
-                    "<pre><code># threading\n"
-                    "from threading import Lock\n"
-                    "counter = 0\n"
-                    "lock = Lock()\n"
-                    "def inc():\n"
-                    "    global counter\n"
-                    "    with lock:\n"
-                    "        counter += 1     # GIL não garante atomicidade de operações compostas\n\n"
-                    "# producer/consumer\n"
-                    "from queue import Queue\n"
-                    "q = Queue(maxsize=100)\n"
-                    "def producer():\n"
-                    "    for item in source: q.put(item)\n"
-                    "def consumer():\n"
-                    "    while True:\n"
-                    "        item = q.get()\n"
-                    "        process(item); q.task_done()</code></pre>"
+async def main():
+    async with httpx.AsyncClient() as client:
+        async with asyncio.TaskGroup() as tg:    # 3.11+
+            tasks = [tg.create_task(fetch(client, u)) for u in urls]
+        for t in tasks:
+            print(t.result())
 
-                    "<h3>8. Cuidados clássicos</h3>"
-                    "<ul>"
-                    "<li><strong>Race condition</strong>: contadores, dicts, listas em "
-                    "thread NÃO são atômicos para incrementos/append. Use Lock.</li>"
-                    "<li><strong>Deadlock</strong>: pegando dois locks em ordens "
-                    "diferentes em threads diferentes. Sempre adquira em ordem fixa.</li>"
-                    "<li><strong>asyncio bloqueio acidental</strong>: chamar "
-                    "<code>requests.get</code> dentro de async congela o loop. Use "
-                    "<code>httpx.AsyncClient</code> ou <code>aiohttp</code>.</li>"
-                    "<li><strong>multiprocessing no Windows</strong>: precisa "
-                    "<code>if __name__ == \"__main__\":</code> ao redor do código que "
-                    "spawna, senão o filho re-executa o módulo todo.</li>"
-                    "</ul>"
+asyncio.run(main())</code></pre>
+<p>A vantagem sobre threads aparece em escala: cada thread do SO consome
+memória (pilha própria, tipicamente megabytes) e troca de contexto tem
+custo real de kernel — dez mil threads simultâneas é inviável. Dez mil
+tarefas asyncio (objetos leves gerenciados pelo próprio interpretador)
+são rotineiras. Como só uma "linha de execução" roda por vez e ela só
+troca em pontos explícitos de <code>await</code>, também não há race
+condition entre tarefas asyncio tocando o mesmo estado — ao contrário de
+threads, onde qualquer acesso concorrente a dado compartilhado precisa de
+lock. O preço: TODA a cadeia de chamadas precisa ser assíncrona; uma
+única função síncrona bloqueante chamada de dentro de uma corrotina
+CONGELA o event loop inteiro, travando todas as outras tarefas até ela
+terminar (seção 5).</p>
 
-                    "<h3>9. Quando usar o quê, guia rápido</h3>"
-                    "<table>"
-                    "<thead><tr><th>Caso</th><th>Escolha</th></tr></thead>"
-                    "<tbody>"
-                    "<tr><td>20 chamadas HTTP em script único</td><td>ThreadPoolExecutor (simples)</td></tr>"
-                    "<tr><td>Servidor web com 1000+ conexões</td><td>asyncio + uvicorn/FastAPI</td></tr>"
-                    "<tr><td>Processar 50 GB de logs com regex</td><td>ProcessPoolExecutor</td></tr>"
-                    "<tr><td>Hash de muitos arquivos</td><td>ProcessPoolExecutor</td></tr>"
-                    "<tr><td>Numpy/Polars cálculos</td><td>Já libera o GIL, threads bastam</td></tr>"
-                    "<tr><td>Apenas alguns segundos sequenciais</td><td>Não otimize</td></tr>"
-                    "</tbody></table>"
+<h3>4. Padrões essenciais de `asyncio`</h3>
+<pre><code># gather: aguarda várias tarefas, retorna lista
+results = await asyncio.gather(t1, t2, t3, return_exceptions=True)
+
+# wait_for: timeout em uma corrotina
+try:
+    r = await asyncio.wait_for(slow_op(), timeout=5)
+except asyncio.TimeoutError: ...
+
+# semaphore: limita concorrência
+sem = asyncio.Semaphore(10)
+async def fetch(url):
+    async with sem:
+        return await client.get(url)
+
+# cancelar tarefa
+task.cancel()
+try: await task
+except asyncio.CancelledError: ...</code></pre>
+<p><code>return_exceptions=True</code> em <code>gather</code> muda o
+comportamento de forma que vale entender: sem essa flag, se UMA tarefa
+levantar exceção, <code>gather</code> propaga essa exceção imediatamente
+e cancela as outras — útil quando qualquer falha invalida o resultado
+inteiro. Com a flag, cada posição da lista de resultado recebe ou o valor
+de sucesso ou o OBJETO da exceção (não relançada), permitindo processar
+"o que deu certo" mesmo com falhas parciais — o padrão certo para,
+por exemplo, checar a saúde de 50 serviços onde alguns poderem estar fora
+do ar é esperado e não deve derrubar o restante da checagem.
+<code>Semaphore</code> limita quantas corrotinas passam do
+<code>async with sem</code> ao mesmo tempo — sem isso, disparar 10.000
+requisições simultâneas para uma API pode derrubá-la ou estourar limites
+de rate limit que ela mesma impõe.</p>
+
+<h3>5. Misturar sync e async: onde o congelamento acontece</h3>
+<pre><code>import asyncio
+
+def cpu_bound(n: int) -&gt; int:
+    return sum(range(n))
+
+async def main():
+    r = await asyncio.to_thread(cpu_bound, 10**7)
+    print(r)</code></pre>
+<p>Chamar uma função síncrona bloqueante (uma soma pesada, uma chamada de
+biblioteca que não é async, um <code>requests.get</code> comum dentro de
+código <code>async def</code>) trava o ÚNICO thread que o event loop usa
+— e como não há mais nenhuma outra thread rodando as demais tarefas,
+TODAS elas param até essa chamada terminar, mesmo tarefas que não têm
+nada a ver com ela. <code>asyncio.to_thread</code> (3.9+) resolve isso
+delegando a chamada síncrona para um pool de threads separado, liberando
+o event loop principal para continuar processando outras tarefas enquanto
+aquela chamada bloqueante roda em paralelo, numa thread de verdade.</p>
+
+<h3>6. `multiprocessing`: contornar o GIL usando processos, não threads</h3>
+<pre><code>from concurrent.futures import ProcessPoolExecutor
+
+def hash_file(path: str) -&gt; tuple[str, str]:
+    import hashlib
+    h = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    return path, h
+
+with ProcessPoolExecutor() as pool:
+    for p, sha in pool.map(hash_file, files):
+        print(p, sha)</code></pre>
+<p>Cada worker de um <code>ProcessPoolExecutor</code> é um processo
+Python COMPLETO, com seu próprio interpretador e seu próprio GIL — é por
+isso que multiprocessing de fato usa todos os núcleos para trabalho
+CPU-bound, ao contrário de threads. O custo dessa independência é
+serialização: como processos não compartilham memória diretamente, todo
+argumento enviado a um worker e todo resultado devolvido precisa ser
+"picklado" (serializado) e transmitido entre processos — passar objetos
+grandes (um DataFrame de gigabytes, por exemplo) tem overhead real; o
+padrão mais eficiente é passar caminhos ou IDs pequenos e deixar cada
+worker ler/processar seus próprios dados localmente.</p>
+
+<h3>7. Sincronização: por que "operação simples" ainda precisa de Lock</h3>
+<pre><code># threading
+from threading import Lock
+counter = 0
+lock = Lock()
+def inc():
+    global counter
+    with lock:
+        counter += 1     # GIL não garante atomicidade de operações compostas
+
+# producer/consumer
+from queue import Queue
+q = Queue(maxsize=100)
+def producer():
+    for item in source: q.put(item)
+def consumer():
+    while True:
+        item = q.get()
+        process(item); q.task_done()</code></pre>
+<p><code>counter += 1</code> PARECE uma operação atômica, mas na verdade
+é três passos (ler o valor atual, somar 1, gravar de volta) — e o GIL
+pode trocar de thread ENTRE esses passos, já que ele garante só que UM
+bytecode roda por vez, não que uma sequência de bytecodes relacionados
+roda sem interrupção. Duas threads incrementando o mesmo contador sem
+lock podem perder incrementos: ambas leem o mesmo valor antes de qualquer
+uma escrever de volta, e o resultado final é menor do que a soma real de
+incrementos feitos. <code>Queue</code> (thread-safe por design, ao
+contrário de listas comuns) é o padrão certo para comunicação entre
+threads produtoras e consumidoras, sem precisar de lock manual em cada
+acesso.</p>
+
+<h3>8. As quatro armadilhas que pegam todo mundo pelo menos uma vez</h3>
+<ul>
+<li><strong>Race condition</strong>: contadores, dicts, listas em thread
+NÃO são atômicos para incrementos/append compostos. Use Lock ou
+estruturas já thread-safe (Queue).</li>
+<li><strong>Deadlock</strong>: duas threads pegando dois locks em ORDENS
+diferentes (A pega lock1 depois lock2; B pega lock2 depois lock1) podem
+travar mutuamente esperando o lock que a outra já tem. Adquira locks
+sempre na mesma ordem em todo o código.</li>
+<li><strong>Bloqueio acidental do event loop</strong>: chamar
+<code>requests.get</code> (síncrono) dentro de código
+<code>async def</code> congela TODO o loop, não só aquela tarefa. Use
+<code>httpx.AsyncClient</code> ou <code>aiohttp</code>, bibliotecas
+desenhadas para <code>await</code>.</li>
+<li><strong>multiprocessing no Windows</strong>: o mecanismo de criar
+processos filhos ali reimporta o módulo principal do zero em cada worker
+— sem <code>if __name__ == "__main__":</code> ao redor do código que
+dispara o pool, cada worker reexecutaria a criação do próprio pool
+recursivamente.</li>
+</ul>
+
+<h3>9. Guia rápido: qual modelo para qual problema</h3>
+<table>
+<thead><tr><th>Caso</th><th>Escolha</th></tr></thead>
+<tbody>
+<tr><td>20 chamadas HTTP em script único</td><td>ThreadPoolExecutor (simples)</td></tr>
+<tr><td>Servidor web com 1000+ conexões</td><td>asyncio + uvicorn/FastAPI</td></tr>
+<tr><td>Processar 50 GB de logs com regex</td><td>ProcessPoolExecutor</td></tr>
+<tr><td>Hash de muitos arquivos</td><td>ProcessPoolExecutor</td></tr>
+<tr><td>Numpy/Polars cálculos</td><td>Já libera o GIL, threads bastam</td></tr>
+<tr><td>Apenas alguns segundos sequenciais</td><td>Não otimize</td></tr>
+</tbody></table>
+<p>A regra por trás da tabela: identifique se o gargalo é ESPERAR
+(rede, disco — threads ou asyncio ajudam, porque o GIL libera durante a
+espera) ou CALCULAR (CPU — só processos separados contornam o GIL de
+verdade). Aplicar o modelo errado ao problema errado — threads para
+CPU-bound, ou multiprocessing para uma única chamada HTTP — costuma
+deixar o código mais lento e mais complexo que a versão sequencial mais
+simples, pelo overhead de coordenação sem ganho real.</p>"""
                 ),
                 "practical": (
                     "Implemente <code>healthcheck.py</code> que recebe via CLI uma lista "
@@ -2546,154 +3038,247 @@ dependência com segredo embutido para a internet.</p>
                     "DevSecOps reais."
                 ),
                 "body": (
-                    "<h3>1. AWS com <code>boto3</code></h3>"
-                    "<pre><code>import boto3\n\n"
-                    "s3   = boto3.client(\"s3\")\n"
-                    "ec2  = boto3.resource(\"ec2\")\n"
-                    "sts  = boto3.client(\"sts\")\n\n"
-                    "# Identidade efetiva (saber em qual conta/role você está)\n"
-                    "ident = sts.get_caller_identity()\n"
-                    "print(ident[\"Arn\"])\n\n"
-                    "# Listar buckets paginando\n"
-                    "for b in s3.list_buckets()[\"Buckets\"]:\n"
-                    "    print(b[\"Name\"], b[\"CreationDate\"])\n\n"
-                    "# Listar instâncias EC2 com filtro\n"
-                    "for inst in ec2.instances.filter(\n"
-                    "    Filters=[{\"Name\": \"instance-state-name\", \"Values\": [\"running\"]}]\n"
-                    "):\n"
-                    "    name = next((t[\"Value\"] for t in (inst.tags or []) if t[\"Key\"] == \"Name\"), \"-\")\n"
-                    "    print(inst.id, name, inst.instance_type, inst.private_ip_address)</code></pre>"
-                    "<p>Padrões importantes:</p>"
-                    "<ul>"
-                    "<li><strong>Paginação</strong>: muitas APIs retornam paginadores. "
-                    "Use <code>client.get_paginator(\"list_objects_v2\")</code>.</li>"
-                    "<li><strong>Credenciais</strong>: nunca hardcoded. Use IAM Role "
-                    "(EC2/EKS/Lambda), <code>~/.aws/credentials</code> com profile, "
-                    "AWS SSO, ou OIDC em CI.</li>"
-                    "<li><strong>Retry/backoff</strong>: <code>botocore</code> já faz, "
-                    "mas configure <code>Config(retries={\"mode\": \"adaptive\"})</code> "
-                    "para throttling.</li>"
-                    "</ul>"
+                """<h3>1. AWS com `boto3`: identidade, paginação e credenciais que nunca ficam no código</h3>
+<pre><code>import boto3
 
-                    "<h3>2. Kubernetes com <code>kubernetes</code> client</h3>"
-                    "<pre><code>from kubernetes import client, config\n\n"
-                    "# Auto-detect: kubeconfig local ou ServiceAccount in-cluster\n"
-                    "try:\n"
-                    "    config.load_incluster_config()\n"
-                    "except config.ConfigException:\n"
-                    "    config.load_kube_config()\n\n"
-                    "v1 = client.CoreV1Api()\n"
-                    "apps = client.AppsV1Api()\n\n"
-                    "# Listar pods em todos os namespaces\n"
-                    "for p in v1.list_pod_for_all_namespaces().items:\n"
-                    "    print(p.metadata.namespace, p.metadata.name, p.status.phase)\n\n"
-                    "# Reiniciar deployment (padrão kubectl rollout restart)\n"
-                    "import datetime\n"
-                    "patch = {\n"
-                    "    \"spec\": {\"template\": {\"metadata\": {\"annotations\": {\n"
-                    "        \"kubectl.kubernetes.io/restartedAt\": datetime.datetime.utcnow().isoformat()\n"
-                    "    }}}}\n"
-                    "}\n"
-                    "apps.patch_namespaced_deployment(\"web\", \"prod\", patch)</code></pre>"
+s3   = boto3.client("s3")
+ec2  = boto3.resource("ec2")
+sts  = boto3.client("sts")
 
-                    "<h3>3. Watch: streaming de eventos do K8s</h3>"
-                    "<pre><code>from kubernetes import watch\n\n"
-                    "w = watch.Watch()\n"
-                    "for event in w.stream(v1.list_namespaced_pod, namespace=\"prod\", timeout_seconds=0):\n"
-                    "    pod = event[\"object\"]\n"
-                    "    if event[\"type\"] in (\"ADDED\", \"MODIFIED\") and pod.status.phase == \"Failed\":\n"
-                    "        notify_slack(f\"Pod {pod.metadata.name} falhou\")</code></pre>"
-                    "<p>Excelente para construir operadores customizados, controllers, "
-                    "ou alertas custom que kube-prometheus não cobre.</p>"
+# Identidade efetiva (saber em qual conta/role você está)
+ident = sts.get_caller_identity()
+print(ident["Arn"])
 
-                    "<h3>4. Expor métricas Prometheus de um job</h3>"
-                    "<pre><code># pip install prometheus-client\n"
-                    "from prometheus_client import Counter, Histogram, start_http_server\n"
-                    "import time, random\n\n"
-                    "deploys = Counter(\"deploys_total\", \"Total de deploys\", [\"env\", \"status\"])\n"
-                    "durations = Histogram(\"deploy_duration_seconds\", \"Duração de deploys\")\n\n"
-                    "start_http_server(9090)        # /metrics\n\n"
-                    "while True:\n"
-                    "    env = random.choice([\"dev\", \"prod\"])\n"
-                    "    with durations.time():\n"
-                    "        time.sleep(random.uniform(0.1, 1.0))\n"
-                    "    deploys.labels(env=env, status=\"success\").inc()</code></pre>"
-                    "<p>O endpoint <code>/metrics</code> fica em formato Prometheus, "
-                    "configure scrape no Prometheus e métricas customizadas viram "
-                    "alertas e dashboards.</p>"
+# Listar buckets paginando
+for b in s3.list_buckets()["Buckets"]:
+    print(b["Name"], b["CreationDate"])
 
-                    "<h3>5. Pushgateway para batch jobs</h3>"
-                    "<p>Jobs que rodam e morrem (cron, K8s Job) não têm como ser "
-                    "scrapeados. Empurre para Pushgateway:</p>"
-                    "<pre><code>from prometheus_client import CollectorRegistry, Gauge, push_to_gateway\n\n"
-                    "reg = CollectorRegistry()\n"
-                    "g = Gauge(\"backup_last_success_unix\", \"Timestamp do último backup\", registry=reg)\n"
-                    "g.set_to_current_time()\n"
-                    "push_to_gateway(\"pushgateway:9091\", job=\"daily_backup\", registry=reg)</code></pre>"
+# Listar instâncias EC2 com filtro
+for inst in ec2.instances.filter(
+    Filters=[{"Name": "instance-state-name", "Values": ["running"]}]
+):
+    name = next((t["Value"] for t in (inst.tags or []) if t["Key"] == "Name"), "-")
+    print(inst.id, name, inst.instance_type, inst.private_ip_address)</code></pre>
+<p><code>sts.get_caller_identity()</code> antes de qualquer operação
+destrutiva é um hábito barato que evita um erro caro: rodar um script
+contra a conta AWS errada porque o profile ativo não era o esperado —
+imprimir o ARN confirma exatamente quem você é antes de continuar.
+Muitas chamadas da AWS (listar objetos de um bucket, instâncias, logs)
+não devolvem tudo de uma vez — devolvem uma página com um token para a
+próxima. Chamar <code>list_objects_v2</code> direto numa conta com
+milhões de objetos devolve só os primeiros mil silenciosamente, sem erro
+algum indicando que faltou o resto; <code>client.get_paginator(...)</code>
+resolve isso internamente, iterando todas as páginas automaticamente.</p>
+<p>Sobre credenciais: hardcoded no código é a violação mais básica e mais
+citada de segurança em nuvem — qualquer coisa commitada permanece no
+histórico do git mesmo depois de removida num commit seguinte. Rodando
+dentro da própria AWS (EC2, EKS, Lambda), um IAM Role anexado à instância
+entrega credenciais temporárias automaticamente via metadata service, sem
+nenhum segredo para vazar ou rotacionar manualmente. <code>botocore</code>
+já faz retry automático em erros transitórios, mas vale configurar
+<code>Config(retries={"mode": "adaptive"})</code> quando a conta sofre
+throttling (limite de requisições por segundo) da própria AWS.</p>
 
-                    "<h3>6. Construindo um CI step custom: scan de licenças</h3>"
-                    "<p>Caso real: uma policy proíbe libs com licença GPL. Vamos "
-                    "construir o step:</p>"
-                    "<pre><code>import json, subprocess, sys\n\n"
-                    "BLOCKED = {\"GPL-3.0\", \"GPL-2.0\", \"AGPL-3.0\"}\n\n"
-                    "out = subprocess.run([\n"
-                    "    \"uv\", \"pip\", \"list\", \"--format\", \"json\"\n"
-                    "], capture_output=True, text=True, check=True)\n"
-                    "pkgs = json.loads(out.stdout)\n\n"
-                    "violations = []\n"
-                    "for p in pkgs:\n"
-                    "    meta = subprocess.run([\"pip\", \"show\", p[\"name\"]],\n"
-                    "                          capture_output=True, text=True, check=True).stdout\n"
-                    "    license_line = next((l for l in meta.splitlines() if l.startswith(\"License:\")), \"\")\n"
-                    "    lic = license_line.replace(\"License:\", \"\").strip()\n"
-                    "    if lic in BLOCKED:\n"
-                    "        violations.append((p[\"name\"], lic))\n\n"
-                    "if violations:\n"
-                    "    for n, lic in violations:\n"
-                    "        print(f\"::error:: {n} usa licença bloqueada {lic}\", file=sys.stderr)\n"
-                    "    sys.exit(1)\n"
-                    "print(\"OK, nenhuma licença bloqueada.\")</code></pre>"
-                    "<p>Em GitHub Actions, <code>::error::</code> vira annotation no "
-                    "PR. GitLab tem syntax similar.</p>"
+<h3>2. Kubernetes com o client oficial: uma ferramenta, dois ambientes</h3>
+<pre><code>from kubernetes import client, config
 
-                    "<h3>7. Notificação no Slack quando algo dá errado</h3>"
-                    "<pre><code>import os, requests\n\n"
-                    "def slack_alert(text: str, channel: str = \"#alerts\"):\n"
-                    "    url = os.environ[\"SLACK_WEBHOOK_URL\"]\n"
-                    "    r = requests.post(url, json={\"text\": text, \"channel\": channel}, timeout=5)\n"
-                    "    r.raise_for_status()\n\n"
-                    "try:\n"
-                    "    deploy_to_prod()\n"
-                    "except Exception as e:\n"
-                    "    slack_alert(f\":rotating_light: Deploy falhou: `{e}`\")\n"
-                    "    raise</code></pre>"
+# Auto-detect: kubeconfig local ou ServiceAccount in-cluster
+try:
+    config.load_incluster_config()
+except config.ConfigException:
+    config.load_kube_config()
 
-                    "<h3>8. Operadores personalizados (kopf)</h3>"
-                    "<p>Quando você precisa de um controller K8s próprio "
-                    "(ex: criar buckets S3 a partir de um CRD), "
-                    "<code>kopf</code> simplifica:</p>"
-                    "<pre><code># pip install kopf\n"
-                    "import kopf\n\n"
-                    "@kopf.on.create(\"example.com\", \"v1\", \"buckets\")\n"
-                    "def create_bucket(spec, name, **kwargs):\n"
-                    "    boto3.client(\"s3\").create_bucket(Bucket=spec[\"name\"])\n"
-                    "    return {\"createdBucket\": spec[\"name\"]}\n\n"
-                    "@kopf.on.delete(\"example.com\", \"v1\", \"buckets\")\n"
-                    "def delete_bucket(spec, **kwargs):\n"
-                    "    boto3.client(\"s3\").delete_bucket(Bucket=spec[\"name\"])</code></pre>"
+v1 = client.CoreV1Api()
+apps = client.AppsV1Api()
 
-                    "<h3>9. Boas práticas para ferramentas DevSecOps em Python</h3>"
-                    "<ul>"
-                    "<li>Saída em JSON quando o consumidor é máquina; legível para humanos.</li>"
-                    "<li>Códigos de saída específicos (deploy 0, validation 65, network 69).</li>"
-                    "<li>Logue o comando exato e parâmetros, auditoria gratuita.</li>"
-                    "<li>Idempotência: rodar duas vezes não deve causar problema (verifique antes de criar).</li>"
-                    "<li>Suporte a <code>--dry-run</code> em qualquer ferramenta destrutiva.</li>"
-                    "<li>Não armazene credenciais em log/output. Censure: "
-                    "<code>token[:4] + '***'</code>.</li>"
-                    "<li>Tempos de execução em métrica (Histogram). Se a média sobe, há "
-                    "regressão, mesmo sem erro.</li>"
-                    "</ul>"
+# Listar pods em todos os namespaces
+for p in v1.list_pod_for_all_namespaces().items:
+    print(p.metadata.namespace, p.metadata.name, p.status.phase)
+
+# Reiniciar deployment (padrão kubectl rollout restart)
+import datetime
+patch = {
+    "spec": {"template": {"metadata": {"annotations": {
+        "kubectl.kubernetes.io/restartedAt": datetime.datetime.utcnow().isoformat()
+    }}}}
+}
+apps.patch_namespaced_deployment("web", "prod", patch)</code></pre>
+<p>O padrão try/except aqui não é tratamento de erro genérico — é
+DETECÇÃO DE AMBIENTE: <code>load_incluster_config()</code> só funciona
+quando o script roda DENTRO de um pod (lê o token de ServiceAccount
+montado automaticamente em <code>/var/run/secrets/...</code>); fora de um
+cluster, essa leitura falha com <code>ConfigException</code>, e o
+<code>except</code> cai para o kubeconfig local que você usa no laptop.
+Essa dupla checagem é o que permite escrever a MESMA ferramenta e rodá-la
+tanto localmente durante desenvolvimento quanto como um Job dentro do
+próprio cluster em produção, sem nenhuma flag ou variável extra. O truque
+do "restart" de deployment merece nota: o Kubernetes não tem um comando
+nativo de restart — <code>kubectl rollout restart</code> por baixo só
+muda uma annotation no template do pod, o que o controller de deployment
+interpreta como "configuração mudou" e dispara um rollout normal,
+substituindo os pods gradualmente.</p>
+
+<h3>3. Watch: reagir a eventos em vez de perguntar em loop</h3>
+<pre><code>from kubernetes import watch
+
+w = watch.Watch()
+for event in w.stream(v1.list_namespaced_pod, namespace="prod", timeout_seconds=0):
+    pod = event["object"]
+    if event["type"] in ("ADDED", "MODIFIED") and pod.status.phase == "Failed":
+        notify_slack(f"Pod {pod.metadata.name} falhou")</code></pre>
+<p><code>Watch</code> abre uma conexão de long-polling com o API Server:
+em vez de perguntar "o que mudou?" a cada N segundos (polling, que
+desperdiça requisições e atrasa a reação até o próximo ciclo), o servidor
+EMPURRA cada evento (pod criado, modificado, removido) assim que
+acontece. É o mecanismo por trás de qualquer operador ou controller
+customizado do Kubernetes — inclusive dos controllers embutidos do
+próprio kube-apiserver — e é a base certa para alertas específicos que o
+kube-prometheus padrão não cobre.</p>
+
+<h3>4. Métricas Prometheus: instrumentar um serviço que fica de pé</h3>
+<pre><code># pip install prometheus-client
+from prometheus_client import Counter, Histogram, start_http_server
+import time, random
+
+deploys = Counter("deploys_total", "Total de deploys", ["env", "status"])
+durations = Histogram("deploy_duration_seconds", "Duração de deploys")
+
+start_http_server(9090)        # /metrics
+
+while True:
+    env = random.choice(["dev", "prod"])
+    with durations.time():
+        time.sleep(random.uniform(0.1, 1.0))
+    deploys.labels(env=env, status="success").inc()</code></pre>
+<p><code>Counter</code> só sobe (contagem cumulativa — total de deploys
+desde o início do processo); <code>Histogram</code> registra a
+DISTRIBUIÇÃO de uma medida (aqui, duração), permitindo calcular
+percentis depois (p50, p95, p99) em vez de só uma média que esconde
+outliers. O endpoint <code>/metrics</code> que <code>start_http_server</code>
+expõe é passivo: ele só responde quando o Prometheus vem "puxar"
+(scrape) periodicamente — funciona bem para um serviço de longa duração,
+mas quebra para um job que termina antes do próximo scrape acontecer
+(seção 5).</p>
+
+<h3>5. Pushgateway: métricas de um job que já morreu quando alguém for olhar</h3>
+<pre><code>from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
+
+reg = CollectorRegistry()
+g = Gauge("backup_last_success_unix", "Timestamp do último backup", registry=reg)
+g.set_to_current_time()
+push_to_gateway("pushgateway:9091", job="daily_backup", registry=reg)</code></pre>
+<p>Um cron job ou um K8s Job roda por alguns segundos e termina — se ele
+expusesse um endpoint <code>/metrics</code> como na seção 4, o processo já
+teria saído antes do Prometheus conseguir fazer scrape, e a métrica nunca
+chegaria a ser coletada. O Pushgateway inverte o fluxo: o JOB empurra a
+métrica ativamente para um serviço intermediário que fica de pé, e o
+Prometheus faz scrape DESSE intermediário (que sempre está disponível),
+não do job efêmero diretamente. É o único caso legítimo de "empurrar"
+métricas em vez do modelo pull padrão do Prometheus.</p>
+
+<h3>6. CI customizado: um gate que bloqueia licença proibida antes do merge</h3>
+<pre><code>import json, subprocess, sys
+
+BLOCKED = {"GPL-3.0", "GPL-2.0", "AGPL-3.0"}
+
+out = subprocess.run([
+    "uv", "pip", "list", "--format", "json"
+], capture_output=True, text=True, check=True)
+pkgs = json.loads(out.stdout)
+
+violations = []
+for p in pkgs:
+    meta = subprocess.run(["pip", "show", p["name"]],
+                          capture_output=True, text=True, check=True).stdout
+    license_line = next((l for l in meta.splitlines() if l.startswith("License:")), "")
+    lic = license_line.replace("License:", "").strip()
+    if lic in BLOCKED:
+        violations.append((p["name"], lic))
+
+if violations:
+    for n, lic in violations:
+        print(f"::error:: {n} usa licença bloqueada {lic}", file=sys.stderr)
+    sys.exit(1)
+print("OK, nenhuma licença bloqueada.")</code></pre>
+<p>O ponto pedagógico aqui é que esse script não usa nenhuma API nova —
+é a combinação de tudo visto nas aulas anteriores: <code>subprocess.run</code>
+com lista de argumentos (aula 6.6), parsing de JSON (aula 6.4), saída em
+stderr com código de saída específico (aula 6.4). Um "CI customizado" na
+prática é quase sempre exatamente isso: automação comum aplicada a uma
+regra de negócio específica. <code>::error::</code> é sintaxe própria do
+GitHub Actions que transforma essa linha de log numa anotação visível
+diretamente no diff do Pull Request, sem precisar abrir o log completo
+do job para descobrir o que falhou.</p>
+
+<h3>7. Notificação: transformar falha silenciosa em alerta visível</h3>
+<pre><code>import os, requests
+
+def slack_alert(text: str, channel: str = "#alerts"):
+    url = os.environ["SLACK_WEBHOOK_URL"]
+    r = requests.post(url, json={"text": text, "channel": channel}, timeout=5)
+    r.raise_for_status()
+
+try:
+    deploy_to_prod()
+except Exception as e:
+    slack_alert(f":rotating_light: Deploy falhou: `{e}`")
+    raise</code></pre>
+<p>Note o <code>raise</code> no final do <code>except</code>: o alerta é
+um EFEITO COLATERAL da falha, não uma forma de "tratá-la" e seguir em
+frente. Sem relançar, um script que engole a exceção depois de notificar
+pareceria ter terminado com sucesso para qualquer sistema de automação
+que só olha o código de saída do processo — o Slack avisaria um humano,
+mas o pipeline de CI marcaria o job como verde, uma contradição perigosa
+entre o que o alerta diz e o que o sistema registra oficialmente.</p>
+
+<h3>8. Operadores customizados com `kopf`: extensões nativas do Kubernetes</h3>
+<p>Quando o comportamento desejado é "quando um CRD (Custom Resource) for
+criado, faça algo externo ao cluster" (por exemplo, criar um bucket S3
+correspondente), <code>kopf</code> reduz o boilerplate de escrever um
+operador do zero a decoradores simples:</p>
+<pre><code># pip install kopf
+import kopf
+
+@kopf.on.create("example.com", "v1", "buckets")
+def create_bucket(spec, name, **kwargs):
+    boto3.client("s3").create_bucket(Bucket=spec["name"])
+    return {"createdBucket": spec["name"]}
+
+@kopf.on.delete("example.com", "v1", "buckets")
+def delete_bucket(spec, **kwargs):
+    boto3.client("s3").delete_bucket(Bucket=spec["name"])</code></pre>
+<p>Por baixo, <code>kopf</code> usa exatamente o mecanismo de Watch da
+seção 3 — ele assina eventos de criação/atualização/remoção do recurso
+customizado e chama a função decorada correspondente. O ganho é não
+precisar escrever esse loop de watch, reconexão em caso de queda, e
+tratamento de erro manualmente a cada operador novo.</p>
+
+<h3>9. Checklist para ferramentas DevSecOps que outras pessoas vão rodar</h3>
+<ul>
+<li>Saída em JSON quando o consumidor é máquina (outro script, um
+pipeline); texto legível quando é humano — decidir isso cedo evita
+reescrever a saída depois que alguém já depende do formato antigo.</li>
+<li>Códigos de saída específicos por categoria de falha (validação,
+rede, permissão) — permite ao chamador reagir diferente a cada tipo, não
+só "deu erro, algo".</li>
+<li>Logue o comando exato e os parâmetros usados — auditoria
+essencialmente gratuita, e a primeira coisa que se precisa quando algo em
+produção precisa ser investigado depois do fato.</li>
+<li>Idempotência: rodar duas vezes não deve causar problema — verifique
+se o recurso já existe antes de criar, em vez de deixar a segunda
+execução falhar com "já existe" como se fosse um erro real.</li>
+<li>Suporte a <code>--dry-run</code> em qualquer ferramenta que crie,
+modifique ou apague algo — a diferença entre testar em produção com
+segurança e descobrir um bug depois que o dano já foi feito.</li>
+<li>Nunca armazene credenciais em log ou saída padrão, mesmo
+parcialmente — se precisar mostrar QUE um token foi usado, mostre só um
+prefixo (<code>token[:4] + "***"</code>), nunca o valor inteiro nem
+mesmo em ambiente de debug.</li>
+<li>Registre tempo de execução como métrica (Histogram) — uma regressão
+de performance silenciosa (a ferramenta continua funcionando, só fica
+mais lenta a cada semana) só aparece com dado histórico, nunca olhando
+uma execução isolada.</li>
+</ul>"""
                 ),
                 "practical": (
                     "Construa <code>license_gate.py</code> que: (1) percorre "
