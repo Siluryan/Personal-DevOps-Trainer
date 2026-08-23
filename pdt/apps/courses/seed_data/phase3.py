@@ -395,341 +395,364 @@ PHASE3 = {
                     "open source (OpenTofu) após mudança de licença em 2023."
                 ),
                 "body": (
-                    "<h3>1. Por que IaC importa de verdade</h3>"
-                    "<ul>"
-                    "<li><strong>Reprodutibilidade</strong>: dev, staging, prod saem do mesmo "
-                    "código. Não é 'igualzinho', é literalmente o mesmo. Bug em prod vira "
-                    "reproduzível em staging em segundos.</li>"
-                    "<li><strong>Revisão por PR</strong>: mudança em VPC passa pelo mesmo "
-                    "fluxo de revisão de código de aplicação. Você lê o diff, comenta, "
-                    "aprova.</li>"
-                    "<li><strong>Rastreabilidade</strong>: <code>git blame</code> em "
-                    "<code>main.tf</code> mostra quem mudou aquele bucket S3 e por quê. "
-                    "Auditoria fica trivial.</li>"
-                    "<li><strong>Disaster recovery</strong>: cluster inteiro destruído? "
-                    "<code>terraform apply</code> reconstrói tudo. Empresas testam isso em "
-                    "Game Days.</li>"
-                    "<li><strong>Compliance</strong>: políticas como 'todo bucket deve ter "
-                    "encryption' viram regra (Sentinel, OPA, tfsec).</li>"
-                    "</ul>"
+                """<h3>1. Por que IaC importa de verdade</h3>
+<p>Cinco ganhos concretos justificam trocar clique por código. O
+primeiro é <strong>reprodutibilidade</strong>: dev, staging e prod saem
+literalmente do mesmo código, não de um esforço manual para deixá-los
+"parecidos" — um bug em produção vira reproduzível em staging em
+segundos, porque o ambiente de staging É o mesmo `apply`. O segundo é
+<strong>revisão por PR</strong>: uma mudança em VPC passa pelo mesmo
+fluxo de revisão de código de aplicação, com diff explícito, comentário
+e aprovação — em vez de alguém clicando direto no console de produção. O
+terceiro é <strong>rastreabilidade</strong>: <code>git blame</code> em
+<code>main.tf</code> mostra exatamente quem mudou aquele bucket S3 e
+por quê, tornando auditoria trivial em vez de arqueologia. O quarto é
+<strong>disaster recovery</strong>: se um cluster inteiro for destruído,
+<code>terraform apply</code> reconstrói tudo a partir do código —
+empresas maduras testam esse cenário deliberadamente em "Game Days". E o
+quinto é <strong>compliance</strong>: uma política como "todo bucket deve
+ter encryption" deixa de ser um lembrete em wiki e vira regra executável
+(Sentinel, OPA, tfsec) que barra o `apply` se violada.</p>
 
-                    "<h3>2. Anatomia do Terraform</h3>"
-                    "<p>Terraform usa HCL (HashiCorp Configuration Language), uma DSL "
-                    "declarativa, JSON-like, mais legível.</p>"
-                    "<pre><code># main.tf\n"
-                    "terraform {\n"
-                    "  required_version = \"&gt;= 1.6.0\"\n"
-                    "  required_providers {\n"
-                    "    aws = { source = \"hashicorp/aws\", version = \"~&gt; 5.40\" }\n"
-                    "  }\n"
-                    "  backend \"s3\" {\n"
-                    "    bucket         = \"empresa-tfstate-prod\"\n"
-                    "    key            = \"network/main.tfstate\"\n"
-                    "    region         = \"us-east-1\"\n"
-                    "    dynamodb_table = \"tfstate-lock\"\n"
-                    "    encrypt        = true\n"
-                    "  }\n"
-                    "}\n"
-                    "\n"
-                    "provider \"aws\" {\n"
-                    "  region = var.region\n"
-                    "  default_tags {\n"
-                    "    tags = {\n"
-                    "      Owner       = \"platform-team\"\n"
-                    "      Environment = var.env\n"
-                    "      ManagedBy   = \"terraform\"\n"
-                    "    }\n"
-                    "  }\n"
-                    "}\n"
-                    "\n"
-                    "variable \"env\"    { type = string }\n"
-                    "variable \"region\" { type = string, default = \"us-east-1\" }\n"
-                    "\n"
-                    "resource \"aws_s3_bucket\" \"app_data\" {\n"
-                    "  bucket = \"empresa-app-${var.env}-${random_id.suffix.hex}\"\n"
-                    "}\n"
-                    "\n"
-                    "resource \"aws_s3_bucket_versioning\" \"app_data\" {\n"
-                    "  bucket = aws_s3_bucket.app_data.id\n"
-                    "  versioning_configuration { status = \"Enabled\" }\n"
-                    "}\n"
-                    "\n"
-                    "resource \"aws_s3_bucket_server_side_encryption_configuration\" \"app_data\" {\n"
-                    "  bucket = aws_s3_bucket.app_data.id\n"
-                    "  rule {\n"
-                    "    apply_server_side_encryption_by_default {\n"
-                    "      sse_algorithm     = \"aws:kms\"\n"
-                    "      kms_master_key_id = aws_kms_key.app.arn\n"
-                    "    }\n"
-                    "  }\n"
-                    "}\n"
-                    "\n"
-                    "resource \"aws_s3_bucket_public_access_block\" \"app_data\" {\n"
-                    "  bucket                  = aws_s3_bucket.app_data.id\n"
-                    "  block_public_acls       = true\n"
-                    "  block_public_policy     = true\n"
-                    "  ignore_public_acls      = true\n"
-                    "  restrict_public_buckets = true\n"
-                    "}\n"
-                    "\n"
-                    "output \"bucket_name\" {\n"
-                    "  value = aws_s3_bucket.app_data.id\n"
-                    "}</code></pre>"
-                    "<p>Conceitos:</p>"
-                    "<ul>"
-                    "<li><strong>Provider</strong>: plugin que conhece a API (aws, azurerm, "
-                    "google, kubernetes, github, cloudflare, datadog...).</li>"
-                    "<li><strong>Resource</strong>: 'eu quero um bucket S3 chamado X'. "
-                    "Terraform vai criar, atualizar ou destruir conforme diferença com state.</li>"
-                    "<li><strong>Data source</strong>: lê algo existente sem gerenciar "
-                    "(<code>data \"aws_ami\" \"ubuntu\"</code>).</li>"
-                    "<li><strong>Variable</strong>: parâmetro de entrada.</li>"
-                    "<li><strong>Output</strong>: valor exposto após apply (útil para "
-                    "remote_state em outro módulo).</li>"
-                    "<li><strong>Locals</strong>: variáveis derivadas locais.</li>"
-                    "</ul>"
+<h3>2. Anatomia do Terraform</h3>
+<p>Terraform usa HCL (HashiCorp Configuration Language), uma DSL
+declarativa e JSON-like, mas pensada para ser legível por humano:</p>
+<pre><code># main.tf
+terraform {
+  required_version = "&gt;= 1.6.0"
+  required_providers {
+    aws = { source = "hashicorp/aws", version = "~&gt; 5.40" }
+  }
+  backend "s3" {
+    bucket         = "empresa-tfstate-prod"
+    key            = "network/main.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "tfstate-lock"
+    encrypt        = true
+  }
+}
 
-                    "<h3>3. Workflow básico: init → plan → apply</h3>"
-                    "<pre><code>$ terraform init      # baixa providers, configura backend\n"
-                    "$ terraform validate  # checa sintaxe\n"
-                    "$ terraform fmt -recursive  # formata\n"
-                    "$ terraform plan -out=tfplan\n"
-                    "Plan: 4 to add, 1 to change, 0 to destroy.\n"
-                    "$ terraform apply tfplan</code></pre>"
-                    "<p><strong>Plan</strong> é fundamental: gera diff explícito entre "
-                    "estado atual e desejado. <em>Sempre</em> leia o plan antes de aplicar. "
-                    "Em CI, faça plan no PR e exija comentário com o output (ferramenta "
-                    "Atlantis automatiza).</p>"
-                    "<p>Comandos úteis:</p>"
-                    "<pre><code>terraform plan -target=aws_s3_bucket.app_data   # foco\n"
-                    "terraform apply -refresh-only                    # só atualiza state\n"
-                    "terraform destroy -target=aws_instance.test       # destruição cirúrgica\n"
-                    "terraform state list\n"
-                    "terraform state show aws_s3_bucket.app_data\n"
-                    "terraform import aws_s3_bucket.legacy bucket-name\n"
-                    "terraform graph | dot -Tpng &gt; deps.png\n"
-                    "terraform console   # REPL para testar expressões</code></pre>"
+provider "aws" {
+  region = var.region
+  default_tags {
+    tags = {
+      Owner       = "platform-team"
+      Environment = var.env
+      ManagedBy   = "terraform"
+    }
+  }
+}
 
-                    "<h3>4. State é crítico, trate com paranoia</h3>"
-                    "<p>O <code>terraform.tfstate</code> é um JSON com mapeamento "
-                    "<em>resource → ID real</em>. Sem ele, Terraform 'esquece' o que gerencia. "
-                    "Pior: state contém valores sensíveis em <strong>plaintext</strong> "
-                    "(senhas RDS, keys IAM). Por isso:</p>"
-                    "<ul>"
-                    "<li><strong>NUNCA commite tfstate</strong> em Git. Coloque em .gitignore.</li>"
-                    "<li><strong>Use backend remoto</strong>: S3+DynamoDB lock (AWS), GCS "
-                    "(GCP), Azure Storage (Azure), Terraform Cloud, Spacelift, Atlantis, "
-                    "GitLab Terraform state.</li>"
-                    "<li><strong>Habilite encryption at rest</strong> no backend (KMS/CMEK).</li>"
-                    "<li><strong>Habilite versionamento</strong> no bucket, você vai precisar "
-                    "(quando state for corrompido).</li>"
-                    "<li><strong>State lock</strong>: DynamoDB (AWS), Cloud Storage (GCP) ou "
-                    "lock interno (TFC). Evita dois apply simultâneos corrompendo state.</li>"
-                    "<li><strong>Não edite state à mão</strong>. Use comandos "
-                    "<code>terraform state mv|rm|replace-provider</code> ou re-import.</li>"
-                    "<li><strong>Restrição de acesso</strong>: state em prod só CI deve ler. "
-                    "Devs leem com role de leitura.</li>"
-                    "</ul>"
-                    "<p>Backend exemplo S3+DynamoDB:</p>"
-                    "<pre><code>terraform {\n"
-                    "  backend \"s3\" {\n"
-                    "    bucket         = \"empresa-tfstate\"\n"
-                    "    key            = \"prod/network.tfstate\"\n"
-                    "    region         = \"us-east-1\"\n"
-                    "    dynamodb_table = \"tfstate-lock\"\n"
-                    "    encrypt        = true\n"
-                    "    kms_key_id     = \"arn:aws:kms:us-east-1:111:key/xxx\"\n"
-                    "  }\n"
-                    "}</code></pre>"
+variable "env"    { type = string }
+variable "region" { type = string, default = "us-east-1" }
 
-                    "<h3>5. Módulos: reuso sem copiar-colar</h3>"
-                    "<p>Módulo é uma pasta com inputs (variables), recursos e outputs. "
-                    "Use módulos para encapsular padrões da empresa:</p>"
-                    "<pre><code>modules/\n"
-                    "  rds-postgres/\n"
-                    "    main.tf       # cria RDS com encryption + backup + parameter group\n"
-                    "    variables.tf  # name, allocated_storage, instance_class, vpc_id...\n"
-                    "    outputs.tf    # endpoint, port, secret_arn\n"
-                    "    README.md     # como usar</code></pre>"
-                    "<p>Uso em outro lugar:</p>"
-                    "<pre><code>module \"app_db\" {\n"
-                    "  source  = \"git::https://github.com/empresa/tf-modules.git//rds-postgres?ref=v1.4.0\"\n"
-                    "  name    = \"app-prod\"\n"
-                    "  vpc_id  = data.aws_vpc.main.id\n"
-                    "  size    = \"db.r5.large\"\n"
-                    "}\n"
-                    "\n"
-                    "output \"db_endpoint\" {\n"
-                    "  value = module.app_db.endpoint\n"
-                    "}</code></pre>"
-                    "<p>Boas práticas para módulos:</p>"
-                    "<ul>"
-                    "<li>Versione com Git tags semver (<code>v1.0.0</code>, <code>v1.4.0</code>).</li>"
-                    "<li>Mantenha módulo pequeno e composável (não 'megamódulo' que faz tudo).</li>"
-                    "<li>README com exemplo de uso e tabela de inputs/outputs.</li>"
-                    "<li><code>terraform-docs</code> gera documentação automática.</li>"
-                    "<li>Teste com <code>terratest</code> ou <code>kitchen-terraform</code>.</li>"
-                    "</ul>"
+resource "aws_s3_bucket" "app_data" {
+  bucket = "empresa-app-${var.env}-${random_id.suffix.hex}"
+}
 
-                    "<h3>6. Variáveis, locals e data sources</h3>"
-                    "<pre><code>variable \"env\" {\n"
-                    "  type        = string\n"
-                    "  description = \"Ambiente (dev/staging/prod)\"\n"
-                    "  validation {\n"
-                    "    condition     = contains([\"dev\", \"staging\", \"prod\"], var.env)\n"
-                    "    error_message = \"env deve ser dev, staging ou prod.\"\n"
-                    "  }\n"
-                    "}\n"
-                    "\n"
-                    "variable \"db_password\" {\n"
-                    "  type      = string\n"
-                    "  sensitive = true   # esconde de outputs/logs\n"
-                    "}\n"
-                    "\n"
-                    "locals {\n"
-                    "  is_prod   = var.env == \"prod\"\n"
-                    "  instance  = local.is_prod ? \"db.r5.large\" : \"db.t3.medium\"\n"
-                    "  multi_az  = local.is_prod\n"
-                    "  tags = merge(\n"
-                    "    var.tags,\n"
-                    "    { Env = var.env, ManagedBy = \"terraform\" }\n"
-                    "  )\n"
-                    "}\n"
-                    "\n"
-                    "data \"aws_ami\" \"ubuntu\" {\n"
-                    "  most_recent = true\n"
-                    "  owners      = [\"099720109477\"]   # Canonical\n"
-                    "  filter {\n"
-                    "    name   = \"name\"\n"
-                    "    values = [\"ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*\"]\n"
-                    "  }\n"
-                    "}</code></pre>"
+resource "aws_s3_bucket_versioning" "app_data" {
+  bucket = aws_s3_bucket.app_data.id
+  versioning_configuration { status = "Enabled" }
+}
 
-                    "<h3>7. Drift: realidade ≠ código</h3>"
-                    "<p>Drift acontece quando alguém muda algo manualmente no console. "
-                    "Detectar:</p>"
-                    "<pre><code>$ terraform plan\n"
-                    "# aws_security_group.web has been changed\n"
-                    "  ~ ingress {\n"
-                    "      - cidr_blocks = [\"10.0.0.0/8\"]   # removido manualmente!\n"
-                    "      + cidr_blocks = [\"10.0.0.0/8\", \"0.0.0.0/0\"]\n"
-                    "  }</code></pre>"
-                    "<p>Estratégias:</p>"
-                    "<ul>"
-                    "<li>CI noturno rodando <code>terraform plan</code> e alertando se "
-                    "houver drift.</li>"
-                    "<li>SCP/Azure Policy bloqueando mudanças manuais (read-only para devs "
-                    "em prod).</li>"
-                    "<li>Driftctl, AWS Config rules.</li>"
-                    "</ul>"
-                    "<p>Para 'oficializar' recurso criado fora do TF, use import:</p>"
-                    "<pre><code># Forma clássica (CLI)\n"
-                    "terraform import aws_s3_bucket.legacy meu-bucket-existente\n"
-                    "\n"
-                    "# Terraform 1.5+: import block declarativo\n"
-                    "import {\n"
-                    "  to = aws_s3_bucket.legacy\n"
-                    "  id = \"meu-bucket-existente\"\n"
-                    "}</code></pre>"
+resource "aws_s3_bucket_server_side_encryption_configuration" "app_data" {
+  bucket = aws_s3_bucket.app_data.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.app.arn
+    }
+  }
+}
 
-                    "<h3>8. Boas práticas de produção</h3>"
-                    "<ul>"
-                    "<li><strong>Workspaces ou diretórios separados</strong> por ambiente. "
-                    "Workspaces são mais frágeis em prod (mesmo backend, prefixo de key), "
-                    "muitos times preferem diretórios separados (<code>envs/dev/</code>, "
-                    "<code>envs/prod/</code>) ou Terragrunt.</li>"
-                    "<li><strong>Lockfile</strong>: <code>.terraform.lock.hcl</code> deve "
-                    "ser commitado, fixa hashes de providers.</li>"
-                    "<li><strong>Lint e security scan</strong>: <code>tflint</code>, "
-                    "<code>tfsec</code>, <code>checkov</code> em CI.</li>"
-                    "<li><strong>Plan no PR</strong> obrigatório. Atlantis ou GitHub Actions "
-                    "comentam o output. Apply só após review e approval.</li>"
-                    "<li><strong>Apply automático apenas em main</strong>, e mesmo assim "
-                    "com lock e human approval em prod.</li>"
-                    "<li><strong>Tags obrigatórias</strong>: Owner, Environment, CostCenter, "
-                    "ManagedBy. <code>default_tags</code> no provider + Sentinel/OPA para "
-                    "garantir.</li>"
-                    "<li><strong>Não use count para recursos críticos</strong>, "
-                    "for_each é mais seguro (chaves estáveis).</li>"
-                    "<li><strong>Targeted apply é exceção</strong>, não regra. Force "
-                    "deriva.</li>"
-                    "</ul>"
+resource "aws_s3_bucket_public_access_block" "app_data" {
+  bucket                  = aws_s3_bucket.app_data.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
 
-                    "<h3>9. Pipeline de Terraform com GitHub Actions</h3>"
-                    "<pre><code>name: terraform\n"
-                    "on:\n"
-                    "  pull_request:\n"
-                    "    paths: ['envs/**', 'modules/**']\n"
-                    "  push:\n"
-                    "    branches: [main]\n"
-                    "permissions:\n"
-                    "  id-token: write   # OIDC\n"
-                    "  contents: read\n"
-                    "  pull-requests: write\n"
-                    "jobs:\n"
-                    "  plan:\n"
-                    "    runs-on: ubuntu-latest\n"
-                    "    steps:\n"
-                    "      - uses: actions/checkout@v4\n"
-                    "      - uses: aws-actions/configure-aws-credentials@v4\n"
-                    "        with:\n"
-                    "          role-to-assume: arn:aws:iam::111:role/gh-actions-tf\n"
-                    "          aws-region: us-east-1\n"
-                    "      - uses: hashicorp/setup-terraform@v3\n"
-                    "        with: { terraform_version: 1.7.5 }\n"
-                    "      - run: terraform fmt -check -recursive\n"
-                    "      - run: terraform init\n"
-                    "      - run: terraform validate\n"
-                    "      - run: tflint --recursive\n"
-                    "      - run: tfsec .\n"
-                    "      - run: terraform plan -out=tfplan\n"
-                    "      - uses: actions/upload-artifact@v4\n"
-                    "        with: { name: tfplan, path: tfplan }\n"
-                    "  apply:\n"
-                    "    needs: plan\n"
-                    "    if: github.ref == 'refs/heads/main'\n"
-                    "    environment: production   # gate manual\n"
-                    "    runs-on: ubuntu-latest\n"
-                    "    steps:\n"
-                    "      - uses: actions/checkout@v4\n"
-                    "      - uses: aws-actions/configure-aws-credentials@v4\n"
-                    "        with: { role-to-assume: ..., aws-region: us-east-1 }\n"
-                    "      - uses: hashicorp/setup-terraform@v3\n"
-                    "      - run: terraform init\n"
-                    "      - uses: actions/download-artifact@v4\n"
-                    "        with: { name: tfplan }\n"
-                    "      - run: terraform apply tfplan</code></pre>"
+output "bucket_name" {
+  value = aws_s3_bucket.app_data.id
+}</code></pre>
+<p>Seis conceitos sustentam qualquer arquivo Terraform. Um
+<strong>provider</strong> é o plugin que sabe falar com a API de um
+sistema específico — aws, azurerm, google, kubernetes, github,
+cloudflare, datadog. Um <strong>resource</strong> declara intenção: "eu
+quero um bucket S3 chamado X", e o Terraform decide sozinho se precisa
+criar, atualizar ou destruir algo, comparando com o state atual. Um
+<strong>data source</strong> só LÊ algo que já existe, sem gerenciar seu
+ciclo de vida (<code>data "aws_ami" "ubuntu"</code>). Uma
+<strong>variable</strong> é o parâmetro de entrada do módulo. Um
+<strong>output</strong> expõe um valor depois do apply, para outro
+módulo consumir via remote_state. E <strong>locals</strong> são
+variáveis derivadas, calculadas dentro do próprio módulo.</p>
 
-                    "<h3>10. OpenTofu, Pulumi, CDK: alternativas</h3>"
-                    "<ul>"
-                    "<li><strong>OpenTofu</strong>: fork open source do Terraform após "
-                    "mudança para BSL pela HashiCorp em 2023. Compatível com módulos "
-                    "existentes; mantido pela Linux Foundation. Para muitos times, virou "
-                    "default.</li>"
-                    "<li><strong>Pulumi</strong>: IaC em Python/TypeScript/Go/etc., código "
-                    "real, com loops, condicionais, classes. Trade-off: mais poder, mas "
-                    "menos restrição (pode virar bagunça se mal arquitetado).</li>"
-                    "<li><strong>CDK (AWS/Terraform)</strong>: AWS CDK gera CloudFormation; "
-                    "CDKTF gera HCL. Boa abstração, lock-in moderado.</li>"
-                    "<li><strong>Crossplane</strong>: IaC declarado como Custom Resources "
-                    "do Kubernetes, bom em times K8s-first.</li>"
-                    "</ul>"
+<h3>3. Workflow básico: init → plan → apply</h3>
+<pre><code>$ terraform init      # baixa providers, configura backend
+$ terraform validate  # checa sintaxe
+$ terraform fmt -recursive  # formata
+$ terraform plan -out=tfplan
+Plan: 4 to add, 1 to change, 0 to destroy.
+$ terraform apply tfplan</code></pre>
+<p>O <strong>plan</strong> é o passo que mais importa nesse fluxo: ele
+gera um diff explícito entre o estado atual e o desejado, ANTES de
+qualquer mudança real acontecer. Leia esse diff sempre — em CI, o padrão
+maduro é rodar plan automaticamente em cada PR e exigir que o output
+apareça como comentário (a ferramenta Atlantis automatiza exatamente
+isso), para que quem revisa o código também revise o efeito real dele na
+infraestrutura antes de aprovar.</p>
+<pre><code>terraform plan -target=aws_s3_bucket.app_data   # foco
+terraform apply -refresh-only                    # só atualiza state
+terraform destroy -target=aws_instance.test       # destruição cirúrgica
+terraform state list
+terraform state show aws_s3_bucket.app_data
+terraform import aws_s3_bucket.legacy bucket-name
+terraform graph | dot -Tpng &gt; deps.png
+terraform console   # REPL para testar expressões</code></pre>
 
-                    "<h3>11. Anti-patterns comuns</h3>"
-                    "<ul>"
-                    "<li><strong>tfstate no Git</strong>, vazamento de senhas garantido.</li>"
-                    "<li><strong>Editar console + esquecer de importar</strong>, drift "
-                    "cresce até virar incidente.</li>"
-                    "<li><strong>Módulo gigante 'rules-them-all'</strong>, quase impossível "
-                    "de testar e debugar.</li>"
-                    "<li><strong>Apply local em prod</strong>, sem revisão, sem auditoria. "
-                    "Force pipeline.</li>"
-                    "<li><strong>Hardcode de regiões/contas</strong>, variáveis com defaults "
-                    "claros.</li>"
-                    "<li><strong>Esquecer <code>sensitive = true</code></strong> em senhas.</li>"
-                    "<li><strong>Provider sem version constraint</strong>, break em "
-                    "deploys aleatórios.</li>"
-                    "</ul>"
+<h3>4. State é crítico, trate com paranoia</h3>
+<p>O <code>terraform.tfstate</code> é um JSON que mapeia cada
+<em>resource do código</em> ao <em>ID real</em> na nuvem. Sem ele, o
+Terraform simplesmente "esquece" o que gerencia e não tem como calcular
+diff nenhum. E o problema fica pior: esse mesmo arquivo guarda valores
+sensíveis em <strong>texto puro</strong> — senha de RDS, chave de IAM —
+porque o Terraform precisa desses valores para calcular o próximo plan.
+Isso muda completamente como o state deve ser tratado: nunca deve ser
+commitado no Git (vá direto para o <code>.gitignore</code>); deve viver
+num backend remoto com lock — S3+DynamoDB no lado AWS, GCS no GCP, Azure
+Storage no Azure, ou uma plataforma dedicada como Terraform Cloud,
+Spacelift ou Atlantis; deve ter encryption at rest habilitada no próprio
+backend via KMS/CMEK; deve ter versionamento habilitado no bucket, porque
+mais cedo ou mais tarde um state vai corromper e a versão anterior é o
+único caminho de volta; deve usar lock de verdade (DynamoDB na AWS, Cloud
+Storage no GCP, lock interno no Terraform Cloud) para impedir que dois
+`apply` simultâneos corrompam o mesmo arquivo; nunca deve ser editado à
+mão — os comandos <code>terraform state mv|rm|replace-provider</code> ou
+um re-import existem exatamente para isso; e deve ter acesso restrito em
+produção, onde só o CI lê o state real e desenvolvedores usam, no
+máximo, uma role de leitura.</p>
+<pre><code>terraform {
+  backend "s3" {
+    bucket         = "empresa-tfstate"
+    key            = "prod/network.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "tfstate-lock"
+    encrypt        = true
+    kms_key_id     = "arn:aws:kms:us-east-1:111:key/xxx"
+  }
+}</code></pre>
+
+<h3>5. Módulos: reuso sem copiar-colar</h3>
+<p>Um módulo é só uma pasta com inputs (variables), recursos e outputs
+— e serve para encapsular um padrão que a empresa inteira reutiliza, em
+vez de cada time reinventar a mesma configuração de RDS com pequenas
+variações incompatíveis entre si:</p>
+<pre><code>modules/
+  rds-postgres/
+    main.tf       # cria RDS com encryption + backup + parameter group
+    variables.tf  # name, allocated_storage, instance_class, vpc_id...
+    outputs.tf    # endpoint, port, secret_arn
+    README.md     # como usar</code></pre>
+<pre><code>module "app_db" {
+  source  = "git::https://github.com/empresa/tf-modules.git//rds-postgres?ref=v1.4.0"
+  name    = "app-prod"
+  vpc_id  = data.aws_vpc.main.id
+  size    = "db.r5.large"
+}
+
+output "db_endpoint" {
+  value = module.app_db.endpoint
+}</code></pre>
+<p>Um módulo bem mantido versiona com tags semver do Git
+(<code>v1.0.0</code>, <code>v1.4.0</code>), permanece pequeno e
+composável em vez de virar um "megamódulo" que tenta fazer tudo, traz um
+README com exemplo real de uso e tabela de inputs/outputs — gerada
+automaticamente pelo <code>terraform-docs</code> — e tem testes de
+verdade, com <code>terratest</code> ou <code>kitchen-terraform</code>,
+em vez de confiar que "sempre funcionou até agora".</p>
+
+<h3>6. Variáveis, locals e data sources</h3>
+<pre><code>variable "env" {
+  type        = string
+  description = "Ambiente (dev/staging/prod)"
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.env)
+    error_message = "env deve ser dev, staging ou prod."
+  }
+}
+
+variable "db_password" {
+  type      = string
+  sensitive = true   # esconde de outputs/logs
+}
+
+locals {
+  is_prod   = var.env == "prod"
+  instance  = local.is_prod ? "db.r5.large" : "db.t3.medium"
+  multi_az  = local.is_prod
+  tags = merge(
+    var.tags,
+    { Env = var.env, ManagedBy = "terraform" }
+  )
+}
+
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"]   # Canonical
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+  }
+}</code></pre>
+<p>O bloco <code>validation</code> na variável <code>env</code> é o que
+transforma um typo ("prd" em vez de "prod") de um bug silencioso
+descoberto só depois do apply em um erro imediato, ainda na fase de
+plan. E marcar <code>db_password</code> como <code>sensitive = true</code>
+não criptografa nada — só instrui o Terraform a mascarar aquele valor
+em qualquer output de log ou console, evitando que ele vaze
+acidentalmente num histórico de CI.</p>
+
+<h3>7. Drift: realidade ≠ código</h3>
+<p>Drift acontece quando alguém muda algo manualmente no console,
+fazendo a infraestrutura real divergir silenciosamente do que o código
+descreve. O próprio <code>terraform plan</code> detecta isso, porque ele
+sempre compara o estado REAL (consultado via API) contra o desejado, não
+apenas o state salvo:</p>
+<pre><code>$ terraform plan
+# aws_security_group.web has been changed
+  ~ ingress {
+      - cidr_blocks = ["10.0.0.0/8"]   # removido manualmente!
+      + cidr_blocks = ["10.0.0.0/8", "0.0.0.0/0"]
+  }</code></pre>
+<p>Três estratégias mitigam drift antes que ele vire incidente: um job
+noturno de CI rodando <code>terraform plan</code> e alertando se houver
+qualquer diferença; uma SCP ou Azure Policy bloqueando mudança manual em
+produção, deixando devs com acesso só de leitura; ou uma ferramenta
+dedicada de detecção contínua, como Driftctl ou AWS Config rules. Quando
+um recurso já existe fora do Terraform e precisa ser "oficializado", o
+caminho é import — na forma clássica via CLI, ou de forma declarativa a
+partir do Terraform 1.5+:</p>
+<pre><code># Forma clássica (CLI)
+terraform import aws_s3_bucket.legacy meu-bucket-existente
+
+# Terraform 1.5+: import block declarativo
+import {
+  to = aws_s3_bucket.legacy
+  id = "meu-bucket-existente"
+}</code></pre>
+
+<h3>8. Boas práticas de produção</h3>
+<p>Ambientes separados evitam que um `apply` de dev afete produção por
+engano — via workspaces (mesmo backend, prefixo de key diferente, mais
+frágil em produção) ou, preferido por muitos times, diretórios
+separados (<code>envs/dev/</code>, <code>envs/prod/</code>) ou
+Terragrunt. O arquivo <code>.terraform.lock.hcl</code> deve sempre ser
+commitado — ele fixa o hash exato de cada provider, evitando que um
+`init` em outra máquina baixe uma versão ligeiramente diferente e
+produza um plan inesperado. Lint e scan de segurança (tflint, tfsec,
+checkov) rodando em CI pegam erro de configuração antes do plan, não
+depois do incidente. Plan no PR deve ser obrigatório — Atlantis ou
+GitHub Actions comentando o output automaticamente — com apply liberado
+só após review humano e aprovação explícita. Apply automático deve
+acontecer só a partir de main, e mesmo assim com lock e aprovação humana
+extra em produção. Tags obrigatórias (Owner, Environment, CostCenter,
+ManagedBy) via <code>default_tags</code> no provider, reforçadas por
+Sentinel ou OPA, tornam rastreamento de custo e responsabilidade
+possível em escala. Preferir <code>for_each</code> a <code>count</code>
+em recursos críticos evita que remover um item do meio de uma lista
+force a recriação de todos os itens seguintes — <code>for_each</code>
+usa chaves estáveis, <code>count</code> usa índice posicional. E apply
+com <code>-target</code> deve ser exceção, não rotina — usado fora de
+contexto, ele tende a acumular drift em vez de resolver.</p>
+
+<h3>9. Pipeline de Terraform com GitHub Actions</h3>
+<pre><code>name: terraform
+on:
+  pull_request:
+    paths: ['envs/**', 'modules/**']
+  push:
+    branches: [main]
+permissions:
+  id-token: write   # OIDC
+  contents: read
+  pull-requests: write
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::111:role/gh-actions-tf
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.7.5 }
+      - run: terraform fmt -check -recursive
+      - run: terraform init
+      - run: terraform validate
+      - run: tflint --recursive
+      - run: tfsec .
+      - run: terraform plan -out=tfplan
+      - uses: actions/upload-artifact@v4
+        with: { name: tfplan, path: tfplan }
+  apply:
+    needs: plan
+    if: github.ref == 'refs/heads/main'
+    environment: production   # gate manual
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: ..., aws-region: us-east-1 }
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform init
+      - uses: actions/download-artifact@v4
+        with: { name: tfplan }
+      - run: terraform apply tfplan</code></pre>
+<p>Note o uso de <code>id-token: write</code> combinado com
+<code>configure-aws-credentials</code>: isso é OIDC — o GitHub Actions
+troca um token de curta duração diretamente com a AWS via federação,
+sem nenhuma chave de acesso de longa duração armazenada em segredo do
+repositório. E o gate <code>environment: production</code> no job de
+apply é o que exige aprovação manual explícita antes de qualquer mudança
+real em produção, mesmo depois do plan já ter passado.</p>
+
+<h3>10. OpenTofu, Pulumi, CDK: alternativas</h3>
+<p>Depois da HashiCorp mudar a licença do Terraform para BSL em 2023,
+a comunidade fez um fork open source — <strong>OpenTofu</strong> —
+compatível com os módulos já existentes e mantido pela Linux Foundation;
+para muitos times, virou o default de facto. <strong>Pulumi</strong>
+segue caminho diferente: IaC escrita em linguagem de programação real
+(Python, TypeScript, Go), com loop, condicional e classe nativos — mais
+poder de expressão, ao custo de menos restrição, o que pode virar
+bagunça se mal arquitetado, já que HCL força um estilo mais declarativo
+e limitado por design. <strong>CDK</strong> (tanto o AWS CDK quanto o
+CDKTF) gera CloudFormation ou HCL a partir de código, oferecendo boa
+abstração com lock-in moderado na ferramenta escolhida. E
+<strong>Crossplane</strong> declara infraestrutura como Custom Resources
+do próprio Kubernetes, encaixando bem em times que já são K8s-first e
+preferem manter tudo dentro do mesmo control plane.</p>
+
+<h3>11. Anti-patterns comuns</h3>
+<ul>
+<li><strong>tfstate no Git</strong>: vazamento de senha garantido, dado
+que o state guarda segredo em texto puro (seção 4).</li>
+<li><strong>Editar console e esquecer de importar</strong>: drift cresce
+silenciosamente até virar incidente (seção 7).</li>
+<li><strong>Módulo gigante "rules-them-all"</strong>: quase impossível
+de testar e depurar, o oposto do módulo pequeno e composável da seção
+5.</li>
+<li><strong>Apply local em produção</strong>: sem revisão, sem
+auditoria — force sempre pelo pipeline (seção 9).</li>
+<li><strong>Hardcode de região ou conta</strong>: use variável com
+default explícito em vez de valor fixo espalhado pelo código.</li>
+<li><strong>Esquecer <code>sensitive = true</code></strong> em senha,
+deixando-a vazar em log de CI ou output de plan.</li>
+<li><strong>Provider sem version constraint</strong>: quebra em deploy
+aleatório quando uma nova versão muda comportamento sem aviso.</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -1756,185 +1779,196 @@ PHASE3 = {
                     "espelhos, possível, mas por quê?"
                 ),
                 "body": (
-                    "<h3>1. O que linters fazem</h3>"
-                    "<p>Linters fazem <strong>análise estática</strong>: leem o código sem "
-                    "executá-lo e procuram padrões. Categorias:</p>"
-                    "<ul>"
-                    "<li><strong>Estilo</strong>: indentação, naming, comprimento de linha, "
-                    "ordem de imports.</li>"
-                    "<li><strong>Bugs simples</strong>: variável não usada, comparação errada "
-                    "de tipo, função sem retorno em path.</li>"
-                    "<li><strong>Anti-patterns</strong>: uso de <code>eval()</code>, "
-                    "regex catastrófico, mutável default arg, hardcoded password.</li>"
-                    "<li><strong>Performance</strong>: list comprehension preferida, evitar "
-                    "concatenação em loop.</li>"
-                    "<li><strong>Type checking</strong> (mypy, tsc): tipos coerentes em "
-                    "linguagens com hint.</li>"
-                    "</ul>"
-                    "<p>Linters NÃO substituem SAST (mas a fronteira é borrada hoje, "
-                    "Bandit/Semgrep cobrem ambos).</p>"
+                """<h3>1. O que linters fazem</h3>
+<p>Um linter faz <strong>análise estática</strong>: lê o código sem
+executá-lo e procura padrões, em cinco categorias amplas. A primeira é
+<strong>estilo</strong> — indentação, naming, comprimento de linha, ordem
+de imports — o tipo de coisa que consome minutos de review humano sem
+agregar nada além de consistência visual. A segunda é <strong>bug
+simples</strong>: variável nunca usada, comparação de tipo incorreta,
+função que esquece de retornar em algum caminho. A terceira é
+<strong>anti-pattern</strong> conhecido: uso de <code>eval()</code>,
+regex catastrófico (que pode travar o processo com input adversarial),
+argumento default mutável (armadilha clássica em Python), senha
+hardcoded. A quarta é <strong>performance</strong>: sugerir list
+comprehension em vez de loop equivalente, evitar concatenação de string
+dentro de loop. E a quinta é <strong>type checking</strong> (mypy, tsc),
+que verifica se os tipos declarados realmente batem entre si em
+linguagens com type hint. Linter não substitui SAST — mas a fronteira
+entre os dois ficou borrada: Bandit e Semgrep hoje cobrem os dois papéis
+ao mesmo tempo.</p>
 
-                    "<h3>2. Linters por linguagem</h3>"
-                    "<h4>2.1 Python</h4>"
-                    "<ul>"
-                    "<li><strong>Ruff</strong>: novo padrão. Escrito em Rust. Substitui "
-                    "<code>flake8</code>, <code>isort</code>, <code>pyupgrade</code>, "
-                    "<code>autoflake</code>, <code>black</code>, em 1 ferramenta, 10-100x "
-                    "mais rápido. Lint + format.</li>"
-                    "<li><strong>mypy</strong> / <strong>pyright</strong>: type checking.</li>"
-                    "<li><strong>Bandit</strong>: foco em segurança.</li>"
-                    "</ul>"
-                    "<pre><code># pyproject.toml\n"
-                    "[tool.ruff]\n"
-                    "line-length = 100\n"
-                    "target-version = \"py312\"\n"
-                    "[tool.ruff.lint]\n"
-                    "select = [\n"
-                    "  \"E\", \"W\",   # pycodestyle\n"
-                    "  \"F\",         # pyflakes\n"
-                    "  \"I\",         # isort\n"
-                    "  \"N\",         # pep8-naming\n"
-                    "  \"UP\",        # pyupgrade\n"
-                    "  \"B\",         # bugbear\n"
-                    "  \"S\",         # bandit\n"
-                    "  \"SIM\",       # simplify\n"
-                    "]\n"
-                    "ignore = [\"E501\"]   # justifique cada um</code></pre>"
-                    "<h4>2.2 JavaScript/TypeScript</h4>"
-                    "<ul>"
-                    "<li><strong>ESLint</strong>: o padrão; com plugins (typescript-eslint, "
-                    "react, next, security).</li>"
-                    "<li><strong>Prettier</strong>: formatação opinativa.</li>"
-                    "<li><strong>tsc --noEmit</strong>: type check.</li>"
-                    "<li><strong>Biome</strong>: alternativa em Rust (rápida, integra "
-                    "lint+format).</li>"
-                    "</ul>"
-                    "<h4>2.3 Go</h4>"
-                    "<ul>"
-                    "<li><strong>golangci-lint</strong>: agrega 50+ linters (errcheck, "
-                    "govet, ineffassign, gosec, staticcheck).</li>"
-                    "<li><strong>gofmt</strong>/<strong>goimports</strong>: formatação "
-                    "padrão.</li>"
-                    "</ul>"
-                    "<h4>2.4 Shell/Bash</h4>"
-                    "<ul>"
-                    "<li><strong>shellcheck</strong>: o padrão. Pega "
-                    "<code>$var</code> não-quoted, <code>cd $dir &amp;&amp; rm</code>, "
-                    "etc.</li>"
-                    "<li><strong>shfmt</strong>: formatação.</li>"
-                    "</ul>"
-                    "<h4>2.5 Outros</h4>"
-                    "<ul>"
-                    "<li><strong>YAML</strong>: <code>yamllint</code>.</li>"
-                    "<li><strong>Markdown</strong>: <code>markdownlint</code>.</li>"
-                    "<li><strong>JSON</strong>: <code>jq</code> + schemas.</li>"
-                    "<li><strong>SQL</strong>: <code>sqlfluff</code>.</li>"
-                    "</ul>"
+<h3>2. Linters por linguagem</h3>
+<h4>2.1 Python</h4>
+<p>O <strong>Ruff</strong> virou o novo padrão — escrito em Rust,
+substitui <code>flake8</code>, <code>isort</code>,
+<code>pyupgrade</code>, <code>autoflake</code> e <code>black</code> numa
+única ferramenta, 10 a 100 vezes mais rápida, cobrindo lint e formatação
+ao mesmo tempo. <strong>mypy</strong> e <strong>pyright</strong> cuidam
+especificamente de type checking. E <strong>Bandit</strong> mantém foco
+exclusivo em segurança, mesmo com Ruff já cobrindo boa parte disso via
+plugin.</p>
+<pre><code># pyproject.toml
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+[tool.ruff.lint]
+select = [
+  "E", "W",   # pycodestyle
+  "F",         # pyflakes
+  "I",         # isort
+  "N",         # pep8-naming
+  "UP",        # pyupgrade
+  "B",         # bugbear
+  "S",         # bandit
+  "SIM",       # simplify
+]
+ignore = ["E501"]   # justifique cada um</code></pre>
+<h4>2.2 JavaScript/TypeScript</h4>
+<p><strong>ESLint</strong> continua sendo o padrão, extensível via
+plugin (typescript-eslint, react, next, security). O
+<strong>Prettier</strong> cuida só de formatação, deliberadamente
+opinativo para eliminar debate de estilo. <code>tsc --noEmit</code> roda
+o type checker do TypeScript sem gerar output. E o
+<strong>Biome</strong>, escrito em Rust, é a alternativa mais recente que
+integra lint e format numa ferramenta só, na mesma linha do Ruff para
+Python.</p>
+<h4>2.3 Go</h4>
+<p><strong>golangci-lint</strong> agrega mais de 50 linters individuais
+(errcheck, govet, ineffassign, gosec, staticcheck) sob uma configuração
+única. <strong>gofmt</strong> e <strong>goimports</strong> cuidam da
+formatação padrão da linguagem — Go é incomum em ter formatação oficial
+imposta pela própria toolchain, eliminando de vez a discussão de
+estilo.</p>
+<h4>2.4 Shell/Bash</h4>
+<p><strong>shellcheck</strong> é o padrão indiscutível — pega erro
+sutil e comum como variável não citada (<code>$var</code> sem aspas,
+que quebra com espaço no valor) ou um <code>cd $dir &amp;&amp; rm</code>
+que apaga o diretório errado se o `cd` falhar silenciosamente.
+<strong>shfmt</strong> cuida da formatação.</p>
+<h4>2.5 Outros</h4>
+<p>Cada formato de arquivo tende a ter seu linter dedicado:
+<code>yamllint</code> para YAML, <code>markdownlint</code> para
+Markdown, <code>jq</code> combinado com schema para JSON, e
+<code>sqlfluff</code> para SQL.</p>
 
-                    "<h3>3. Linters de IaC</h3>"
-                    "<h4>3.1 Dockerfile</h4>"
-                    "<p><strong>hadolint</strong>: pega anti-patterns Docker.</p>"
-                    "<pre><code>$ hadolint Dockerfile\n"
-                    "Dockerfile:5 DL3008 Pin versions in apt-get install. Instead of `apt install foo`,\n"
-                    "use `apt install foo=1.2.3`.\n"
-                    "Dockerfile:7 DL3009 Delete the apt-get lists after installing.\n"
-                    "Dockerfile:10 DL3025 Use arguments JSON notation for CMD and ENTRYPOINT.</code></pre>"
-                    "<h4>3.2 Terraform</h4>"
-                    "<ul>"
-                    "<li><strong>tflint</strong>: lint específico de Terraform; tem "
-                    "rulesets por provider (aws-tflint detecta instance type inválido, "
-                    "ami inexistente).</li>"
-                    "<li><strong>tfsec</strong> / <strong>checkov</strong>: security "
-                    "(bucket público, sg 0.0.0.0/0, encryption desabilitada).</li>"
-                    "<li><strong>terraform fmt</strong>: formatação nativa.</li>"
-                    "</ul>"
-                    "<h4>3.3 Kubernetes</h4>"
-                    "<ul>"
-                    "<li><strong>kubeval</strong> / <strong>kubeconform</strong>: schema "
-                    "validation.</li>"
-                    "<li><strong>kube-linter</strong>: best practices "
-                    "(securityContext, resource limits, liveness probe).</li>"
-                    "<li><strong>polaris</strong>: similar.</li>"
-                    "<li><strong>checkov</strong>: também cobre K8s manifests + Helm.</li>"
-                    "</ul>"
-                    "<h4>3.4 Ansible</h4>"
-                    "<p><strong>ansible-lint</strong>: detecta tasks sem nome, "
-                    "<code>shell</code> sem <code>creates</code>, <code>become</code> "
-                    "redundante, etc.</p>"
+<h3>3. Linters de IaC</h3>
+<h4>3.1 Dockerfile</h4>
+<p><strong>hadolint</strong> pega anti-pattern específico de Docker —
+coisas que só fazem sentido dentro do contexto de construção de
+imagem:</p>
+<pre><code>$ hadolint Dockerfile
+Dockerfile:5 DL3008 Pin versions in apt-get install. Instead of `apt install foo`,
+use `apt install foo=1.2.3`.
+Dockerfile:7 DL3009 Delete the apt-get lists after installing.
+Dockerfile:10 DL3025 Use arguments JSON notation for CMD and ENTRYPOINT.</code></pre>
+<h4>3.2 Terraform</h4>
+<p><strong>tflint</strong> é o lint específico do Terraform, com
+rulesets por provider — a variante para AWS detecta instance type
+inválido ou AMI inexistente antes mesmo de rodar plan.
+<strong>tfsec</strong> e <strong>checkov</strong> focam em segurança:
+bucket público, security group aberto para <code>0.0.0.0/0</code>,
+encryption desabilitada. E <code>terraform fmt</code> cuida da
+formatação nativa da linguagem.</p>
+<h4>3.3 Kubernetes</h4>
+<p><strong>kubeval</strong> e <strong>kubeconform</strong> validam o
+manifesto contra o schema da versão do Kubernetes-alvo.
+<strong>kube-linter</strong> e o similar <strong>polaris</strong> vão
+além do schema e checam boas práticas de verdade — securityContext
+definido, resource limits presentes, liveness probe configurada. E o
+<strong>checkov</strong>, já citado para Terraform, também cobre
+manifesto Kubernetes e chart Helm.</p>
+<h4>3.4 Ansible</h4>
+<p><strong>ansible-lint</strong> detecta task sem nome (dificulta
+debugar output de playbook), uso de <code>shell</code> sem
+<code>creates</code> (torna a task não-idempotente), e
+<code>become</code> redundante onde já não é necessário.</p>
 
-                    "<h3>4. Pre-commit + CI: defesa em camadas</h3>"
-                    "<p>Padrão moderno: rodar tudo localmente antes do commit "
-                    "(<strong>pre-commit framework</strong>) e novamente no CI:</p>"
-                    "<pre><code># .pre-commit-config.yaml\n"
-                    "repos:\n"
-                    "  - repo: https://github.com/astral-sh/ruff-pre-commit\n"
-                    "    rev: v0.5.0\n"
-                    "    hooks:\n"
-                    "      - id: ruff       # lint\n"
-                    "        args: [--fix]\n"
-                    "      - id: ruff-format\n"
-                    "  - repo: https://github.com/hadolint/hadolint\n"
-                    "    rev: v2.13.0-beta\n"
-                    "    hooks:\n"
-                    "      - id: hadolint-docker\n"
-                    "  - repo: https://github.com/koalaman/shellcheck-precommit\n"
-                    "    rev: v0.10.0\n"
-                    "    hooks:\n"
-                    "      - id: shellcheck\n"
-                    "  - repo: https://github.com/gitleaks/gitleaks\n"
-                    "    rev: v8.18.0\n"
-                    "    hooks:\n"
-                    "      - id: gitleaks\n"
-                    "  - repo: https://github.com/aquasecurity/tfsec\n"
-                    "    rev: v1.28.0\n"
-                    "    hooks:\n"
-                    "      - id: tfsec</code></pre>"
-                    "<pre><code>$ pre-commit install   # instala hook git\n"
-                    "$ pre-commit run --all-files   # roda em todo repo\n"
-                    "ruff..............................Passed\n"
-                    "hadolint..........................Failed\n"
-                    "  Dockerfile:7 DL3009 Delete apt lists after install</code></pre>"
-                    "<p>No CI, repita: <code>pre-commit run --all-files</code>. "
-                    "Devs podem pular pre-commit local com <code>--no-verify</code>; CI "
-                    "não pula.</p>"
+<h3>4. Pre-commit + CI: defesa em camadas</h3>
+<p>O padrão moderno é rodar tudo LOCALMENTE antes mesmo do commit — via
+o framework <strong>pre-commit</strong> — e rodar de novo no CI como
+segunda camada, porque nem todo desenvolvedor lembra de instalar o hook
+local:</p>
+<pre><code># .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff       # lint
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.13.0-beta
+    hooks:
+      - id: hadolint-docker
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/aquasecurity/tfsec
+    rev: v1.28.0
+    hooks:
+      - id: tfsec</code></pre>
+<pre><code>$ pre-commit install   # instala hook git
+$ pre-commit run --all-files   # roda em todo repo
+ruff..............................Passed
+hadolint..........................Failed
+  Dockerfile:7 DL3009 Delete apt lists after install</code></pre>
+<p>A razão de repetir tudo no CI (<code>pre-commit run --all-files</code>
+de novo) é que um desenvolvedor pode pular o hook local com
+<code>--no-verify</code> — o CI é a camada que não tem esse atalho de
+saída.</p>
 
-                    "<h3>5. Auto-fix</h3>"
-                    "<p>Muitos linters têm <code>--fix</code>:</p>"
-                    "<ul>"
-                    "<li><code>ruff check --fix</code>: organiza imports, remove unused.</li>"
-                    "<li><code>ruff format</code>: formata estilo black-like.</li>"
-                    "<li><code>prettier --write</code>: formata JS/TS/CSS/JSON/MD.</li>"
-                    "<li><code>terraform fmt -recursive</code>: formata HCL.</li>"
-                    "</ul>"
-                    "<p>Combine com bot no PR: lefthook, treefmt, ou um GitHub Action "
-                    "que faz commit do fix.</p>"
+<h3>5. Auto-fix</h3>
+<p>Boa parte dos linters modernos corrige o próprio problema que
+encontra, quando a correção é mecânica e sem ambiguidade:
+<code>ruff check --fix</code> organiza import e remove código morto,
+<code>ruff format</code> formata no estilo black, <code>prettier
+--write</code> cobre JS/TS/CSS/JSON/Markdown, e <code>terraform fmt
+-recursive</code> formata HCL. Combinar isso com um bot no PR — lefthook,
+treefmt, ou uma GitHub Action que commita a correção automaticamente —
+elimina de vez o ciclo manual de "rodar, corrigir, commitar de novo".</p>
 
-                    "<h3>6. Falsos positivos: como lidar</h3>"
-                    "<p>Suprimir é legítimo, mas <em>com motivo no comentário</em>:</p>"
-                    "<pre><code>SQL = (\n"
-                    "    \"SELECT * FROM users WHERE id IN (\" + ids_csv + \")\"  # noqa: S608 - ids_csv é validado em validate_ids() acima\n"
-                    ")</code></pre>"
-                    "<p><code># noqa</code> sem motivo vira ruído permanente. Audite "
-                    "supressões periodicamente (<code>grep -r 'noqa' .</code>).</p>"
+<h3>6. Falsos positivos: como lidar</h3>
+<p>Suprimir um alerta de linter é legítimo, mas só quando vem
+acompanhado do motivo explícito no próprio comentário — sem isso, a
+supressão vira uma incógnita para quem ler o código depois:</p>
+<pre><code>SQL = (
+    "SELECT * FROM users WHERE id IN (" + ids_csv + ")"  # noqa: S608 - ids_csv é validado em validate_ids() acima
+)</code></pre>
+<p>Um <code># noqa</code> sem justificativa vira ruído permanente que
+ninguém mais entende o porquê. Auditar supressões periodicamente
+(<code>grep -r 'noqa' .</code>) é a forma de garantir que elas ainda
+fazem sentido meses depois.</p>
 
-                    "<h3>7. Linter no editor</h3>"
-                    "<p>Erro aparece enquanto você digita. Reduz mental "
-                    "context-switch (não precisa rodar CI para descobrir typo). VS Code, "
-                    "JetBrains, Vim/Neovim, Emacs, todos suportam LSP, ruff-lsp, ESLint, "
-                    "tflint, etc.</p>"
+<h3>7. Linter no editor</h3>
+<p>Quando o erro aparece enquanto o código ainda está sendo digitado, o
+custo de correção cai para quase zero — não é preciso esperar o CI
+rodar minutos depois para descobrir um typo. VS Code, JetBrains,
+Vim/Neovim e Emacs suportam isso nativamente via LSP, com integrações
+específicas como ruff-lsp, ESLint e tflint.</p>
 
-                    "<h3>8. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>Desativar todas as regras</strong>: linter inútil. "
-                    "Migre legados ativando regras gradualmente, não desligando tudo.</li>"
-                    "<li><strong>Suprimir sem comentar</strong>: lixo permanente.</li>"
-                    "<li><strong>Linter só no CI</strong>: feedback de minutos. Adicione "
-                    "pre-commit + editor.</li>"
-                    "<li><strong>Discussão sobre estilo em review</strong>: deixe para "
-                    "linter/formatter. Humano revisa lógica, segurança, design.</li>"
-                    "<li><strong>Auto-fix sem revisar</strong>: cuidado com fixers "
-                    "agressivos que mudam semântica.</li>"
-                    "</ul>"
+<h3>8. Anti-patterns</h3>
+<ul>
+<li><strong>Desativar todas as regras</strong>: o linter deixa de ter
+qualquer utilidade — em legado, migre ativando regra por regra
+gradualmente, em vez de desligar tudo de uma vez.</li>
+<li><strong>Suprimir sem comentar o motivo</strong>: vira lixo
+permanente que ninguém mais entende (seção 6).</li>
+<li><strong>Linter rodando só no CI</strong>: o feedback demora minutos
+em vez de segundos — adicione pre-commit e integração no editor (seções
+4 e 7).</li>
+<li><strong>Discussão de estilo em code review</strong>: deixe isso para
+o linter/formatter resolver automaticamente; humano deveria revisar
+lógica, segurança e design, não indentação.</li>
+<li><strong>Auto-fix aplicado sem revisar o diff</strong>: alguns
+fixers são agressivos o suficiente para mudar semântica sem querer,
+não só estilo.</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -2024,184 +2058,219 @@ PHASE3 = {
                     "de falsos positivos e custom rules para padrões do seu domínio."
                 ),
                 "body": (
-                    "<h3>1. Como SAST funciona internamente</h3>"
-                    "<p>Etapas típicas:</p>"
-                    "<ol>"
-                    "<li><strong>Parsing</strong>: código vira AST (Abstract Syntax Tree).</li>"
-                    "<li><strong>Análise de fluxo de controle (CFG)</strong>: como execução "
-                    "pula entre blocos.</li>"
-                    "<li><strong>Análise de fluxo de dados (taint)</strong>: rastreia "
-                    "valores 'sujos' (input do usuário) até pontos perigosos (SQL exec, "
-                    "shell, eval). Se chegar sem sanitização, é vulnerabilidade.</li>"
-                    "<li><strong>Aplicação de regras</strong>: padrões pré-definidos "
-                    "(OWASP) ou custom.</li>"
-                    "<li><strong>Reporte</strong>: SARIF, JSON, HTML.</li>"
-                    "</ol>"
-                    "<p>Exemplo conceitual de taint analysis:</p>"
-                    "<pre><code>def view(request):\n"
-                    "    user_id = request.GET.get('id')        # source: tainted\n"
-                    "    query = f\"SELECT * FROM u WHERE id={user_id}\"   # propaga taint\n"
-                    "    cursor.execute(query)                  # sink: SQL injection!</code></pre>"
-                    "<p>Sanitização interrompe taint:</p>"
-                    "<pre><code>user_id = int(request.GET.get('id'))  # cast → não tainted (escopo)\n"
-                    "cursor.execute(\"SELECT * FROM u WHERE id=%s\", [user_id])  # parametrizado, ok</code></pre>"
+                """<h3>1. Como SAST funciona internamente</h3>
+<p>Cinco etapas transformam código-fonte em achado de vulnerabilidade.
+Primeiro, <strong>parsing</strong> transforma o texto do código numa AST
+(Abstract Syntax Tree) — uma estrutura de árvore que representa a
+sintaxe sem ambiguidade. Depois, a <strong>análise de fluxo de
+controle</strong> (CFG) mapeia como a execução pode pular entre blocos —
+qual `if` leva a qual `return`, onde um loop pode terminar. A etapa mais
+importante é a <strong>análise de fluxo de dados</strong> (taint
+analysis): ela rastreia um valor "sujo" — tipicamente input vindo do
+usuário — desde onde ele entra no sistema (a "source") até onde ele
+chega a fazer algo perigoso (o "sink", como executar SQL, chamar shell,
+rodar `eval`). Se esse valor sujo percorre esse caminho SEM passar por
+nenhuma sanitização no meio, a ferramenta reporta vulnerabilidade —
+mesmo sem nunca ter executado o código de verdade:</p>
+<pre><code>def view(request):
+    user_id = request.GET.get('id')        # source: tainted
+    query = f"SELECT * FROM u WHERE id={user_id}"   # propaga taint
+    cursor.execute(query)                  # sink: SQL injection!</code></pre>
+<p>Uma sanitização de verdade interrompe essa cadeia — o taint para de
+se propagar porque o valor deixou de ser o input bruto do usuário:</p>
+<pre><code>user_id = int(request.GET.get('id'))  # cast → não tainted (escopo)
+cursor.execute("SELECT * FROM u WHERE id=%s", [user_id])  # parametrizado, ok</code></pre>
+<p>Depois disso vem a <strong>aplicação de regras</strong> — padrões
+pré-definidos (cobrindo OWASP Top 10) ou custom, escritos para o domínio
+específico da empresa — e por fim o <strong>reporte</strong>, tipicamente
+em formato SARIF, JSON ou HTML, consumível tanto por humano quanto por
+outra ferramenta no pipeline.</p>
 
-                    "<h3>2. Tipos de regras</h3>"
-                    "<ul>"
-                    "<li><strong>Pattern simples</strong>: regex/AST básico (Bandit "
-                    "<code>B102</code> = uso de <code>exec()</code>).</li>"
-                    "<li><strong>Taint analysis</strong>: source → sanitizer → sink. "
-                    "Mais preciso e mais caro computacionalmente.</li>"
-                    "<li><strong>Symbolic execution</strong>: simula execução com "
-                    "valores simbólicos. Encontra bugs profundos.</li>"
-                    "<li><strong>Custom rules</strong>: você escreve para seu domínio "
-                    "(ex.: 'log que contém variável <code>cpf</code> = bloqueia merge').</li>"
-                    "</ul>"
+<h3>2. Tipos de regras</h3>
+<p>Nem toda regra de SAST funciona do mesmo jeito, e a escolha do tipo
+afeta diretamente precisão e custo computacional. Um <strong>pattern
+simples</strong> é regex ou AST básico procurando uma chamada específica
+— Bandit <code>B102</code>, por exemplo, sinaliza qualquer uso de
+<code>exec()</code>, sem entender contexto nenhum ao redor. A
+<strong>taint analysis</strong> (seção 1) já rastreia o caminho completo
+source → sanitizer → sink, muito mais precisa mas também muito mais
+cara de computar, porque precisa simular fluxo de dados através de todo
+o programa. A <strong>execução simbólica</strong> vai além: simula a
+execução do programa com valores simbólicos (não valores concretos),
+capaz de encontrar bugs profundos que dependem de combinações raras de
+condição. E as <strong>custom rules</strong> são as que a própria empresa
+escreve para seu domínio específico — por exemplo, "qualquer log que
+inclua a variável <code>cpf</code> bloqueia o merge", um padrão que
+nenhuma ferramenta genérica conheceria de antemão.</p>
 
-                    "<h3>3. Ferramentas open source</h3>"
-                    "<h4>3.1 Semgrep</h4>"
-                    "<p>Padrão moderno. Sintaxe simples (YAML + pattern). Multi-linguagem. "
-                    "Regras OWASP prontas, e custom é fácil:</p>"
-                    "<pre><code># .semgrep/no-print-in-prod.yml\n"
-                    "rules:\n"
-                    "  - id: no-print\n"
-                    "    languages: [python]\n"
-                    "    severity: WARNING\n"
-                    "    message: \"Use logging em vez de print()\"\n"
-                    "    pattern: print(...)\n"
-                    "    paths:\n"
-                    "      include: ['app/**/*.py']\n"
-                    "      exclude: ['tests/**', 'scripts/**']</code></pre>"
-                    "<pre><code>$ semgrep --config p/owasp-top-ten\n"
-                    "$ semgrep --config p/python --config .semgrep/\n"
-                    "$ semgrep --config auto   # detecta linguagem e usa registry</code></pre>"
-                    "<h4>3.2 Bandit (Python)</h4>"
-                    "<pre><code>$ bandit -r app/\n"
-                    "&gt;&gt; Issue: [B201:flask_debug_true] A Flask app appears to be run with debug=True\n"
-                    "   Severity: High   Confidence: Medium\n"
-                    "   Location: app.py:42</code></pre>"
-                    "<h4>3.3 CodeQL (GitHub)</h4>"
-                    "<p>Constrói banco de fatos sobre seu código; queries SQL-like buscam "
-                    "padrões. Muito poderoso, free para repos públicos.</p>"
-                    "<pre><code>// query CodeQL\n"
-                    "import python\n"
-                    "from FunctionDef f\n"
-                    "where f.getName() = \"login\" and not exists(f.getBody().getAStmt())\n"
-                    "select f, \"Função login sem corpo\"</code></pre>"
-                    "<h4>3.4 Outros</h4>"
-                    "<ul>"
-                    "<li><strong>Brakeman</strong>: Ruby/Rails.</li>"
-                    "<li><strong>gosec</strong>: Go.</li>"
-                    "<li><strong>SpotBugs</strong>/Find-Sec-Bugs: Java.</li>"
-                    "<li><strong>Sonarqube/SonarCloud</strong>: comercial com freemium; "
-                    "engloba SAST + qualidade de código.</li>"
-                    "</ul>"
+<h3>3. Ferramentas open source</h3>
+<h4>3.1 Semgrep</h4>
+<p>Tornou-se o padrão moderno por combinar sintaxe simples (YAML mais
+um pattern que lembra o próprio código) com suporte multi-linguagem e
+regras OWASP já prontas para uso, além de facilitar escrever regra
+custom sem precisar aprender uma DSL complexa:</p>
+<pre><code># .semgrep/no-print-in-prod.yml
+rules:
+  - id: no-print
+    languages: [python]
+    severity: WARNING
+    message: "Use logging em vez de print()"
+    pattern: print(...)
+    paths:
+      include: ['app/**/*.py']
+      exclude: ['tests/**', 'scripts/**']</code></pre>
+<pre><code>$ semgrep --config p/owasp-top-ten
+$ semgrep --config p/python --config .semgrep/
+$ semgrep --config auto   # detecta linguagem e usa registry</code></pre>
+<h4>3.2 Bandit (Python)</h4>
+<pre><code>$ bandit -r app/
+&gt;&gt; Issue: [B201:flask_debug_true] A Flask app appears to be run with debug=True
+   Severity: High   Confidence: Medium
+   Location: app.py:42</code></pre>
+<h4>3.3 CodeQL (GitHub)</h4>
+<p>Segue uma abordagem diferente: constrói um banco de fatos sobre todo
+o código do repositório, e permite escrever queries no estilo SQL para
+buscar padrões arbitrariamente complexos — muito mais poderoso que
+regex, e gratuito para repositórios públicos:</p>
+<pre><code>// query CodeQL
+import python
+from FunctionDef f
+where f.getName() = "login" and not exists(f.getBody().getAStmt())
+select f, "Função login sem corpo"</code></pre>
+<h4>3.4 Outros</h4>
+<p>Cada linguagem tende a ter sua ferramenta especializada dominante:
+<strong>Brakeman</strong> para Ruby/Rails, <strong>gosec</strong> para
+Go, <strong>SpotBugs</strong>/Find-Sec-Bugs para Java. E o
+<strong>SonarQube</strong>/SonarCloud, comercial com camada gratuita,
+combina SAST com métricas gerais de qualidade de código na mesma
+ferramenta.</p>
 
-                    "<h3>4. Integração no pipeline</h3>"
-                    "<p>Idealmente como check obrigatório no PR:</p>"
-                    "<pre><code># GitHub Actions\n"
-                    "- name: Semgrep\n"
-                    "  uses: returntocorp/semgrep-action@v1\n"
-                    "  with:\n"
-                    "    config: p/owasp-top-ten\n"
-                    "    auditOn: push\n"
-                    "    publishToken: ${{ secrets.SEMGREP_APP_TOKEN }}</code></pre>"
-                    "<p>Para evitar 'mar de ruído' em legado, configure <strong>diff-only</strong>: "
-                    "comente no PR apenas achados em <em>linhas tocadas neste PR</em>. Legado é tratado "
-                    "em sprint de tech-debt, não bloqueia merge.</p>"
-                    "<p>Regra de bloqueio:</p>"
-                    "<ul>"
-                    "<li><strong>Critical/High</strong>: bloqueia merge.</li>"
-                    "<li><strong>Medium</strong>: vira issue automática, prazo sprint.</li>"
-                    "<li><strong>Low/Info</strong>: backlog, não obriga.</li>"
-                    "</ul>"
+<h3>4. Integração no pipeline</h3>
+<p>O ponto ideal de integração é como check obrigatório no próprio PR,
+não como relatório separado que alguém consulta depois:</p>
+<pre><code># GitHub Actions
+- name: Semgrep
+  uses: returntocorp/semgrep-action@v1
+  with:
+    config: p/owasp-top-ten
+    auditOn: push
+    publishToken: ${{ secrets.SEMGREP_APP_TOKEN }}</code></pre>
+<p>Rodar SAST pela primeira vez num código legado tipicamente produz
+centenas de achados acumulados ao longo de anos — bloquear merge por
+todos eles de uma vez paralisa o time inteiro. A saída é configurar
+<strong>diff-only</strong>: comentar no PR apenas os achados nas linhas
+que aquele PR especificamente tocou, deixando o legado para um esforço
+dedicado de tech-debt, sem travar trabalho novo. A regra de bloqueio
+então segue a severidade: Critical/High bloqueia o merge diretamente;
+Medium vira issue automática com prazo dentro do sprint; Low/Info só
+entra no backlog, sem obrigar ação imediata.</p>
 
-                    "<h3>5. Triagem de falsos positivos</h3>"
-                    "<p>Falsos positivos são normais, alguns padrões precisam contexto. "
-                    "Crie processo:</p>"
-                    "<ol>"
-                    "<li>Triagem semanal por security champion ou squad rotativo.</li>"
-                    "<li>Confirma que é FP, suprime com justificativa <strong>no código</strong> "
-                    "(<code># nosec - input validado em validate()</code>).</li>"
-                    "<li>Ou em arquivo de baseline (<code>.semgrepignore</code>).</li>"
-                    "<li>Sempre revisita supressões antigas (auditoria trimestral).</li>"
-                    "</ol>"
-                    "<p>Importante: nunca suprima 'em massa' sem analisar. Vira tapa-buraco "
-                    "que esconde achados reais.</p>"
+<h3>5. Triagem de falsos positivos</h3>
+<p>Falso positivo é normal — muitos padrões de vulnerabilidade dependem
+de contexto que a ferramenta não tem como enxergar sozinha. O que evita
+que isso vire caos é um processo estruturado: uma triagem semanal, feita
+por um security champion ou squad rotativo; ao confirmar que é
+realmente falso positivo, a supressão vai DIRETO no código com
+justificativa explícita (<code># nosec - input validado em
+validate()</code>), nunca silenciosa; alternativamente, um arquivo de
+baseline (<code>.semgrepignore</code>) registra supressões em lote; e
+uma auditoria trimestral revisita supressões antigas, porque o código ao
+redor pode ter mudado desde que a supressão foi justificada. O erro
+mais caro aqui é suprimir "em massa" sem analisar cada caso — isso vira
+um tapa-buraco que esconde achado real junto com os falsos.</p>
 
-                    "<h3>6. SAST vs DAST vs IAST vs SCA, complementares</h3>"
-                    "<table>"
-                    "<tr><th>Tipo</th><th>O que olha</th><th>Quando</th><th>Exemplo</th></tr>"
-                    "<tr><td>SAST</td><td>Código (white box)</td><td>Pré-deploy/PR</td><td>Semgrep, CodeQL</td></tr>"
-                    "<tr><td>DAST</td><td>App rodando (black box)</td><td>Staging/QA</td><td>OWASP ZAP, Burp</td></tr>"
-                    "<tr><td>IAST</td><td>Agente em runtime</td><td>QA com tráfego</td><td>Contrast, Seeker</td></tr>"
-                    "<tr><td>SCA</td><td>Dependências</td><td>Pre-deploy/contínuo</td><td>Trivy, Dependabot</td></tr>"
-                    "<tr><td>Pentest</td><td>App + infra (humano)</td><td>Periódico</td><td>Consultoria/red team</td></tr>"
-                    "</table>"
-                    "<p>Use vários, cada um pega coisas diferentes:</p>"
-                    "<ul>"
-                    "<li>SAST pega lógica que DAST nunca testará (path raro).</li>"
-                    "<li>DAST pega misconfig de servidor/runtime que SAST não vê.</li>"
-                    "<li>SCA pega CVE em deps que SAST/DAST ignoram.</li>"
-                    "<li>Pentest combina criatividade humana + ferramentas + lógica de negócio.</li>"
-                    "</ul>"
+<h3>6. SAST vs DAST vs IAST vs SCA, complementares</h3>
+<table>
+<tr><th>Tipo</th><th>O que olha</th><th>Quando</th><th>Exemplo</th></tr>
+<tr><td>SAST</td><td>Código (white box)</td><td>Pré-deploy/PR</td><td>Semgrep, CodeQL</td></tr>
+<tr><td>DAST</td><td>App rodando (black box)</td><td>Staging/QA</td><td>OWASP ZAP, Burp</td></tr>
+<tr><td>IAST</td><td>Agente em runtime</td><td>QA com tráfego</td><td>Contrast, Seeker</td></tr>
+<tr><td>SCA</td><td>Dependências</td><td>Pre-deploy/contínuo</td><td>Trivy, Dependabot</td></tr>
+<tr><td>Pentest</td><td>App + infra (humano)</td><td>Periódico</td><td>Consultoria/red team</td></tr>
+</table>
+<p>Nenhum desses métodos sozinho cobre tudo, e cada um pega uma classe
+diferente de problema: SAST alcança lógica interna que DAST jamais
+testaria por acaso, como um caminho de código raro só atingido por uma
+combinação específica de parâmetros; DAST, por sua vez, pega
+misconfiguração de servidor ou runtime que simplesmente não existe no
+código-fonte (é uma configuração de ambiente, não uma linha de Python);
+SCA pega CVE conhecida em dependência de terceiro, algo que nem SAST nem
+DAST enxergam porque o código vulnerável não foi escrito pelo próprio
+time; e pentest combina criatividade humana, ferramenta automatizada e
+entendimento de lógica de negócio — capaz de encadear falhas
+individualmente pequenas em um comprometimento real, algo que nenhuma
+ferramenta automatizada replica de forma confiável.</p>
 
-                    "<h3>7. Custom rules: o real diferencial</h3>"
-                    "<p>Regras default cobrem OWASP top 10, bom, mas todo mundo tem. "
-                    "Custom rules pegam padrões internos:</p>"
-                    "<pre><code>rules:\n"
-                    "  - id: no-direct-db-cursor\n"
-                    "    pattern: connection.cursor()\n"
-                    "    message: \"Use UnitOfWork em vez de cursor direto. Ver ADR-12.\"\n"
-                    "    severity: ERROR\n"
-                    "    languages: [python]\n"
-                    "    paths: { include: ['app/**'], exclude: ['app/db/uow.py'] }\n"
-                    "\n"
-                    "  - id: log-sem-mascarar-cpf\n"
-                    "    pattern-either:\n"
-                    "      - pattern: logger.info(f\"...{$X.cpf}...\")\n"
-                    "      - pattern: logger.info(f\"...{$X.email}...\")\n"
-                    "    message: \"PII em log, use mask_pii()\"\n"
-                    "    severity: ERROR\n"
-                    "    languages: [python]</code></pre>"
-                    "<p>Comece pequeno: 3-5 regras críticas para a empresa. Cresça com "
-                    "tempo. Cada regra é menos um bug recorrente em review.</p>"
+<h3>7. Custom rules: o real diferencial</h3>
+<p>Regras default cobrem o OWASP Top 10 — útil, mas é exatamente o mesmo
+conjunto que toda outra empresa também roda. O que realmente diferencia
+uma configuração de SAST madura são as custom rules, que capturam
+padrão INTERNO específico daquele código:</p>
+<pre><code>rules:
+  - id: no-direct-db-cursor
+    pattern: connection.cursor()
+    message: "Use UnitOfWork em vez de cursor direto. Ver ADR-12."
+    severity: ERROR
+    languages: [python]
+    paths: { include: ['app/**'], exclude: ['app/db/uow.py'] }
 
-                    "<h3>8. Métricas úteis</h3>"
-                    "<ul>"
-                    "<li><strong>MTTR por severidade</strong>: tempo médio de remediação.</li>"
-                    "<li><strong>Taxa de FP</strong>: % de achados que viram supressão "
-                    "justificada. Se &gt;30%, regras precisam ajuste.</li>"
-                    "<li><strong>Achados / KLOC novo</strong>: tendência da base.</li>"
-                    "<li><strong>Tempo de análise no CI</strong>: SAST &gt;5min vira "
-                    "fricção.</li>"
-                    "</ul>"
+  - id: log-sem-mascarar-cpf
+    pattern-either:
+      - pattern: logger.info(f"...{$X.cpf}...")
+      - pattern: logger.info(f"...{$X.email}...")
+    message: "PII em log, use mask_pii()"
+    severity: ERROR
+    languages: [python]</code></pre>
+<p>O caminho recomendado é começar pequeno — 3 a 5 regras que capturam
+os erros mais recorrentes vistos em code review — e crescer com o
+tempo. Cada regra nova elimina um tipo de bug que, de outra forma,
+continuaria sendo pego manualmente review após review.</p>
 
-                    "<h3>9. Limitações de SAST</h3>"
-                    "<p>SAST não enxerga:</p>"
-                    "<ul>"
-                    "<li>Misconfig de servidor/runtime (debug=True via env var).</li>"
-                    "<li>Falhas de auth/authz em runtime.</li>"
-                    "<li>DoS, race conditions em produção.</li>"
-                    "<li>Logic flaws complexas (preço negativo aceito).</li>"
-                    "<li>Vulnerabilidade em serviço terceiro chamado por API.</li>"
-                    "</ul>"
-                    "<p>Por isso: combine com DAST, observabilidade, threat modeling, "
-                    "pentest. Defesa em profundidade.</p>"
+<h3>8. Métricas úteis</h3>
+<p>Quatro números indicam se o programa de SAST está funcionando de
+verdade ou só gerando ruído. O <strong>MTTR por severidade</strong> mede
+o tempo médio até um achado ser corrigido — se um Critical demora
+semanas, a prioridade declarada não bate com a prática real. A
+<strong>taxa de falso positivo</strong> — a fração de achados que vira
+supressão justificada — sinaliza problema de calibração quando passa de
+30%: nesse ponto as regras estão gerando mais ruído que sinal e
+precisam de ajuste. <strong>Achados por mil linhas novas</strong> (KLOC)
+mostra a tendência: se está subindo, o código novo está entrando pior
+que o antigo. E o <strong>tempo de análise no CI</strong> importa porque
+um SAST que leva mais de cinco minutos por PR vira fricção suficiente
+para o time começar a ignorar ou pular a etapa.</p>
 
-                    "<h3>10. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>Comprar ferramenta cara, deixar gerar relatório de "
-                    "1000 páginas, ninguém ler</strong>: integre no PR ou esqueça.</li>"
-                    "<li><strong>Bloquear todos achados de uma vez em legado</strong>: "
-                    "ninguém merge nada. Use baseline + diff-only.</li>"
-                    "<li><strong>Suprimir todos os FP sem ler</strong>: vai esconder "
-                    "achado real.</li>"
-                    "<li><strong>Apenas regras default</strong>: pega o óbvio, perde "
-                    "padrões internos.</li>"
-                    "<li><strong>Não atualizar regras</strong>: novos patterns aparecem; "
-                    "atualize semanalmente.</li>"
-                    "</ul>"
+<h3>9. Limitações de SAST</h3>
+<p>SAST simplesmente não enxerga uma categoria inteira de problema, por
+definição — tudo que só existe em RUNTIME fica fora do alcance de uma
+análise que nunca executa o código: misconfiguração de servidor
+(<code>debug=True</code> vindo de variável de ambiente, não do
+código-fonte), falha de autenticação ou autorização que só se manifesta
+com dado real de sessão, condição de corrida (race condition) que só
+aparece sob concorrência real, falha de lógica de negócio complexa (um
+preço negativo sendo aceito pelo checkout), ou vulnerabilidade num
+serviço de terceiro chamado via API, cujo código nunca passa pelo
+scanner. É exatamente por essa lacuna que SAST precisa vir combinado com
+DAST, observabilidade em produção, threat modeling e pentest periódico —
+defesa em profundidade, não uma única camada tentando cobrir tudo.</p>
+
+<h3>10. Anti-patterns</h3>
+<ul>
+<li><strong>Comprar ferramenta cara e deixar gerar relatório de mil
+páginas que ninguém lê</strong>: sem integração direta no PR (seção 4),
+o investimento não produz efeito real.</li>
+<li><strong>Bloquear todos os achados de uma vez em legado</strong>:
+ninguém consegue mais dar merge em nada — use baseline mais diff-only
+(seção 4) em vez disso.</li>
+<li><strong>Suprimir todo falso positivo sem ler caso a caso</strong>:
+esconde achado real junto com o ruído (seção 5).</li>
+<li><strong>Usar apenas regra default</strong>: pega o óbvio que todo
+mundo já pega, mas perde exatamente o padrão interno que mais importa
+para aquele código (seção 7).</li>
+<li><strong>Nunca atualizar as regras</strong>: novo padrão de ataque
+aparece constantemente; regra desatualizada para de pegar o que hoje já
+é conhecido.</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
