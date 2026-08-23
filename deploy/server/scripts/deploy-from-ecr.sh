@@ -301,18 +301,19 @@ wait_web_ready
 # Ecoa o começo deles aqui para o registro do deploy não ficar cego.
 docker compose -f "$COMPOSE_FILE" logs --tail 40 web || true
 
-# Seeds de conteúdo: opt-in explícito.
+# Seeds de conteúdo: rodam por padrão a cada deploy.
 #
-# Reaplicar os seeds sobrescreve aulas, questões e alternativas com os arquivos
-# de seed_data/, descartando edições feitas no admin. Deploy de código não
-# destrói conteúdo; para reaplicar de propósito, use PDT_SEED_ON_DEPLOY=1.
-if [ "${PDT_SEED_ON_DEPLOY:-0}" = "1" ]; then
-  echo ">> PDT_SEED_ON_DEPLOY=1: reaplicando seeds de conteúdo."
+# seed_topics respeita `seed_managed`: aula/questão editada pelo admin já
+# saiu com seed_managed=False, então não é sobrescrita aqui. Só o conteúdo
+# ainda "de fábrica" (seed_managed=True) é resemeado. Para pular esse passo
+# num deploy específico, defina PDT_SEED_ON_DEPLOY=0.
+if [ "${PDT_SEED_ON_DEPLOY:-1}" = "1" ]; then
+  echo ">> reaplicando seeds de conteúdo (seed_managed protege edições do admin)."
   docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_topics
   docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_admission_test
   docker compose -f "$COMPOSE_FILE" exec -T web python manage.py seed_interviews
 else
-  echo ">> Seeds de conteúdo ignorados (PDT_SEED_ON_DEPLOY!=1)."
+  echo ">> Seeds de conteúdo ignorados (PDT_SEED_ON_DEPLOY=0)."
 fi
 
 # Nginx le /static e /media (www-data): garante leitura.

@@ -26,14 +26,14 @@ python manage.py migrate --noinput
 python manage.py collectstatic --noinput
 EOSU
 
-# Seeds de conteúdo: opt-in explícito.
+# Seeds de conteúdo: rodam por padrão a cada deploy.
 #
-# Rodá-los sobrescreve aulas, questões e alternativas com os arquivos de
-# seed_data/, descartando o que tiver sido editado pelo admin. Um deploy de
-# código não deve destruir conteúdo, então só semeia quando quem dispara o
-# deploy pede: PDT_SEED_ON_DEPLOY=1.
-if [ "${PDT_SEED_ON_DEPLOY:-0}" = "1" ]; then
-  logger -t pdt-deploy "PDT_SEED_ON_DEPLOY=1: reaplicando seeds de conteúdo"
+# seed_topics respeita `seed_managed`: aula/questão editada pelo admin já
+# saiu com seed_managed=False, então não é sobrescrita aqui. Só o conteúdo
+# ainda "de fábrica" (seed_managed=True) é resemeado. Para pular esse passo
+# num deploy específico, defina PDT_SEED_ON_DEPLOY=0.
+if [ "${PDT_SEED_ON_DEPLOY:-1}" = "1" ]; then
+  logger -t pdt-deploy "reaplicando seeds de conteúdo (seed_managed protege edições do admin)"
   sudo -u $APP_USER -H bash <<EOSEED
 set -euxo pipefail
 cd $APP_REPO_DIR/pdt
@@ -44,7 +44,7 @@ python manage.py seed_admission_test
 python manage.py seed_interviews
 EOSEED
 else
-  logger -t pdt-deploy "seeds de conteúdo ignorados (PDT_SEED_ON_DEPLOY!=1)"
+  logger -t pdt-deploy "seeds de conteúdo ignorados (PDT_SEED_ON_DEPLOY=0)"
 fi
 
 # Atualiza configs do servidor (nginx + systemd) caso tenham mudado.
