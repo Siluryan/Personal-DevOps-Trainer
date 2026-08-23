@@ -19,6 +19,11 @@ from django.core.cache import cache
 # Dentro desses elementos o texto é código/atributo, não prosa — nunca marcar ali.
 _SKIP_TAGS = frozenset({"pre", "code", "script", "style", "a", "button"})
 
+# Qualquer elemento com esta classe também vira zona proibida (ver
+# `_should_skip`): é fonte de diagrama Mermaid, não prosa — marcar um termo
+# ali corromperia a sintaxe do diagrama antes do mermaid.js processá-la.
+_SKIP_CLASSES = frozenset({"mermaid"})
+
 # Cache do dicionário termo->definição. TTL é rede de segurança; o sinal em
 # apps.core.apps.CoreConfig.ready() invalida na hora quando alguém salva ou
 # apaga um GlossaryTerm, então a edição pelo admin aparece sem esperar o TTL.
@@ -32,7 +37,7 @@ class _GlossaryAnnotator(HTMLParser):
         self._terms = terms
         self._pattern = self._build_pattern(terms) if terms else None
         self._out: list[str] = []
-        self._skip_depth = 0
+        self._skip_stack: list[str] = []  # nomes de tag que abriram uma zona proibida
         self._used: set[str] = set()
         self.used_order: list[str] = []  # ordem de 1ª aparição, para a sidebar
 
@@ -48,16 +53,18 @@ class _GlossaryAnnotator(HTMLParser):
     # -- eventos do parser: reemite tag/atributo tal como veio, intocado --
     def handle_starttag(self, tag: str, attrs) -> None:
         self._out.append(self.get_starttag_text() or f"<{tag}>")
-        if tag in _SKIP_TAGS:
-            self._skip_depth += 1
+        class_attr = next((v for k, v in attrs if k == "class"), "") or ""
+        classes = class_attr.split()
+        if tag in _SKIP_TAGS or _SKIP_CLASSES.intersection(classes):
+            self._skip_stack.append(tag)
 
     def handle_startendtag(self, tag: str, attrs) -> None:
         self._out.append(self.get_starttag_text() or f"<{tag}/>")
 
     def handle_endtag(self, tag: str) -> None:
         self._out.append(f"</{tag}>")
-        if tag in _SKIP_TAGS and self._skip_depth > 0:
-            self._skip_depth -= 1
+        if self._skip_stack and self._skip_stack[-1] == tag:
+            self._skip_stack.pop()
 
     def handle_comment(self, data: str) -> None:
         self._out.append(f"<!--{data}-->")
@@ -67,7 +74,7 @@ class _GlossaryAnnotator(HTMLParser):
 
     # -- único ponto que toca em texto de verdade --
     def handle_data(self, data: str) -> None:
-        if self._skip_depth > 0 or self._pattern is None:
+        if self._skip_stack or self._pattern is None:
             self._out.append(escape(data))
             return
         self._out.append(self._annotate(data))

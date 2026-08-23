@@ -1,6 +1,46 @@
 {% extends "base.html" %}
+{% load static %}
 {% load pdt_extras %}
 {% block title %}{{ topic.title }} · PDT{% endblock %}
+
+{% block head_extra %}
+  {% if topic.lesson %}
+    {# Só carrega Mermaid (biblioteca pesada) na página de aula, não no site inteiro. #}
+    <script src="{% static 'vendor/mermaid/mermaid.min.js' %}" defer></script>
+    <script>
+      // Registrado sem defer: garante que este listener existe ANTES do
+      // DOMContentLoaded disparar, então quando ele rodar o mermaid.min.js
+      // (defer) já terá executado e window.mermaid já existe.
+      document.addEventListener('DOMContentLoaded', function () {
+        if (window.mermaid) {
+          mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            securityLevel: 'strict',
+            themeVariables: {
+              darkMode: true,
+              background: '#07122a',
+              primaryColor: '#0c1d3a',
+              primaryTextColor: '#ddeeff',
+              primaryBorderColor: '#0ea5e9',
+              lineColor: '#38bdf8',
+              secondaryColor: '#122444',
+              secondaryTextColor: '#ddeeff',
+              secondaryBorderColor: '#253d5e',
+              tertiaryColor: '#1a2f50',
+              tertiaryTextColor: '#ddeeff',
+              tertiaryBorderColor: '#253d5e',
+              fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+              noteBkgColor: '#122444',
+              noteTextColor: '#ddeeff',
+              noteBorderColor: '#253d5e'
+            }
+          });
+        }
+      });
+    </script>
+  {% endif %}
+{% endblock %}
 
 {% block content %}
 <section class="max-w-5xl mx-auto px-3 sm:px-4 py-6 sm:py-8">

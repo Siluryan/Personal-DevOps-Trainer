@@ -170,6 +170,25 @@ html { scroll-behavior: smooth; }
   font-size: 1em;
 }
 
+/* diagrama Mermaid: card próprio, sem herdar o estilo de bloco de código de
+   `.lesson-body pre` — usa <div class="mermaid">, não <pre>, de propósito.
+   overflow-x local (não a página inteira) quando o diagrama é mais largo que
+   a coluna de leitura, comum em fluxogramas com muitos nós lado a lado. */
+.lesson-body .mermaid {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  background: var(--pdt-surface);
+  border: 1px solid var(--pdt-border);
+  border-radius: 8px;
+}
+.lesson-body .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
 /* links */
 .lesson-body a {
   color: var(--pdt-accent-h);

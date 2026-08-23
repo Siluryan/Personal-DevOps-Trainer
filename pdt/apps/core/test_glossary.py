@@ -40,6 +40,19 @@ class TestAnnotateGlossaryTerms:
         out = annotate_glossary_terms(html, {"RCE": "def"})
         assert "glossary-term" not in out
 
+    def test_nao_marca_dentro_de_diagrama_mermaid(self):
+        # Fonte de diagrama Mermaid é sintaxe, não prosa — marcar um termo ali
+        # corromperia o texto que o mermaid.js precisa parsear no navegador.
+        html = (
+            '<p>TCP usa handshake.</p>'
+            '<div class="mermaid">sequenceDiagram\n  A->>B: TCP SYN</div>'
+            '<p>De novo TCP aqui fora.</p>'
+        )
+        out = annotate_glossary_terms(html, {"TCP": "Protocolo confiável."})
+        mermaid_block = out.split('<div class="mermaid">')[1].split("</div>")[0]
+        assert "glossary-term" not in mermaid_block
+        assert out.count("glossary-term") == 1  # só a 1ª ocorrência fora do diagrama
+
     def test_termo_com_case_diferente_nao_bate(self):
         # Casamento é sensível a maiúsculas/minúsculas de propósito (evita falso
         # positivo em palavra comum que coincide com uma sigla em minúsculo).
