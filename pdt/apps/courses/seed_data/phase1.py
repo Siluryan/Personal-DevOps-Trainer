@@ -39,6 +39,20 @@ esse modelo de arquivo unificado para subverter o kernel — não um
 mecanismo diferente. Aprender Linux a fundo é, em boa medida, aprender
 quais arquivos específicos importam e quem deveria ter permissão de ler
 ou escrever em cada um.</p>
+<div class="mermaid">
+flowchart TD
+    A["Processo pede acesso a um arquivo"] --> B{"UID do processo é o dono do arquivo?"}
+    B -- "Sim" --> C["Aplica permissão do DONO (primeiros 3 bits)"]
+    B -- "Não" --> D{"GID do processo está no grupo do arquivo?"}
+    D -- "Sim" --> E["Aplica permissão do GRUPO (bits do meio)"]
+    D -- "Não" --> F["Aplica permissão de OUTROS (últimos 3 bits)"]
+    C --> G{"Bit pedido (r/w/x) está setado?"}
+    E --> G
+    F --> G
+    G -- "Sim" --> H["Acesso permitido"]
+    G -- "Não" --> I["Acesso negado (EACCES)"]
+</div>
+
 
 <h3>2. Modelo de identidade: UID, GID e processos</h3>
 <p>Todo processo roda em nome de um <strong>UID</strong> (effective
@@ -349,6 +363,24 @@ algo comprometido antes mesmo de investigar mais a fundo.</p>"""
                     "<h3>1. As quatro camadas que importam (modelo TCP/IP)</h3>"
                     "<p>Esqueça as 7 camadas do OSI por enquanto. O modelo prático é o "
                     "TCP/IP de quatro camadas:</p>"
+                    """
+<div class="mermaid">
+sequenceDiagram
+    participant C as Cliente
+    participant R as Resolver do SO
+    participant Root as Servidor raiz
+    participant TLD as Servidor .com
+    participant Auth as Servidor autoritativo
+    C->>R: Resolver exemplo.com
+    R->>Root: Quem responde por .com?
+    Root-->>R: Endereço do servidor TLD
+    R->>TLD: Quem responde por exemplo.com?
+    TLD-->>R: Endereço do autoritativo
+    R->>Auth: Qual o IP de exemplo.com?
+    Auth-->>R: 93.184.216.34
+    R-->>C: 93.184.216.34, cacheado até o TTL expirar
+</div>
+"""
                     "<ol>"
                     "<li><strong>Link</strong>: Ethernet, Wi-Fi. Endereçamento por MAC. Você "
                     "lida com isso só em datacenter ou debug profundo.</li>"
@@ -619,6 +651,14 @@ algo comprometido antes mesmo de investigar mais a fundo.</p>"""
                 "body": (
                 """<h3>1. Cabeçalho seguro: o 'unsafe at any speed' do bash</h3>
 <p>Todo script sério começa com a mesma combinação de três configurações:</p>
+<div class="mermaid">
+flowchart LR
+    A["comando1"] -- "stdout, fd 1" --> B["comando2"]
+    A -- "stderr, fd 2" --> T["terminal"]
+    B -- "stdout, fd 1" --> F["arquivo.txt"]
+    B -- "stderr, fd 2" --> T
+</div>
+
 <pre><code>#!/usr/bin/env bash
 set -euo pipefail
 IFS=$'\\n\\t'</code></pre>
@@ -936,6 +976,19 @@ checar manualmente em cada script novo.</p>"""
                 "body": (
                     "<h3>1. Modelo mental de criptografia assimétrica</h3>"
                     "<p>Cada lado tem um par de chaves matemáticamente ligadas:</p>"
+                    """
+<div class="mermaid">
+sequenceDiagram
+    participant Cliente
+    participant Servidor
+    Cliente->>Servidor: Pedido de conexão
+    Servidor-->>Cliente: Desafio com nonce aleatório
+    Cliente->>Cliente: Assina o nonce com a chave privada
+    Cliente->>Servidor: Envia a assinatura
+    Servidor->>Servidor: Verifica com a chave pública em authorized_keys
+    Servidor-->>Cliente: Acesso concedido, senha nunca trafegou
+</div>
+"""
                     "<ul>"
                     "<li>A <strong>chave privada</strong> nunca sai do dono. É secreta.</li>"
                     "<li>A <strong>chave pública</strong> pode ser distribuída livremente.</li>"
@@ -1251,6 +1304,18 @@ incidente, não numa manchete. PoLP não IMPEDE o comprometimento em si —
 é defesa em profundidade posta em prática, limitando a CONSEQUÊNCIA de
 algo que eventualmente vai acontecer de qualquer forma. É exatamente o
 que separa um incidente constrangedor de uma crise de imagem completa.</p>
+<div class="mermaid">
+flowchart TD
+    subgraph SemPoLP ["Sem PoLP"]
+        U1["Credencial única"] --> A1["Lê e escreve no banco inteiro"]
+        U1 --> A2["Administra toda a infraestrutura"]
+        U1 --> A3["Lê todos os segredos do cofre"]
+    end
+    subgraph ComPoLP ["Com PoLP"]
+        U2["Credencial do serviço de billing"] --> B1["Só lê a tabela de faturas"]
+    end
+</div>
+
 
 <h3>2. PoLP no host Linux: usuários dedicados por serviço</h3>
 <p>Cada serviço — nginx, postgres, a própria aplicação — deveria ter
@@ -1599,6 +1664,15 @@ compara ferramentas: as interfaces de usuário — iptables, nftables, ufw
 motor por baixo. Trocar de <code>iptables</code> para
 <code>nftables</code> muda a sintaxe, não o comportamento fundamental
 do kernel.</p>
+<div class="mermaid">
+flowchart TD
+    A["Pacote chega na interface"] --> B{"Bate com alguma regra?"}
+    B -- "Sim, ACCEPT" --> C["Segue para o destino"]
+    B -- "Sim, DROP" --> D["Descartado em silêncio"]
+    B -- "Sim, REJECT" --> E["Recusado, ICMP de erro enviado"]
+    B -- "Não bate com nenhuma" --> F["Política padrão do firewall"]
+</div>
+
 
 <h3>2. iptables vs nftables vs ufw</h3>
 <p>Quatro ferramentas cobrem o mesmo espaço em momentos históricos
@@ -1899,6 +1973,13 @@ potencialmente complexa, centralizada num só lugar em vez de
 duplicada. O padrão clássico é o Nginx escutando em 80/443, e fazendo
 <code>proxy_pass http://127.0.0.1:8000</code> para gunicorn, uvicorn ou
 daphne — ou, quando disponível, um socket Unix diretamente.</p>
+<div class="mermaid">
+flowchart LR
+    Client["Cliente"] -- "HTTPS, porta 443" --> Nginx["Nginx, reverse proxy"]
+    Nginx -- "HTTP, porta 8000" --> App1["App server 1"]
+    Nginx -- "HTTP, porta 8001" --> App2["App server 2"]
+</div>
+
 
 <h3>2. Configuração mínima viável</h3>
 <pre><code># /etc/nginx/sites-available/api.example.com
@@ -2271,6 +2352,17 @@ não consegue trocar um pacote sem invalidar a assinatura de todo o
 resto — forjar um pacote isolado exigiria também forjar a assinatura
 GPG do mantenedor, algo que a criptografia por trás torna
 inviável.</p>
+<div class="mermaid">
+flowchart TD
+    A["apt install pacote-x"] --> B["Consulta o repositório configurado"]
+    B --> C["Resolve a árvore de dependências"]
+    C --> D{"Dependência já instalada em versão compatível?"}
+    D -- "Sim" --> E["Reaproveita a já instalada"]
+    D -- "Não" --> F["Baixa e instala a versão exigida"]
+    E --> G["Instala pacote-x"]
+    F --> G
+</div>
+
 
 <h3>2. Adicionando repositórios externos com segurança</h3>
 <p>A forma antiga (<code>apt-key add -</code>) está depreciada
@@ -2573,6 +2665,15 @@ manualmente.</li>
                 "body": (
                     "<h3>1. Logs do SO via systemd-journald</h3>"
                     "<p>Distros modernas centralizam tudo no <code>journald</code>:</p>"
+                    """
+<div class="mermaid">
+flowchart LR
+    App["Aplicação"] --> Agent["Agente de coleta"]
+    Agent --> Buffer["Fila / buffer local"]
+    Buffer --> Storage["Armazenamento centralizado"]
+    Storage --> Query["Consulta e alerta"]
+</div>
+"""
                     "<pre><code>journalctl -u nginx                    # serviço específico\n"
                     "journalctl -u nginx -f                 # follow (tail -f)\n"
                     "journalctl -u nginx -p err -S today    # erros de hoje\n"
@@ -2848,6 +2949,16 @@ manualmente.</li>
                     "<h3>1. O que é DevSecOps de verdade</h3>"
                     "<p>DevOps tirou paredes entre dev e ops. DevSecOps faz o mesmo com "
                     "segurança. Em prática:</p>"
+                    """
+<div class="mermaid">
+flowchart LR
+    A["Código"] --> B["Commit"]
+    B --> C["CI: SAST + SCA"]
+    C --> D["Build"]
+    D --> E["CD: DAST + Policy as Code"]
+    E --> F["Produção: runtime security"]
+</div>
+"""
                     "<ul>"
                     "<li>Segurança é responsabilidade <em>de todos</em>, não 'do time de "
                     "segurança'.</li>"
