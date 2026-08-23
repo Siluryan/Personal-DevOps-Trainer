@@ -2358,183 +2358,208 @@ aparece constantemente; regra desatualizada para de pegar o que hoje já
                     "próxima Log4Shell."
                 ),
                 "body": (
-                    "<h3>1. SBOM (Software Bill of Materials)</h3>"
-                    "<p>Lista de <em>todas</em> dependências (diretas e transitivas) com "
-                    "versão e licença. É o ingrediente para qualquer análise. Em ambientes "
-                    "regulados (governo dos EUA via Executive Order 14028, automotive, "
-                    "médicos), SBOM é obrigação contratual.</p>"
-                    "<p>Formatos:</p>"
-                    "<ul>"
-                    "<li><strong>CycloneDX</strong>: OWASP, mais focado em segurança.</li>"
-                    "<li><strong>SPDX</strong>: Linux Foundation, mais focado em "
-                    "compliance/licenças.</li>"
-                    "</ul>"
-                    "<p>Ferramentas: <code>syft</code> (Anchore), <code>cdxgen</code> "
-                    "(OWASP), <code>trivy</code>:</p>"
-                    "<pre><code>$ syft packages docker:nginx:latest -o cyclonedx-json &gt; sbom.json\n"
-                    "$ syft dir:. -o spdx-json &gt; sbom.spdx.json</code></pre>"
-                    "<p>SBOM atrelado ao artefato (referenciado no registry OCI) cria "
-                    "trilha auditável: você sabe o que entregou.</p>"
+                """<h3>1. SBOM (Software Bill of Materials)</h3>
+<p>Um SBOM é a lista de TODAS as dependências — diretas e transitivas —
+com versão e licença de cada uma. É o ingrediente básico sem o qual
+nenhuma análise de segurança de dependência funciona, porque não dá para
+verificar CVE em algo que você nem sabe que está usando. Em ambientes
+regulados (governo dos EUA via Executive Order 14028, setor automotivo,
+dispositivo médico), SBOM já é obrigação contratual, não boa prática
+opcional. Dois formatos dominam: <strong>CycloneDX</strong>, mantido
+pela OWASP com foco mais voltado a segurança, e <strong>SPDX</strong>,
+mantido pela Linux Foundation com foco mais voltado a compliance e
+licenciamento. Ferramentas como <code>syft</code> (Anchore),
+<code>cdxgen</code> (OWASP) e <code>trivy</code> geram esses formatos a
+partir de código ou imagem:</p>
+<pre><code>$ syft packages docker:nginx:latest -o cyclonedx-json &gt; sbom.json
+$ syft dir:. -o spdx-json &gt; sbom.spdx.json</code></pre>
+<p>Atrelar o SBOM diretamente ao artefato — referenciado no próprio
+registry OCI — cria uma trilha auditável: fica registrado exatamente o
+que foi entregue em cada versão, não uma aproximação reconstruída
+depois.</p>
 
-                    "<h3>2. CVE, CVSS, EPSS, KEV</h3>"
-                    "<ul>"
-                    "<li><strong>CVE</strong> (Common Vulnerabilities and Exposures): "
-                    "ID único. Ex.: <code>CVE-2024-1234</code>.</li>"
-                    "<li><strong>CVSS</strong>: score 0-10 de severidade. Vetor "
-                    "(<code>AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H</code>) + base score.</li>"
-                    "<li><strong>EPSS</strong> (Exploit Prediction Scoring System): "
-                    "probabilidade de ser explorado nos próximos 30 dias. Ajuda a priorizar.</li>"
-                    "<li><strong>KEV</strong> (Known Exploited Vulnerabilities): catálogo "
-                    "CISA de CVEs <em>já</em> exploradas em ataques reais. KEV = ação "
-                    "imediata.</li>"
-                    "</ul>"
-                    "<p>Priorização moderna: CVSS &gt;= 7 + KEV ou EPSS alto = critical. "
-                    "CVSS sozinho leva a fadiga (centenas de '7s' irrelevantes).</p>"
+<h3>2. CVE, CVSS, EPSS, KEV</h3>
+<p>Quatro siglas organizam como o ecossistema de segurança fala sobre
+vulnerabilidade. <strong>CVE</strong> (Common Vulnerabilities and
+Exposures) é só um identificador único, como <code>CVE-2024-1234</code>
+— um nome, não uma medida de gravidade. <strong>CVSS</strong> é o score
+de 0 a 10 que mede severidade técnica, calculado a partir de um vetor
+como <code>AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H</code>. Mas CVSS sozinho
+mede só o dano POTENCIAL, não o risco real de exploração — daí o
+<strong>EPSS</strong> (Exploit Prediction Scoring System), que estima a
+probabilidade real de aquela CVE específica ser explorada nos próximos
+30 dias, com base em dados observados de ataque. E o <strong>KEV</strong>
+(Known Exploited Vulnerabilities) é o catálogo da CISA de CVEs que JÁ
+foram exploradas em ataque real — entrar no KEV significa ação
+imediata, não uma prioridade a mais na fila. A combinação madura de
+priorização é CVSS ≥ 7 combinado com presença no KEV ou EPSS alto
+classificado como crítico; usar CVSS isolado leva à fadiga de alerta,
+com centenas de "7s" tecnicamente altos mas praticamente irrelevantes
+competindo pela mesma atenção.</p>
 
-                    "<h3>3. Ferramentas</h3>"
-                    "<table>"
-                    "<tr><th>Ferramenta</th><th>Pontos fortes</th></tr>"
-                    "<tr><td>Trivy</td><td>CLI grátis; escaneia FS, imagens, IaC, K8s. SBOM + CVEs. Bom em CI.</td></tr>"
-                    "<tr><td>Grype</td><td>Pareado com Syft (mesmo dono). Foco em CVEs.</td></tr>"
-                    "<tr><td>Dependabot (GitHub)</td><td>Nativo. PR de update automático. Limitado em config avançada.</td></tr>"
-                    "<tr><td>Renovate</td><td>Mais configurável; agrupa updates, segue regras complexas.</td></tr>"
-                    "<tr><td>Snyk</td><td>Comercial freemium; bom UX, sugere fix.</td></tr>"
-                    "<tr><td>OSV-Scanner</td><td>Google; usa OSV.dev; rápido e gratuito.</td></tr>"
-                    "<tr><td>npm audit / pip-audit</td><td>Nativos; básicos.</td></tr>"
-                    "<tr><td>OWASP Dependency-Check</td><td>Java; bom para empresas legacy.</td></tr>"
-                    "</table>"
+<h3>3. Ferramentas</h3>
+<table>
+<tr><th>Ferramenta</th><th>Pontos fortes</th></tr>
+<tr><td>Trivy</td><td>CLI grátis; escaneia FS, imagens, IaC, K8s. SBOM + CVEs. Bom em CI.</td></tr>
+<tr><td>Grype</td><td>Pareado com Syft (mesmo dono). Foco em CVEs.</td></tr>
+<tr><td>Dependabot (GitHub)</td><td>Nativo. PR de update automático. Limitado em config avançada.</td></tr>
+<tr><td>Renovate</td><td>Mais configurável; agrupa updates, segue regras complexas.</td></tr>
+<tr><td>Snyk</td><td>Comercial freemium; bom UX, sugere fix.</td></tr>
+<tr><td>OSV-Scanner</td><td>Google; usa OSV.dev; rápido e gratuito.</td></tr>
+<tr><td>npm audit / pip-audit</td><td>Nativos; básicos.</td></tr>
+<tr><td>OWASP Dependency-Check</td><td>Java; bom para empresas legacy.</td></tr>
+</table>
 
-                    "<h3>4. Trivy: ferramenta vital</h3>"
-                    "<pre><code>$ trivy fs .                     # escaneia diretório\n"
-                    "$ trivy image nginx:1.25.3        # escaneia imagem\n"
-                    "$ trivy config terraform/         # IaC\n"
-                    "$ trivy k8s --severity CRITICAL --all-namespaces\n"
-                    "\n"
-                    "# Falhar build em criticais\n"
-                    "$ trivy image --severity CRITICAL --exit-code 1 myapp:dev\n"
-                    "\n"
-                    "# Gerar SBOM\n"
-                    "$ trivy image --format cyclonedx --output sbom.json myapp:dev\n"
-                    "\n"
-                    "# Ignorar específicos (com motivo!)\n"
-                    "# .trivyignore:\n"
-                    "# CVE-2024-12345  # não-exploitable em nosso uso\n"
-                    "</code></pre>"
+<h3>4. Trivy: ferramenta vital</h3>
+<pre><code>$ trivy fs .                     # escaneia diretório
+$ trivy image nginx:1.25.3        # escaneia imagem
+$ trivy config terraform/         # IaC
+$ trivy k8s --severity CRITICAL --all-namespaces
 
-                    "<h3>5. Política de remediação (SLA)</h3>"
-                    "<p>Sem prazo, ninguém prioriza. Documente em SECURITY.md:</p>"
-                    "<pre><code>| Severidade           | SLA Prod | SLA Staging |\n"
-                    "|----------------------|----------|-------------|\n"
-                    "| Critical em KEV      | 24-72h   | 7d          |\n"
-                    "| Critical             | 7d       | 14d         |\n"
-                    "| High + EPSS &gt;= 0.5    | 14d      | 30d         |\n"
-                    "| High                 | 30d      | 60d         |\n"
-                    "| Medium               | 90d      | 180d        |\n"
-                    "| Low                  | 180d     | best-effort |</code></pre>"
+# Falhar build em criticais
+$ trivy image --severity CRITICAL --exit-code 1 myapp:dev
 
-                    "<h3>6. Lockfiles: a base de tudo</h3>"
-                    "<p>Lockfile fixa versões exatas e hashes:</p>"
-                    "<ul>"
-                    "<li>Python: <code>poetry.lock</code>, <code>pdm.lock</code>, "
-                    "<code>requirements.txt</code> com pinning + hashes.</li>"
-                    "<li>JS: <code>package-lock.json</code>, <code>yarn.lock</code>, "
-                    "<code>pnpm-lock.yaml</code>.</li>"
-                    "<li>Go: <code>go.sum</code>.</li>"
-                    "<li>Rust: <code>Cargo.lock</code>.</li>"
-                    "<li>Ruby: <code>Gemfile.lock</code>.</li>"
-                    "</ul>"
-                    "<p><strong>SEMPRE commite o lockfile</strong>. Sem ele:</p>"
-                    "<ul>"
-                    "<li>Build não-reprodutível: dev e prod podem ter versões diferentes.</li>"
-                    "<li>SCA confunde-se: relata CVE em versão que talvez não esteja "
-                    "instalada.</li>"
-                    "<li>Atacante pode swap silencioso por versão maliciosa em dependency "
-                    "confusion.</li>"
-                    "</ul>"
-                    "<p>Use <code>--require-hashes</code> (pip) para validar integridade no "
-                    "install, qualquer mudança de hash falha.</p>"
+# Gerar SBOM
+$ trivy image --format cyclonedx --output sbom.json myapp:dev
 
-                    "<h3>7. Cadeia de suprimentos: além de CVE</h3>"
-                    "<p>SCA pega 'biblioteca tem CVE conhecida'. Cadeia de suprimentos é mais "
-                    "amplo:</p>"
-                    "<ul>"
-                    "<li><strong>Typosquatting</strong>: pacote malicioso com nome parecido "
-                    "(<code>requests</code> vs <code>requets</code>). Defesa: revise deps "
-                    "novas.</li>"
-                    "<li><strong>Conta comprometida</strong>: mantenedor invadido publica "
-                    "versão maliciosa. Famoso: <em>event-stream</em>, <em>colors.js</em>, "
-                    "<em>node-ipc</em>. Defesa: pin por hash, mirror interno.</li>"
-                    "<li><strong>Dependency confusion</strong>: package interno com mesmo "
-                    "nome no público, pacote público é puxado. Defesa: scoping em registry "
-                    "interno.</li>"
-                    "<li><strong>Build infrastructure</strong>: comprometer pipeline para "
-                    "injetar código (SolarWinds). Defesa: SLSA framework.</li>"
-                    "<li><strong>Pacote 'protestware'</strong>: mantenedor sabota a própria "
-                    "lib em protesto político. Defesa: pin de versão.</li>"
-                    "</ul>"
+# Ignorar específicos (com motivo!)
+# .trivyignore:
+# CVE-2024-12345  # não-exploitable em nosso uso
+</code></pre>
 
-                    "<h3>8. Dependabot configurado direito</h3>"
-                    "<pre><code># .github/dependabot.yml\n"
-                    "version: 2\n"
-                    "updates:\n"
-                    "  - package-ecosystem: pip\n"
-                    "    directory: /\n"
-                    "    schedule: { interval: weekly, day: monday }\n"
-                    "    open-pull-requests-limit: 10\n"
-                    "    groups:\n"
-                    "      django:\n"
-                    "        patterns: ['django*']\n"
-                    "      dev-deps:\n"
-                    "        dependency-type: development\n"
-                    "    ignore:\n"
-                    "      - dependency-name: 'numpy'\n"
-                    "        versions: ['&gt;=2.0.0']  # major bump quebra; pin manual\n"
-                    "  - package-ecosystem: docker\n"
-                    "    directory: /\n"
-                    "    schedule: { interval: weekly }\n"
-                    "  - package-ecosystem: github-actions\n"
-                    "    directory: /\n"
-                    "    schedule: { interval: monthly }</code></pre>"
-                    "<p>Sem <code>groups</code>, vc recebe 50 PRs por semana. Com, recebe "
-                    "5, ainda atualiza tudo.</p>"
+<h3>5. Política de remediação (SLA)</h3>
+<p>Sem um prazo explícito, achado de SCA vira mais um item numa lista
+que ninguém prioriza de verdade. Documentar SLA por severidade no
+SECURITY.md transforma "corrija quando der" em compromisso mensurável:</p>
+<pre><code>| Severidade           | SLA Prod | SLA Staging |
+|----------------------|----------|-------------|
+| Critical em KEV      | 24-72h   | 7d          |
+| Critical             | 7d       | 14d         |
+| High + EPSS &gt;= 0.5    | 14d      | 30d         |
+| High                 | 30d      | 60d         |
+| Medium               | 90d      | 180d        |
+| Low                  | 180d     | best-effort |</code></pre>
 
-                    "<h3>9. CVEs em transitivas: o pesadelo do override</h3>"
-                    "<p>Você usa <code>django</code>; <code>django</code> usa "
-                    "<code>asgiref</code>; <code>asgiref</code> tem CVE. Ação?</p>"
-                    "<ul>"
-                    "<li>Avalie exploitabilidade no seu uso.</li>"
-                    "<li>Tente atualizar pai (<code>django</code>), solução mais limpa.</li>"
-                    "<li>Force versão da transitiva (npm <code>overrides</code>, pip "
-                    "<code>--constraint</code>, Maven dependency management).</li>"
-                    "<li>Aceite risco (com justificativa).</li>"
-                    "<li>Substitua biblioteca pai (último recurso).</li>"
-                    "</ul>"
+<h3>6. Lockfiles: a base de tudo</h3>
+<p>Um lockfile fixa a versão exata (e o hash) de cada dependência
+resolvida — Python usa <code>poetry.lock</code>, <code>pdm.lock</code>
+ou <code>requirements.txt</code> com pinning e hash; JavaScript usa
+<code>package-lock.json</code>, <code>yarn.lock</code> ou
+<code>pnpm-lock.yaml</code>; Go usa <code>go.sum</code>; Rust usa
+<code>Cargo.lock</code>; Ruby usa <code>Gemfile.lock</code>. Commitar
+esse arquivo SEMPRE é inegociável, por três razões concretas: sem ele o
+build deixa de ser reprodutível, e dev/prod podem acabar com versões
+diferentes da mesma dependência declarada; o SCA fica confuso, relatando
+CVE numa versão que talvez nem esteja de fato instalada; e um atacante
+ganha uma janela para trocar silenciosamente uma dependência por uma
+versão maliciosa — o ataque conhecido como dependency confusion. Usar
+<code>--require-hashes</code> no pip valida a integridade no momento do
+install: qualquer hash que não bata falha a instalação imediatamente, em
+vez de instalar silenciosamente um pacote adulterado.</p>
 
-                    "<h3>10. Resposta a CVE crítica em produção</h3>"
-                    "<ol>"
-                    "<li><strong>Inventário</strong>: SCA cruza SBOM com CVE. Quem usa? "
-                    "Em quais ambientes?</li>"
-                    "<li><strong>Avaliação</strong>: o caminho explorável existe na sua app? "
-                    "(Log4Shell exigia logging de input não-sanitizado, mas era trivial.)</li>"
-                    "<li><strong>Mitigação</strong>: WAF rule? Disable feature? Patch?</li>"
-                    "<li><strong>Patch</strong>: bump da versão; testes; deploy.</li>"
-                    "<li><strong>Detecção</strong>: logs/SIEM por exploração tentada.</li>"
-                    "<li><strong>Comunicação</strong>: customers, regulator, status page.</li>"
-                    "<li><strong>Postmortem</strong>: como descobrimos? Qual SLA atingido? "
-                    "O que melhorar?</li>"
-                    "</ol>"
+<h3>7. Cadeia de suprimentos: além de CVE</h3>
+<p>SCA tradicional resolve "esta biblioteca tem CVE conhecida" — mas
+ataque de cadeia de suprimentos é uma categoria mais ampla, que muitas
+vezes nem envolve CVE nenhuma. <strong>Typosquatting</strong> planta um
+pacote malicioso com nome parecido ao real (<code>requests</code> vs
+<code>requets</code>), na aposta de que alguém digite errado; a defesa é
+revisar toda dependência nova antes de adicionar. <strong>Conta de
+mantenedor comprometida</strong> permite publicar uma versão maliciosa
+sob um nome já confiável e amplamente usado — os casos
+<em>event-stream</em>, <em>colors.js</em> e <em>node-ipc</em> ficaram
+famosos exatamente por isso; a defesa é pin por hash e um mirror interno
+que não puxa versão nova automaticamente sem revisão.
+<strong>Dependency confusion</strong> explora quando um pacote interno
+tem o mesmo nome de um pacote público — se a configuração de resolução
+não distinguir os dois corretamente, o pacote PÚBLICO acaba sendo
+puxado no lugar do interno, potencialmente controlado por um atacante
+que só precisou publicar algo com aquele nome; a defesa é escopo
+explícito no registry interno. Comprometer a <strong>infraestrutura de
+build</strong> em si para injetar código diretamente no pipeline — o
+caso SolarWinds é o exemplo mais conhecido — pede defesa em outro nível,
+via o framework SLSA (seção 11). E existe até o caso do
+<strong>"protestware"</strong>, onde o próprio mantenedor sabota
+deliberadamente sua biblioteca em protesto político; pin de versão
+protege contra isso da mesma forma que protege contra qualquer update
+inesperado.</p>
 
-                    "<h3>11. SLSA: framework de cadeia de suprimentos</h3>"
-                    "<p>SLSA (Supply chain Levels for Software Artifacts) define níveis "
-                    "1-4 de provenance:</p>"
-                    "<ul>"
-                    "<li>L1: build automatizado e documentado.</li>"
-                    "<li>L2: source versionado, build serviço hospedado.</li>"
-                    "<li>L3: build não-falsificável, isolamento.</li>"
-                    "<li>L4: builds reproduzíveis, two-person review.</li>"
-                    "</ul>"
-                    "<p>Combine com Cosign + Rekor (Sigstore) para gerar atestados "
-                    "verificáveis.</p>"
+<h3>8. Dependabot configurado direito</h3>
+<pre><code># .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 10
+    groups:
+      django:
+        patterns: ['django*']
+      dev-deps:
+        dependency-type: development
+    ignore:
+      - dependency-name: 'numpy'
+        versions: ['&gt;=2.0.0']  # major bump quebra; pin manual
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }</code></pre>
+<p>Sem o campo <code>groups</code>, o Dependabot abre um PR separado
+para cada dependência que mudou — facilmente 50 PRs numa semana num
+projeto com muitas libs. Com <code>groups</code>, PRs relacionados se
+consolidam num só, reduzindo para 5 PRs que ainda cobrem exatamente as
+mesmas atualizações.</p>
+
+<h3>9. CVEs em transitivas: o pesadelo do override</h3>
+<p>O cenário mais comum na prática: você depende de
+<code>django</code>; <code>django</code> depende de
+<code>asgiref</code>; e é <code>asgiref</code> que carrega a CVE — uma
+dependência que você nunca declarou diretamente. A resposta segue uma
+ordem de preferência: primeiro avalie se o caminho é realmente
+explorável no seu uso específico; depois tente atualizar o PAI
+(<code>django</code>), que normalmente já resolveu a transitiva numa
+versão mais nova — a solução mais limpa por não introduzir override
+manual; se isso não for possível ainda, force a versão da transitiva
+diretamente (<code>overrides</code> no npm, <code>--constraint</code> no
+pip, dependency management no Maven); só então considere aceitar o
+risco com justificativa documentada; e substituir a biblioteca pai
+inteira fica como último recurso, quando nada mais resolve.</p>
+
+<h3>10. Resposta a CVE crítica em produção</h3>
+<p>Um incidente como o Log4Shell (CVE-2021-44228) — uma string
+simplesmente logada derrubando mais de 30% da internet — segue um
+roteiro que separa quem reage em horas de quem reage em semanas.
+Primeiro, <strong>inventário</strong>: o SCA cruza o SBOM já existente
+com a CVE anunciada, respondendo imediatamente "quem usa isso, e em
+quais ambientes" — sem SBOM prévio, essa pergunta sozinha pode levar
+dias. Depois, <strong>avaliação</strong>: o caminho realmente explorável
+existe na sua aplicação específica? (No caso do Log4Shell, bastava
+logar input não-sanitizado — um cenário trivialmente comum, o que
+explicou o alcance do estrago.) Em seguida, <strong>mitigação</strong>
+imediata via regra de WAF ou desabilitar a feature afetada, enquanto o
+patch definitivo não sai. Depois o <strong>patch</strong> propriamente
+dito: bump de versão, teste, deploy. Paralelamente, <strong>detecção</strong>
+via log ou SIEM procurando tentativa de exploração já ocorrida antes do
+patch. Depois, <strong>comunicação</strong> transparente com cliente,
+regulador e status page, se aplicável. E por fim um
+<strong>postmortem</strong> real: como a vulnerabilidade foi descoberta,
+qual SLA foi de fato cumprido, e o que precisa melhorar para a próxima
+— porque vai haver uma próxima.</p>
+
+<h3>11. SLSA: framework de cadeia de suprimentos</h3>
+<p>SLSA (Supply chain Levels for Software Artifacts) define quatro
+níveis crescentes de garantia sobre a proveniência de um artefato — não
+é binário "seguro ou não", é uma escala. O nível 1 exige apenas build
+automatizado e documentado, algo que muitos times já têm sem saber
+nomear. O nível 2 exige que o código-fonte seja versionado e o build
+rode num serviço hospedado, não numa máquina de desenvolvedor
+individual. O nível 3 exige que o build seja não-falsificável, com
+isolamento real entre execuções. E o nível 4, o mais exigente, exige
+build reproduzível byte a byte e revisão de duas pessoas antes de
+qualquer release. Combinar isso com Cosign e Rekor (o ecossistema
+Sigstore) permite gerar atestados verificáveis criptograficamente sobre
+qual nível cada artefato de fato atingiu.</p>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -2622,176 +2647,202 @@ aparece constantemente; regra desatualizada para de pegar o que hoje já
                     "de alta performance."
                 ),
                 "body": (
-                    "<h3>1. Princípios de PR/MR de qualidade</h3>"
-                    "<h4>1.1 Tamanho importa</h4>"
-                    "<p>Estatística repetidamente confirmada (Google, Microsoft, Meta): "
-                    "qualidade de review cai dramaticamente acima de ~200 linhas. PRs de "
-                    "1000+ linhas recebem ~5% mais aprovação rapida e ~50% mais bugs em "
-                    "produção comparado a 200-linha PRs.</p>"
-                    "<p>Se vc tem PR grande, considere quebrar em:</p>"
-                    "<ul>"
-                    "<li>PR 1: refactor neutro (rename, mover arquivos).</li>"
-                    "<li>PR 2: nova interface vazia.</li>"
-                    "<li>PR 3: implementação.</li>"
-                    "<li>PR 4: integração.</li>"
-                    "</ul>"
-                    "<h4>1.2 Contexto claro</h4>"
-                    "<p>Reviewer não deveria adivinhar 'por que esta mudança'. Use template "
-                    "de PR:</p>"
-                    "<pre><code>## O que muda?\n"
-                    "Adiciona rate limiting no endpoint /login.\n"
-                    "\n"
-                    "## Por quê?\n"
-                    "Mitiga brute force. Issue: SEC-1234.\n"
-                    "\n"
-                    "## Como testar?\n"
-                    "1. POST /login com 6 senhas erradas em &lt;15min\n"
-                    "2. Próxima request deve retornar 429\n"
-                    "\n"
-                    "## Risco?\n"
-                    "Usuário legítimo errando senha repetidamente. Mensagem clara orienta\n"
-                    "esperar. WAF tem regra de bypass para IPs confiáveis.\n"
-                    "\n"
-                    "## Checklist\n"
-                    "- [x] Testes adicionados\n"
-                    "- [x] Logs sem PII\n"
-                    "- [x] Documentação\n"
-                    "- [ ] Verificar com SRE antes do deploy</code></pre>"
-                    "<h4>1.3 Tom respeitoso</h4>"
-                    "<p>'Aqui está confuso, talvez X?' &gt;&gt; 'Isso está errado'. "
-                    "Conventional Comments dão estrutura:</p>"
-                    "<pre><code>**suggestion**: poderia usar dataclass aqui, mais idiomático\n"
-                    "**nitpick**: comma no final\n"
-                    "**question**: por que não usar threadpool aqui?\n"
-                    "**issue (blocking)**: SQL injection, use parametrização\n"
-                    "**praise**: adorei essa abstração, simplifica muito</code></pre>"
-                    "<p><em>Praise</em> é underrated. Reconheça boas decisões.</p>"
-                    "<h4>1.4 Reviewer responde rápido</h4>"
-                    "<p>PR parado é dinheiro queimando. SLA saudável: TTFR (Time to First "
-                    "Review) &lt;4h em horário de trabalho. PRs urgentes &lt;1h. Cada hora "
-                    "parado = autor perde contexto + ciclos.</p>"
+                """<h3>1. Princípios de PR/MR de qualidade</h3>
+<h4>1.1 Tamanho importa</h4>
+<p>Uma estatística repetidamente confirmada por Google, Microsoft e
+Meta: a qualidade do review cai dramaticamente acima de ~200 linhas de
+diff. Isso acontece porque a capacidade de atenção humana não escala
+linearmente com o tamanho do PR — a partir de certo ponto, o reviewer
+passa a "aprovar de olho" em vez de rastrear cada mudança de fato. Na
+prática, PRs de 1000+ linhas recebem cerca de 5% mais aprovação rápida
+E cerca de 50% mais bugs chegando em produção, comparado a PRs de
+200 linhas — o oposto do que a aprovação rápida sugeriria. A saída é
+quebrar um PR grande em uma sequência menor e mais digerível: um PR de
+refactor neutro (rename, mover arquivo), seguido de um PR com a nova
+interface ainda vazia, depois um PR com a implementação em si, e por
+fim um PR de integração — cada um pequeno o bastante para ser revisado
+de verdade.</p>
+<h4>1.2 Contexto claro</h4>
+<p>Um reviewer não deveria precisar adivinhar "por que esta mudança
+existe" — um template de PR força essa informação a aparecer sempre:</p>
+<pre><code>## O que muda?
+Adiciona rate limiting no endpoint /login.
 
-                    "<h3>2. Checklist de segurança em PR</h3>"
-                    "<p>Para PRs em código sensível (auth, dados, payment), valide "
-                    "explicitamente:</p>"
-                    "<ul>"
-                    "<li><strong>Input validation</strong>: todo input do usuário é "
-                    "validado/sanitizado antes de uso?</li>"
-                    "<li><strong>Output encoding</strong>: HTML/SQL/shell escape onde "
-                    "preciso?</li>"
-                    "<li><strong>Authn/Authz</strong>: novo endpoint tem auth correto? "
-                    "Authorization checa <em>recurso</em>, não só user logado?</li>"
-                    "<li><strong>PII em logs</strong>: cpf, email, token não aparecem em "
-                    "log? Use <code>mask_pii()</code>.</li>"
-                    "<li><strong>Errors sem leak</strong>: stack trace não vai para "
-                    "usuário; mensagem genérica para 500.</li>"
-                    "<li><strong>Crypto correto</strong>: hash de senha com bcrypt/argon2 "
-                    "(não md5); randomness com <code>secrets</code> (não <code>random</code>); "
-                    "TLS verificado.</li>"
-                    "<li><strong>Race condition</strong>: locks/transactions onde precisa.</li>"
-                    "<li><strong>Dependências novas</strong>: SCA escaneou? Lib é mantida? "
-                    "MIT/Apache, não GPL viral?</li>"
-                    "<li><strong>Testes</strong>: caminhos novos cobertos? Edge cases? "
-                    "Negativos?</li>"
-                    "<li><strong>Backward compat</strong>: API existente não quebra? "
-                    "Migração de DB tem rollback?</li>"
-                    "</ul>"
+## Por quê?
+Mitiga brute force. Issue: SEC-1234.
 
-                    "<h3>3. CODEOWNERS: quem revisa o quê</h3>"
-                    "<pre><code># .github/CODEOWNERS\n"
-                    "# Pessoas/equipes que reviewam por path\n"
-                    "*                 @empresa/dev-platform\n"
-                    "/security/        @empresa/sec-team\n"
-                    "/payment/         @empresa/payments-squad @empresa/sec-team\n"
-                    "/iac/terraform/   @empresa/sre @empresa/sec-team\n"
-                    "*.md              @empresa/docs\n"
-                    "**/migrations/    @empresa/dba</code></pre>"
-                    "<p>Combinado com branch protection, GitHub <em>requer</em> aprovação "
-                    "do dono do path. PR em <code>/payment/</code> não mergeia sem "
-                    "<code>@empresa/payments-squad</code> + <code>@empresa/sec-team</code> "
-                    "aprovarem. Garante olhar certo, sem precisar lembrar.</p>"
+## Como testar?
+1. POST /login com 6 senhas erradas em &lt;15min
+2. Próxima request deve retornar 429
 
-                    "<h3>4. Ferramentas no PR poupam tempo</h3>"
-                    "<p>CI deve mostrar antes do reviewer humano olhar:</p>"
-                    "<ul>"
-                    "<li>Build passou?</li>"
-                    "<li>Lint OK?</li>"
-                    "<li>SAST/SCA sem high/critical?</li>"
-                    "<li>Coverage não baixou? (codecov/coveralls)</li>"
-                    "<li>Performance benchmarks ok? (Bencher)</li>"
-                    "<li>Visual diff (Chromatic, Percy)?</li>"
-                    "</ul>"
-                    "<p>Reviewer humano pode focar em design e lógica, não em 'falta espaço "
-                    "aqui'. Tempo economizado é gigante.</p>"
+## Risco?
+Usuário legítimo errando senha repetidamente. Mensagem clara orienta
+esperar. WAF tem regra de bypass para IPs confiáveis.
 
-                    "<h3>5. Anti-patterns clássicos</h3>"
-                    "<ul>"
-                    "<li><strong>Rubber stamp</strong>: aprovar sem ler. Comum em PRs "
-                    "do CTO ('quem sou eu para discordar?'). Métrica: % de PRs aprovados "
-                    "com 0 comentários, se &gt;50%, suspeito.</li>"
-                    "<li><strong>Bikeshedding</strong>: discutir cor do botão por dias, "
-                    "ignorar SQL injection. Lei de Parkinson: tempo gasto em decisão é "
-                    "inversamente proporcional à importância dela.</li>"
-                    "<li><strong>PR de 3000 linhas</strong>: ninguém revisa de verdade. "
-                    "Quebre.</li>"
-                    "<li><strong>Reviewer único</strong> (gargalo): se só fulano revisa, "
-                    "fulano vira ponto único de falha + queima.</li>"
-                    "<li><strong>'Aprovar e pedir teste depois'</strong>: 'depois' não "
-                    "vem.</li>"
-                    "<li><strong>Comentários adversariais</strong>: 'isso é horrível'. "
-                    "Tóxico, ineficaz.</li>"
-                    "<li><strong>Re-write silencioso</strong>: reviewer reescreve em vez "
-                    "de pedir mudança. Autor não aprende e fica ressentido.</li>"
-                    "<li><strong>Aprovar sem CI verde</strong>: por quê o CI existe?</li>"
-                    "<li><strong>Bloquear merge por preferência pessoal</strong>: blocking "
-                    "deveria ser bug/segurança. Estilo é nitpick.</li>"
-                    "</ul>"
+## Checklist
+- [x] Testes adicionados
+- [x] Logs sem PII
+- [x] Documentação
+- [ ] Verificar com SRE antes do deploy</code></pre>
+<h4>1.3 Tom respeitoso</h4>
+<p>A diferença entre "aqui está confuso, talvez X?" e "isso está
+errado" não é só cortesia — muda se o autor lê o comentário com a
+guarda baixa ou já na defensiva. Conventional Comments dão uma
+estrutura que deixa a intenção explícita em vez de implícita:</p>
+<pre><code>**suggestion**: poderia usar dataclass aqui, mais idiomático
+**nitpick**: comma no final
+**question**: por que não usar threadpool aqui?
+**issue (blocking)**: SQL injection, use parametrização
+**praise**: adorei essa abstração, simplifica muito</code></pre>
+<p>O rótulo <em>praise</em> é subestimado na prática, mas reconhecer
+uma boa decisão explicitamente ensina o time o que repetir, tão
+importante quanto apontar o que evitar.</p>
+<h4>1.4 Reviewer responde rápido</h4>
+<p>Um PR parado é literalmente dinheiro queimando: o autor perde
+contexto a cada hora de espera e precisa "recarregar" o problema na
+cabeça quando finalmente chega feedback. Um SLA saudável de referência é
+TTFR (Time to First Review) abaixo de 4h em horário de trabalho, caindo
+para menos de 1h em PRs urgentes.</p>
 
-                    "<h3>6. Métricas saudáveis</h3>"
-                    "<ul>"
-                    "<li><strong>TTFR (Time to First Review)</strong>: &lt;4h em PRs "
-                    "normais.</li>"
-                    "<li><strong>Time to Merge</strong>: &lt;24h em maioria.</li>"
-                    "<li><strong>Comments por PR</strong>: 1-10 saudável; 0 = "
-                    "rubber stamp; 50+ = PR muito grande ou autor desatento.</li>"
-                    "<li><strong>Defect Escape Rate</strong>: bugs que passam review e "
-                    "vão para prod. Se subindo, review está superficial.</li>"
-                    "<li><strong>Review participation</strong>: Bus factor, só 1-2 "
-                    "pessoas revisam? Distribua via round-robin.</li>"
-                    "</ul>"
-                    "<p>PRs &gt;3 dias parados degradam moral; mire em &lt;24h.</p>"
+<h3>2. Checklist de segurança em PR</h3>
+<p>Para PRs tocando código sensível — autenticação, dado pessoal,
+pagamento — vale validar explicitamente uma lista específica, porque
+esses são exatamente os pontos onde um erro sutil vira incidente sério:
+se todo input do usuário é validado ou sanitizado antes de uso; se
+saída para HTML, SQL ou shell tem o escape correto aplicado onde
+necessário; se um endpoint novo tem autenticação certa E se a
+autorização checa o RECURSO específico sendo acessado, não só se o
+usuário está logado (a diferença entre "você está autenticado" e "você
+pode acessar ESTE registro"); se dado sensível — CPF, e-mail, token —
+não está vazando em log, usando <code>mask_pii()</code> onde aplicável;
+se mensagem de erro não vaza stack trace para o usuário final, com
+mensagem genérica cobrindo erro 500; se a criptografia usada é a
+correta (hash de senha com bcrypt ou argon2, nunca md5; geração de
+número aleatório com <code>secrets</code>, nunca <code>random</code>;
+TLS verificado, não desabilitado "temporariamente"); se existe race
+condition não coberta por lock ou transação onde o cenário exige; se
+dependência nova já passou pelo SCA e é de fato mantida ativamente, com
+licença compatível (MIT/Apache, não GPL de efeito viral onde isso
+importa); se os caminhos novos têm teste cobrindo edge case e cenário
+negativo, não só o caminho feliz; e se a API existente continua
+funcionando sem quebra, com qualquer migração de banco tendo caminho de
+rollback definido.</p>
 
-                    "<h3>7. Round-robin e ownership distribuído</h3>"
-                    "<p>GitHub <em>auto-assignment</em> com round-robin previne fila "
-                    "única. Em squad de 6 devs, todo PR aleatoriamente cai em alguém. "
-                    "Combinado com CODEOWNERS para áreas críticas, distribui carga e "
-                    "espalha conhecimento.</p>"
+<h3>3. CODEOWNERS: quem revisa o quê</h3>
+<pre><code># .github/CODEOWNERS
+# Pessoas/equipes que reviewam por path
+*                 @empresa/dev-platform
+/security/        @empresa/sec-team
+/payment/         @empresa/payments-squad @empresa/sec-team
+/iac/terraform/   @empresa/sre @empresa/sec-team
+*.md              @empresa/docs
+**/migrations/    @empresa/dba</code></pre>
+<p>Combinado com branch protection, o GitHub passa a EXIGIR aprovação
+do dono declarado daquele path — um PR em <code>/payment/</code>
+simplesmente não mergeia sem aprovação de
+<code>@empresa/payments-squad</code> E <code>@empresa/sec-team</code>.
+Isso garante que a pessoa certa olhe a mudança certa, sem depender de
+alguém lembrar de chamá-la manualmente.</p>
 
-                    "<h3>8. Pair review e mob review</h3>"
-                    "<p>Em mudanças muito críticas (auth, infra, migração), considere:</p>"
-                    "<ul>"
-                    "<li><strong>Pair review</strong>: reviewer e autor sentam juntos "
-                    "(in-person ou call) e passam pelo PR. Discussão rica, decisões "
-                    "rápidas.</li>"
-                    "<li><strong>Mob review</strong>: 3-5 pessoas reviewam juntas. Para "
-                    "decisão de design.</li>"
-                    "<li><strong>Async + sync hybrid</strong>: async no GitHub, sync "
-                    "rápido para resolver impasses.</li>"
-                    "</ul>"
+<h3>4. Ferramentas no PR poupam tempo</h3>
+<p>Antes de qualquer reviewer humano abrir o diff, o CI já deveria ter
+respondido um conjunto de perguntas mecânicas: o build passou? o lint
+está limpo? SAST/SCA não encontrou nada high ou critical? a cobertura
+de teste não caiu (codecov/coveralls)? os benchmarks de performance
+continuam dentro do esperado (Bencher)? o diff visual não introduziu
+regressão (Chromatic, Percy)? Delegar tudo isso para automação libera o
+reviewer humano para focar exatamente onde ele agrega mais valor —
+design e lógica — em vez de gastar atenção em "falta um espaço aqui".</p>
 
-                    "<h3>9. Reviewer guia (cheat sheet do reviewer)</h3>"
-                    "<ol>"
-                    "<li>Leia descrição do PR antes do código.</li>"
-                    "<li>Veja 'overview do diff' para entender escopo.</li>"
-                    "<li>Identifique riscos: novo endpoint? nova lib? mudança em "
-                    "auth?</li>"
-                    "<li>Foque em: <em>design</em> &gt; <em>correção</em> &gt; "
-                    "<em>manutenibilidade</em> &gt; <em>estilo</em>.</li>"
-                    "<li>Comente perguntas, não comandos.</li>"
-                    "<li>Aprove rápido se tudo ok. Não 'segure' por preciosismo.</li>"
-                    "<li>Se grande demais para revisar bem, peça quebra.</li>"
-                    "<li>Se discordar muito, agende sync, texto longo cria mal-entendido.</li>"
-                    "</ol>"
+<h3>5. Anti-patterns clássicos</h3>
+<ul>
+<li><strong>Rubber stamp</strong>: aprovar sem realmente ler, comum
+especialmente em PR de alguém sênior ("quem sou eu para discordar?"). A
+métrica de alerta é a porcentagem de PRs aprovados com zero comentário —
+acima de 50% já é suspeito.</li>
+<li><strong>Bikeshedding</strong>: discutir a cor do botão por dias
+enquanto uma SQL injection passa batido — a Lei de Parkinson descreve
+exatamente isso: o tempo gasto discutindo uma decisão tende a ser
+inversamente proporcional à real importância dela.</li>
+<li><strong>PR de 3000 linhas</strong>: ninguém revisa isso de verdade
+(seção 1.1) — a resposta certa é pedir para quebrar, não tentar revisar
+mesmo assim.</li>
+<li><strong>Reviewer único</strong>: se só uma pessoa revisa
+determinada área, ela vira ponto único de falha — e queima, porque
+carrega o peso sozinha indefinidamente.</li>
+<li><strong>"Aprovar e pedir teste depois"</strong>: o "depois" quase
+nunca chega, porque a pressão que motivava a correção já passou junto
+com o merge.</li>
+<li><strong>Comentário adversarial</strong> ("isso é horrível"): tóxico
+e ineficaz — não muda o código mais rápido, só o clima do time.</li>
+<li><strong>Reescrita silenciosa</strong>: o reviewer reescreve o
+código em vez de pedir a mudança — o autor não aprende nada com isso e
+fica ressentido pela decisão tomada sem ele.</li>
+<li><strong>Aprovar sem CI verde</strong>: anula o propósito de o CI
+existir (seção 4).</li>
+<li><strong>Bloquear merge por preferência pessoal</strong>: bloqueio
+deveria reservar-se a bug real ou risco de segurança — estilo é
+nitpick, não motivo de travar o PR.</li>
+</ul>
+
+<h3>6. Métricas saudáveis</h3>
+<p>Cinco números indicam se o processo de review está funcionando de
+verdade. O <strong>TTFR</strong> (Time to First Review) abaixo de 4h em
+PR normal mostra que ninguém fica esperando desnecessariamente. O
+<strong>Time to Merge</strong> abaixo de 24h na maioria dos casos evita
+que trabalho fique acumulando em limbo. O número de
+<strong>comentários por PR</strong> entre 1 e 10 é o intervalo saudável
+— zero sugere rubber stamp (seção 5), e mais de 50 sugere um PR grande
+demais ou um autor que não revisou o próprio trabalho antes de abrir. A
+<strong>taxa de defeito escapado</strong> mede quantos bugs passam pelo
+review inteiro e chegam a produção — se está subindo, o review está
+ficando superficial, mesmo que os números de velocidade pareçam bons. E
+a <strong>participação em review</strong> revela bus factor: se só uma
+ou duas pessoas revisam a maior parte do código, distribuir via
+round-robin (seção 7) evita concentração de risco. Como referência
+geral, PR parado por mais de 3 dias já degrada moral do time — a meta
+deveria mirar bem abaixo de 24h.</p>
+
+<h3>7. Round-robin e ownership distribuído</h3>
+<p>O auto-assignment por round-robin do GitHub evita que todo PR caia
+sempre na mesma pessoa disponível — numa squad de 6 desenvolvedores,
+cada PR novo é distribuído aleatoriamente entre eles. Combinado com
+CODEOWNERS (seção 3) para as áreas mais críticas, esse mecanismo
+distribui carga de trabalho E espalha conhecimento do código pela
+equipe, em vez de concentrar tudo numa só pessoa que "sempre revisa
+aquela parte".</p>
+
+<h3>8. Pair review e mob review</h3>
+<p>Para mudanças especialmente críticas — autenticação, infraestrutura,
+migração de dado — três formatos alternativos ao review assíncrono
+padrão fazem sentido. <strong>Pair review</strong> senta reviewer e
+autor juntos (presencial ou em call) passando pelo PR em tempo real,
+produzindo discussão mais rica e decisão mais rápida do que trocar
+comentários por horas. <strong>Mob review</strong> reúne de 3 a 5
+pessoas revisando juntas, útil especificamente para decisão de design
+que afeta muita gente. E um híbrido <strong>async + sync</strong> mantém
+o fluxo normal assíncrono no GitHub, reservando uma sessão síncrona
+rápida só para resolver um impasse específico que travou por texto.</p>
+
+<h3>9. Reviewer guia (cheat sheet do reviewer)</h3>
+<ol>
+<li>Leia a descrição do PR antes do código — o contexto muda como você
+lê o diff.</li>
+<li>Veja o overview do diff inteiro antes de entrar linha por linha,
+para entender o escopo real da mudança.</li>
+<li>Identifique risco logo de saída: é endpoint novo? biblioteca nova?
+mudança em autenticação?</li>
+<li>Priorize nessa ordem: design, depois correção, depois
+manutenibilidade, e só por último estilo.</li>
+<li>Comente como pergunta, não como comando — abre espaço para o autor
+explicar uma decisão que você não viu de imediato.</li>
+<li>Aprove rápido quando está tudo certo — não "segure" o PR por
+preciosismo.</li>
+<li>Se o PR é grande demais para revisar de verdade, peça para quebrar
+em partes menores (seção 1.1) em vez de aprovar sem ler tudo.</li>
+<li>Se a discordância é grande, agende uma conversa síncrona — texto
+longo tende a gerar mal-entendido que só piora por escrito.</li>
+</ol>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
