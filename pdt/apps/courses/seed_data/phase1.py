@@ -1486,169 +1486,203 @@ checar manualmente em cada script novo.</p>"""
                     "padrões operacionais e armadilhas que travam admins fora do servidor."
                 ),
                 "body": (
-                    "<h3>1. O subsystem netfilter</h3>"
-                    "<p>O kernel Linux tem um framework de filtro de pacotes chamado "
-                    "<strong>netfilter</strong>, com hooks em pontos do caminho do pacote:</p>"
-                    "<ul>"
-                    "<li><code>PRE-ROUTING</code>: antes de decidir destino (NAT entrada).</li>"
-                    "<li><code>INPUT</code>: pacote destinado ao próprio host.</li>"
-                    "<li><code>FORWARD</code>: pacote roteado pela máquina (gateway/router).</li>"
-                    "<li><code>OUTPUT</code>: pacote saindo do host.</li>"
-                    "<li><code>POST-ROUTING</code>: depois de roteado (NAT saída).</li>"
-                    "</ul>"
-                    "<p>As interfaces de usuário (iptables/nftables/ufw) só montam regras "
-                    "nessas hooks. Trocar de interface não muda o motor.</p>"
+                """<h3>1. O subsystem netfilter</h3>
+<p>O kernel Linux implementa um framework de filtro de pacotes chamado
+netfilter, com hook em cinco pontos distintos ao longo do caminho de
+um pacote pela pilha de rede. O <code>PRE-ROUTING</code> atua antes
+mesmo de decidir o destino final, sendo onde NAT de entrada acontece. O
+<code>INPUT</code> filtra pacote destinado ao próprio host. O
+<code>FORWARD</code> filtra pacote apenas roteado através da máquina —
+o cenário de um gateway ou router. O <code>OUTPUT</code> filtra pacote
+saindo do próprio host. E o <code>POST-ROUTING</code> atua depois de já
+roteado, onde NAT de saída acontece. Um detalhe importante para quem
+compara ferramentas: as interfaces de usuário — iptables, nftables, ufw
+— só MONTAM regra sobre esses hooks já existentes, elas não trocam o
+motor por baixo. Trocar de <code>iptables</code> para
+<code>nftables</code> muda a sintaxe, não o comportamento fundamental
+do kernel.</p>
 
-                    "<h3>2. iptables vs nftables vs ufw</h3>"
-                    "<p>Linha do tempo:</p>"
-                    "<ul>"
-                    "<li><strong>iptables</strong> (1998): clássico, sintaxe verbosa, "
-                    "tabela separada para IPv6 (ip6tables), ARP, ebtables.</li>"
-                    "<li><strong>nftables</strong> (2014): substituto unificado, sintaxe "
-                    "nova, performance melhor, IPv4+IPv6 numa só árvore. Em distros novas "
-                    "(Debian 11+, RHEL 9, Ubuntu 22.04+), <code>iptables</code> é só um shim "
-                    "que traduz para nftables.</li>"
-                    "<li><strong>UFW</strong> (Uncomplicated Firewall): wrapper amigável "
-                    "para iniciantes. <code>ufw allow ssh</code> e pronto.</li>"
-                    "<li><strong>firewalld</strong> (RHEL/Fedora): wrapper diferente, "
-                    "orientado a 'zonas'.</li>"
-                    "</ul>"
+<h3>2. iptables vs nftables vs ufw</h3>
+<p>Quatro ferramentas cobrem o mesmo espaço em momentos históricos
+diferentes. O <strong>iptables</strong> (1998) é o clássico, com
+sintaxe verbosa e tabela SEPARADA para IPv6 (via
+<code>ip6tables</code>), ARP e ebtables — esquecer de replicar uma
+regra em <code>ip6tables</code> é uma fonte histórica de vazamento
+(seção 9). O <strong>nftables</strong> (2014) veio como substituto
+unificado, com sintaxe nova, performance melhor, e IPv4 e IPv6
+convivendo na mesma árvore de regra — em distribuição recente (Debian
+11+, RHEL 9, Ubuntu 22.04+), o próprio comando <code>iptables</code>
+virou apenas um shim que traduz internamente para nftables. O
+<strong>UFW</strong> (Uncomplicated Firewall) é um wrapper amigável
+para quem está começando — <code>ufw allow ssh</code> resolve sem
+precisar entender hook nem chain. E o <strong>firewalld</strong>
+(comum em RHEL/Fedora) segue um modelo diferente, organizado em torno
+de "zonas" em vez de regra explícita direta.</p>
 
-                    "<h3>3. UFW na prática</h3>"
-                    "<pre><code># Estado / status\n"
-                    "ufw status verbose\n"
-                    "ufw status numbered\n"
-                    "\n"
-                    "# Política default (default-deny inbound é o caminho)\n"
-                    "ufw default deny incoming\n"
-                    "ufw default allow outgoing\n"
-                    "\n"
-                    "# Regras\n"
-                    "ufw allow ssh                            # equivale a 22/tcp\n"
-                    "ufw allow 80,443/tcp                     # web\n"
-                    "ufw allow from 10.0.1.0/24 to any port 5432  # postgres só da subnet\n"
-                    "ufw limit ssh                            # rate limit (anti brute force)\n"
-                    "\n"
-                    "# Aplicar\n"
-                    "ufw enable\n"
-                    "\n"
-                    "# Remover regra\n"
-                    "ufw status numbered\n"
-                    "ufw delete 3</code></pre>"
-                    "<p><code>ufw limit</code> bloqueia IPs com mais de 6 conexões em 30s, "
-                    "útil contra brute-force a SSH. Para resposta mais agressiva, combine com "
-                    "<code>fail2ban</code> que banem por mais tempo e em mais portas.</p>"
+<h3>3. UFW na prática</h3>
+<pre><code># Estado / status
+ufw status verbose
+ufw status numbered
 
-                    "<h3>4. nftables raw, para quando UFW não basta</h3>"
-                    "<pre><code># /etc/nftables.conf\n"
-                    "table inet filter {\n"
-                    "  chain input {\n"
-                    "    type filter hook input priority 0; policy drop;\n"
-                    "    \n"
-                    "    iif lo accept\n"
-                    "    ct state established,related accept\n"
-                    "    ct state invalid drop\n"
-                    "    \n"
-                    "    icmp type echo-request limit rate 5/second accept\n"
-                    "    icmpv6 type { echo-request, nd-neighbor-solicit, nd-router-advert, \\\n"
-                    "                  nd-neighbor-advert } accept\n"
-                    "    \n"
-                    "    tcp dport 22 limit rate 10/minute accept    # ssh com rate limit\n"
-                    "    tcp dport { 80, 443 } accept                 # web\n"
-                    "    \n"
-                    "    log prefix \"nft drop: \" level info limit rate 5/minute\n"
-                    "  }\n"
-                    "  chain forward { type filter hook forward priority 0; policy drop; }\n"
-                    "  chain output  { type filter hook output  priority 0; policy accept; }\n"
-                    "}</code></pre>"
-                    "<p>Aplicar: <code>nft -f /etc/nftables.conf &amp;&amp; "
-                    "systemctl enable nftables</code>.</p>"
+# Política default (default-deny inbound é o caminho)
+ufw default deny incoming
+ufw default allow outgoing
 
-                    "<h3>5. DROP vs REJECT vs ACCEPT</h3>"
-                    "<table>"
-                    "<tr><td><code>ACCEPT</code></td><td>passa</td></tr>"
-                    "<tr><td><code>DROP</code></td><td>descarta silenciosamente. Atacante vê "
-                    "timeout, mais difícil de mapear. Padrão em internet pública.</td></tr>"
-                    "<tr><td><code>REJECT</code></td><td>responde com ICMP "
-                    "<em>port-unreachable</em> ou TCP RST. 'Mais educado'; cliente legítimo "
-                    "descobre o erro mais rápido. Bom em rede interna.</td></tr>"
-                    "</table>"
-                    "<p>Conntrack (<code>ct state established,related accept</code>) é o que "
-                    "permite respostas de conexões iniciadas pelo host de saírem sem regra "
-                    "explícita.</p>"
+# Regras
+ufw allow ssh                            # equivale a 22/tcp
+ufw allow 80,443/tcp                     # web
+ufw allow from 10.0.1.0/24 to any port 5432  # postgres só da subnet
+ufw limit ssh                            # rate limit (anti brute force)
 
-                    "<h3>6. Cuidados em produção: não se trave fora!</h3>"
-                    "<p>Antes de aplicar regras restritivas em SSH remoto:</p>"
-                    "<pre><code># Plano B: reverte automaticamente em 5 min se você não desativar\n"
-                    "echo 'iptables-restore &lt; /tmp/rules.backup' | at now +5 minutes\n"
-                    "\n"
-                    "iptables-save &gt; /tmp/rules.backup\n"
-                    "# ... aplica novas regras ...\n"
-                    "# se você confirma que continua funcionando:\n"
-                    "atrm $(atq | tail -1 | awk '{print $1}')</code></pre>"
-                    "<p>Para nftables: <code>nft list ruleset &gt; /tmp/before.nft</code> "
-                    "antes; reverter com <code>nft -f /tmp/before.nft</code>.</p>"
-                    "<p>Sempre <strong>persista</strong> as regras: distros costumam ter "
-                    "<code>netfilter-persistent</code>, <code>iptables-persistent</code> ou "
-                    "<code>nftables.service</code> que carrega as regras no boot. Sem isso, um "
-                    "reboot zera tudo e você fica com host wide-open.</p>"
+# Aplicar
+ufw enable
 
-                    "<h3>7. Limites de firewall L3/L4</h3>"
-                    "<p>Firewall por porta não enxerga:</p>"
-                    "<ul>"
-                    "<li>Conteúdo HTTPS (criptografado).</li>"
-                    "<li>Lógica de aplicação (SQLi, XSS, RCE).</li>"
-                    "<li>Comportamento de usuário legítimo (credential stuffing com IPs "
-                    "rotativos).</li>"
-                    "</ul>"
-                    "<p>Para isso existe a camada 7:</p>"
-                    "<ul>"
-                    "<li><strong>WAF</strong> (Web Application Firewall): ModSecurity, "
-                    "Cloudflare, AWS WAF, Azure FrontDoor.</li>"
-                    "<li><strong>API Gateway</strong>: Kong, Tyk, AWS API Gateway, rate "
-                    "limit por chave, schema validation.</li>"
-                    "<li><strong>Service Mesh</strong>: Istio, Linkerd, autenticação mTLS "
-                    "entre serviços.</li>"
-                    "</ul>"
+# Remover regra
+ufw status numbered
+ufw delete 3</code></pre>
+<p>O <code>ufw limit</code> bloqueia automaticamente IP com mais de 6
+tentativas de conexão em 30 segundos — uma proteção direta contra
+brute-force em SSH, sem precisar de ferramenta externa. Para uma
+resposta ainda mais agressiva, combinar com <code>fail2ban</code>
+adiciona banimento por período mais longo e cobrindo mais portas ao
+mesmo tempo.</p>
 
-                    "<h3>8. Firewall em cloud: Security Groups e NACLs</h3>"
-                    "<p>Em AWS (e equivalentes):</p>"
-                    "<ul>"
-                    "<li><strong>Security Group</strong>: stateful, anexa em ENI/instância. "
-                    "Default deny inbound, allow outbound. Regra de saída pode ser "
-                    "destinada a outro SG (composição).</li>"
-                    "<li><strong>Network ACL</strong>: stateless, em subnet. Regras "
-                    "numeradas (avaliadas em ordem). Útil para bloquear IPs maliciosos sem "
-                    "tocar no SG.</li>"
-                    "</ul>"
-                    "<p>Use Security Group como firewall de aplicação ('app fala com "
-                    "postgres') e NACL como guard-rail por subnet ('subnet privada não recebe "
-                    "internet').</p>"
+<h3>4. nftables raw, para quando UFW não basta</h3>
+<pre><code># /etc/nftables.conf
+table inet filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+    
+    iif lo accept
+    ct state established,related accept
+    ct state invalid drop
+    
+    icmp type echo-request limit rate 5/second accept
+    icmpv6 type { echo-request, nd-neighbor-solicit, nd-router-advert, \\
+                  nd-neighbor-advert } accept
+    
+    tcp dport 22 limit rate 10/minute accept    # ssh com rate limit
+    tcp dport { 80, 443 } accept                 # web
+    
+    log prefix "nft drop: " level info limit rate 5/minute
+  }
+  chain forward { type filter hook forward priority 0; policy drop; }
+  chain output  { type filter hook output  priority 0; policy accept; }
+}</code></pre>
+<p>Aplicar essa configuração e garantir que ela persista no boot é um
+único comando: <code>nft -f /etc/nftables.conf &amp;&amp; systemctl
+enable nftables</code>.</p>
 
-                    "<h3>9. Caso real: o ipv6-bypass</h3>"
-                    "<p>Por anos, admins configuravam <code>iptables</code> mas esqueciam "
-                    "<code>ip6tables</code>, deixando IPv6 totalmente aberto. Atacantes "
-                    "automatizados descobriam o IPv6 do host (geralmente exposto em DNS) e "
-                    "entravam direto. Em 2014, isso ficou famoso quando "
-                    "<code>kubelet</code> em K8s expunha-se em IPv6 por default. Lição: "
-                    "use <code>nftables</code> com tabela <code>inet</code> (filtra IPv4 e "
-                    "IPv6 juntos) ou seja explícito em ambas as stacks.</p>"
+<h3>5. DROP vs REJECT vs ACCEPT</h3>
+<table>
+<tr><td><code>ACCEPT</code></td><td>passa</td></tr>
+<tr><td><code>DROP</code></td><td>descarta silenciosamente. Atacante vê
+timeout, mais difícil de mapear. Padrão em internet pública.</td></tr>
+<tr><td><code>REJECT</code></td><td>responde com ICMP
+<em>port-unreachable</em> ou TCP RST. 'Mais educado'; cliente legítimo
+descobre o erro mais rápido. Bom em rede interna.</td></tr>
+</table>
+<p>A escolha entre DROP e REJECT não é neutra: DROP faz o atacante
+gastar tempo esperando um timeout que nunca chega, dificultando mapear
+quais portas realmente existem por trás — o padrão correto para
+qualquer interface exposta à internet pública. REJECT, ao contrário,
+informa imediatamente que a porta está fechada, o que é útil em rede
+interna onde não há adversário tentando mapear o ambiente, só um
+colega tentando debugar mais rápido por que algo não conecta. E a linha
+<code>ct state established,related accept</code> é o que permite a
+RESPOSTA de uma conexão que o próprio host iniciou voltar livremente,
+sem precisar de uma regra explícita separada para cada tipo de tráfego
+de retorno.</p>
 
-                    "<h3>10. Checklist de hardening</h3>"
-                    "<ol>"
-                    "<li>Default-deny inbound; default-allow outbound (com revisão "
-                    "periódica).</li>"
-                    "<li>Apenas portas estritamente necessárias abertas.</li>"
-                    "<li>SSH com rate-limit (<code>ufw limit</code> + fail2ban).</li>"
-                    "<li>ICMP echo aceitando mas com rate-limit.</li>"
-                    "<li>Conntrack para established/related; drop para invalid.</li>"
-                    "<li>Logs em todos os DROP no início (sample 5/min para não encher "
-                    "disco).</li>"
-                    "<li>Persistência configurada (sobrevive a reboot).</li>"
-                    "<li>IPv6 também filtrado.</li>"
-                    "<li>Plano de reversão antes de qualquer mudança remota.</li>"
-                    "<li>Auditoria periódica: o que cada porta aberta serve?</li>"
-                    "</ol>"
+<h3>6. Cuidados em produção: não se trave fora!</h3>
+<p>Antes de aplicar uma regra restritiva via SSH remoto, um plano de
+reversão automática evita o cenário clássico de perder acesso ao
+próprio servidor:</p>
+<pre><code># Plano B: reverte automaticamente em 5 min se você não desativar
+echo 'iptables-restore &lt; /tmp/rules.backup' | at now +5 minutes
+
+iptables-save &gt; /tmp/rules.backup
+# ... aplica novas regras ...
+# se você confirma que continua funcionando:
+atrm $(atq | tail -1 | awk '{print $1}')</code></pre>
+<p>Para nftables, o mesmo princípio se aplica salvando o estado atual
+com <code>nft list ruleset &gt; /tmp/before.nft</code> antes de
+qualquer mudança, com <code>nft -f /tmp/before.nft</code> pronto para
+reverter caso algo saia errado. E persistir a regra é igualmente
+crítico: distribuições costumam oferecer
+<code>netfilter-persistent</code>, <code>iptables-persistent</code> ou
+o próprio <code>nftables.service</code> para carregar a configuração
+novamente no boot — sem isso, um simples reboot zera tudo e o host
+volta a ficar completamente exposto sem ninguém perceber
+imediatamente.</p>
+
+<h3>7. Limites de firewall L3/L4</h3>
+<p>Um firewall operando por porta e protocolo simplesmente não enxerga
+três categorias inteiras de ataque: o conteúdo de uma conexão HTTPS,
+que chega criptografado; a lógica da própria aplicação, onde SQL
+injection, XSS e RCE acontecem inteiramente dentro do payload
+permitido; e o comportamento de um usuário aparentemente legítimo, como
+credential stuffing distribuído entre muitos IPs rotativos diferentes,
+cada um individualmente abaixo de qualquer limite de taxa configurado.
+Para cobrir essa lacuna existe a camada 7: um WAF (ModSecurity,
+Cloudflare, AWS WAF, Azure Front Door) inspeciona o conteúdo real da
+requisição; um API Gateway (Kong, Tyk, AWS API Gateway) aplica rate
+limit por chave de API e validação de schema; e um service mesh
+(Istio, Linkerd) garante autenticação mTLS genuína entre serviços
+internos.</p>
+
+<h3>8. Firewall em cloud: Security Groups e NACLs</h3>
+<p>Na AWS (e equivalentes), o Security Group é STATEFUL e anexado
+diretamente a uma ENI ou instância, com default deny no inbound e
+allow no outbound — e uma regra de saída pode referenciar outro
+Security Group diretamente como destino, permitindo composição de
+arquitetura inteira via referência (detalhado na aula de rede em
+nuvem). O Network ACL é STATELESS e opera a nível de subnet, com regra
+numerada avaliada em ordem sequencial — útil especificamente para
+bloquear um IP malicioso amplo sem precisar tocar em nenhum Security
+Group individual. O padrão prático de uso divide o papel de cada um:
+Security Group como firewall de aplicação ("a aplicação fala com o
+Postgres, mais nada"), e NACL como guard-rail estrutural por subnet
+("a subnet privada não recebe tráfego de internet, ponto final").</p>
+
+<h3>9. Caso real: o ipv6-bypass</h3>
+<p>Por anos, administradores configuravam <code>iptables</code> com
+cuidado e simplesmente esqueciam de replicar a mesma configuração em
+<code>ip6tables</code>, deixando o tráfego IPv6 completamente aberto
+mesmo com o IPv4 bem protegido. Atacante automatizado descobria o
+endereço IPv6 do host — frequentemente exposto pelo próprio DNS — e
+entrava direto por essa porta lateral esquecida. Em 2014, esse padrão
+ficou particularmente conhecido quando o próprio <code>kubelet</code>
+do Kubernetes se expunha via IPv6 por configuração default sem que
+ninguém tivesse pensado nisso explicitamente. A lição prática direta:
+usar <code>nftables</code> com a tabela <code>inet</code> — que filtra
+IPv4 e IPv6 na mesma árvore de regra simultaneamente — elimina
+estruturalmente esse tipo de esquecimento, em vez de depender de
+lembrar manualmente de duplicar cada regra nas duas stacks
+separadas.</p>
+
+<h3>10. Checklist de hardening</h3>
+<ol>
+<li>Default-deny no inbound; default-allow no outbound, com revisão
+periódica mesmo assim.</li>
+<li>Apenas as portas estritamente necessárias abertas, nada "por via
+das dúvidas".</li>
+<li>SSH com rate-limit (<code>ufw limit</code> combinado com
+fail2ban).</li>
+<li>ICMP echo aceito mas com rate-limit aplicado, evitando abuso
+como vetor de flood.</li>
+<li>Conntrack aceitando established/related, e descartando
+explicitamente estado invalid.</li>
+<li>Log em todo DROP inicial, mas amostrado (5 por minuto, por
+exemplo) para não encher o disco com ruído repetitivo.</li>
+<li>Persistência configurada, garantindo que a regra sobrevive a um
+reboot (seção 6).</li>
+<li>IPv6 filtrado com o mesmo rigor do IPv4 (seção 9).</li>
+<li>Plano de reversão pronto antes de qualquer mudança remota via
+SSH.</li>
+<li>Auditoria periódica perguntando, para cada porta ainda aberta, "o
+que exatamente ela serve hoje?".</li>
+</ol>"""
                 ),
                 "practical": (
                     "Em uma VM:<br>"
@@ -2121,188 +2155,215 @@ antes.</li>
                     "como gerar SBOM para sobreviver à próxima Log4Shell."
                 ),
                 "body": (
-                    "<h3>1. Modelo de confiança em APT</h3>"
-                    "<p>O processo:</p>"
-                    "<ol>"
-                    "<li>O repositório publica um <code>Release</code> file com hash de cada "
-                    "<code>Packages</code>.</li>"
-                    "<li>O <code>Release</code> é assinado com GPG. A assinatura vai em "
-                    "<code>Release.gpg</code> (ou <code>InRelease</code> com tudo num só "
-                    "arquivo).</li>"
-                    "<li>O cliente baixa <code>Release</code>, valida com a chave pública do "
-                    "mantenedor (em <code>/etc/apt/keyrings/</code> ou "
-                    "<code>/etc/apt/trusted.gpg.d/</code>) e só então confia nos hashes "
-                    "listados.</li>"
-                    "<li>Cada pacote (<code>.deb</code>) tem hash que precisa bater.</li>"
-                    "</ol>"
-                    "<p>Assim, mesmo que um espelho seja comprometido, o atacante não "
-                    "consegue trocar pacotes sem invalidar a assinatura.</p>"
+                """<h3>1. Modelo de confiança em APT</h3>
+<p>O processo de validação de pacote no APT segue quatro passos
+encadeados, cada um dependendo do anterior. O repositório publica um
+arquivo <code>Release</code> contendo o hash de cada
+<code>Packages</code>. Esse arquivo <code>Release</code> é assinado com
+GPG, com a assinatura indo em <code>Release.gpg</code> (ou embutida
+junto no <code>InRelease</code>). O cliente baixa o <code>Release</code>,
+valida a assinatura com a chave pública do mantenedor — guardada em
+<code>/etc/apt/keyrings/</code> ou <code>/etc/apt/trusted.gpg.d/</code>
+— e só DEPOIS de confirmar a assinatura passa a confiar nos hashes
+listados dentro. E cada pacote <code>.deb</code> individual carrega um
+hash que precisa bater exatamente com o registrado. O resultado prático
+dessa cadeia é que, mesmo que um espelho seja comprometido, o atacante
+não consegue trocar um pacote sem invalidar a assinatura de todo o
+resto — forjar um pacote isolado exigiria também forjar a assinatura
+GPG do mantenedor, algo que a criptografia por trás torna
+inviável.</p>
 
-                    "<h3>2. Adicionando repositórios externos com segurança</h3>"
-                    "<p>A forma <strong>antiga</strong> (<code>apt-key add -</code>) está "
-                    "depreciada porque adicionava confiança global no sistema todo. A forma "
-                    "moderna usa <code>signed-by</code> para limitar o escopo da chave a "
-                    "<em>aquele</em> repositório:</p>"
-                    "<pre><code># 1. Baixe a chave em formato dearmored\n"
-                    "curl -fsSL https://download.docker.com/linux/ubuntu/gpg \\\n"
-                    "  | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg\n"
-                    "sudo chmod 644 /etc/apt/keyrings/docker.gpg\n"
-                    "\n"
-                    "# 2. Adicione o repositório referenciando essa chave\n"
-                    "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] \\\n"
-                    "  https://download.docker.com/linux/ubuntu jammy stable' \\\n"
-                    "  | sudo tee /etc/apt/sources.list.d/docker.list\n"
-                    "\n"
-                    "# 3. Verifique a chave antes de aceitar\n"
-                    "gpg --no-default-keyring --keyring /etc/apt/keyrings/docker.gpg --list-keys\n"
-                    "# Compare o fingerprint com o que está na docs oficial.\n"
-                    "\n"
-                    "sudo apt update\n"
-                    "sudo apt install docker-ce</code></pre>"
-                    "<p>Em RHEL/Fedora:</p>"
-                    "<pre><code>sudo rpm --import https://download.docker.com/linux/centos/gpg\n"
-                    "sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo\n"
-                    "# /etc/yum.repos.d/docker-ce.repo precisa ter gpgcheck=1</code></pre>"
+<h3>2. Adicionando repositórios externos com segurança</h3>
+<p>A forma antiga (<code>apt-key add -</code>) está depreciada
+justamente porque adicionava confiança GLOBAL ao sistema inteiro — uma
+chave adicionada dessa forma passava a poder assinar QUALQUER pacote
+de QUALQUER repositório, não só o repositório específico que a
+introduziu. A forma moderna usa <code>signed-by</code> para restringir
+o escopo da chave a apenas aquele repositório declarado:</p>
+<pre><code># 1. Baixe a chave em formato dearmored
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg \\
+  | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod 644 /etc/apt/keyrings/docker.gpg
 
-                    "<h3>3. Pinning de versões em produção</h3>"
-                    "<p>Em produção, <strong>nunca</strong> rode <code>apt upgrade</code> em "
-                    "pipeline sem testar primeiro. Você pode acordar com nginx atualizado e "
-                    "config quebrada. Soluções:</p>"
-                    "<pre><code># /etc/apt/preferences.d/nginx\n"
-                    "Package: nginx*\n"
-                    "Pin: version 1.24.*\n"
-                    "Pin-Priority: 1001\n"
-                    "\n"
-                    "# Ou marque como hold\n"
-                    "sudo apt-mark hold nginx\n"
-                    "\n"
-                    "# Ou, em containers, pin direto no Dockerfile\n"
-                    "RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends \\\n"
-                    "    nginx=1.24.* \\\n"
-                    "  &amp;&amp; rm -rf /var/lib/apt/lists/*</code></pre>"
-                    "<p>Em RHEL: <code>dnf versionlock add nginx</code>.</p>"
+# 2. Adicione o repositório referenciando essa chave
+echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] \\
+  https://download.docker.com/linux/ubuntu jammy stable' \\
+  | sudo tee /etc/apt/sources.list.d/docker.list
 
-                    "<h3>4. Mirror/registry interno: por que vale a pena</h3>"
-                    "<p>Em ambientes corporativos sérios:</p>"
-                    "<ul>"
-                    "<li><strong>Independência</strong>: build não falha quando upstream cai.</li>"
-                    "<li><strong>Auditoria</strong>: quem baixou o quê, quando.</li>"
-                    "<li><strong>Scanning</strong>: pacote é varrido antes de chegar ao "
-                    "build.</li>"
-                    "<li><strong>Velocidade</strong>: dentro da VPC é mais rápido que pegar "
-                    "no mantenedor.</li>"
-                    "<li><strong>Compliance</strong>: SOC 2, ISO 27001 olham para isso.</li>"
-                    "</ul>"
-                    "<p>Ferramentas: <strong>JFrog Artifactory</strong> "
-                    "(comercial, suporta tudo), <strong>Sonatype Nexus</strong> "
-                    "(comercial/free), <strong>Pulpcore</strong> (open source, RHEL).</p>"
+# 3. Verifique a chave antes de aceitar
+gpg --no-default-keyring --keyring /etc/apt/keyrings/docker.gpg --list-keys
+# Compare o fingerprint com o que está na docs oficial.
 
-                    "<h3>5. Pacotes de linguagem: o oeste selvagem</h3>"
-                    "<p>npm, pypi, rubygems, crates.io têm modelo diferente: qualquer um "
-                    "publica. Atacantes exploram via:</p>"
-                    "<ul>"
-                    "<li><strong>Typosquatting</strong>: pacote com nome parecido. Já houve "
-                    "<code>colourama</code>, <code>requestes</code>, <code>pythn</code>.</li>"
-                    "<li><strong>Dependency confusion</strong>: pacote <em>privado</em> com "
-                    "nome que existe no público; o gerente prefere o público (mais novo).</li>"
-                    "<li><strong>Account takeover</strong>: mantenedor original perde "
-                    "credencial; atacante publica versão maliciosa do pacote legítimo. "
-                    "<em>Caso 'colors.js'</em> em 2022.</li>"
-                    "<li><strong>Long con</strong>: contribuidor 'útil' por anos eventualmente "
-                    "adiciona backdoor. <em>xz-utils 2024</em>.</li>"
-                    "</ul>"
-                    "<p>Mitigações:</p>"
-                    "<ul>"
-                    "<li><strong>Lockfiles obrigatórios</strong>: "
-                    "<code>poetry.lock</code>, <code>package-lock.json</code>, "
-                    "<code>Cargo.lock</code> com hash. Build determinístico.</li>"
-                    "<li><strong>Mirror interno</strong> (Artifactory) com whitelist de "
-                    "pacotes aprovados.</li>"
-                    "<li><strong>Scanners</strong>: <code>pip-audit</code>, "
-                    "<code>npm audit</code>, <code>cargo audit</code>, "
-                    "<code>OSV-Scanner</code>, <code>Trivy</code>.</li>"
-                    "<li><strong>Dependency review</strong> nos PRs: GitHub e GitLab têm "
-                    "checks nativos.</li>"
-                    "</ul>"
+sudo apt update
+sudo apt install docker-ce</code></pre>
+<p>O passo 3 — comparar o fingerprint com a documentação oficial antes
+de confiar — é o que fecha a lacuna real: baixar a chave sozinho não
+prova que ela veio do mantenedor legítimo, só que veio de ALGUM lugar.
+Em RHEL/Fedora o mesmo princípio se aplica:</p>
+<pre><code>sudo rpm --import https://download.docker.com/linux/centos/gpg
+sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+# /etc/yum.repos.d/docker-ce.repo precisa ter gpgcheck=1</code></pre>
 
-                    "<h3>6. SBOM, Software Bill of Materials</h3>"
-                    "<p>Um SBOM é a lista 'de ingredientes' do seu software. Em incidente "
-                    "(ex.: nova CVE em libxml), você consulta o SBOM e em segundos sabe "
-                    "exatamente quais imagens/serviços estão afetados, em vez de varrer 200 "
-                    "Dockerfiles.</p>"
-                    "<p>Formatos padronizados:</p>"
-                    "<ul>"
-                    "<li><strong>CycloneDX</strong> (OWASP).</li>"
-                    "<li><strong>SPDX</strong> (Linux Foundation).</li>"
-                    "</ul>"
-                    "<p>Geração:</p>"
-                    "<pre><code># Imagem Docker\n"
-                    "syft myapp:1.0 -o cyclonedx-json &gt; sbom.json\n"
-                    "\n"
-                    "# Sistema de arquivos\n"
-                    "syft dir:/opt/app -o spdx-json &gt; sbom-spdx.json\n"
-                    "\n"
-                    "# Python apenas\n"
-                    "cyclonedx-py -i requirements.txt -o sbom.xml\n"
-                    "\n"
-                    "# Cruzando com CVEs\n"
-                    "grype sbom:./sbom.json</code></pre>"
-                    "<p>Em alguns setores (US Federal, automotive, médicos), SBOM virou "
-                    "obrigação legal, Executive Order 14028 nos EUA.</p>"
+<h3>3. Pinning de versões em produção</h3>
+<p>Rodar <code>apt upgrade</code> num pipeline de produção sem testar
+antes é uma aposta arriscada — o Nginx pode atualizar sozinho e a
+configuração que funcionava até ontem quebrar sem aviso. Três
+mecanismos resolvem isso de forma progressivamente mais explícita:
+pinning por prioridade, marcação de hold, ou fixar a versão diretamente
+no Dockerfile:</p>
+<pre><code># /etc/apt/preferences.d/nginx
+Package: nginx*
+Pin: version 1.24.*
+Pin-Priority: 1001
 
-                    "<h3>7. Reproducibilidade de builds</h3>"
-                    "<p>Build reprodutível: dado o mesmo source + mesmo ambiente, mesmo "
-                    "binário (byte a byte). Permite verificar que um binário foi gerado a "
-                    "partir do código alegado. Conceito-chave do projeto "
-                    "<a href='https://reproducible-builds.org/'>Reproducible Builds</a>. "
-                    "Práticas:</p>"
-                    "<ul>"
-                    "<li>Pin de versão em todos os steps.</li>"
-                    "<li>Datas determinísticas "
-                    "(<code>SOURCE_DATE_EPOCH</code>).</li>"
-                    "<li>Sem aleatoriedade em ordem (sort em listas de arquivos).</li>"
-                    "<li>Toolchain pinada (compilador específico).</li>"
-                    "</ul>"
+# Ou marque como hold
+sudo apt-mark hold nginx
 
-                    "<h3>8. Caso real: xz-utils 2024</h3>"
-                    "<p>Em março/2024, descobriu-se que <code>xz-utils</code> 5.6.0/5.6.1, "
-                    "biblioteca usada em quase toda distro Linux, tinha backdoor injetada "
-                    "via <code>libsystemd</code> que permitia RCE em sshd remotamente. O "
-                    "atacante (Jia Tan) foi mantenedor confiável por anos antes de inserir o "
-                    "código. Salvou-se: um engenheiro da Microsoft notou latência incomum no "
-                    "ssh e investigou. Lições:</p>"
-                    "<ul>"
-                    "<li>SBOM teria identificado servidores afetados em minutos.</li>"
-                    "<li>Releases que demoram demais a aparecer em distros estáveis "
-                    "(quarentena natural) salvaram a maioria dos casos.</li>"
-                    "<li>Reproducible builds não pegariam, o tarball tinha código diferente "
-                    "do repo.</li>"
-                    "<li>Open source não é mágica: precisa de revisão real.</li>"
-                    "</ul>"
+# Ou, em containers, pin direto no Dockerfile
+RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends \\
+    nginx=1.24.* \\
+  &amp;&amp; rm -rf /var/lib/apt/lists/*</code></pre>
+<p>Em RHEL, o equivalente é <code>dnf versionlock add nginx</code>.</p>
 
-                    "<h3>9. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><code>curl ... | bash</code>: RCE se servidor de origem comprometido.</li>"
-                    "<li><code>--allow-unauthenticated</code> ou "
-                    "<code>nodaemon=true</code> para 'ignorar erro de assinatura'.</li>"
-                    "<li>Adicionar PPA/repos externos sem verificar fingerprint.</li>"
-                    "<li>Não pinar nada, sempre usar 'latest'.</li>"
-                    "<li>Misturar repositórios estáveis e instáveis, Frankenstein de versões.</li>"
-                    "<li>Pular release notes e atualizar produção sem ler.</li>"
-                    "</ul>"
+<h3>4. Mirror/registry interno: por que vale a pena</h3>
+<p>Um mirror interno resolve cinco problemas de uma vez em ambiente
+corporativo maduro: independência (o build não falha quando o upstream
+externo cai temporariamente); auditoria (fica registrado exatamente
+quem baixou o quê e quando); scanning (o pacote é varrido antes de
+sequer chegar ao build, não depois); velocidade (baixar de dentro da
+própria VPC é mais rápido que ir até o mantenedor original toda vez);
+e compliance (auditorias como SOC 2 e ISO 27001 explicitamente
+verificam esse tipo de controle). JFrog Artifactory (comercial, cobre
+praticamente todo formato), Sonatype Nexus (comercial ou free) e
+Pulpcore (open source, comum em ecossistema RHEL) são as ferramentas
+dominantes desse espaço.</p>
 
-                    "<h3>10. Workflow recomendado</h3>"
-                    "<ol>"
-                    "<li>CI: <code>pip-audit</code>/<code>npm audit</code> em todo PR. Falha "
-                    "para CVEs Critical/High.</li>"
-                    "<li>Build: gera SBOM e armazena com a artifact.</li>"
-                    "<li>Push: scan no registry (Trivy/Grype) com policy.</li>"
-                    "<li>Deploy: admission controller (Kyverno) só aceita imagem com SBOM "
-                    "anexado.</li>"
-                    "<li>Operação: re-scan periódico (Harbor, Trivy operator), CVEs novas "
-                    "aparecem depois.</li>"
-                    "<li>Renovate/Dependabot abre PRs de update automaticamente.</li>"
-                    "</ol>"
+<h3>5. Pacotes de linguagem: o oeste selvagem</h3>
+<p>npm, PyPI, RubyGems e crates.io operam num modelo estruturalmente
+diferente do APT: qualquer pessoa publica, sem barreira de curadoria
+central. Isso abre quatro vetores de ataque específicos. O
+<strong>typosquatting</strong> planta um pacote malicioso com nome
+parecido ao legítimo — já existiram <code>colourama</code>,
+<code>requestes</code>, <code>pythn</code>, cada um apostando num erro
+de digitação comum. A <strong>dependency confusion</strong> explora um
+pacote PRIVADO cujo nome também existe publicamente — se a configuração
+de resolução não distinguir isso corretamente, o gerenciador de pacote
+acaba preferindo o público (geralmente por ter versão mais recente),
+puxando código de origem desconhecida no lugar do privado esperado. O
+<strong>account takeover</strong> acontece quando o mantenedor original
+perde a própria credencial e um atacante publica versão maliciosa
+diretamente sobre o pacote legítimo já estabelecido — o caso
+"colors.js" de 2022 seguiu exatamente esse padrão. E o
+<strong>long con</strong> é o mais paciente dos quatro: um contribuidor
+se estabelece como confiável ao longo de ANOS antes de finalmente
+inserir um backdoor — o caso xz-utils de 2024 (seção 8) é o exemplo
+mais estudado dessa categoria. Quatro mitigações reduzem essa
+superfície: lockfile obrigatório (<code>poetry.lock</code>,
+<code>package-lock.json</code>, <code>Cargo.lock</code> com hash),
+garantindo build determinístico; mirror interno com whitelist de
+pacote aprovado; scanner dedicado (<code>pip-audit</code>,
+<code>npm audit</code>, <code>cargo audit</code>, OSV-Scanner, Trivy);
+e dependency review direto no PR, já nativo tanto no GitHub quanto no
+GitLab.</p>
+
+<h3>6. SBOM, Software Bill of Materials</h3>
+<p>Um SBOM é literalmente a lista de "ingredientes" de um software —
+quando uma CVE nova aparece numa biblioteca comum (como libxml, por
+exemplo), consultar o SBOM revela em segundos exatamente quais imagens
+ou serviços são afetados, em vez de varrer manualmente duzentos
+Dockerfiles um por um. Dois formatos dominam: CycloneDX (mantido pela
+OWASP) e SPDX (mantido pela Linux Foundation). A geração é direta:</p>
+<pre><code># Imagem Docker
+syft myapp:1.0 -o cyclonedx-json &gt; sbom.json
+
+# Sistema de arquivos
+syft dir:/opt/app -o spdx-json &gt; sbom-spdx.json
+
+# Python apenas
+cyclonedx-py -i requirements.txt -o sbom.xml
+
+# Cruzando com CVEs
+grype sbom:./sbom.json</code></pre>
+<p>Em setores específicos (governo federal dos EUA, automotivo,
+médico), SBOM já deixou de ser boa prática opcional e virou obrigação
+legal — via Executive Order 14028 nos Estados Unidos, por exemplo.</p>
+
+<h3>7. Reproducibilidade de builds</h3>
+<p>Um build reprodutível garante que o mesmo código-fonte, no mesmo
+ambiente, sempre produz exatamente o mesmo binário byte a byte — essa
+propriedade é o que permite VERIFICAR de forma independente que um
+binário publicado realmente veio do código-fonte que ele alega
+representar, sem precisar confiar cegamente na palavra de quem
+publicou. É o conceito central do projeto Reproducible Builds, e depende
+de quatro práticas: pin de versão em cada etapa do processo de build;
+uma data determinística (via <code>SOURCE_DATE_EPOCH</code>, em vez do
+timestamp real da execução); ausência de aleatoriedade em ordenação
+(por exemplo, ordenar explicitamente uma lista de arquivo antes de
+processá-la); e uma toolchain fixada, com compilador de versão
+específica, não "o que estiver instalado no momento".</p>
+
+<h3>8. Caso real: xz-utils 2024</h3>
+<p>Em março de 2024, descobriu-se que as versões 5.6.0 e 5.6.1 do
+<code>xz-utils</code> — uma biblioteca presente em praticamente toda
+distribuição Linux — carregavam um backdoor injetado através da
+<code>libsystemd</code>, permitindo execução remota de código via
+sshd. O atacante, conhecido pelo pseudônimo Jia Tan, havia sido
+mantenedor confiável do projeto por ANOS antes de finalmente inserir o
+código malicioso — exatamente o padrão "long con" descrito na seção 5.
+O que salvou a situação foi quase acidental: um engenheiro da
+Microsoft notou uma latência ligeiramente incomum numa conexão SSH e
+decidiu investigar por curiosidade, não porque algum alerta automatizado
+tivesse disparado. As lições documentadas depois: um SBOM já em uso
+teria identificado todo servidor afetado em minutos, não em dias de
+investigação manual; o próprio delay natural entre uma versão nova
+sair e chegar às distribuições Linux consideradas "estáveis" funcionou
+como uma quarentena acidental que salvou a maioria dos casos reais;
+build reproduzível, nesse incidente específico, NÃO teria pego o
+problema — o tarball distribuído continha código efetivamente diferente
+do que estava no repositório Git público, um detalhe que só uma
+auditoria manual comparando os dois revelaria; e todo o episódio serve
+de lembrete de que open source não é mágica automática de segurança —
+ainda depende de revisão humana real acontecendo de fato, não apenas
+presumida por estar "aberto ao público".</p>
+
+<h3>9. Anti-patterns</h3>
+<ul>
+<li><strong><code>curl ... | bash</code></strong>: vira RCE completo
+se o servidor de origem for comprometido em qualquer momento entre a
+publicação e o download.</li>
+<li><strong><code>--allow-unauthenticated</code></strong> ou
+equivalente "ignorar erro de assinatura": remove precisamente a
+proteção descrita na seção 1, tornando o pacote instalado
+indistinguível de um forjado.</li>
+<li><strong>Adicionar PPA ou repositório externo sem verificar
+fingerprint</strong>: pula o único passo que realmente prova a origem
+da chave (seção 2).</li>
+<li><strong>Nunca pinar nada, sempre usar "latest"</strong>: abre
+espaço para uma atualização inesperada quebrar produção sem aviso
+prévio.</li>
+<li><strong>Misturar repositório estável e instável</strong>: cria uma
+combinação de versão imprevisível, um "Frankenstein" difícil de
+depurar quando algo quebra.</li>
+<li><strong>Pular release notes e atualizar produção direto</strong>:
+ignora justamente a fonte de informação que alertaria sobre mudança
+que quebra compatibilidade.</li>
+</ul>
+
+<h3>10. Workflow recomendado</h3>
+<ol>
+<li>No CI, rodar <code>pip-audit</code> ou <code>npm audit</code> em
+todo PR, falhando explicitamente para CVE Critical ou High.</li>
+<li>No build, gerar o SBOM e armazená-lo junto do artefato produzido.</li>
+<li>No push, escanear no próprio registry (Trivy, Grype) contra uma
+policy definida.</li>
+<li>No deploy, um admission controller (Kyverno) só aceita imagem que
+já venha com SBOM anexado.</li>
+<li>Em operação, um re-scan periódico (Harbor, Trivy operator) pega
+CVE nova que só foi divulgada depois do deploy original.</li>
+<li>Renovate ou Dependabot abrindo PR de atualização automaticamente
+mantém esse ciclo funcionando sem depender de alguém lembrar
+manualmente.</li>
+</ol>"""
                 ),
                 "practical": (
                     "(1) Adicione o repositório oficial Docker em uma VM Ubuntu via "
