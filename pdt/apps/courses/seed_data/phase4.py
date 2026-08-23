@@ -26,317 +26,352 @@ PHASE4 = {
                     "Sem fundação sólida aqui, K8s vira mistério depois."
                 ),
                 "body": (
-                    "<h3>1. O que é um container, fisicamente</h3>"
-                    "<p>Container <strong>não é</strong> uma VM leve. Container é "
-                    "<strong>um ou mais processos Linux normais</strong>, isolados de "
-                    "outros processos via primitives do kernel:</p>"
-                    "<ul>"
-                    "<li><strong>Namespaces</strong> (isolamento):"
-                    "<ul>"
-                    "<li><code>PID</code>: processos dentro do container só veem outros "
-                    "do mesmo container; PID 1 é o seu app.</li>"
-                    "<li><code>NET</code>: interface de rede, tabela de roteamento, "
-                    "iptables próprios.</li>"
-                    "<li><code>MNT</code>: filesystem isolado.</li>"
-                    "<li><code>UTS</code>: hostname/domain próprio.</li>"
-                    "<li><code>IPC</code>: shared memory, semáforos próprios.</li>"
-                    "<li><code>USER</code>: UID/GID mapeáveis (root no container ≠ root "
-                    "no host se configurado).</li>"
-                    "<li><code>cgroup</code>: o próprio cgroup é namespaced.</li>"
-                    "<li><code>time</code>: clock próprio (mais raro).</li>"
-                    "</ul></li>"
-                    "<li><strong>cgroups</strong> (limites): CPU, memória, IO, PIDs "
-                    "máximos. Sem cgroup, container pode comer 100% da CPU/RAM do host.</li>"
-                    "<li><strong>Capabilities</strong>: subdivisão de root. Em vez de "
-                    "'root pode tudo', você pode dar só <code>NET_BIND_SERVICE</code> "
-                    "(bind em porta &lt;1024).</li>"
-                    "<li><strong>Seccomp</strong>: filtro de syscalls permitidas.</li>"
-                    "<li><strong>AppArmor/SELinux</strong>: mandatory access control "
-                    "complementar.</li>"
-                    "</ul>"
-                    "<p>Demonstre você mesmo:</p>"
-                    "<pre><code>$ docker run -d --name web nginx\n"
-                    "$ docker top web\n"
-                    "PID  USER   CMD\n"
-                    "1234 root   nginx: master process\n"
-                    "$ ps -ef | grep 1234\n"
-                    "root  1234  ...  nginx: master process   # mesmo PID, mas só visível no host</code></pre>"
-                    "<p>Compartilha o kernel do host. Por isso é leve: sem boot, sem "
-                    "kernel próprio, sem hardware virtual. Trade-off: container Linux só "
-                    "roda em host Linux (Docker Desktop em Mac/Win usa VM Linux por "
-                    "trás).</p>"
+                """<h3>1. Um container, fisicamente: processos Linux comuns, isolados por primitivas do kernel</h3>
+<p>Um container NÃO é uma VM leve, apesar da comparação comum — é um ou
+mais processos Linux completamente normais, isolados dos demais processos
+do sistema por primitivas específicas do próprio kernel, sem nenhuma
+camada de virtualização de hardware. Os <strong>namespaces</strong> são
+o mecanismo central de isolamento: o namespace <code>PID</code> faz com
+que processos dentro do container só enxerguem outros processos do mesmo
+container — o processo principal da aplicação vira PID 1 dentro desse
+mundo isolado, mesmo tendo um PID diferente e "normal" visto de fora,
+pelo host; o namespace <code>NET</code> dá ao container sua própria
+interface de rede, tabela de roteamento e regras de iptables,
+independentes do host; <code>MNT</code> isola o filesystem visível;
+<code>UTS</code> dá hostname próprio; <code>IPC</code> isola memória
+compartilhada e semáforos; <code>USER</code> permite mapear UID/GID de
+forma que "root" dentro do container não seja necessariamente root no
+host (quando configurado); e até o próprio <code>cgroup</code> e o
+relógio (<code>time</code>, mais raro) podem ser namespaced. Os
+<strong>cgroups</strong> impõem os LIMITES de recurso — CPU, memória,
+I/O, número máximo de processos — sem eles, um único container pode
+consumir 100% da CPU ou RAM do host inteiro, afetando todos os outros
+processos e containers rodando ali. <strong>Capabilities</strong>
+subdividem o poder de root em unidades granulares: em vez de "root pode
+fazer absolutamente tudo", um processo pode receber só
+<code>NET_BIND_SERVICE</code> (a capacidade específica de abrir uma
+porta abaixo de 1024) sem ganhar nenhum dos outros poderes de root.
+<strong>Seccomp</strong> filtra quais syscalls o processo tem permissão
+de chamar ao kernel. E AppArmor/SELinux acrescentam controle de acesso
+obrigatório como camada complementar. Você pode observar esse isolamento
+diretamente:</p>
+<pre><code>$ docker run -d --name web nginx
+$ docker top web
+PID  USER   CMD
+1234 root   nginx: master process
+$ ps -ef | grep 1234
+root  1234  ...  nginx: master process   # mesmo PID, mas só visível no host</code></pre>
+<p>O fato de o container COMPARTILHAR o kernel do host é exatamente o
+que o torna leve — sem boot próprio, sem kernel dedicado, sem hardware
+virtualizado. O trade-off inevitável: um container Linux só roda
+nativamente em host Linux — é por isso que Docker Desktop no Mac e
+Windows precisa rodar uma VM Linux por trás das cortinas.</p>
 
-                    "<h3>2. Imagem ≠ Container</h3>"
-                    "<p>Termos confundem iniciantes:</p>"
-                    "<ul>"
-                    "<li><strong>Imagem</strong>: template imutável, snapshot do filesystem "
-                    "+ metadados (CMD, ENV, EXPOSE...). Composta por <em>camadas</em> "
-                    "read-only sobrepostas (overlayfs).</li>"
-                    "<li><strong>Container</strong>: instância em execução de uma imagem, "
-                    "com uma camada writable por cima. Você pode subir 100 containers da "
-                    "mesma imagem; cada um com env vars/volumes/redes diferentes.</li>"
-                    "<li><strong>Registry</strong>: armazena imagens (Docker Hub, GHCR, "
-                    "ECR, etc.).</li>"
-                    "<li><strong>Tag</strong>: alias humano para um digest "
-                    "(<code>nginx:1.25.3</code> aponta para um sha256 específico).</li>"
-                    "<li><strong>Digest</strong>: <code>sha256:f0a1b2...</code>; "
-                    "imutável, único.</li>"
-                    "</ul>"
+<h3>2. Imagem, container, registry, tag, digest: cinco termos que se confundem no começo</h3>
+<p>Uma <strong>imagem</strong> é um template imutável — um snapshot do
+filesystem mais metadados (CMD, ENV, EXPOSE) — composto de várias camadas
+somente-leitura empilhadas via overlayfs. Um <strong>container</strong>
+é uma INSTÂNCIA em execução dessa imagem, com uma camada adicional
+GRAVÁVEL por cima — você pode subir cem containers a partir da mesma
+imagem, cada um com suas próprias variáveis de ambiente, volumes e redes,
+sem que um afete o outro. Um <strong>registry</strong> armazena e serve
+imagens (Docker Hub, GHCR, ECR). Uma <strong>tag</strong> é um alias
+humano legível para um digest específico — <code>nginx:1.25.3</code> na
+verdade aponta para um hash sha256 concreto por trás. E o
+<strong>digest</strong> (<code>sha256:f0a1b2...</code>) é o identificador
+imutável de verdade — diferente da tag, ele nunca muda de conteúdo, o que
+o torna a única referência verdadeiramente confiável para reproduzir
+exatamente a mesma imagem depois.</p>
 
-                    "<h3>3. Dockerfile produtivo</h3>"
-                    "<p>Receita declarativa para construir a imagem. <strong>Cada "
-                    "instrução vira uma camada cacheada</strong>. Ordem importa "
-                    "muito:</p>"
-                    "<pre><code># Dockerfile RUIM (cache invalida toda hora)\n"
-                    "FROM python:3.12\n"
-                    "COPY . /app                    # qualquer mudança em código invalida tudo abaixo\n"
-                    "RUN pip install -r /app/requirements.txt\n"
-                    "WORKDIR /app\n"
-                    "CMD [\"python\", \"main.py\"]</code></pre>"
-                    "<pre><code># Dockerfile BOM (cache amigável)\n"
-                    "FROM python:3.12-slim AS base\n"
-                    "ENV PYTHONUNBUFFERED=1 \\\n"
-                    "    PYTHONDONTWRITEBYTECODE=1 \\\n"
-                    "    PIP_NO_CACHE_DIR=1\n"
-                    "\n"
-                    "WORKDIR /app\n"
-                    "\n"
-                    "# Copia só requirements primeiro, camada cacheada se reqs não mudam\n"
-                    "COPY requirements.txt .\n"
-                    "RUN pip install --no-cache-dir -r requirements.txt\n"
-                    "\n"
-                    "# Código por último, mudanças aqui não invalidam pip install\n"
-                    "COPY . .\n"
-                    "\n"
-                    "RUN useradd -m -u 1000 app && chown -R app:app /app\n"
-                    "USER app\n"
-                    "\n"
-                    "EXPOSE 8000\n"
-                    "HEALTHCHECK --interval=30s --timeout=3s --retries=3 \\\n"
-                    "  CMD curl -f http://localhost:8000/health || exit 1\n"
-                    "\n"
-                    "CMD [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"app.wsgi\"]</code></pre>"
-                    "<p>Detalhes importantes:</p>"
-                    "<ul>"
-                    "<li><strong>Base slim/alpine/distroless</strong>: menos bytes, "
-                    "menos CVEs.</li>"
-                    "<li><strong>Tag específica</strong>: <code>3.12-slim</code>, não "
-                    "<code>latest</code> nem <code>3</code>.</li>"
-                    "<li><strong>ENV</strong>: <code>PYTHONUNBUFFERED=1</code> garante "
-                    "logs em stdout sem buffering.</li>"
-                    "<li><strong>WORKDIR</strong> definido cedo.</li>"
-                    "<li><strong>USER não-root</strong>: princípio do menor privilégio. "
-                    "Se atacante escapar do app, não é root no namespace.</li>"
-                    "<li><strong>HEALTHCHECK</strong>: orquestrador sabe se app está "
-                    "respondendo, não só 'processo vivo'.</li>"
-                    "<li><strong>CMD vs ENTRYPOINT</strong>: CMD é override-friendly; "
-                    "ENTRYPOINT trava o comando.</li>"
-                    "<li><strong>JSON form</strong>: <code>CMD [\"app\"]</code> não passa "
-                    "por shell, sem expansão acidental.</li>"
-                    "</ul>"
+<h3>3. Dockerfile produtivo: por que a ORDEM das instruções decide a velocidade do build</h3>
+<p>Cada instrução do Dockerfile vira uma camada CACHEADA — e o Docker só
+reconstrói uma camada (e todas as que vêm depois dela) se algo relevante
+mudou. Isso torna a ordem das instruções uma decisão de desempenho, não
+só de estilo:</p>
+<pre><code># Dockerfile RUIM (cache invalida toda hora)
+FROM python:3.12
+COPY . /app                    # qualquer mudança em código invalida tudo abaixo
+RUN pip install -r /app/requirements.txt
+WORKDIR /app
+CMD ["python", "main.py"]</code></pre>
+<pre><code># Dockerfile BOM (cache amigável)
+FROM python:3.12-slim AS base
+ENV PYTHONUNBUFFERED=1 \\
+    PYTHONDONTWRITEBYTECODE=1 \\
+    PIP_NO_CACHE_DIR=1
 
-                    "<h3>4. Multi-stage build: imagens menores e mais seguras</h3>"
-                    "<p>Use uma imagem 'gorda' para compilar e copie só o resultado "
-                    "para uma imagem mínima de runtime. Reduz tamanho em ordens de "
-                    "grandeza.</p>"
-                    "<pre><code># Stage 1: build com toolchain completa\n"
-                    "FROM golang:1.22 AS builder\n"
-                    "WORKDIR /src\n"
-                    "COPY go.mod go.sum ./\n"
-                    "RUN go mod download\n"
-                    "COPY . .\n"
-                    "RUN CGO_ENABLED=0 GOOS=linux go build -ldflags='-s -w' -o /out/app ./cmd/app\n"
-                    "\n"
-                    "# Stage 2: runtime mínimo (distroless: sem shell, sem apt, ~20MB)\n"
-                    "FROM gcr.io/distroless/static-debian12:nonroot\n"
-                    "COPY --from=builder /out/app /app\n"
-                    "USER nonroot\n"
-                    "EXPOSE 8080\n"
-                    "ENTRYPOINT [\"/app\"]</code></pre>"
-                    "<p>Resultado: ~20MB em vez de ~800MB. Sem shell, sem apt, "
-                    "atacante que escapar do app encontra ambiente vazio.</p>"
-                    "<p>Em Python:</p>"
-                    "<pre><code>FROM python:3.12-slim AS builder\n"
-                    "RUN apt-get update && apt-get install -y --no-install-recommends \\\n"
-                    "      build-essential gcc libpq-dev && rm -rf /var/lib/apt/lists/*\n"
-                    "WORKDIR /app\n"
-                    "RUN python -m venv /opt/venv\n"
-                    "ENV PATH=\"/opt/venv/bin:$PATH\"\n"
-                    "COPY requirements.txt .\n"
-                    "RUN pip install --no-cache-dir -r requirements.txt\n"
-                    "\n"
-                    "FROM python:3.12-slim\n"
-                    "RUN apt-get update && apt-get install -y --no-install-recommends \\\n"
-                    "      libpq5 && rm -rf /var/lib/apt/lists/*\n"
-                    "COPY --from=builder /opt/venv /opt/venv\n"
-                    "WORKDIR /app\n"
-                    "COPY . .\n"
-                    "ENV PATH=\"/opt/venv/bin:$PATH\"\n"
-                    "RUN useradd -m -u 1000 app && chown -R app /app\n"
-                    "USER app\n"
-                    "CMD [\"gunicorn\", \"app.wsgi\"]</code></pre>"
+WORKDIR /app
 
-                    "<h3>5. Networking</h3>"
-                    "<p>Tipos de redes Docker:</p>"
-                    "<ul>"
-                    "<li><strong>bridge</strong> (default): rede privada do daemon. "
-                    "Containers conversam por IP; resolução por nome só com "
-                    "<em>user-defined bridge</em>.</li>"
-                    "<li><strong>user-defined bridge</strong>: containers conversam "
-                    "por nome (DNS interno). Padrão para multi-container.</li>"
-                    "<li><strong>host</strong>: container compartilha stack de rede do "
-                    "host, sem isolamento de porta. Performance máxima, segurança "
-                    "mínima.</li>"
-                    "<li><strong>none</strong>: sem rede.</li>"
-                    "<li><strong>overlay</strong>: rede multi-host (Swarm/K8s).</li>"
-                    "<li><strong>macvlan</strong>: container ganha MAC própria; vira "
-                    "'host' na rede física.</li>"
-                    "</ul>"
-                    "<pre><code>$ docker network create app-net\n"
-                    "$ docker run -d --name db --network app-net postgres\n"
-                    "$ docker run -d --name api --network app-net -e DB_HOST=db myapp\n"
-                    "# api consegue conectar em 'db' por nome (DNS interno)</code></pre>"
-                    "<p>Port mapping: <code>-p 8080:80</code> mapeia porta 8080 do "
-                    "host para 80 do container.</p>"
+# Copia só requirements primeiro, camada cacheada se reqs não mudam
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-                    "<h3>6. Volumes e persistência</h3>"
-                    "<ul>"
-                    "<li><strong>Volume nomeado</strong>: gerenciado pelo Docker, "
-                    "armazenado em <code>/var/lib/docker/volumes/</code>. Sobrevive a "
-                    "<code>docker rm</code>. Ideal para prod.</li>"
-                    "<li><strong>Bind mount</strong>: mapeia diretório do host. "
-                    "Excelente para dev (código local refletido no container). Em prod, "
-                    "cuidado com permissões e portabilidade.</li>"
-                    "<li><strong>tmpfs mount</strong>: armazenado em RAM, sumiu com "
-                    "container. Bom para dados sensíveis temporários.</li>"
-                    "</ul>"
-                    "<pre><code>$ docker volume create pgdata\n"
-                    "$ docker run -d --name db -v pgdata:/var/lib/postgresql/data postgres\n"
-                    "\n"
-                    "# Bind mount em dev\n"
-                    "$ docker run -d -v $(pwd):/app -w /app python:3.12 python main.py\n"
-                    "\n"
-                    "# tmpfs para sessões temporárias\n"
-                    "$ docker run -d --tmpfs /tmp:rw,size=100m myapp</code></pre>"
+# Código por último, mudanças aqui não invalidam pip install
+COPY . .
 
-                    "<h3>7. .dockerignore: economia e segurança</h3>"
-                    "<p><code>docker build</code> envia <em>tudo</em> do diretório "
-                    "atual ('build context') ao daemon. Sem .dockerignore, vai "
-                    "<code>.git</code>, <code>node_modules</code>, <code>.env</code>, "
-                    "logs antigos. Lento e perigoso (segredo em <code>.env</code> pode "
-                    "vazar para imagem se você fizer <code>COPY . .</code>).</p>"
-                    "<pre><code># .dockerignore\n"
-                    ".git\n"
-                    ".gitignore\n"
-                    "node_modules/\n"
-                    "__pycache__/\n"
-                    "*.pyc\n"
-                    ".pytest_cache/\n"
-                    ".env\n"
-                    ".env.*\n"
-                    "*.log\n"
-                    ".vscode/\n"
-                    ".idea/\n"
-                    "Dockerfile\n"
-                    "docker-compose*.yml\n"
-                    "README.md</code></pre>"
+RUN useradd -m -u 1000 app && chown -R app:app /app
+USER app
 
-                    "<h3>8. Boas práticas (12-factor app)</h3>"
-                    "<p>Princípios da metodologia 12-factor (heroku) aplicáveis ao "
-                    "Docker:</p>"
-                    "<ul>"
-                    "<li><strong>Config via env vars</strong>: nada de "
-                    "<code>config.prod.yml</code> versus <code>config.dev.yml</code> "
-                    "embutidos. Imagem é a mesma, env muda.</li>"
-                    "<li><strong>Logs em stdout/stderr</strong>: orquestrador captura. "
-                    "Não escreva em arquivo.</li>"
-                    "<li><strong>Stateless</strong>: estado em DB/cache externo, não "
-                    "em filesystem local. Permite escala horizontal sem dor.</li>"
-                    "<li><strong>Build → Release → Run</strong>: estágios separados. "
-                    "Imagem é build; deploy é release; container rodando é run.</li>"
-                    "<li><strong>Processes</strong>: 1 processo principal por "
-                    "container. Para reaping de zombies (PID 1 problem), use "
-                    "<code>tini</code> ou <code>--init</code>.</li>"
-                    "<li><strong>Disposability</strong>: app deve subir rápido (cold "
-                    "start &lt;5s) e desligar limpo (handle SIGTERM, drain).</li>"
-                    "<li><strong>Dev/prod parity</strong>: mesma imagem dev e prod, "
-                    "minimizando diferenças.</li>"
-                    "</ul>"
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \\
+  CMD curl -f http://localhost:8000/health || exit 1
 
-                    "<h3>9. PID 1 problem e tini</h3>"
-                    "<p>PID 1 no Linux tem responsabilidades especiais: deve adotar "
-                    "processos órfãos e fazer reaping de zombies, e propaga sinais. "
-                    "Apps típicas (Python, Node) não fazem isso. Resultado:</p>"
-                    "<ul>"
-                    "<li>Subprocessos viram zombies, acumulam PIDs.</li>"
-                    "<li>SIGTERM do <code>docker stop</code> não chega aos filhos.</li>"
-                    "<li>Container demora 10s para morrer (timeout) e é SIGKILL.</li>"
-                    "</ul>"
-                    "<p>Solução: <code>tini</code> como init mínimo:</p>"
-                    "<pre><code>$ docker run --init myapp\n"
-                    "# Ou no Dockerfile:\n"
-                    "ENTRYPOINT [\"tini\", \"--\", \"python\", \"main.py\"]</code></pre>"
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app.wsgi"]</code></pre>
+<p>A versão ruim copia TODO o código antes de instalar dependências —
+qualquer alteração de uma linha de código, mesmo sem tocar em
+<code>requirements.txt</code>, invalida a camada de <code>COPY</code> e
+força reinstalar TODAS as dependências do zero a cada build. A versão
+boa copia só <code>requirements.txt</code> primeiro, instala
+dependências, e SÓ ENTÃO copia o resto do código — mudanças de código
+comuns (o caso mais frequente) não tocam a camada cara de instalação de
+dependências. Outros detalhes que compõem um Dockerfile de produção:
+base <code>slim</code>/<code>alpine</code>/distroless reduz bytes e
+superfície de CVE; uma tag ESPECÍFICA (<code>3.12-slim</code>, nunca
+<code>latest</code> ou só <code>3</code>) garante reprodutibilidade;
+<code>PYTHONUNBUFFERED=1</code> garante que logs cheguem ao stdout sem
+buffer interno do Python atrasando a visibilidade; <code>USER</code>
+não-root aplica o princípio de menor privilégio — se um atacante
+escapar da aplicação, não herda root automaticamente; <code>HEALTHCHECK</code>
+dá ao orquestrador uma forma de saber se a aplicação está de fato
+RESPONDENDO, não só "o processo ainda existe"; e usar a forma JSON de
+<code>CMD</code> (<code>["app"]</code>, não uma string) evita que o
+comando passe por um shell intermediário, eliminando expansão de
+variável acidental.</p>
 
-                    "<h3>10. BuildKit: build moderno</h3>"
-                    "<p>BuildKit é o engine de build padrão hoje. Recursos:</p>"
-                    "<ul>"
-                    "<li>Builds paralelos de stages independentes.</li>"
-                    "<li><code>--mount=type=cache</code>: cache persistente "
-                    "(node_modules entre builds).</li>"
-                    "<li><code>--mount=type=secret</code>: passa secret sem ir para "
-                    "imagem.</li>"
-                    "<li><code>--mount=type=ssh</code>: forwarding de ssh-agent para "
-                    "git clone privado.</li>"
-                    "<li>Multi-arch (<code>buildx</code>).</li>"
-                    "<li>Inline cache em registries.</li>"
-                    "</ul>"
-                    "<pre><code># syntax=docker/dockerfile:1\n"
-                    "FROM python:3.12-slim\n"
-                    "WORKDIR /app\n"
-                    "COPY requirements.txt .\n"
-                    "RUN --mount=type=cache,target=/root/.cache/pip \\\n"
-                    "    pip install -r requirements.txt\n"
-                    "COPY . .\n"
-                    "CMD [\"python\", \"main.py\"]</code></pre>"
+<h3>4. Multi-stage build: compilar numa imagem "gorda", rodar numa mínima</h3>
+<p>A técnica de multi-stage usa uma imagem completa (com toolchain de
+compilação inteira) só para o BUILD, e copia apenas o resultado final
+para uma imagem mínima de runtime — reduzindo o tamanho final em ordens
+de grandeza:</p>
+<pre><code># Stage 1: build com toolchain completa
+FROM golang:1.22 AS builder
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags='-s -w' -o /out/app ./cmd/app
 
-                    "<h3>11. Comandos essenciais</h3>"
-                    "<pre><code># Lifecycle\n"
-                    "docker build -t myapp:dev .\n"
-                    "docker run -d --name app -p 8000:8000 myapp:dev\n"
-                    "docker exec -it app sh                # entra no container\n"
-                    "docker logs -f app                    # tail logs\n"
-                    "docker stop app && docker rm app\n"
-                    "\n"
-                    "# Inspeção\n"
-                    "docker ps -a                          # listar (incluindo parados)\n"
-                    "docker inspect app                    # JSON completo\n"
-                    "docker stats                          # CPU/RAM em tempo real\n"
-                    "docker diff app                       # mudanças no FS desde criação\n"
-                    "docker history myapp:dev              # camadas\n"
-                    "\n"
-                    "# Limpeza (cuidado!)\n"
-                    "docker system prune -a --volumes      # remove tudo não usado</code></pre>"
+# Stage 2: runtime mínimo (distroless: sem shell, sem apt, ~20MB)
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=builder /out/app /app
+USER nonroot
+EXPOSE 8080
+ENTRYPOINT ["/app"]</code></pre>
+<p>O resultado prático: ~20MB em vez de ~800MB da imagem de build
+completa. E o ganho não é só de tamanho — uma imagem distroless não tem
+shell nem gerenciador de pacotes, então um atacante que consiga executar
+código dentro do container encontra um ambiente essencialmente vazio,
+sem ferramentas básicas do sistema para explorar mais nada. O mesmo
+padrão se aplica em Python, embora com uma nuance: como Python não
+compila para binário nativo, o segundo estágio ainda precisa do
+interpretador, mas mesmo assim se beneficia de excluir o toolchain de
+compilação (gcc, headers de desenvolvimento) usado só para instalar
+dependências com extensões nativas:</p>
+<pre><code>FROM python:3.12-slim AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends \\
+      build-essential gcc libpq-dev && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-                    "<h3>12. Anti-patterns comuns</h3>"
-                    "<ul>"
-                    "<li><strong><code>FROM ubuntu:latest</code></strong>: "
-                    "irreproduzível. Pin pelo menos o major.</li>"
-                    "<li><strong><code>USER root</code></strong> (default): "
-                    "container scape vira root no host (com config padrão).</li>"
-                    "<li><strong>Múltiplos processos via supervisor</strong>: "
-                    "complica logs, healthcheck, restart. Quebre em containers.</li>"
-                    "<li><strong>Senha em ENV no Dockerfile</strong>: vai pra "
-                    "imagem. Use secrets em runtime.</li>"
-                    "<li><strong><code>RUN apt update</code></strong> sem "
-                    "<code>install -y</code> na mesma camada: cache desatualizado.</li>"
-                    "<li><strong>Imagem 4GB</strong>: provavelmente otimizável com "
-                    "multi-stage.</li>"
-                    "<li><strong>Sem HEALTHCHECK</strong>: orquestrador nunca sabe que "
-                    "app travou.</li>"
-                    "<li><strong>Logs em arquivo</strong>: ninguém vê.</li>"
-                    "<li><strong>Bind mount de <code>/var/run/docker.sock</code></strong>: "
-                    "container vira root do host instantaneamente.</li>"
-                    "</ul>"
+FROM python:3.12-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \\
+      libpq5 && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /opt/venv /opt/venv
+WORKDIR /app
+COPY . .
+ENV PATH="/opt/venv/bin:$PATH"
+RUN useradd -m -u 1000 app && chown -R app /app
+USER app
+CMD ["gunicorn", "app.wsgi"]</code></pre>
+
+<h3>5. Networking: por que "conversar por IP" só funciona até você recriar um container</h3>
+<p>O Docker oferece vários modelos de rede, cada um com um trade-off
+distinto. <strong>bridge</strong> (o padrão) cria uma rede privada
+gerenciada pelo daemon — containers conversam por IP, mas resolução por
+NOME só funciona numa <em>user-defined bridge</em>. <strong>user-defined
+bridge</strong> é o padrão recomendado para aplicações multi-container:
+containers na mesma rede se resolvem por NOME via DNS interno, o que
+sobrevive a recriações onde o IP mudaria. <strong>host</strong> faz o
+container compartilhar a pilha de rede do próprio host diretamente —
+desempenho máximo, mas sem isolamento de porta nenhum, um trade-off de
+segurança real. <strong>none</strong> desliga rede completamente.
+<strong>overlay</strong> conecta containers através de múltiplos hosts
+(usado por Swarm e conceitualmente por Kubernetes). E
+<strong>macvlan</strong> dá ao container um endereço MAC próprio,
+fazendo-o aparecer como um dispositivo físico independente na rede:</p>
+<pre><code>$ docker network create app-net
+$ docker run -d --name db --network app-net postgres
+$ docker run -d --name api --network app-net -e DB_HOST=db myapp
+# api consegue conectar em 'db' por nome (DNS interno)</code></pre>
+<p><code>-p 8080:80</code> mapeia a porta 8080 do host para a porta 80
+dentro do container — a forma padrão de expor uma porta de container
+para fora, sem depender de rede <code>host</code>.</p>
+
+<h3>6. Volumes: onde o dado sobrevive ao ciclo de vida do container</h3>
+<p>Um <strong>volume nomeado</strong> é gerenciado inteiramente pelo
+Docker, armazenado em <code>/var/lib/docker/volumes/</code>, e SOBREVIVE
+a um <code>docker rm</code> do container que o usava — a escolha certa
+para dado de produção que precisa persistir independente do ciclo de
+vida do container. Um <strong>bind mount</strong> mapeia diretamente um
+diretório do HOST para dentro do container — excelente em desenvolvimento
+(código local refletido em tempo real dentro do container, sem rebuild),
+mas exige cuidado com permissões e portabilidade em produção, já que
+depende de um caminho específico do sistema de arquivos do host. Um
+<strong>tmpfs mount</strong> vive inteiramente em RAM e desaparece junto
+com o container — apropriado para dado sensível temporário que não deve
+NUNCA tocar disco:</p>
+<pre><code>$ docker volume create pgdata
+$ docker run -d --name db -v pgdata:/var/lib/postgresql/data postgres
+
+# Bind mount em dev
+$ docker run -d -v $(pwd):/app -w /app python:3.12 python main.py
+
+# tmpfs para sessões temporárias
+$ docker run -d --tmpfs /tmp:rw,size=100m myapp</code></pre>
+
+<h3>7. `.dockerignore`: economia de tempo e prevenção de vazamento acidental</h3>
+<p><code>docker build</code> envia TODO o conteúdo do diretório atual (o
+"contexto de build") para o daemon antes de começar a construir — sem um
+<code>.dockerignore</code>, isso inclui <code>.git</code>,
+<code>node_modules</code>, arquivos de log antigos, e potencialmente um
+<code>.env</code> com segredos. O risco não é só velocidade: se o
+Dockerfile fizer um <code>COPY . .</code> genérico, qualquer arquivo
+sensível presente no diretório pode acabar DENTRO da imagem final,
+visível para qualquer um com acesso a ela:</p>
+<pre><code># .dockerignore
+.git
+.gitignore
+node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+.env.*
+*.log
+.vscode/
+.idea/
+Dockerfile
+docker-compose*.yml
+README.md</code></pre>
+
+<h3>8. Doze fatores aplicados a container: princípios que evitam a próxima dor de cabeça</h3>
+<p>A metodologia 12-factor (originada na Heroku) mapeia diretamente para
+boas práticas de container: configuração deve vir de variáveis de
+ambiente, nunca de arquivos como <code>config.prod.yml</code> versus
+<code>config.dev.yml</code> embutidos na imagem — a MESMA imagem serve
+todos os ambientes, só o ambiente de execução muda. Logs vão para
+stdout/stderr, nunca para arquivo — é o orquestrador (ou o próprio
+Docker) quem captura e roteia esses logs, escrever em arquivo local
+dentro do container é invisível para qualquer ferramenta de observabilidade
+externa. A aplicação deve ser STATELESS — estado vive em banco ou cache
+externos, não no filesystem local do container — o que permite escalar
+horizontalmente sem coordenação especial entre réplicas. Build, Release e
+Run são estágios SEPARADOS: a imagem é o build, o deploy é o release, o
+container rodando é o run — misturar essas etapas dificulta rastrear em
+qual estágio um problema surgiu. Um processo PRINCIPAL por container —
+para lidar com o "problema do PID 1" (seção 9), use <code>tini</code> ou
+<code>--init</code> em vez de rodar múltiplos processos via supervisor
+interno. Disposability exige que a aplicação suba rápido (idealmente
+menos de 5 segundos de cold start) e desligue de forma limpa,
+respeitando SIGTERM e drenando conexões em andamento antes de sair. E
+paridade dev/prod significa usar a MESMA imagem em desenvolvimento e
+produção, minimizando diferenças que só aparecem "no ambiente real".</p>
+
+<h3>9. O problema do PID 1, e por que sua aplicação provavelmente não deveria ser PID 1</h3>
+<p>No Linux, o processo PID 1 carrega responsabilidades especiais que a
+maioria das aplicações nunca foi desenhada para cumprir: ele deve adotar
+processos órfãos e fazer "reaping" de processos zumbis, e precisa
+propagar sinais corretamente para seus filhos. Uma aplicação Python ou
+Node.js típica não implementa nada disso, porque nunca precisou — em
+execução normal, o kernel/init do sistema cuida disso por ela. Dentro de
+um container, se a aplicação for diretamente PID 1, três problemas
+aparecem: subprocessos esquecidos viram zumbis e acumulam PIDs sem
+limpeza; um SIGTERM enviado pelo <code>docker stop</code> pode nunca
+chegar aos processos FILHOS da aplicação, só ao processo principal; e o
+container demora o timeout completo (frequentemente 10 segundos) até ser
+morto à força com SIGKILL, porque o encerramento gracioso nunca
+aconteceu de verdade. A solução padrão é um init mínimo como
+<code>tini</code>, que assume o papel de PID 1 de verdade e repassa
+sinais e reaping corretamente para o processo real da aplicação:</p>
+<pre><code>$ docker run --init myapp
+# Ou no Dockerfile:
+ENTRYPOINT ["tini", "--", "python", "main.py"]</code></pre>
+
+<h3>10. BuildKit: o motor de build que resolve problemas que o build clássico nunca teve resposta</h3>
+<p>BuildKit é o motor de build padrão atual, e resolve limitações reais
+do sistema anterior: builds de estágios INDEPENDENTES rodam em paralelo,
+em vez de sequencialmente; <code>--mount=type=cache</code> mantém um
+cache PERSISTENTE entre builds (dependências de Node ou Python
+reaproveitadas sem reinstalar do zero a cada vez); <code>--mount=type=secret</code>
+permite passar um segredo durante o build SEM ele acabar gravado em
+nenhuma camada da imagem final — resolvendo um vazamento clássico de
+segredo em `ARG`; <code>--mount=type=ssh</code> encaminha um agente SSH
+para dentro do build, permitindo clonar um repositório privado sem
+embutir uma chave na imagem; e <code>buildx</code> permite build
+multi-arquitetura (amd64 e arm64 na mesma pipeline):</p>
+<pre><code># syntax=docker/dockerfile:1
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \\
+    pip install -r requirements.txt
+COPY . .
+CMD ["python", "main.py"]</code></pre>
+
+<h3>11. Comandos que resolvem o dia a dia, do build à inspeção</h3>
+<pre><code># Lifecycle
+docker build -t myapp:dev .
+docker run -d --name app -p 8000:8000 myapp:dev
+docker exec -it app sh                # entra no container
+docker logs -f app                    # tail logs
+docker stop app && docker rm app
+
+# Inspeção
+docker ps -a                          # listar (incluindo parados)
+docker inspect app                    # JSON completo
+docker stats                          # CPU/RAM em tempo real
+docker diff app                       # mudanças no FS desde criação
+docker history myapp:dev              # camadas
+
+# Limpeza (cuidado!)
+docker system prune -a --volumes      # remove tudo não usado</code></pre>
+<p><code>docker diff</code> merece destaque: ele mostra exatamente o que
+mudou no filesystem do container desde que foi criado, comparado com a
+imagem original — útil tanto para debugar comportamento inesperado
+quanto para investigar se algo persistiu escrita fora dos volumes
+esperados, um sinal potencial de comprometimento.</p>
+
+<h3>12. Nove anti-padrões que aparecem repetidamente em imagens reais</h3>
+<ul>
+<li><strong><code>FROM ubuntu:latest</code></strong>: irreproduzível —
+fixe pelo menos a versão principal.</li>
+<li><strong><code>USER root</code></strong> por padrão (não especificar
+nenhum USER): um escape de container com configuração padrão vira root
+no host.</li>
+<li><strong>Múltiplos processos via supervisor interno</strong>:
+complica logs, healthcheck e reinício — cada processo merece seu próprio
+container, gerenciado pelo orquestrador.</li>
+<li><strong>Senha em `ENV` dentro do Dockerfile</strong>: fica gravada
+permanentemente na imagem, visível para qualquer um com
+<code>docker history</code> — use secrets injetados em runtime.</li>
+<li><strong><code>RUN apt update</code> numa camada separada do
+`install`</strong>: cache desatualizado — sempre combine update e
+install na MESMA instrução RUN.</li>
+<li><strong>Imagem de 4GB</strong>: quase sempre otimizável com
+multi-stage e base mais enxuta.</li>
+<li><strong>Sem HEALTHCHECK</strong>: o orquestrador nunca descobre que
+a aplicação travou internamente, mesmo com o processo ainda "vivo".</li>
+<li><strong>Log em arquivo dentro do container</strong>: ninguém nunca
+vê, porque nenhuma ferramenta de observabilidade externa consulta o
+filesystem interno do container por padrão.</li>
+<li><strong>Bind mount de `/var/run/docker.sock`</strong>: dá ao
+container controle total sobre o daemon Docker do host — equivalente a
+root no host instantaneamente, um dos vetores de escalada mais diretos
+que existem.</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -1030,275 +1065,321 @@ PHASE4 = {
                     "quando migrar para K8s."
                 ),
                 "body": (
-                    "<h3>1. Docker Compose: dev local e prod simples</h3>"
-                    "<p>YAML descreve serviços, redes, volumes. <code>docker compose "
-                    "up</code> sobe tudo, <code>docker compose down</code> tira. Padrão "
-                    "v2 (plugin do CLI). v1 (<code>docker-compose</code> binário) está "
-                    "EOL.</p>"
-                    "<pre><code># compose.yaml, full example\n"
-                    "services:\n"
-                    "  app:\n"
-                    "    image: ghcr.io/acme/app:abc1234\n"
-                    "    build:\n"
-                    "      context: .\n"
-                    "      dockerfile: Dockerfile\n"
-                    "      target: production\n"
-                    "    ports:\n"
-                    "      - \"8000:8000\"\n"
-                    "    environment:\n"
-                    "      DATABASE_URL: postgres://app:${DB_PASSWORD}@db:5432/app\n"
-                    "      REDIS_URL: redis://cache:6379/0\n"
-                    "    secrets:\n"
-                    "      - db_password\n"
-                    "    healthcheck:\n"
-                    "      test: [\"CMD\", \"curl\", \"-f\", \"http://localhost:8000/health\"]\n"
-                    "      interval: 30s\n"
-                    "      timeout: 5s\n"
-                    "      retries: 3\n"
-                    "      start_period: 20s\n"
-                    "    depends_on:\n"
-                    "      db: { condition: service_healthy }\n"
-                    "      cache: { condition: service_started }\n"
-                    "    deploy:\n"
-                    "      replicas: 2\n"
-                    "      resources:\n"
-                    "        limits: { cpus: '0.5', memory: 512M }\n"
-                    "      restart_policy:\n"
-                    "        condition: on-failure\n"
-                    "        max_attempts: 3\n"
-                    "    logging:\n"
-                    "      driver: json-file\n"
-                    "      options: { max-size: 10m, max-file: '3' }\n"
-                    "  db:\n"
-                    "    image: postgres:16-alpine\n"
-                    "    environment:\n"
-                    "      POSTGRES_USER: app\n"
-                    "      POSTGRES_PASSWORD_FILE: /run/secrets/db_password\n"
-                    "      POSTGRES_DB: app\n"
-                    "    volumes:\n"
-                    "      - pgdata:/var/lib/postgresql/data\n"
-                    "    healthcheck:\n"
-                    "      test: [\"CMD-SHELL\", \"pg_isready -U app\"]\n"
-                    "      interval: 5s\n"
-                    "      retries: 10\n"
-                    "    secrets: [db_password]\n"
-                    "  cache:\n"
-                    "    image: redis:7-alpine\n"
-                    "    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru\n"
-                    "    healthcheck: { test: [\"CMD\", \"redis-cli\", \"ping\"] }\n"
-                    "\n"
-                    "volumes:\n"
-                    "  pgdata: {}\n"
-                    "\n"
-                    "secrets:\n"
-                    "  db_password:\n"
-                    "    file: ./secrets/db_password.txt\n"
-                    "    # Em prod com Swarm: external: true\n"
-                    "\n"
-                    "networks:\n"
-                    "  default:\n"
-                    "    driver: bridge</code></pre>"
+                """<h3>1. Docker Compose: um único YAML declara toda a aplicação multi-container</h3>
+<p>Compose descreve serviços, redes e volumes num arquivo declarativo —
+<code>docker compose up</code> sobe tudo na ordem certa,
+<code>docker compose down</code> desmonta. A versão atual é um plugin do
+próprio CLI do Docker (comando <code>docker compose</code>, com espaço);
+o binário separado antigo (<code>docker-compose</code>, com hífen) está
+oficialmente fora de suporte:</p>
+<pre><code># compose.yaml, full example
+services:
+  app:
+    image: ghcr.io/acme/app:abc1234
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://app:${DB_PASSWORD}@db:5432/app
+      REDIS_URL: redis://cache:6379/0
+    secrets:
+      - db_password
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      db: { condition: service_healthy }
+      cache: { condition: service_started }
+    deploy:
+      replicas: 2
+      resources:
+        limits: { cpus: '0.5', memory: 512M }
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '3' }
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: app
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app"]
+      interval: 5s
+      retries: 10
+    secrets: [db_password]
+  cache:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck: { test: ["CMD", "redis-cli", "ping"] }
 
-                    "<h3>2. Override files: dev vs prod com mesmo base</h3>"
-                    "<pre><code># compose.yaml (base, neutro)\n"
-                    "# compose.dev.yaml (override para dev)\n"
-                    "services:\n"
-                    "  app:\n"
-                    "    build:\n"
-                    "      target: dev\n"
-                    "    volumes:\n"
-                    "      - .:/app   # bind mount para hot reload\n"
-                    "    environment:\n"
-                    "      DEBUG: 1\n"
-                    "    command: python manage.py runserver 0.0.0.0:8000\n"
-                    "\n"
-                    "# compose.prod.yaml\n"
-                    "services:\n"
-                    "  app:\n"
-                    "    image: ghcr.io/acme/app:${VERSION}\n"
-                    "    deploy:\n"
-                    "      replicas: 3\n"
-                    "      update_config: { parallelism: 1, order: start-first }</code></pre>"
-                    "<pre><code># Uso\n"
-                    "$ docker compose -f compose.yaml -f compose.dev.yaml up\n"
-                    "$ docker compose -f compose.yaml -f compose.prod.yaml up -d\n"
-                    "\n"
-                    "# Profiles para serviços opcionais\n"
-                    "services:\n"
-                    "  mailhog:\n"
-                    "    image: mailhog/mailhog\n"
-                    "    profiles: [dev]   # só sobe com --profile dev\n"
-                    "$ docker compose --profile dev up</code></pre>"
+volumes:
+  pgdata: {}
 
-                    "<h3>3. Variáveis e secrets</h3>"
-                    "<pre><code># .env (gitignored!)\n"
-                    "DB_PASSWORD=supersecret\n"
-                    "VERSION=v1.4.2\n"
-                    "\n"
-                    "# .env.example (commitado, sem valores)\n"
-                    "DB_PASSWORD=\n"
-                    "VERSION=</code></pre>"
-                    "<p>Compose lê <code>.env</code> automaticamente. Em prod, prefira "
-                    "secrets injetados pelo runtime (Docker secrets, K8s Secrets, "
-                    "Vault).</p>"
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+    # Em prod com Swarm: external: true
 
-                    "<h3>4. Docker Swarm: 'K8s lite'</h3>"
-                    "<p>Built-in no Docker, multi-node. Mesmo YAML do Compose com "
-                    "seção <code>deploy:</code> (replicas, update strategy, placement "
-                    "constraints).</p>"
-                    "<pre><code>$ docker swarm init                      # nó 1 vira manager\n"
-                    "$ docker swarm join-token worker          # comando para outros nós\n"
-                    "$ docker stack deploy -c compose.yaml app\n"
-                    "$ docker service ls\n"
-                    "$ docker service scale app_web=5\n"
-                    "$ docker service update --image ghcr.io/acme/app:v1.5.0 app_web</code></pre>"
-                    "<p>Vantagens vs K8s:</p>"
-                    "<ul>"
-                    "<li>Setup em minutos.</li>"
-                    "<li>Mesmo YAML de dev (Compose).</li>"
-                    "<li>Routing mesh built-in (qualquer nó atende qualquer porta).</li>"
-                    "<li>Secrets criptografados em raft.</li>"
-                    "<li>Encrypted overlay network nativo.</li>"
-                    "</ul>"
-                    "<p>Desvantagens:</p>"
-                    "<ul>"
-                    "<li>Comunidade e features ficaram para trás vs K8s.</li>"
-                    "<li>Sem CRDs/operators/ecossistema rico.</li>"
-                    "<li>Auto-scaling limitado (apenas via API/CLI).</li>"
-                    "<li>Service discovery menos rico.</li>"
-                    "</ul>"
+networks:
+  default:
+    driver: bridge</code></pre>
+<p>Este exemplo já mostra o que separa um Compose de "brinquedo" de um
+de produção: <code>healthcheck</code> em cada serviço (sem ele,
+<code>depends_on</code> só garante ORDEM de início, não que a dependência
+está de fato PRONTA — seção 7); <code>POSTGRES_PASSWORD_FILE</code> em
+vez de senha em texto puro na variável de ambiente; e
+<code>deploy.resources.limits</code> evitando que um serviço consuma
+recurso do host sem limite algum.</p>
 
-                    "<h3>5. HashiCorp Nomad: orquestrador genérico</h3>"
-                    "<p>Roda <em>qualquer coisa</em>, containers Docker/Podman, "
-                    "binários nativos, VMs (qemu), JVM, Java WAR. Mais simples que "
-                    "K8s. Integra natural com Consul (service discovery) e Vault "
-                    "(secrets) para uma stack 'HashiCorp full'.</p>"
-                    "<pre><code># job.nomad.hcl\n"
-                    "job \"web\" {\n"
-                    "  datacenters = [\"dc1\"]\n"
-                    "  type = \"service\"\n"
-                    "  group \"app\" {\n"
-                    "    count = 3\n"
-                    "    network {\n"
-                    "      port \"http\" { to = 8000 }\n"
-                    "    }\n"
-                    "    service {\n"
-                    "      name = \"web\"\n"
-                    "      port = \"http\"\n"
-                    "      check { type = \"http\", path = \"/health\", interval = \"10s\", timeout = \"2s\" }\n"
-                    "    }\n"
-                    "    task \"server\" {\n"
-                    "      driver = \"docker\"\n"
-                    "      config {\n"
-                    "        image = \"ghcr.io/acme/app:v1.4.2\"\n"
-                    "        ports = [\"http\"]\n"
-                    "      }\n"
-                    "      resources { cpu = 500, memory = 256 }\n"
-                    "    }\n"
-                    "  }\n"
-                    "}</code></pre>"
-                    "<pre><code>$ nomad job run job.nomad.hcl</code></pre>"
-                    "<p>Quando faz sentido: workload misto (não só container), time "
-                    "pequeno sem capacidade para K8s, infra HashiCorp já existente.</p>"
+<h3>2. Override files: o mesmo YAML base, ambientes diferentes por composição</h3>
+<p>Em vez de duplicar o arquivo inteiro para dev e produção, Compose
+permite CAMADAR arquivos — um base neutro mais um override específico do
+ambiente:</p>
+<pre><code># compose.yaml (base, neutro)
+# compose.dev.yaml (override para dev)
+services:
+  app:
+    build:
+      target: dev
+    volumes:
+      - .:/app   # bind mount para hot reload
+    environment:
+      DEBUG: 1
+    command: python manage.py runserver 0.0.0.0:8000
 
-                    "<h3>6. Persistência e estado</h3>"
-                    "<p>Em Compose/Swarm single-host, volumes nomeados resolvem "
-                    "(dados ficam no disco do host). Para HA real:</p>"
-                    "<ul>"
-                    "<li><strong>DB gerenciado</strong> (RDS, Cloud SQL, Aurora): "
-                    "apropriado para 95% dos casos.</li>"
-                    "<li><strong>Storage de rede</strong> (NFS, EFS, Longhorn): "
-                    "lento, mas portável entre nós.</li>"
-                    "<li><strong>Replicação na própria DB</strong>: Postgres "
-                    "streaming replication, MySQL InnoDB Cluster.</li>"
-                    "</ul>"
-                    "<p>Não tente correr stateful complexo (Postgres HA, Kafka) em "
-                    "Compose, não é a ferramenta. K8s tem operators (Zalando "
-                    "Postgres, Strimzi Kafka).</p>"
+# compose.prod.yaml
+services:
+  app:
+    image: ghcr.io/acme/app:${VERSION}
+    deploy:
+      replicas: 3
+      update_config: { parallelism: 1, order: start-first }</code></pre>
+<pre><code># Uso
+$ docker compose -f compose.yaml -f compose.dev.yaml up
+$ docker compose -f compose.yaml -f compose.prod.yaml up -d
 
-                    "<h3>7. Healthchecks e dependências</h3>"
-                    "<p><code>depends_on</code> apenas garante ordem de start. Para "
-                    "esperar saudável:</p>"
-                    "<pre><code>services:\n"
-                    "  app:\n"
-                    "    depends_on:\n"
-                    "      db:\n"
-                    "        condition: service_healthy\n"
-                    "      cache:\n"
-                    "        condition: service_started\n"
-                    "        restart: true   # restart app se cache reiniciar</code></pre>"
+# Profiles para serviços opcionais
+services:
+  mailhog:
+    image: mailhog/mailhog
+    profiles: [dev]   # só sobe com --profile dev
+$ docker compose --profile dev up</code></pre>
+<p>Ferramentas de e-mail de teste (MailHog) ou administração de banco
+(PgAdmin) que só fazem sentido em desenvolvimento entram num
+<code>profile</code> específico — elas nunca sobem em produção sem
+alguém pedir explicitamente com a flag correspondente, evitando que um
+serviço de conveniência de dev acidentalmente vá junto para o ambiente
+real.</p>
 
-                    "<h3>8. Networking em Compose</h3>"
-                    "<ul>"
-                    "<li>Cada Compose project cria uma rede default; serviços "
-                    "conversam por nome (DNS interno).</li>"
-                    "<li>Múltiplas redes para segmentação:</li>"
-                    "</ul>"
-                    "<pre><code>services:\n"
-                    "  api:\n"
-                    "    networks: [frontend, backend]\n"
-                    "  db:\n"
-                    "    networks: [backend]\n"
-                    "networks:\n"
-                    "  frontend: {}\n"
-                    "  backend:\n"
-                    "    internal: true   # sem acesso à internet</code></pre>"
-                    "<p><code>internal: true</code> é boa prática para rede de "
-                    "DBs/serviços internos.</p>"
+<h3>3. Variáveis e segredos: `.env` funciona, mas tem limite claro</h3>
+<pre><code># .env (gitignored!)
+DB_PASSWORD=supersecret
+VERSION=v1.4.2
 
-                    "<h3>9. Quando migrar para K8s</h3>"
-                    "<p>Sinais que sugerem K8s:</p>"
-                    "<ul>"
-                    "<li>Múltiplos hosts compartilhando workload (não só HA).</li>"
-                    "<li>Múltiplos times sharing infra (multi-tenancy).</li>"
-                    "<li>Auto-scaling baseado em métricas (HPA/KEDA).</li>"
-                    "<li>Roll-out canário gerenciado (Argo Rollouts).</li>"
-                    "<li>30-50+ serviços (orquestração manual fica caos).</li>"
-                    "<li>Operators avançados (Postgres, Kafka, ML platforms).</li>"
-                    "<li>Service mesh (Istio, Linkerd).</li>"
-                    "<li>Compliance que exige network policies, RBAC fino, audit nativo.</li>"
-                    "</ul>"
-                    "<p>Sinais de que K8s é overkill:</p>"
-                    "<ul>"
-                    "<li>1 app + 1 DB + 1 cache em 1 host.</li>"
-                    "<li>Time pequeno (&lt;5 devs) sem dedicação para platform.</li>"
-                    "<li>Tráfego baixo, sem necessidade de auto-scale.</li>"
-                    "<li>Stateful crítico que vc não quer correr você mesmo.</li>"
-                    "</ul>"
+# .env.example (commitado, sem valores)
+DB_PASSWORD=
+VERSION=</code></pre>
+<p>Compose lê <code>.env</code> automaticamente do diretório do
+projeto — conveniente para desenvolvimento, mas em produção a prática
+recomendada é usar segredos injetados diretamente pelo runtime (Docker
+secrets, Kubernetes Secrets, ou Vault), porque um arquivo <code>.env</code>
+em disco fica exposto a qualquer processo com acesso àquele filesystem,
+sem controle de acesso granular nenhum.</p>
 
-                    "<h3>10. Operação prática</h3>"
-                    "<pre><code># Logs\n"
-                    "docker compose logs -f app                # live tail\n"
-                    "docker compose logs --tail=100 app\n"
-                    "\n"
-                    "# Restart só um serviço\n"
-                    "docker compose restart app\n"
-                    "\n"
-                    "# Recriar (depois de mudar config)\n"
-                    "docker compose up -d --force-recreate app\n"
-                    "\n"
-                    "# Scale\n"
-                    "docker compose up -d --scale app=3\n"
-                    "\n"
-                    "# Backup volume\n"
-                    "docker run --rm -v pgdata:/data -v $(pwd):/backup alpine \\\n"
-                    "  tar czf /backup/pgdata-$(date +%F).tgz -C /data .</code></pre>"
+<h3>4. Docker Swarm: a mesma sintaxe de Compose, agora multi-host</h3>
+<p>Swarm vem EMBUTIDO no Docker (sem instalação separada) e estende a
+MESMA sintaxe de Compose com a seção <code>deploy:</code> (réplicas,
+estratégia de atualização, restrições de posicionamento):</p>
+<pre><code>$ docker swarm init                      # nó 1 vira manager
+$ docker swarm join-token worker          # comando para outros nós
+$ docker stack deploy -c compose.yaml app
+$ docker service ls
+$ docker service scale app_web=5
+$ docker service update --image ghcr.io/acme/app:v1.5.0 app_web</code></pre>
+<p>As vantagens reais sobre Kubernetes: configuração em minutos, o mesmo
+YAML usado em desenvolvimento local funciona em produção multi-nó sem
+tradução, um "routing mesh" embutido faz qualquer nó do cluster
+responder por qualquer porta de serviço (mesmo se o container não estiver
+rodando ali fisicamente), segredos são criptografados nativamente via
+Raft, e a rede overlay entre nós já vem criptografada por padrão. As
+desvantagens que motivaram a maior parte da indústria a migrar para
+Kubernetes: comunidade e desenvolvimento de features ficaram
+significativamente para trás, não há CRDs nem operadores nem o
+ecossistema rico que orbita Kubernetes, auto-scaling é limitado ao que
+API/CLI permitem manualmente, e service discovery é mais simples e menos
+rico.</p>
 
-                    "<h3>11. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>Compose como prod multi-host</strong>: não escala. "
-                    "Use Swarm/Nomad/K8s.</li>"
-                    "<li><strong>Stateful complexo em Compose</strong>: HA real "
-                    "requer ferramenta dedicada.</li>"
-                    "<li><strong>Bind mount em prod</strong>: portabilidade ruim, "
-                    "permissões complicam.</li>"
-                    "<li><strong>Sem healthcheck</strong>: dependências quebram em "
-                    "race condition.</li>"
-                    "<li><strong>Variáveis sensíveis em compose.yaml</strong>: "
-                    "commitado. Use .env (gitignore) ou secrets.</li>"
-                    "<li><strong>Misturar prod e dev no mesmo YAML</strong>: use "
-                    "overrides.</li>"
-                    "</ul>"
+<h3>5. Nomad: um orquestrador que não se limita a container</h3>
+<p>Nomad (HashiCorp) roda praticamente QUALQUER carga de trabalho —
+container Docker ou Podman, binário nativo, VM via qemu, até JAR/WAR de
+Java — com um modelo operacional mais simples que Kubernetes. Integra
+naturalmente com Consul (service discovery) e Vault (segredos) para
+quem já usa a pilha HashiCorp completa:</p>
+<pre><code># job.nomad.hcl
+job "web" {
+  datacenters = ["dc1"]
+  type = "service"
+  group "app" {
+    count = 3
+    network {
+      port "http" { to = 8000 }
+    }
+    service {
+      name = "web"
+      port = "http"
+      check { type = "http", path = "/health", interval = "10s", timeout = "2s" }
+    }
+    task "server" {
+      driver = "docker"
+      config {
+        image = "ghcr.io/acme/app:v1.4.2"
+        ports = ["http"]
+      }
+      resources { cpu = 500, memory = 256 }
+    }
+  }
+}</code></pre>
+<pre><code>$ nomad job run job.nomad.hcl</code></pre>
+<p>Nomad faz mais sentido quando a carga de trabalho é MISTA — não só
+container, um time pequeno sem capacidade dedicada para operar
+Kubernetes, ou uma infraestrutura HashiCorp já estabelecida onde
+adicionar mais uma ferramenta do mesmo ecossistema tem custo marginal
+menor que introduzir Kubernetes do zero.</p>
+
+<h3>6. Persistência: onde volume local para de resolver, e o que fazer depois</h3>
+<p>Em Compose ou Swarm single-host, volumes nomeados resolvem
+adequadamente — o dado fica no disco do próprio host. Para alta
+disponibilidade de verdade, três caminhos costumam funcionar melhor que
+gerenciar isso manualmente: banco de dados GERENCIADO (RDS, Cloud SQL,
+Aurora) resolve o caso mais comum, delegando replicação, backup e
+failover ao provedor de nuvem; storage de REDE (NFS, EFS, Longhorn) é
+mais lento por natureza, mas portável entre nós, útil quando o dado
+precisa acompanhar um container migrando de host; e replicação nativa do
+PRÓPRIO banco (streaming replication do Postgres, InnoDB Cluster do
+MySQL) resolve para quem precisa de controle mais fino sobre a topologia
+de réplica. O que definitivamente NÃO vale tentar é rodar stateful
+complexo (Postgres em alta disponibilidade real, um cluster Kafka)
+diretamente em Compose — não é a ferramenta desenhada para esse nível de
+coordenação; Kubernetes tem operadores maduros especificamente para isso
+(Zalando Postgres Operator, Strimzi para Kafka) que resolvem os detalhes
+que o Compose simplesmente não modela.</p>
+
+<h3>7. Healthcheck e dependência: `depends_on` sozinho só garante ordem, não prontidão</h3>
+<pre><code>services:
+  app:
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+        restart: true   # restart app se cache reiniciar</code></pre>
+<p><code>depends_on</code> sem <code>condition</code> só garante que o
+container do banco vai INICIAR antes do container da aplicação — não
+que o banco já está aceitando conexões nesse momento. Um banco que leva
+alguns segundos para ficar pronto para conexões, mas cuja aplicação já
+tenta conectar imediatamente após o container "iniciar", produz um erro
+de conexão intermitente que parece aleatório mas é perfeitamente
+determinístico: uma corrida entre "container começou" e "serviço
+realmente pronto". <code>condition: service_healthy</code> resolve isso
+esperando o HEALTHCHECK do banco passar antes de sequer iniciar a
+aplicação.</p>
+
+<h3>8. Redes em Compose: isolamento por segmento, não só um bridge único</h3>
+<p>Cada projeto Compose cria uma rede padrão onde os serviços se
+resolvem por nome via DNS interno — mas para segmentação real (limitar
+quais serviços conseguem alcançar quais outros), múltiplas redes
+nomeadas separam responsabilidades:</p>
+<pre><code>services:
+  api:
+    networks: [frontend, backend]
+  db:
+    networks: [backend]
+networks:
+  frontend: {}
+  backend:
+    internal: true   # sem acesso à internet</code></pre>
+<p><code>internal: true</code> é boa prática para a rede que hospeda
+banco de dados e serviços internos: mesmo que um container nessa rede
+seja comprometido, ele não consegue estabelecer conexão de SAÍDA para a
+internet, limitando diretamente a capacidade de exfiltrar dados ou
+baixar ferramenta adicional.</p>
+
+<h3>9. Quando migrar para Kubernetes de verdade, e quando isso seria overkill</h3>
+<p>Alguns sinais concretos sugerem que chegou a hora de migrar: múltiplos
+hosts precisando compartilhar carga de trabalho de forma coordenada (não
+só alta disponibilidade simples); múltiplos times compartilhando a mesma
+infraestrutura (multi-tenancy real); necessidade de auto-scaling baseado
+em métrica (HPA, KEDA); rollout canário GERENCIADO por ferramenta (Argo
+Rollouts), não script manual; a organização já opera 30 a 50 ou mais
+serviços, ponto em que orquestração manual vira caos organizacional;
+necessidade de operadores avançados (Postgres, Kafka, plataformas de
+ML); adoção de service mesh (Istio, Linkerd); ou exigência de
+compliance que demanda NetworkPolicy, RBAC granular e audit nativo — os
+tópicos das últimas aulas da Fase 5. Por outro lado, sinais claros de
+que Kubernetes seria complexidade desnecessária: uma aplicação com
+banco e cache rodando num único host; time pequeno (menos de cinco
+desenvolvedores) sem capacidade dedicada para operar uma plataforma;
+tráfego baixo, sem necessidade real de escalar automaticamente; ou um
+componente stateful crítico que ninguém no time quer operar diretamente
+(nesse caso, um serviço gerenciado resolve melhor que qualquer
+orquestrador).</p>
+
+<h3>10. Operação do dia a dia: os comandos que resolvem manutenção comum</h3>
+<pre><code># Logs
+docker compose logs -f app                # live tail
+docker compose logs --tail=100 app
+
+# Restart só um serviço
+docker compose restart app
+
+# Recriar (depois de mudar config)
+docker compose up -d --force-recreate app
+
+# Scale
+docker compose up -d --scale app=3
+
+# Backup volume
+docker run --rm -v pgdata:/data -v $(pwd):/backup alpine \\
+  tar czf /backup/pgdata-$(date +%F).tgz -C /data .</code></pre>
+<p>O comando de backup merece atenção: ele sobe um container TEMPORÁRIO
+(<code>alpine</code>, descartado logo depois via <code>--rm</code>)
+montando o volume de dado e o diretório de destino, e usa
+<code>tar</code> para compactar o conteúdo — um padrão simples e portátil
+que não depende de nenhuma ferramenta específica de backup instalada no
+host.</p>
+
+<h3>11. Seis anti-padrões que aparecem em quem tenta esticar Compose além do que ele resolve</h3>
+<ul>
+<li><strong>Compose como produção multi-host</strong>: não escala para
+esse cenário — use Swarm, Nomad ou Kubernetes conforme a necessidade
+real (seção 9).</li>
+<li><strong>Stateful complexo em Compose</strong>: alta disponibilidade
+de verdade para um banco ou fila exige ferramenta dedicada, não
+orquestração manual de volumes.</li>
+<li><strong>Bind mount em produção</strong>: portabilidade ruim entre
+hosts diferentes, e permissões de arquivo entre host e container
+frequentemente complicam de formas sutis.</li>
+<li><strong>Sem healthcheck configurado</strong>: dependências entre
+serviços quebram em race condition exatamente como descrito na seção 7.</li>
+<li><strong>Variável sensível direto no `compose.yaml`</strong>: o
+arquivo normalmente é commitado no Git — use <code>.env</code>
+(no <code>.gitignore</code>) ou segredos gerenciados pelo runtime.</li>
+<li><strong>Misturar configuração de produção e desenvolvimento no
+mesmo arquivo</strong>: use o padrão de override files da seção 2 em vez
+de condicionais dentro de um único YAML.</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -2027,256 +2108,308 @@ PHASE4 = {
                     "padrões de adoção (warn → enforce) que evitam revolta do time."
                 ),
                 "body": (
-                    "<h3>1. Conceito: política como código</h3>"
-                    "<p>Regras de negócio/segurança/compliance escritas em linguagem "
-                    "versionada (Rego, YAML, etc.), revisáveis em PR, testáveis com "
-                    "unit tests, e <em>aplicadas automaticamente</em> em pontos do "
-                    "ciclo:</p>"
-                    "<ul>"
-                    "<li><strong>Dev</strong>: editor com linter/IDE plugin.</li>"
-                    "<li><strong>Pre-commit</strong>: hook local roda Conftest.</li>"
-                    "<li><strong>CI</strong>: bloqueia merge em violação.</li>"
-                    "<li><strong>Admission controller (K8s)</strong>: rejeita criação "
-                    "de recursos não-conformes.</li>"
-                    "<li><strong>Cloud account</strong>: SCP (AWS), Azure Policy, GCP "
-                    "Org Policy aplicam transversalmente.</li>"
-                    "<li><strong>Runtime</strong>: políticas de autorização em APIs.</li>"
-                    "</ul>"
-                    "<p>Defesa em camadas: mesmo se uma camada falhar, próxima pega.</p>"
+                """<h3>1. Política como código: a mesma regra, aplicada em cinco pontos diferentes do ciclo</h3>
+<p>Regra de negócio, segurança ou compliance escrita numa linguagem
+VERSIONADA (Rego, YAML) muda de natureza: passa a ser revisável em PR
+como qualquer código, testável com testes unitários, e — o ganho central
+— APLICADA AUTOMATICAMENTE em vários pontos do ciclo de vida, em vez de
+depender de alguém lembrar de checar manualmente. No editor, um plugin de
+IDE já sinaliza violação enquanto o código é escrito. No pre-commit, um
+hook local roda Conftest antes do commit existir. No CI, a mesma
+política bloqueia o merge de um PR que viole a regra. No admission
+controller do Kubernetes, a criação de um recurso não-conforme é
+rejeitada antes de chegar ao etcd. Na conta de nuvem, SCPs (AWS), Azure
+Policy ou GCP Org Policy aplicam a regra TRANSVERSALMENTE, mesmo para
+quem tenta contornar o CI. E em runtime, políticas de autorização
+controlam o que uma API aceita processar. O valor de aplicar a MESMA
+regra em várias camadas não é redundância por redundância — é defesa em
+profundidade: se uma camada falhar ou for contornada, a próxima ainda
+pega.</p>
 
-                    "<h3>2. OPA (Open Policy Agent) e Rego</h3>"
-                    "<p>OPA é engine multipropósito. CNCF graduado. Linguagem "
-                    "<strong>Rego</strong> declarativa, baseada em Datalog. Curva "
-                    "inicial existe, mas paga rápido.</p>"
-                    "<p>Anatomia de uma policy:</p>"
-                    "<pre><code>package terraform.s3   # namespace\n"
-                    "\n"
-                    "import future.keywords\n"
-                    "\n"
-                    "# Inputs vêm de fora (terraform plan json)\n"
-                    "deny[msg] {\n"
-                    "  resource := input.resource.aws_s3_bucket[name]\n"
-                    "  resource.acl == \"public-read\"\n"
-                    "  msg := sprintf(\"Bucket %v não pode ser public-read\", [name])\n"
-                    "}\n"
-                    "\n"
-                    "deny[msg] {\n"
-                    "  resource := input.resource.aws_security_group[name]\n"
-                    "  rule := resource.ingress[_]\n"
-                    "  rule.cidr_blocks[_] == \"0.0.0.0/0\"\n"
-                    "  rule.from_port == 22\n"
-                    "  msg := sprintf(\"SG %v não pode ter SSH aberto ao mundo\", [name])\n"
-                    "}\n"
-                    "\n"
-                    "warn[msg] {\n"
-                    "  resource := input.resource.aws_db_instance[name]\n"
-                    "  not resource.storage_encrypted\n"
-                    "  msg := sprintf(\"RDS %v deveria ter encryption\", [name])\n"
-                    "}</code></pre>"
-                    "<p>Rego é <em>set-based</em>: queries retornam conjuntos de "
-                    "valores. <code>deny[msg]</code> coleta todas as mensagens. "
-                    "<code>_</code> é wildcard.</p>"
+<h3>2. OPA e Rego: uma engine genérica, uma linguagem que pensa em conjuntos</h3>
+<p>Open Policy Agent (projeto CNCF graduado) é uma engine de política de
+propósito geral — não amarrada a Kubernetes especificamente, capaz de
+avaliar qualquer entrada estruturada contra regras declaradas em Rego,
+uma linguagem baseada em Datalog. A curva de aprendizado inicial de Rego
+é real (a sintaxe declarativa confunde quem só programou
+imperativamente antes), mas se paga rápido pela expressividade:</p>
+<pre><code>package terraform.s3   # namespace
 
-                    "<h3>3. Conftest: validação fora do K8s</h3>"
-                    "<p>Roda OPA contra arquivos de configuração (TF plan, K8s "
-                    "manifests, Dockerfile, JSON, YAML, INI, etc.).</p>"
-                    "<pre><code># CI: validar Terraform plan\n"
-                    "$ terraform show -json tfplan &gt; plan.json\n"
-                    "$ conftest test plan.json --policy ./policies\n"
-                    "FAIL - plan.json - Bucket app-data não pode ser public-read\n"
-                    "FAIL - plan.json - SG web não pode ter SSH aberto ao mundo\n"
-                    "WARN - plan.json - RDS db-prod deveria ter encryption\n"
-                    "\n"
-                    "$ echo $?\n"
-                    "1   # exit code falha o build</code></pre>"
+import future.keywords
 
-                    "<h3>4. Kyverno: K8s-native, sem precisar Rego</h3>"
-                    "<p>Para K8s, Kyverno é mais simples, políticas em YAML. Curva "
-                    "de aprendizado quase nula:</p>"
-                    "<pre><code>apiVersion: kyverno.io/v1\n"
-                    "kind: ClusterPolicy\n"
-                    "metadata: { name: require-non-root }\n"
-                    "spec:\n"
-                    "  validationFailureAction: Enforce\n"
-                    "  background: true   # também aplica em recursos existentes (audit)\n"
-                    "  rules:\n"
-                    "    - name: check-runAsNonRoot\n"
-                    "      match:\n"
-                    "        any:\n"
-                    "          - resources: { kinds: [Pod], namespaces: ['prod-*'] }\n"
-                    "      validate:\n"
-                    "        message: \"Containers em prod-* devem rodar como non-root.\"\n"
-                    "        pattern:\n"
-                    "          spec:\n"
-                    "            =(securityContext):\n"
-                    "              =(runAsNonRoot): true\n"
-                    "            containers:\n"
-                    "              - =(securityContext):\n"
-                    "                  =(runAsNonRoot): true\n"
-                    "    - name: drop-all-capabilities\n"
-                    "      match: { any: [{ resources: { kinds: [Pod] } }] }\n"
-                    "      validate:\n"
-                    "        pattern:\n"
-                    "          spec:\n"
-                    "            containers:\n"
-                    "              - securityContext:\n"
-                    "                  capabilities:\n"
-                    "                    drop: [\"ALL\"]</code></pre>"
-                    "<p>Kyverno também suporta:</p>"
-                    "<ul>"
-                    "<li><strong>Mutate</strong>: injetar securityContext padrão "
-                    "automaticamente.</li>"
-                    "<li><strong>Generate</strong>: criar Secret/ConfigMap em todo "
-                    "namespace.</li>"
-                    "<li><strong>Verify images</strong>: assinatura Cosign.</li>"
-                    "<li><strong>Cleanup</strong>: apagar recursos órfãos.</li>"
-                    "</ul>"
+# Inputs vêm de fora (terraform plan json)
+deny[msg] {
+  resource := input.resource.aws_s3_bucket[name]
+  resource.acl == "public-read"
+  msg := sprintf("Bucket %v não pode ser public-read", [name])
+}
 
-                    "<h3>5. OPA Gatekeeper: OPA empacotado para K8s</h3>"
-                    "<p>Gatekeeper traz OPA/Rego para admission controller K8s via "
-                    "ConstraintTemplates e Constraints:</p>"
-                    "<pre><code># Template (Rego)\n"
-                    "apiVersion: templates.gatekeeper.sh/v1\n"
-                    "kind: ConstraintTemplate\n"
-                    "metadata: { name: k8srequiredlabels }\n"
-                    "spec:\n"
-                    "  crd:\n"
-                    "    spec:\n"
-                    "      names: { kind: K8sRequiredLabels }\n"
-                    "  targets:\n"
-                    "    - target: admission.k8s.gatekeeper.sh\n"
-                    "      rego: |\n"
-                    "        package k8srequiredlabels\n"
-                    "        violation[{\"msg\": msg}] {\n"
-                    "          missing := input.parameters.labels - \\\n"
-                    "                     {label | input.review.object.metadata.labels[label]}\n"
-                    "          count(missing) &gt; 0\n"
-                    "          msg := sprintf(\"Labels obrigatórios faltando: %v\", [missing])\n"
-                    "        }\n"
-                    "\n"
-                    "# Constraint (uso)\n"
-                    "apiVersion: constraints.gatekeeper.sh/v1beta1\n"
-                    "kind: K8sRequiredLabels\n"
-                    "metadata: { name: ns-must-have-owner }\n"
-                    "spec:\n"
-                    "  match: { kinds: [{ kinds: [Namespace] }] }\n"
-                    "  parameters: { labels: [\"owner\", \"environment\"] }</code></pre>"
+deny[msg] {
+  resource := input.resource.aws_security_group[name]
+  rule := resource.ingress[_]
+  rule.cidr_blocks[_] == "0.0.0.0/0"
+  rule.from_port == 22
+  msg := sprintf("SG %v não pode ter SSH aberto ao mundo", [name])
+}
 
-                    "<h3>6. Sentinel (HashiCorp)</h3>"
-                    "<p>DSL própria, integrada a Terraform Cloud, Vault, Consul, "
-                    "Nomad. Útil em times all-in HashiCorp:</p>"
-                    "<pre><code># sentinel.hcl\n"
-                    "policy \"require-encryption\" {\n"
-                    "  source = \"./require-encryption.sentinel\"\n"
-                    "  enforcement_level = \"hard-mandatory\"\n"
-                    "}\n"
-                    "\n"
-                    "# require-encryption.sentinel\n"
-                    "import \"tfplan/v2\" as tfplan\n"
-                    "\n"
-                    "main = rule {\n"
-                    "  all tfplan.resource_changes as _, rc {\n"
-                    "    rc.type is \"aws_s3_bucket\" implies\n"
-                    "      rc.change.after.server_side_encryption_configuration is not null\n"
-                    "  }\n"
-                    "}</code></pre>"
+warn[msg] {
+  resource := input.resource.aws_db_instance[name]
+  not resource.storage_encrypted
+  msg := sprintf("RDS %v deveria ter encryption", [name])
+}</code></pre>
+<p>Rego é fundamentalmente baseado em CONJUNTOS: uma query não retorna
+"sim/não", retorna o CONJUNTO de todos os valores que satisfazem as
+condições declaradas — <code>deny[msg]</code> coleta TODAS as mensagens
+de violação encontradas, não só a primeira. O underscore
+(<code>_</code>) funciona como coringa, casando qualquer elemento de uma
+coleção sem precisar nomeá-lo individualmente. Essa forma de pensar
+("declare o que CONSTITUI uma violação, deixe o motor encontrar todas as
+ocorrências") é o que torna Rego poderoso para políticas complexas, mas
+também o que exige uma virada de chave mental de quem vem de linguagem
+imperativa tradicional.</p>
 
-                    "<h3>7. Cloud Custodian: políticas cloud em YAML</h3>"
-                    "<p>Para AWS/Azure/GCP, Cloud Custodian aplica/audita políticas:</p>"
-                    "<pre><code># custodian.yaml\n"
-                    "policies:\n"
-                    "  - name: stop-untagged-ec2\n"
-                    "    resource: aws.ec2\n"
-                    "    filters:\n"
-                    "      - 'tag:Owner': absent\n"
-                    "      - State.Name: running\n"
-                    "    actions:\n"
-                    "      - type: notify\n"
-                    "        to: [security@empresa.com]\n"
-                    "      - stop\n"
-                    "\n"
-                    "  - name: encrypt-s3-buckets\n"
-                    "    resource: aws.s3\n"
-                    "    filters:\n"
-                    "      - type: bucket-encryption\n"
-                    "        state: false\n"
-                    "    actions:\n"
-                    "      - type: set-bucket-encryption</code></pre>"
+<h3>3. Conftest: a mesma engine OPA, aplicada fora do Kubernetes</h3>
+<p>Conftest roda OPA contra QUALQUER arquivo de configuração estruturado
+— plano do Terraform, manifesto Kubernetes, Dockerfile, JSON, YAML,
+INI — sem exigir um cluster ou admission controller no meio:</p>
+<pre><code># CI: validar Terraform plan
+$ terraform show -json tfplan &gt; plan.json
+$ conftest test plan.json --policy ./policies
+FAIL - plan.json - Bucket app-data não pode ser public-read
+FAIL - plan.json - SG web não pode ter SSH aberto ao mundo
+WARN - plan.json - RDS db-prod deveria ter encryption
 
-                    "<h3>8. SCPs e Org Policies (transversal)</h3>"
-                    "<p>Para regras 'da empresa toda', use:</p>"
-                    "<ul>"
-                    "<li><strong>AWS SCP</strong> (Service Control Policy): aplicado "
-                    "em OUs, restringe IAM. 'Ninguém pode criar bucket sem TLS.'</li>"
-                    "<li><strong>Azure Policy</strong>: deny/audit/append em recursos. "
-                    "Policy Initiative (set de policies).</li>"
-                    "<li><strong>GCP Org Policy</strong>: constraints em organização "
-                    "ou pasta.</li>"
-                    "</ul>"
-                    "<p>Versionados como IaC (Terraform):</p>"
-                    "<pre><code>resource \"aws_organizations_policy\" \"deny-public-buckets\" {\n"
-                    "  name = \"deny-public-buckets\"\n"
-                    "  type = \"SERVICE_CONTROL_POLICY\"\n"
-                    "  content = jsonencode({\n"
-                    "    Version = \"2012-10-17\"\n"
-                    "    Statement = [{\n"
-                    "      Effect = \"Deny\"\n"
-                    "      Action = [\"s3:PutBucketAcl\"]\n"
-                    "      Resource = \"*\"\n"
-                    "      Condition = {\n"
-                    "        \"StringEquals\" = { \"s3:x-amz-acl\" = [\"public-read\", \"public-read-write\"] }\n"
-                    "      }\n"
-                    "    }]\n"
-                    "  })\n"
-                    "}</code></pre>"
+$ echo $?
+1   # exit code falha o build</code></pre>
+<p>Rodar a checagem contra o PLANO do Terraform (não contra o código-fonte
+diretamente) é o detalhe que faz essa validação valer: o plano representa
+o que de fato vai mudar na infraestrutura real, incluindo valores
+computados e dependências resolvidas — checar o `.tf` bruto perderia
+justamente os casos onde uma variável ou módulo produz um resultado
+perigoso só visível depois do plan.</p>
 
-                    "<h3>9. Adoção: warn primeiro, enforce depois</h3>"
-                    "<p>Erro comum: ligar enforce em produção no dia 1. Resultado: "
-                    "metade dos times bloqueados, revolta, política desligada para "
-                    "sempre.</p>"
-                    "<p>Padrão sugerido:</p>"
-                    "<ol>"
-                    "<li><strong>Audit only</strong>: política reporta violações sem "
-                    "bloquear. Mapeie escopo do problema.</li>"
-                    "<li><strong>Warn em PR</strong>: bloqueia PRs novos, não "
-                    "existentes. Devs aprendem.</li>"
-                    "<li><strong>Enforce em ambientes baixos</strong> (dev, staging): "
-                    "bloqueia.</li>"
-                    "<li><strong>Enforce em prod</strong>: depois de meses limpando.</li>"
-                    "<li><strong>Documente exceções</strong>: label de recurso, "
-                    "namespace exempt list. Auditar trimestralmente.</li>"
-                    "</ol>"
+<h3>4. Kyverno: a mesma proteção, sem exigir que o time aprenda Rego</h3>
+<p>Para Kubernetes especificamente, Kyverno reduz a barreira de entrada
+escrevendo políticas em YAML puro — a mesma sintaxe de qualquer outro
+manifesto do cluster, sem exigir aprender uma linguagem nova:</p>
+<pre><code>apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: require-non-root }
+spec:
+  validationFailureAction: Enforce
+  background: true   # também aplica em recursos existentes (audit)
+  rules:
+    - name: check-runAsNonRoot
+      match:
+        any:
+          - resources: { kinds: [Pod], namespaces: ['prod-*'] }
+      validate:
+        message: "Containers em prod-* devem rodar como non-root."
+        pattern:
+          spec:
+            =(securityContext):
+              =(runAsNonRoot): true
+            containers:
+              - =(securityContext):
+                  =(runAsNonRoot): true
+    - name: drop-all-capabilities
+      match: { any: [{ resources: { kinds: [Pod] } }] }
+      validate:
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  capabilities:
+                    drop: ["ALL"]</code></pre>
+<p><code>background: true</code> estende a política para AVALIAR recursos
+JÁ EXISTENTES no cluster (em modo audit), não só os que chegarem daqui
+em diante — essencial para descobrir violações pré-existentes antes de
+promover a política para bloqueio ativo. Além de validar, Kyverno também
+suporta MUTAR (injetar um <code>securityContext</code> padrão em pods que
+não declararam nenhum), GERAR (criar automaticamente um Secret ou
+ConfigMap em todo namespace novo), VERIFICAR ASSINATURA de imagem (via
+Cosign) e LIMPAR recursos órfãos — um conjunto de capacidades bem mais
+amplo que "só validar sim ou não".</p>
 
-                    "<h3>10. Testes de políticas</h3>"
-                    "<p>Política tem bug como qualquer código. Teste:</p>"
-                    "<pre><code># OPA testing\n"
-                    "test_deny_public_bucket {\n"
-                    "  result := deny with input as {\n"
-                    "    \"resource\": {\n"
-                    "      \"aws_s3_bucket\": {\n"
-                    "        \"data\": {\"acl\": \"public-read\"}\n"
-                    "      }\n"
-                    "    }\n"
-                    "  }\n"
-                    "  count(result) == 1\n"
-                    "}\n"
-                    "\n"
-                    "$ opa test policies/ -v\n"
-                    "PASS: 5/5</code></pre>"
+<h3>5. OPA Gatekeeper: a mesma expressividade do Rego, empacotada como admission controller</h3>
+<p>Gatekeeper traz OPA/Rego para o Kubernetes através de dois objetos
+complementares: <code>ConstraintTemplate</code> define a REGRA (em Rego),
+e <code>Constraint</code> INSTANCIA essa regra com parâmetros
+específicos — a mesma separação vista na aula de Admission Controllers,
+permitindo reusar a mesma lógica com parâmetros diferentes por
+instância:</p>
+<pre><code># Template (Rego)
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata: { name: k8srequiredlabels }
+spec:
+  crd:
+    spec:
+      names: { kind: K8sRequiredLabels }
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredlabels
+        violation[{"msg": msg}] {
+          missing := input.parameters.labels - \\
+                     {label | input.review.object.metadata.labels[label]}
+          count(missing) &gt; 0
+          msg := sprintf("Labels obrigatórios faltando: %v", [missing])
+        }
 
-                    "<h3>11. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>Enforce no dia 1 em prod</strong>: revolta garantida.</li>"
-                    "<li><strong>Sem testes de policy</strong>: bug bloqueia tudo um dia.</li>"
-                    "<li><strong>Mensagem de erro genérica</strong>: dev não sabe "
-                    "o que fazer. Sempre inclua link/explicação.</li>"
-                    "<li><strong>Política sem dono</strong>: vira lixo.</li>"
-                    "<li><strong>Sem mecanismo de exceção</strong>: legítimas "
-                    "alternativas perdem-se.</li>"
-                    "<li><strong>Mil políticas</strong>: foco no top 10 que importa.</li>"
-                    "<li><strong>Apenas em CI</strong>: alguém aplica direto, "
-                    "drift cresce. Defesa em camadas.</li>"
-                    "</ul>"
+# Constraint (uso)
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata: { name: ns-must-have-owner }
+spec:
+  match: { kinds: [{ kinds: [Namespace] }] }
+  parameters: { labels: ["owner", "environment"] }</code></pre>
+
+<h3>6. Sentinel: a escolha natural para quem já vive dentro do ecossistema HashiCorp</h3>
+<p>Sentinel é uma DSL própria da HashiCorp, integrada nativamente a
+Terraform Cloud, Vault, Consul e Nomad — a vantagem real aparece quando
+o time já usa várias dessas ferramentas e prefere uma linguagem de
+política única atravessando todas elas, em vez de manter Rego para uma
+coisa e outra sintaxe para outra:</p>
+<pre><code># sentinel.hcl
+policy "require-encryption" {
+  source = "./require-encryption.sentinel"
+  enforcement_level = "hard-mandatory"
+}
+
+# require-encryption.sentinel
+import "tfplan/v2" as tfplan
+
+main = rule {
+  all tfplan.resource_changes as _, rc {
+    rc.type is "aws_s3_bucket" implies
+      rc.change.after.server_side_encryption_configuration is not null
+  }
+}</code></pre>
+<p><code>enforcement_level = "hard-mandatory"</code> é o equivalente
+Sentinel de "enforce" — diferente de níveis mais brandos que só avisam,
+essa configuração bloqueia o apply de fato quando a política falha.</p>
+
+<h3>7. Cloud Custodian: política e remediação de infraestrutura já provisionada</h3>
+<p>Diferente das ferramentas anteriores, que atuam ANTES do recurso
+existir (CI, admission), Cloud Custodian audita e AGE sobre recursos JÁ
+EXISTENTES na nuvem, combinando filtro e ação numa política declarativa:</p>
+<pre><code># custodian.yaml
+policies:
+  - name: stop-untagged-ec2
+    resource: aws.ec2
+    filters:
+      - 'tag:Owner': absent
+      - State.Name: running
+    actions:
+      - type: notify
+        to: [security@empresa.com]
+      - stop
+
+  - name: encrypt-s3-buckets
+    resource: aws.s3
+    filters:
+      - type: bucket-encryption
+        state: false
+    actions:
+      - type: set-bucket-encryption</code></pre>
+<p>A primeira política não só DETECTA uma instância EC2 sem a tag
+<code>Owner</code> obrigatória — ela NOTIFICA o time de segurança e PARA
+a instância automaticamente, uma remediação ativa, não só um relatório
+passivo de conformidade.</p>
+
+<h3>8. SCPs e Org Policies: a regra que ninguém consegue contornar, nem por acidente</h3>
+<p>Para regras que precisam valer para a EMPRESA INTEIRA, independente
+de qual pipeline ou ferramenta alguém use, a resposta vive na camada de
+conta de nuvem, não em CI. AWS SCP (Service Control Policy) aplicado
+numa Organizational Unit inteira restringe o que QUALQUER IAM role
+consegue fazer, mesmo com permissão administrativa total — "ninguém pode
+criar bucket sem TLS" vale mesmo para quem tem acesso root na conta.
+Azure Policy oferece efeitos deny/audit/append sobre recursos, agrupados
+em "Policy Initiatives" para aplicar um conjunto coeso de uma vez. GCP
+Org Policy aplica constraints no nível de organização ou pasta. E o
+padrão recomendado é versionar essas políticas como infraestrutura,
+exatamente como qualquer outro recurso Terraform:</p>
+<pre><code>resource "aws_organizations_policy" "deny-public-buckets" {
+  name = "deny-public-buckets"
+  type = "SERVICE_CONTROL_POLICY"
+  content = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Deny"
+      Action = ["s3:PutBucketAcl"]
+      Resource = "*"
+      Condition = {
+        "StringEquals" = { "s3:x-amz-acl" = ["public-read", "public-read-write"] }
+      }
+    }]
+  })
+}</code></pre>
+
+<h3>9. Adoção: por que "enforce no dia 1" é a forma mais confiável de matar o programa inteiro</h3>
+<p>O erro mais citado em Policy as Code é ativar bloqueio total em
+produção logo no primeiro dia — o resultado quase garantido é metade dos
+times travados sem aviso prévio, revolta imediata, e a política sendo
+desligada permanentemente na primeira crise. A progressão que de fato
+funciona tem cinco estágios: primeiro <strong>audit only</strong>, onde
+a política apenas REPORTA violações sem bloquear nada, mapeando o
+tamanho real do problema antes de qualquer ação. Depois
+<strong>warn em PR</strong>, bloqueando só PRs NOVOS (não o que já
+existe), dando tempo para os times aprenderem a regra organicamente.
+Em seguida <strong>enforce em ambientes de baixo risco</strong>
+(dev, staging), validando o comportamento antes de tocar produção.
+Só então <strong>enforce em produção</strong>, depois de meses limpando
+violações conhecidas. E ao longo de todo o processo,
+<strong>documentar exceções</strong> explicitamente (via label de
+recurso ou lista de namespaces isentos), com auditoria periódica dessas
+exceções — sem isso, a lista de "casos especiais" cresce
+silenciosamente até a política perder sentido.</p>
+
+<h3>10. Testar política como qualquer outro código, porque ela tem bug como qualquer outro código</h3>
+<pre><code># OPA testing
+test_deny_public_bucket {
+  result := deny with input as {
+    "resource": {
+      "aws_s3_bucket": {
+        "data": {"acl": "public-read"}
+      }
+    }
+  }
+  count(result) == 1
+}
+
+$ opa test policies/ -v
+PASS: 5/5</code></pre>
+<p>Uma política sem teste unitário corre o mesmo risco de qualquer código
+sem teste: um ajuste aparentemente inocente numa regra pode, sem
+ninguém perceber até o incidente acontecer, passar a bloquear TUDO (um
+falso positivo geral) ou parar de bloquear NADA (a política vira
+decorativa) — e como a política roda automaticamente em produção, o
+raio de impacto de um bug ali costuma ser maior que um bug de aplicação
+comum.</p>
+
+<h3>11. Sete anti-padrões que decidem se o programa de Policy as Code sobrevive</h3>
+<ul>
+<li><strong>Enforce logo no dia 1 em produção</strong>: revolta
+praticamente garantida, e a política acaba desligada de vez (seção 9).</li>
+<li><strong>Sem teste de política</strong>: um bug bloqueia tudo um dia,
+sem aviso.</li>
+<li><strong>Mensagem de erro genérica</strong>: o desenvolvedor vê
+"denied" sem entender o que corrigir — sempre inclua explicação ou link
+para o runbook relevante.</li>
+<li><strong>Política sem dono definido</strong>: com o tempo, vira lixo
+que ninguém mais entende nem sabe se ainda faz sentido manter.</li>
+<li><strong>Sem mecanismo de exceção legítimo</strong>: casos especiais
+reais (que existem em qualquer organização) acabam burlando a política
+por fora, em vez de serem documentados dentro dela.</li>
+<li><strong>Mil políticas simultâneas desde o início</strong>: foque nas
+dez que realmente importam primeiro — cobertura ampla e rasa vale menos
+que cobertura estreita e bem mantida.</li>
+<li><strong>Política só em CI, nunca no admission controller</strong>:
+alguém aplica um manifesto diretamente no cluster, contornando o CI, e o
+drift cresce silenciosamente — a defesa em camadas da seção 1 existe
+exatamente para esse cenário.</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
@@ -2643,290 +2776,369 @@ PHASE4 = {
                     "assignment, mTLS, observability e webhook security."
                 ),
                 "body": (
-                    "<h3>1. Autenticação: quem é você</h3>"
-                    "<h4>1.1 OAuth 2.0 e OIDC</h4>"
-                    "<p>OAuth 2.0 é framework de autorização: token de bearer com "
-                    "scopes. OIDC adiciona camada de identidade (id_token JWT "
-                    "assinado).</p>"
-                    "<p>Fluxos comuns:</p>"
-                    "<ul>"
-                    "<li><strong>Authorization Code + PKCE</strong>: padrão para "
-                    "SPA/mobile. PKCE protege contra interceptação do code.</li>"
-                    "<li><strong>Client Credentials</strong>: machine-to-machine "
-                    "(microsserviço A → microsserviço B).</li>"
-                    "<li><strong>Refresh Token</strong>: renovar access_token sem "
-                    "re-login.</li>"
-                    "<li><strong>Device Code</strong>: TVs, CLI.</li>"
-                    "</ul>"
-                    "<p><strong>Não use</strong>: implicit flow (depreciado), "
-                    "ROPC (resource owner password credentials, só legados).</p>"
-                    "<h4>1.2 JWT bem usado</h4>"
-                    "<pre><code># Header\n"
-                    "{\"alg\": \"RS256\", \"typ\": \"JWT\", \"kid\": \"key-2024\"}\n"
-                    "\n"
-                    "# Payload\n"
-                    "{\n"
-                    "  \"iss\": \"https://auth.empresa.com\",\n"
-                    "  \"aud\": \"https://api.empresa.com\",\n"
-                    "  \"sub\": \"user-123\",\n"
-                    "  \"iat\": 1714053000,\n"
-                    "  \"exp\": 1714053900,         // 15min\n"
-                    "  \"scope\": \"read:orders write:orders\",\n"
-                    "  \"jti\": \"random-uuid\"     // permite revogação\n"
-                    "}\n"
-                    "\n"
-                    "# Signature\n"
-                    "RSASHA256(base64(header) + '.' + base64(payload), private_key)</code></pre>"
-                    "<p>Boas práticas JWT:</p>"
-                    "<ul>"
-                    "<li><strong>Algoritmo</strong>: RS256, ES256, EdDSA, nunca "
-                    "<code>none</code>; cuidado com HS256 + chave compartilhada (qualquer "
-                    "um que assina pode forjar).</li>"
-                    "<li><strong>Validar</strong>: <code>iss</code>, <code>aud</code>, "
-                    "<code>exp</code>, <code>nbf</code>, assinatura.</li>"
-                    "<li><strong>JWKS</strong>: rotacione chave de assinatura "
-                    "periodicamente; <code>kid</code> permite múltiplas válidas.</li>"
-                    "<li><strong>TTL curto</strong>: 5-15min para access_token; "
-                    "refresh para sessão longa.</li>"
-                    "<li><strong>Não armazene em localStorage</strong> em "
-                    "browser (XSS rouba). Use cookie HttpOnly + SameSite=Strict.</li>"
-                    "<li><strong>Revogação</strong>: blacklist via <code>jti</code> "
-                    "em Redis (TTL = exp).</li>"
-                    "<li><strong>Não coloque senha/PII no payload</strong>: JWT é "
-                    "base64, não cripto.</li>"
-                    "</ul>"
+                """<h3>1. Autenticação: provar quem está chamando, sem reinventar criptografia</h3>
+<p>OAuth 2.0 é um framework de AUTORIZAÇÃO — um token bearer carregando
+escopos específicos do que o portador pode fazer — enquanto o OIDC
+adiciona uma camada de IDENTIDADE por cima, na forma de um
+<code>id_token</code> em JWT assinado, respondendo especificamente "quem
+é essa pessoa", não só "o que ela pode fazer". Quatro fluxos cobrem a
+maioria dos casos reais: <strong>Authorization Code com PKCE</strong> é
+o padrão atual para SPAs e aplicativos móveis — o PKCE (Proof Key for
+Code Exchange) protege contra um código de autorização sendo
+interceptado no meio do caminho e trocado por um token por outra parte;
+<strong>Client Credentials</strong> serve comunicação
+máquina-a-máquina, quando um microsserviço chama outro sem usuário
+humano envolvido; <strong>Refresh Token</strong> renova o token de
+acesso sem forçar novo login; e <strong>Device Code</strong> atende
+dispositivos sem teclado prático (TVs, algumas CLIs). O fluxo Implicit
+está deprecado e ROPC (Resource Owner Password Credentials, onde a
+aplicação manuseia a senha do usuário diretamente) só deveria existir em
+sistemas legados que ainda não migraram — ambos expõem mais superfície
+de risco do que os fluxos modernos.</p>
+<p>Um JWT bem formado carrega estrutura específica que vale entender
+campo a campo:</p>
+<pre><code># Header
+{"alg": "RS256", "typ": "JWT", "kid": "key-2024"}
 
-                    "<h3>2. Autorização: o que pode fazer</h3>"
-                    "<h4>2.1 BOLA (Broken Object Level Authorization), top 1</h4>"
-                    "<p>API que checa só 'usuário logado' mas não 'usuário é dono "
-                    "do recurso':</p>"
-                    "<pre><code># RUIM\n"
-                    "@app.get('/orders/{order_id}')\n"
-                    "def get_order(order_id: int, user = Depends(current_user)):\n"
-                    "    return Order.objects.get(id=order_id)   # qualquer logado vê qualquer pedido\n"
-                    "\n"
-                    "# BOM\n"
-                    "@app.get('/orders/{order_id}')\n"
-                    "def get_order(order_id: int, user = Depends(current_user)):\n"
-                    "    order = Order.objects.get(id=order_id)\n"
-                    "    if order.user_id != user.id and not user.is_admin:\n"
-                    "        raise HTTPException(403)\n"
-                    "    return order</code></pre>"
-                    "<p>Ataques: trocar <code>order_id</code> sequencialmente "
-                    "(<code>?id=1</code>, <code>?id=2</code>...). Defesa: "
-                    "authorization no nível do recurso, sempre.</p>"
-                    "<h4>2.2 Scopes</h4>"
-                    "<p>Token com scope mínimo necessário. <code>read:orders</code> "
-                    "≠ <code>write:orders</code>. Aplicação valida.</p>"
-                    "<h4>2.3 ABAC (Attribute-Based Access Control)</h4>"
-                    "<p>Decisão baseada em atributos do user, recurso, contexto:</p>"
-                    "<pre><code># OPA policy para autorização\n"
-                    "package authz\n"
-                    "default allow = false\n"
-                    "\n"
-                    "allow {\n"
-                    "  input.action == \"read\"\n"
-                    "  input.resource.type == \"order\"\n"
-                    "  input.resource.user_id == input.subject.id\n"
-                    "}\n"
-                    "\n"
-                    "allow {\n"
-                    "  input.subject.role == \"admin\"\n"
-                    "}</code></pre>"
+# Payload
+{
+  "iss": "https://auth.empresa.com",
+  "aud": "https://api.empresa.com",
+  "sub": "user-123",
+  "iat": 1714053000,
+  "exp": 1714053900,         // 15min
+  "scope": "read:orders write:orders",
+  "jti": "random-uuid"     // permite revogação
+}
 
-                    "<h3>3. Validação de input e schema</h3>"
-                    "<p>Defina API com OpenAPI 3.x ou GraphQL schema. Frameworks "
-                    "modernos validam automaticamente:</p>"
-                    "<pre><code># FastAPI: schema vira validação\n"
-                    "from pydantic import BaseModel, Field, EmailStr\n"
-                    "\n"
-                    "class CreateOrder(BaseModel):\n"
-                    "    items: list[int] = Field(..., min_length=1, max_length=100)\n"
-                    "    shipping_address: str = Field(..., max_length=500)\n"
-                    "    customer_email: EmailStr\n"
-                    "    notes: str | None = Field(None, max_length=1000)\n"
-                    "\n"
-                    "@app.post('/orders')\n"
-                    "def create_order(order: CreateOrder, user = Depends(current_user)):\n"
-                    "    # Pydantic já validou tipos, ranges, formatos.\n"
-                    "    ...</code></pre>"
-                    "<p>Em GraphQL:</p>"
-                    "<ul>"
-                    "<li>Limite profundidade de query (depth limit).</li>"
-                    "<li>Limite complexidade (cost analysis).</li>"
-                    "<li>Disable introspection em prod (a menos que público).</li>"
-                    "<li>Persisted queries, só aceita queries pré-aprovadas.</li>"
-                    "</ul>"
+# Signature
+RSASHA256(base64(header) + '.' + base64(payload), private_key)</code></pre>
+<p>O algoritmo de assinatura importa mais do que parece: RS256, ES256 ou
+EdDSA usam par de chaves assimétrico (quem VALIDA o token não precisa da
+chave privada que o ASSINOU) — <code>none</code> nunca deveria ser
+aceito (permitiria um token sem assinatura nenhuma), e HS256 com chave
+COMPARTILHADA entre múltiplos serviços é arriscado porque qualquer
+serviço que possa VALIDAR o token também consegue FORJAR um novo, já que
+a mesma chave serve para as duas operações. Validar de verdade significa
+checar <code>iss</code> (emissor esperado), <code>aud</code> (audiência
+— este token foi emitido PARA esta API específica?), <code>exp</code> e
+<code>nbf</code> (janela de validade temporal), além da assinatura
+propriamente dita — pular qualquer um desses campos abre uma classe
+específica de vulnerabilidade (aceitar um token válido, mas emitido para
+outra audiência, por exemplo). JWKS permite rotacionar a chave de
+assinatura periodicamente, com o campo <code>kid</code> indicando qual
+chave específica validar contra, permitindo múltiplas chaves válidas
+simultaneamente durante a transição. TTL curto (5 a 15 minutos) para o
+token de acesso limita a janela de uso se ele vazar, com o refresh token
+cobrindo sessões mais longas. Nunca armazenar o token em
+<code>localStorage</code> do navegador — um XSS bem-sucedido lê
+localStorage livremente; um cookie <code>HttpOnly</code> com
+<code>SameSite=Strict</code> não é acessível via JavaScript, fechando
+essa via de roubo. Revogação antes do <code>exp</code> natural exige uma
+lista negra indexada por <code>jti</code> (armazenada em Redis, com TTL
+igual ao <code>exp</code> original, para não crescer indefinidamente). E
+nunca colocar senha ou PII no payload — JWT é apenas CODIFICADO em
+base64, não criptografado, qualquer um com o token em mãos lê o payload
+inteiro.</p>
 
-                    "<h3>4. Rate limiting e quotas</h3>"
-                    "<p>Camadas:</p>"
-                    "<ul>"
-                    "<li><strong>Edge</strong>: WAF (Cloudflare, AWS WAF), CDN. "
-                    "Bloqueia bots/DDoS antes de chegar ao backend.</li>"
-                    "<li><strong>Gateway</strong>: Kong, AWS API Gateway, NGINX. "
-                    "Rate limit por API key/IP/user.</li>"
-                    "<li><strong>App</strong>: lógica de negócio, ex.: 5 tentativas "
-                    "de login em 15min.</li>"
-                    "</ul>"
-                    "<p>Algoritmos:</p>"
-                    "<ul>"
-                    "<li><strong>Fixed window</strong>: 1000 req/min por IP. Simples, "
-                    "permite burst no virar do minuto.</li>"
-                    "<li><strong>Sliding window</strong>: mais suave, mais cálculo.</li>"
-                    "<li><strong>Token bucket</strong>: permite burst até a capacidade.</li>"
-                    "<li><strong>Leaky bucket</strong>: throughput constante.</li>"
-                    "</ul>"
-                    "<p>Implementação Redis sliding window:</p>"
-                    "<pre><code>def rate_limit(key: str, max_req: int, window_sec: int) -&gt; bool:\n"
-                    "    now = time.time()\n"
-                    "    pipe = redis.pipeline()\n"
-                    "    pipe.zremrangebyscore(key, 0, now - window_sec)\n"
-                    "    pipe.zcard(key)\n"
-                    "    pipe.zadd(key, {str(uuid.uuid4()): now})\n"
-                    "    pipe.expire(key, window_sec)\n"
-                    "    _, count, _, _ = pipe.execute()\n"
-                    "    return count &lt; max_req</code></pre>"
-                    "<p>Resposta 429 deve incluir <code>Retry-After</code>:</p>"
-                    "<pre><code>HTTP/1.1 429 Too Many Requests\n"
-                    "Retry-After: 60\n"
-                    "X-RateLimit-Limit: 1000\n"
-                    "X-RateLimit-Remaining: 0\n"
-                    "X-RateLimit-Reset: 1714053900</code></pre>"
+<h3>2. Autorização: BOLA é a falha nº1 do OWASP API Top 10, e o motivo é simples</h3>
+<p>BOLA (Broken Object Level Authorization) acontece quando a API checa
+"esse usuário está logado?" mas esquece de checar "esse usuário é DONO
+do recurso específico que está pedindo?":</p>
+<pre><code># RUIM
+@app.get('/orders/{order_id}')
+def get_order(order_id: int, user = Depends(current_user)):
+    return Order.objects.get(id=order_id)   # qualquer logado vê qualquer pedido
 
-                    "<h3>5. Mass Assignment</h3>"
-                    "<p>App que aceita request.json direto no ORM:</p>"
-                    "<pre><code># RUIM\n"
-                    "@app.put('/users/{id}')\n"
-                    "def update_user(id, body: dict):\n"
-                    "    user = User.objects.get(id=id)\n"
-                    "    for k, v in body.items():\n"
-                    "        setattr(user, k, v)   # cliente passa is_admin: true → ele vira admin!\n"
-                    "    user.save()\n"
-                    "\n"
-                    "# BOM: schema com allow-list\n"
-                    "class UserUpdate(BaseModel):\n"
-                    "    name: str | None\n"
-                    "    email: EmailStr | None\n"
-                    "    # is_admin NÃO está aqui, não pode ser setado por API pública\n"
-                    "\n"
-                    "@app.put('/users/{id}')\n"
-                    "def update_user(id, body: UserUpdate, user = Depends(current_user)):\n"
-                    "    if user.id != id: raise HTTPException(403)\n"
-                    "    target = User.objects.get(id=id)\n"
-                    "    for k, v in body.dict(exclude_unset=True).items():\n"
-                    "        setattr(target, k, v)\n"
-                    "    target.save()</code></pre>"
+# BOM
+@app.get('/orders/{order_id}')
+def get_order(order_id: int, user = Depends(current_user)):
+    order = Order.objects.get(id=order_id)
+    if order.user_id != user.id and not user.is_admin:
+        raise HTTPException(403)
+    return order</code></pre>
+<p>O ataque é trivial de executar e por isso tão comum: trocar
+<code>order_id</code> sequencialmente na URL (<code>?id=1</code>,
+<code>?id=2</code>...) e ver quais respondem — nenhuma sofisticação
+técnica necessária, só paciência. A defesa correspondente também é
+simples de enunciar e fácil de esquecer: verificação de posse no nível
+do RECURSO, em toda rota que aceita um identificador, sempre — é o tipo
+de checagem que "óbvia depois do fato" mas que passa despercebida
+justamente por parecer implícita demais para escrever explicitamente.
+Scopes complementam essa defesa limitando o que um token PODE fazer
+mesmo que a autorização de recurso falhe — um token com
+<code>read:orders</code> nunca deveria conseguir executar uma operação
+de escrita, independente de qualquer outra checagem. Para regras mais
+elaboradas que dependem de múltiplos atributos (papel do usuário, tipo
+do recurso, contexto da requisição), ABAC (Attribute-Based Access
+Control) via engine dedicada como OPA expressa a lógica de forma
+declarativa e testável isoladamente:</p>
+<pre><code># OPA policy para autorização
+package authz
+default allow = false
 
-                    "<h3>6. Excessive Data Exposure</h3>"
-                    "<p>Retornar User completo quando só precisa do nome:</p>"
-                    "<pre><code># RUIM\n"
-                    "@app.get('/users/{id}')\n"
-                    "def get_user(id):\n"
-                    "    return User.objects.get(id=id).to_dict()\n"
-                    "    # Retorna password_hash, internal_notes, ssn...\n"
-                    "\n"
-                    "# BOM: response model explícito\n"
-                    "class UserPublic(BaseModel):\n"
-                    "    id: int\n"
-                    "    name: str\n"
-                    "    avatar_url: str | None\n"
-                    "\n"
-                    "@app.get('/users/{id}', response_model=UserPublic)\n"
-                    "def get_user(id):\n"
-                    "    return User.objects.get(id=id)</code></pre>"
+allow {
+  input.action == "read"
+  input.resource.type == "order"
+  input.resource.user_id == input.subject.id
+}
 
-                    "<h3>7. Transporte: TLS, mTLS</h3>"
-                    "<ul>"
-                    "<li>TLS 1.2+ obrigatório, 1.3 preferido.</li>"
-                    "<li>HSTS com max-age longo + preload.</li>"
-                    "<li>Certificate pinning em mobile (com cuidado).</li>"
-                    "<li><strong>mTLS</strong> entre microsserviços internos: "
-                    "ambos provam identidade. Service mesh (Istio, Linkerd) "
-                    "automatiza.</li>"
-                    "<li>Tokens <em>nunca</em> em URL, vão para logs/proxies. "
-                    "Apenas em <code>Authorization: Bearer</code>.</li>"
-                    "</ul>"
+allow {
+  input.subject.role == "admin"
+}</code></pre>
 
-                    "<h3>8. Webhooks: assinatura HMAC</h3>"
-                    "<p>Receber webhook sem verificar = atacante pode forjar. "
-                    "Padrão: provider assina payload com HMAC:</p>"
-                    "<pre><code>POST /webhooks/stripe HTTP/1.1\n"
-                    "Stripe-Signature: t=1614243000,v1=abc123def456...\n"
-                    "Content-Type: application/json\n"
-                    "\n"
-                    "{\"id\": \"evt_...\", \"type\": \"charge.succeeded\", ...}\n"
-                    "\n"
-                    "# Receptor valida\n"
-                    "import hmac, hashlib, time\n"
-                    "\n"
-                    "def verify_webhook(body: bytes, signature_header: str, secret: str):\n"
-                    "    timestamp, sig = parse_header(signature_header)\n"
-                    "    if abs(time.time() - timestamp) &gt; 300:   # &gt;5min, replay\n"
-                    "        raise Invalid('stale')\n"
-                    "    expected = hmac.new(\n"
-                    "        secret.encode(),\n"
-                    "        f\"{timestamp}.{body.decode()}\".encode(),\n"
-                    "        hashlib.sha256\n"
-                    "    ).hexdigest()\n"
-                    "    if not hmac.compare_digest(expected, sig):\n"
-                    "        raise Invalid('signature')</code></pre>"
-                    "<p>Use <code>compare_digest</code> (timing-safe) sempre.</p>"
+<h3>3. Validação de schema: deixar o framework rejeitar o que nunca deveria chegar ao seu código</h3>
+<p>Definir a API formalmente via OpenAPI 3.x ou schema GraphQL, e deixar
+o framework validar automaticamente contra essa definição, elimina uma
+classe inteira de bug de validação manual esquecida:</p>
+<pre><code># FastAPI: schema vira validação
+from pydantic import BaseModel, Field, EmailStr
 
-                    "<h3>9. Errors sem leak</h3>"
-                    "<pre><code># RUIM\n"
-                    "except Exception as e:\n"
-                    "    return {\"error\": str(e), \"trace\": traceback.format_exc()}\n"
-                    "\n"
-                    "# BOM\n"
-                    "except Exception as e:\n"
-                    "    correlation_id = uuid.uuid4()\n"
-                    "    logger.exception(\"erro\", extra={\"correlation_id\": correlation_id})\n"
-                    "    return JSONResponse(\n"
-                    "        status_code=500,\n"
-                    "        content={\"error\": \"internal\", \"correlation_id\": str(correlation_id)}\n"
-                    "    )</code></pre>"
-                    "<p>Cliente vê id genérico; suporte busca log pelo correlation_id.</p>"
+class CreateOrder(BaseModel):
+    items: list[int] = Field(..., min_length=1, max_length=100)
+    shipping_address: str = Field(..., max_length=500)
+    customer_email: EmailStr
+    notes: str | None = Field(None, max_length=1000)
 
-                    "<h3>10. Observability</h3>"
-                    "<ul>"
-                    "<li><strong>Logs estruturados</strong> (JSON) com "
-                    "<code>request_id</code>, <code>user_id</code> hash, "
-                    "<code>route</code>, <code>status</code>, <code>latency</code>, "
-                    "sem PII em claro.</li>"
-                    "<li><strong>Metrics</strong> por rota: req/s, error rate, "
-                    "latência p50/p99.</li>"
-                    "<li><strong>Traces</strong> (OpenTelemetry): saltar entre "
-                    "serviços por trace_id.</li>"
-                    "<li><strong>Alertas</strong>: spike de 401 (brute force?), "
-                    "spike de 429 (DoS?), latência subiu.</li>"
-                    "</ul>"
+@app.post('/orders')
+def create_order(order: CreateOrder, user = Depends(current_user)):
+    # Pydantic já validou tipos, ranges, formatos.
+    ...</code></pre>
+<p>O código do handler nunca chega a rodar com dado malformado — Pydantic
+rejeita ANTES, com uma mensagem de erro estruturada, sem o desenvolvedor
+precisar escrever um único <code>if</code> de validação manual. Em
+GraphQL, o mesmo princípio de "limitar o que o cliente pode pedir" se
+traduz em controles específicos: limitar a PROFUNDIDADE de uma query
+evita consultas aninhadas exponencialmente caras; limitar a
+COMPLEXIDADE (cost analysis) atribui um "custo" a cada campo e rejeita
+queries acima de um limite total; desabilitar introspecção em produção
+(a menos que a API seja deliberadamente pública) evita expor o schema
+inteiro para reconhecimento de um atacante; e "persisted queries" restringe
+o servidor a aceitar apenas queries PRÉ-APROVADAS, eliminando a
+possibilidade de um cliente enviar uma query arbitrária nunca revisada.</p>
 
-                    "<h3>11. API Gateway: o que centraliza</h3>"
-                    "<ul>"
-                    "<li>Auth (validação JWT) na borda; serviços confiam.</li>"
-                    "<li>Rate limit unificado.</li>"
-                    "<li>Logging/metrics central.</li>"
-                    "<li>Versionamento de API (v1, v2).</li>"
-                    "<li>Routing.</li>"
-                    "<li>Caching de respostas.</li>"
-                    "</ul>"
-                    "<p>Opções: Kong, AWS API Gateway, Apigee, NGINX, Traefik, "
-                    "Envoy.</p>"
+<h3>4. Rate limiting: três camadas, quatro algoritmos, e por que 429 sozinho não basta</h3>
+<p>Rate limiting eficaz normalmente combina três camadas: na
+<strong>borda</strong>, um WAF ou CDN (Cloudflare, AWS WAF) bloqueia bot
+e tentativa de DDoS antes mesmo de chegar ao backend; no
+<strong>gateway</strong> (Kong, AWS API Gateway, NGINX), limite por
+chave de API, IP ou usuário; e na <strong>aplicação</strong>, regra de
+negócio específica (5 tentativas de login em 15 minutos, por exemplo).
+Os algoritmos por trás variam no trade-off entre simplicidade e
+suavidade: <strong>fixed window</strong> (1000 req/min por IP) é simples
+de implementar mas permite um "burst" duplo bem no limite da virada de
+minuto; <strong>sliding window</strong> suaviza esse efeito ao custo de
+mais cálculo; <strong>token bucket</strong> permite rajadas controladas
+até uma capacidade acumulada; e <strong>leaky bucket</strong> impõe
+throughput constante, sem rajada nenhuma. Uma implementação real de
+sliding window com Redis usa um sorted set indexado por timestamp:</p>
+<pre><code>def rate_limit(key: str, max_req: int, window_sec: int) -&gt; bool:
+    now = time.time()
+    pipe = redis.pipeline()
+    pipe.zremrangebyscore(key, 0, now - window_sec)
+    pipe.zcard(key)
+    pipe.zadd(key, {str(uuid.uuid4()): now})
+    pipe.expire(key, window_sec)
+    _, count, _, _ = pipe.execute()
+    return count &lt; max_req</code></pre>
+<p>Uma resposta 429 completa não é só o código de status — o cabeçalho
+<code>Retry-After</code> diz ao cliente exatamente quanto tempo esperar
+antes de tentar de novo, e os cabeçalhos <code>X-RateLimit-*</code> dão
+visibilidade do estado atual do limite:</p>
+<pre><code>HTTP/1.1 429 Too Many Requests
+Retry-After: 60
+X-RateLimit-Limit: 1000
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1714053900</code></pre>
 
-                    "<h3>12. Anti-patterns</h3>"
-                    "<ul>"
-                    "<li><strong>JWT em localStorage</strong> em browser (XSS).</li>"
-                    "<li><strong>Token sem expiração</strong>.</li>"
-                    "<li><strong>HS256 com secret compartilhado entre serviços</strong>.</li>"
-                    "<li><strong>API sem rate limit</strong>.</li>"
-                    "<li><strong>BOLA</strong> (não checar dono do recurso).</li>"
-                    "<li><strong>Stack trace em error</strong>.</li>"
-                    "<li><strong>Token em URL</strong>.</li>"
-                    "<li><strong>CORS *</strong> com credentials.</li>"
-                    "<li><strong>Webhook sem verificação</strong>.</li>"
-                    "<li><strong>Validação só client-side</strong>.</li>"
-                    "<li><strong>Endpoint admin sem MFA/extra-auth</strong>.</li>"
-                    "</ul>"
+<h3>5. Mass Assignment: quando o corpo da requisição vira parâmetro direto do ORM</h3>
+<p>Um handler que aceita o JSON da requisição e o aplica DIRETAMENTE nos
+atributos de um objeto de banco de dados dá ao cliente controle sobre
+QUALQUER campo do modelo, inclusive campos que nunca deveriam ser
+editáveis externamente:</p>
+<pre><code># RUIM
+@app.put('/users/{id}')
+def update_user(id, body: dict):
+    user = User.objects.get(id=id)
+    for k, v in body.items():
+        setattr(user, k, v)   # cliente passa is_admin: true → ele vira admin!
+    user.save()
+
+# BOM: schema com allow-list
+class UserUpdate(BaseModel):
+    name: str | None
+    email: EmailStr | None
+    # is_admin NÃO está aqui, não pode ser setado por API pública
+
+@app.put('/users/{id}')
+def update_user(id, body: UserUpdate, user = Depends(current_user)):
+    if user.id != id: raise HTTPException(403)
+    target = User.objects.get(id=id)
+    for k, v in body.dict(exclude_unset=True).items():
+        setattr(target, k, v)
+    target.save()</code></pre>
+<p>O ataque é surpreendentemente direto: um cliente descobre (por
+inspeção de resposta, documentação vazada, ou tentativa e erro) que o
+modelo tem um campo <code>is_admin</code>, inclui esse campo no corpo do
+PUT, e se o servidor aplicar tudo cegamente, o próprio usuário se
+promove a administrador sem nenhuma checagem de permissão específica
+para essa mudança. A correção não é "validar melhor" no sentido de
+checagem de tipo — é usar uma ALLOW-LIST explícita de campos editáveis
+(o schema <code>UserUpdate</code> acima), onde qualquer campo NÃO
+declarado simplesmente não existe do ponto de vista de quem chama a
+API.</p>
+
+<h3>6. Excessive Data Exposure: retornar o objeto inteiro é mais fácil, e mais perigoso</h3>
+<pre><code># RUIM
+@app.get('/users/{id}')
+def get_user(id):
+    return User.objects.get(id=id).to_dict()
+    # Retorna password_hash, internal_notes, ssn...
+
+# BOM: response model explícito
+class UserPublic(BaseModel):
+    id: int
+    name: str
+    avatar_url: str | None
+
+@app.get('/users/{id}', response_model=UserPublic)
+def get_user(id):
+    return User.objects.get(id=id)</code></pre>
+<p>Serializar o objeto de banco INTEIRO é o caminho de menor esforço
+imediato — e é exatamente por isso que aparece com tanta frequência:
+funciona no primeiro teste, e só revela o problema quando alguém inspeciona
+a resposta HTTP e encontra campos que nunca deveriam estar ali
+(hash de senha, notas internas, dado sensível de outro contexto). Um
+modelo de resposta EXPLÍCITO, declarando exatamente quais campos saem,
+inverte o padrão de risco: um campo novo adicionado ao modelo de banco
+não vaza automaticamente para a API só porque existe — precisa ser
+adicionado deliberadamente ao <code>response_model</code> para
+aparecer.</p>
+
+<h3>7. Transporte: TLS não é opcional, e mTLS resolve o que TLS unilateral não alcança</h3>
+<p>TLS 1.2 no mínimo, com 1.3 preferido sempre que possível, é a base
+inegociável. HSTS com <code>max-age</code> longo e a flag preload
+garante que o navegador nunca tente sequer uma conexão HTTP não
+criptografada depois da primeira visita. Certificate pinning em
+aplicativos móveis adiciona uma camada extra contra certificado
+fraudulento, embora exija cuidado operacional (rotacionar o certificado
+sem quebrar apps já publicados é um desafio real). Entre microsserviços
+internos, TLS unilateral só prova a identidade do SERVIDOR para o
+cliente — mTLS exige que AMBOS os lados apresentem certificado, provando
+identidade mútua; um service mesh (Istio, Linkerd) automatiza essa
+troca de certificado sem exigir código específico em cada serviço. E
+tokens NUNCA devem ir na URL — parâmetros de URL acabam em logs de
+acesso, em histórico de proxy, em cache de navegador — o único lugar
+seguro para um token é o cabeçalho
+<code>Authorization: Bearer ...</code>.</p>
+
+<h3>8. Webhooks: verificar a assinatura antes de confiar em qualquer coisa que chegue</h3>
+<p>Um endpoint de webhook é, por natureza, exposto publicamente para
+receber chamadas de um serviço externo — e sem verificação, qualquer um
+que descubra a URL pode enviar um payload forjado se passando pelo
+provedor legítimo:</p>
+<pre><code>POST /webhooks/stripe HTTP/1.1
+Stripe-Signature: t=1614243000,v1=abc123def456...
+Content-Type: application/json
+
+{"id": "evt_...", "type": "charge.succeeded", ...}
+
+# Receptor valida
+import hmac, hashlib, time
+
+def verify_webhook(body: bytes, signature_header: str, secret: str):
+    timestamp, sig = parse_header(signature_header)
+    if abs(time.time() - timestamp) &gt; 300:   # &gt;5min, replay
+        raise Invalid('stale')
+    expected = hmac.new(
+        secret.encode(),
+        f"{timestamp}.{body.decode()}".encode(),
+        hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        raise Invalid('signature')</code></pre>
+<p>A checagem de timestamp (rejeitar qualquer coisa mais velha que 5
+minutos) fecha um vetor de ataque de replay: mesmo que um atacante
+capture um payload assinado legítimo em trânsito, reenviá-lo depois da
+janela de validade é rejeitado. E <code>hmac.compare_digest</code>
+compara em tempo CONSTANTE — uma comparação ingênua com <code>==</code>
+vaza informação sobre quantos caracteres do início já coincidem através
+do tempo de execução, permitindo reconstruir a assinatura válida byte a
+byte via medição cuidadosa de latência.</p>
+
+<h3>9. Mensagens de erro: útil para você, inútil (de propósito) para quem não deveria ver</h3>
+<pre><code># RUIM
+except Exception as e:
+    return {"error": str(e), "trace": traceback.format_exc()}
+
+# BOM
+except Exception as e:
+    correlation_id = uuid.uuid4()
+    logger.exception("erro", extra={"correlation_id": correlation_id})
+    return JSONResponse(
+        status_code=500,
+        content={"error": "internal", "correlation_id": str(correlation_id)}
+    )</code></pre>
+<p>Devolver o traceback completo na resposta HTTP entrega ao cliente
+(inclusive um atacante testando a API) detalhes de implementação
+interna — nome de tabela, caminho de arquivo, versão de biblioteca —
+informação que facilita um ataque direcionado subsequente. A alternativa
+correta preserva os dois lados do problema: o cliente recebe um ID de
+correlação genérico e opaco, e o log DETALHADO (com o traceback
+completo) fica registrado internamente indexado por esse mesmo ID — o
+time de suporte busca pelo <code>correlation_id</code> quando o cliente
+reportar o problema, sem nunca ter exposto detalhe nenhum publicamente.</p>
+
+<h3>10. Observabilidade de API: os quatro sinais que revelam ataque em andamento</h3>
+<p>Logs estruturados em JSON, carregando <code>request_id</code>, um
+hash do <code>user_id</code> (nunca o ID em claro se ele for sensível),
+rota, status e latência — sem PII exposta diretamente no log — formam a
+base investigativa. Métricas por rota (requisições/segundo, taxa de
+erro, latência em p50/p99) revelam degradação antes de virar incidente
+visível para o usuário. Traces via OpenTelemetry permitem seguir uma
+requisição saltando entre serviços pelo mesmo <code>trace_id</code>
+(detalhado na aula de Observabilidade Avançada). E alertas específicos
+merecem atenção redobrada em API: um pico de respostas 401 sugere
+tentativa de força bruta de credencial em andamento; um pico de 429
+sugere tentativa de negação de serviço ou scraping agressivo; e um
+aumento de latência sem mudança de tráfego correspondente sugere algo
+consumindo recurso de forma anômala.</p>
+
+<h3>11. API Gateway: centralizar o que, sem ele, cada serviço reimplementaria isoladamente</h3>
+<p>Validar o JWT numa única camada de borda, deixando os serviços
+internos CONFIAREM no resultado dessa validação, evita reimplementar a
+mesma lógica de autenticação em cada microsserviço separadamente. Rate
+limiting unificado impõe o mesmo limite de forma consistente, em vez de
+cada serviço ter sua própria (e potencialmente inconsistente)
+implementação. Logging e métricas centralizados dão visão agregada sem
+depender de cada serviço instrumentar exatamente da mesma forma.
+Versionamento de API (v1, v2 convivendo) e roteamento ficam numa camada
+só, sem espalhar lógica de compatibilidade por todo o backend. E cache
+de resposta na borda reduz carga nos serviços de origem para
+requisições repetidas. Kong, AWS API Gateway, Apigee, NGINX, Traefik e
+Envoy são as opções mais usadas nesse papel.</p>
+
+<h3>12. Oito anti-padrões que resumem praticamente toda a aula</h3>
+<ul>
+<li><strong>JWT em localStorage do navegador</strong>: acessível a
+qualquer XSS bem-sucedido.</li>
+<li><strong>Token sem expiração</strong>: uma vez vazado, vale para
+sempre.</li>
+<li><strong>HS256 com segredo compartilhado entre serviços</strong>:
+qualquer serviço que valida também consegue forjar.</li>
+<li><strong>API sem rate limit nenhum</strong>: aberta a força bruta e
+abuso de recurso sem custo para o atacante.</li>
+<li><strong>BOLA</strong>: não checar posse do recurso, a falha nº1 do
+OWASP API Top 10 (seção 2).</li>
+<li><strong>Stack trace na resposta de erro</strong>: entrega detalhe
+interno de graça a quem está testando a API.</li>
+<li><strong>Token na URL</strong>: acaba em log de acesso, histórico de
+proxy, cache de navegador.</li>
+<li><strong>CORS com origem `*` e credentials habilitado</strong>:
+permite QUALQUER site fazer requisição autenticada em nome do usuário —
+uma combinação que navegadores modernos já bloqueiam por padrão, mas que
+configuração incorreta ainda consegue contornar.</li>
+</ul>"""
                 ),
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
