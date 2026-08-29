@@ -310,6 +310,45 @@ class TestLabDataIntegrity:
                 pages = sorted(by_topic[topic["title"]])
                 assert pages == list(range(1, n + 1)), topic["title"]
 
+    def test_labs_gerados_sao_praticos_nao_quiz_de_tema(self):
+        from apps.courses.seed_data.labs import LABS
+        from apps.courses.seed_data.page_labs import expand_labs
+
+        authored_titles = {lab["title"] for lab in LABS}
+        kinds = {"terminal": 0, "order": 0, "find_flaw": 0, "blanks": 0, "scenario": 0}
+        for lab in expand_labs():
+            kinds[lab["kind"]] = kinds.get(lab["kind"], 0) + 1
+            if lab["title"] in authored_titles:
+                continue
+            spec = lab["spec"]
+            if lab["kind"] == "scenario":
+                sit = spec.get("situation", "")
+                assert "tema central" not in sit.lower()
+                assert "central topic" not in sit.lower()
+                boas = sum(1 for c in spec["choices"] if c["good"])
+                assert boas == 1, lab["title"]
+            if lab["kind"] == "terminal":
+                pool = spec["correct_command"] + spec["distractor_tokens"]
+                assert len(set(pool)) == len(pool), lab["title"]
+            if lab["kind"] == "order":
+                assert sorted(spec["steps_shuffled"]) == sorted(spec["correct_order"])
+            if lab["kind"] == "find_flaw":
+                assert 0 <= spec["flaw_line_index"] < len(spec["lines"])
+            if lab["kind"] == "blanks":
+                for key, blank in spec["blanks"].items():
+                    assert f"___{key}___" in spec["template"]
+                    assert blank["correct"] in blank["options"]
+        assert kinds["scenario"] < kinds["terminal"], kinds
+        assert kinds["terminal"] + kinds["order"] + kinds["find_flaw"] + kinds["blanks"] > kinds["scenario"]
+        generic = sum(
+            1
+            for lab in expand_labs()
+            if lab["title"] not in authored_titles
+            and lab["kind"] == "scenario"
+            and "menor privilégio possível" in lab["spec"]["choices"][0]["text"]
+        )
+        assert generic < 25, generic
+
 
 @pytest.mark.django_db
 class TestSeedLabsCommand:
