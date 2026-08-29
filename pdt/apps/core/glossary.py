@@ -24,6 +24,15 @@ _SKIP_TAGS = frozenset({"pre", "code", "script", "style", "a", "button"})
 # ali corromperia a sintaxe do diagrama antes do mermaid.js processá-la.
 _SKIP_CLASSES = frozenset({"mermaid"})
 
+
+# Em texto de elemento HTML (não atributo), aspas NÃO precisam ser escapadas.
+# `html.escape(..., quote=True)` (padrão) converte `"` → `&quot;` e `>` → `&gt;`,
+# o que destrói a sintaxe Mermaid (`A["rótulo"]` e `-->` viram entidades e o
+# mermaid.js mostra "Syntax error in text"). Em nós de prosa/código, ainda
+# escapamos `&`/`</>` com quote=False; dentro de `.mermaid` o texto sai cru.
+def _escape_text_node(data: str) -> str:
+    return escape(data, quote=False)
+
 # Cache do dicionário termo->definição. TTL é rede de segurança; o sinal em
 # apps.core.apps.CoreConfig.ready() invalida na hora quando alguém salva ou
 # apaga um GlossaryTerm, então a edição pelo admin aparece sem esperar o TTL.
@@ -37,7 +46,9 @@ class _GlossaryAnnotator(HTMLParser):
         self._terms = terms
         self._pattern = self._build_pattern(terms) if terms else None
         self._out: list[str] = []
-        self._skip_stack: list[str] = []  # nomes de tag que abriram uma zona proibida
+        # (tag, raw_passthrough): Mermaid precisa do texto byte-a-byte (`-->`,
+        # aspas); pre/code/etc. re-escapam `&`/`</>` após o parser decodificar.
+        self._skip_stack: list[tuple[str, bool]] = []
         self._used: set[str] = set()
         self.used_order: list[str] = []  # ordem de 1ª aparição, para a sidebar
 
@@ -55,15 +66,16 @@ class _GlossaryAnnotator(HTMLParser):
         self._out.append(self.get_starttag_text() or f"<{tag}>")
         class_attr = next((v for k, v in attrs if k == "class"), "") or ""
         classes = class_attr.split()
-        if tag in _SKIP_TAGS or _SKIP_CLASSES.intersection(classes):
-            self._skip_stack.append(tag)
+        is_mermaid = bool(_SKIP_CLASSES.intersection(classes))
+        if tag in _SKIP_TAGS or is_mermaid:
+            self._skip_stack.append((tag, is_mermaid))
 
     def handle_startendtag(self, tag: str, attrs) -> None:
         self._out.append(self.get_starttag_text() or f"<{tag}/>")
 
     def handle_endtag(self, tag: str) -> None:
         self._out.append(f"</{tag}>")
-        if self._skip_stack and self._skip_stack[-1] == tag:
+        if self._skip_stack and self._skip_stack[-1][0] == tag:
             self._skip_stack.pop()
 
     def handle_comment(self, data: str) -> None:
@@ -72,10 +84,19 @@ class _GlossaryAnnotator(HTMLParser):
     def handle_decl(self, decl: str) -> None:
         self._out.append(f"<!{decl}>")
 
+    def _in_mermaid(self) -> bool:
+        return any(raw for _, raw in self._skip_stack)
+
     # -- único ponto que toca em texto de verdade --
     def handle_data(self, data: str) -> None:
-        if self._skip_stack or self._pattern is None:
-            self._out.append(escape(data))
+        if self._skip_stack:
+            if self._in_mermaid():
+                self._out.append(data)
+            else:
+                self._out.append(_escape_text_node(data))
+            return
+        if self._pattern is None:
+            self._out.append(_escape_text_node(data))
             return
         self._out.append(self._annotate(data))
 
@@ -84,19 +105,19 @@ class _GlossaryAnnotator(HTMLParser):
         last = 0
         for m in self._pattern.finditer(text):
             term = m.group(0)
-            pieces.append(escape(text[last:m.start()]))
+            pieces.append(_escape_text_node(text[last:m.start()]))
             last = m.end()
             if term in self._used:
-                pieces.append(escape(term))
+                pieces.append(_escape_text_node(term))
                 continue
             definition = self._terms.get(term)
             if not definition:
-                pieces.append(escape(term))
+                pieces.append(_escape_text_node(term))
                 continue
             self._used.add(term)
             self.used_order.append(term)
             pieces.append(_render_term(term, definition))
-        pieces.append(escape(text[last:]))
+        pieces.append(_escape_text_node(text[last:]))
         return "".join(pieces)
 
     def get_html(self) -> str:

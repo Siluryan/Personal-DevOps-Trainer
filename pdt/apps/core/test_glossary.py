@@ -53,6 +53,24 @@ class TestAnnotateGlossaryTerms:
         assert "glossary-term" not in mermaid_block
         assert out.count("glossary-term") == 1  # só a 1ª ocorrência fora do diagrama
 
+    def test_mermaid_preserva_aspas_dos_rotulos(self):
+        # Regressão: escape() transformava `"` → `&quot;` e `>` → `&gt;`
+        # (`-->` virava `--&gt;`) e o Mermaid 11 mostrava "Syntax error in text".
+        html = (
+            '<div class="mermaid">flowchart TD\n'
+            '    A["Usuário comum"] --> B{"setuid?"}\n'
+            '    B -- "Sim" --> C["Roda com UID do DONO"]\n'
+            "</div>"
+        )
+        out = annotate_glossary_terms(html, {"UID": "User ID."})
+        mermaid_block = out.split('<div class="mermaid">')[1].split("</div>")[0]
+        assert "&quot;" not in mermaid_block
+        assert "&gt;" not in mermaid_block
+        assert 'A["Usuário comum"]' in mermaid_block
+        assert "-->" in mermaid_block
+        assert 'B -- "Sim" -->' in mermaid_block
+        assert "glossary-term" not in mermaid_block
+
     def test_termo_com_case_diferente_nao_bate(self):
         # Casamento é sensível a maiúsculas/minúsculas de propósito (evita falso
         # positivo em palavra comum que coincide com uma sigla em minúsculo).
