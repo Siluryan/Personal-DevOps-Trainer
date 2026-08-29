@@ -177,7 +177,7 @@
              style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);
                     color:#fde68a;padding:4px 10px;border-radius:6px;font-size:.8rem"
              class="hidden sm:inline hover:bg-amber-400/20 transition-colors">
-            ☕ {{ DONATION_LABEL }}
+            ☕ {% trans "Pague um café para o criador" %}
           </a>
         {% endif %}
 
@@ -264,7 +264,7 @@
           <a href="{{ DONATION_URL }}" target="_blank" rel="noopener"
              style="margin-top:4px;background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.3);
                     color:#fde68a;padding:7px 10px;border-radius:7px;font-size:.875rem;text-align:center"
-             class="block">☕ {{ DONATION_LABEL }}</a>
+             class="block">☕ {% trans "Pague um café para o criador" %}</a>
         {% endif %}
       </div>
     {% endif %}

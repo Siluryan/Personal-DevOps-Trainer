@@ -837,7 +837,7 @@ msgstr "Your current level:"
 
 #: templates/interviews/index.html:43
 msgid "conquistado"
-msgstr "unlocked"
+msgstr "achieved"
 
 #: templates/interviews/index.html:48
 msgid "bloqueado"
@@ -1159,3 +1159,35 @@ msgstr ""
 #: templates/presence/map.html:178
 msgid "Ativar no perfil →"
 msgstr "Turn on in profile →"
+
+msgid "Estagiário"
+msgstr "Intern"
+
+msgid "Pague um café para o criador"
+msgstr "Buy the creator a coffee"
+
+msgid "Pontos"
+msgstr "Points"
+
+msgid "Pontos por tópico"
+msgstr "Points per topic"
+
+msgid ""
+"Fundamentos: Linux, redes, Docker, Git, CI/CD, cloud e segurança básica."
+msgstr ""
+"Fundamentals: Linux, networking, Docker, Git, CI/CD, cloud, and basic "
+"security."
+
+msgid ""
+"Operação real: Kubernetes, IaC, observability, DevSecOps, troubleshooting e "
+"performance."
+msgstr ""
+"Real ops: Kubernetes, IaC, observability, DevSecOps, troubleshooting, and "
+"performance."
+
+msgid ""
+"Arquitetura: trade-offs, escalabilidade, multi-region, SRE, segurança "
+"avançada e liderança técnica."
+msgstr ""
+"Architecture: trade-offs, scalability, multi-region, SRE, advanced security, "
+"and technical leadership."
