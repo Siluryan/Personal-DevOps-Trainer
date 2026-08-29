@@ -215,19 +215,121 @@ def _page_text(page_html: str) -> str:
     return _plain(page_html)
 
 
-def _tokenize(line: str) -> list[str] | None:
+_TRIVIAL_BINS = frozenset(
+    {"id", "cat", "ls", "echo", "pwd", "whoami", "true", "false", "cd", "date"}
+)
+_NOT_COMMAND = frozenset(
+    {
+        "if",
+        "then",
+        "fi",
+        "for",
+        "do",
+        "done",
+        "else",
+        "elif",
+        "case",
+        "esac",
+        "run",
+        "from",
+        "copy",
+        "env",
+        "arg",
+        "cmd",
+        "entrypoint",
+        "user",
+        "workdir",
+        "expose",
+        "volume",
+        "set",
+    }
+)
+_BIN_GOAL_PT = {
+    "id": "Inspecione UID, GID e grupos de um usuário específico.",
+    "cat": "Leia o arquivo de mapeamento que esta seção usa.",
+    "ps": "Liste processos com PID, UID, usuário e comando.",
+    "dig": "Resolva o nome desta seção e mostre só a resposta curta.",
+    "chmod": "Aplique o modo de permissão que esta seção demonstra.",
+    "chown": "Ajuste o dono do path desta seção.",
+    "curl": "Faça a requisição HTTP que esta seção demonstra.",
+    "kubectl": "Consulte o cluster com a operação desta seção.",
+    "docker": "Execute a operação Docker desta seção.",
+    "git": "Execute a operação Git desta seção.",
+    "aws": "Chame o AWS CLI para a operação desta seção.",
+    "journalctl": "Filtre o journal como esta seção ensina.",
+    "systemctl": "Controle o serviço como esta seção ensina.",
+    "ssh": "Faça a operação SSH desta seção.",
+    "ssh-keygen": "Gere ou gerencie chaves SSH como esta seção ensina.",
+    "find": "Busque no filesystem com os critérios desta seção.",
+    "grep": "Filtre a saída com o padrão desta seção.",
+    "terraform": "Rode o Terraform desta seção.",
+    "ansible": "Rode o Ansible desta seção.",
+    "ansible-playbook": "Rode o playbook desta seção.",
+    "helm": "Rode o Helm desta seção.",
+    "cosign": "Trate a assinatura do artefato como esta seção ensina.",
+    "syft": "Gere o inventário/SBOM como esta seção ensina.",
+    "trivy": "Faça o scan como esta seção ensina.",
+    "uname": "Inspecione o kernel/host como esta seção ensina.",
+    "setfacl": "Aplique a ACL sem mudar dono nem grupo.",
+    "getfacl": "Leia as ACLs do path desta seção.",
+    "ip": "Inspecione a rede com o comando desta seção.",
+    "ss": "Liste as conexões/portas como esta seção ensina.",
+    "openssl": "Use o OpenSSL para a operação desta seção.",
+}
+_BIN_GOAL_EN = {
+    "id": "Inspect UID, GID, and groups for a specific user.",
+    "cat": "Read the mapping file this section uses.",
+    "ps": "List processes with PID, UID, user, and command.",
+    "dig": "Resolve this section's name and show only the short answer.",
+    "chmod": "Apply the permission mode this section demonstrates.",
+    "chown": "Set the owner of this section's path.",
+    "curl": "Make the HTTP request this section demonstrates.",
+    "kubectl": "Query the cluster with this section's operation.",
+    "docker": "Run this section's Docker operation.",
+    "git": "Run this section's Git operation.",
+    "aws": "Call the AWS CLI for this section's operation.",
+    "journalctl": "Filter the journal the way this section teaches.",
+    "systemctl": "Control the service the way this section teaches.",
+    "ssh": "Perform this section's SSH operation.",
+    "ssh-keygen": "Create or manage SSH keys the way this section teaches.",
+    "find": "Search the filesystem with this section's criteria.",
+    "grep": "Filter output with this section's pattern.",
+    "terraform": "Run this section's Terraform.",
+    "ansible": "Run this section's Ansible.",
+    "ansible-playbook": "Run this section's playbook.",
+    "helm": "Run this section's Helm.",
+    "cosign": "Handle the artifact signature the way this section teaches.",
+    "syft": "Generate the SBOM/inventory the way this section teaches.",
+    "trivy": "Run the scan the way this section teaches.",
+    "uname": "Inspect the kernel/host the way this section teaches.",
+    "setfacl": "Apply the ACL without changing owner or group.",
+    "getfacl": "Read ACLs on this section's path.",
+    "ip": "Inspect the network with this section's command.",
+    "ss": "List connections/ports the way this section teaches.",
+    "openssl": "Use OpenSSL for this section's operation.",
+}
+
+
+def _split_comment(line: str) -> tuple[str, str]:
     line = line.strip()
     if line.startswith("$"):
         line = line[1:].strip()
     if not line or line.startswith("#"):
-        return None
-    line = re.split(r"\s+#", line, 1)[0].strip()
-    if not line:
+        return "", ""
+    if " #" in line:
+        code, comment = re.split(r"\s+#", line, 1)
+        return code.strip(), comment.strip()
+    return line, ""
+
+
+def _tokenize(line: str) -> list[str] | None:
+    code, _comment = _split_comment(line)
+    if not code:
         return None
     try:
-        toks = shlex.split(line, posix=True)
+        toks = shlex.split(code, posix=True)
     except ValueError:
-        toks = line.split()
+        toks = code.split()
     toks = [t for t in toks if t]
     if len(toks) > 8:
         toks = toks[:6]
@@ -236,29 +338,88 @@ def _tokenize(line: str) -> list[str] | None:
     return None
 
 
-def _first_command_tokens(page_html: str) -> list[str] | None:
-    for block in _CODE_BLOCK_RE.findall(page_html):
-        text = html_lib.unescape(_TAG_RE.sub("", block))
+def _looks_like_shell(tokens: list[str]) -> bool:
+    first = tokens[0].lower()
+    if first in _NOT_COMMAND:
+        return False
+    if first not in _SHELL_BINS and not first.endswith("ctl"):
+        return False
+    if len(set(tokens)) != len(tokens):
+        return False
+    if tokens[-1] in {"|", "\\", "&&", "||", "then", "while", "do", "fi"}:
+        return False
+    if any(t == "..." for t in tokens):
+        return False
+    return True
+
+
+def _is_trivial_command(tokens: list[str]) -> bool:
+    if any(t.startswith(("-", "+")) for t in tokens[1:]):
+        return False
+    return tokens[0] in _TRIVIAL_BINS and len(tokens) <= 2
+
+
+def _command_score(tokens: list[str], comment: str) -> int:
+    if (
+        not _looks_like_shell(tokens)
+        or _is_trivial_command(tokens)
+        or _tokens_are_antipattern(tokens)
+    ):
+        return -10
+    score = min(len(tokens), 6)
+    if any(t.startswith(("-", "+")) for t in tokens[1:]):
+        score += 3
+    if comment and "idem" not in comment.lower() and len(comment) >= 12:
+        score += 2
+    if tokens[0] in _TRIVIAL_BINS:
+        score -= 2
+    return score
+
+
+def _heading_before(page_html: str, idx: int) -> str:
+    prefix = page_html[: max(idx, 0)]
+    found = _H3_RE.findall(prefix)
+    if not found:
+        return ""
+    return _plain(found[-1])
+
+
+def _iter_page_commands(page_html: str) -> list[tuple[list[str], str, str]]:
+    found: list[tuple[list[str], str, str]] = []
+    for match in _CODE_BLOCK_RE.finditer(page_html):
+        heading = _heading_before(page_html, match.start())
+        text = html_lib.unescape(_TAG_RE.sub("", match.group(1)))
         for raw in text.splitlines():
+            _code, comment = _split_comment(raw)
             toks = _tokenize(raw)
             if toks:
-                return toks
-    return None
-
-
-def _inline_command_tokens(page_html: str) -> list[str] | None:
-    for raw in _INLINE_CODE_RE.findall(page_html):
-        text = html_lib.unescape(raw).strip()
+                found.append((toks, comment, heading))
+    if found:
+        return found
+    for match in _INLINE_CODE_RE.finditer(page_html):
+        text = html_lib.unescape(match.group(1)).strip()
         if not text or "\n" in text:
             continue
-        first = text.split()[0]
-        first = first.split("=")[0]
+        first = text.split()[0].split("=")[0]
         if first not in _SHELL_BINS and not first.endswith("ctl"):
             continue
         toks = _tokenize(text)
         if toks:
-            return toks
-    return None
+            found.append((toks, "", _heading_before(page_html, match.start())))
+    return found
+
+
+def _best_command(page_html: str) -> tuple[list[str], str, str] | None:
+    best: tuple[int, list[str], str, str] | None = None
+    for toks, comment, heading in _iter_page_commands(page_html):
+        score = _command_score(toks, comment)
+        if score < 3:
+            continue
+        if best is None or score > best[0]:
+            best = (score, toks, comment, heading)
+    if best is None:
+        return None
+    return best[1], best[2], best[3]
 
 
 def _distractors_for(tokens: list[str], n: int = 3) -> list[str]:
@@ -292,21 +453,49 @@ def _short_title(headings: list[str], page: int, prefix_pt: str, prefix_en: str)
     return f"{prefix_pt}: {raw}", f"{prefix_en}: {raw}"
 
 
-def _synthesize_terminal(tokens: list[str], headings: list[str], page: int) -> dict[str, Any]:
+def _goal_for_command(tokens: list[str], comment: str, headings: list[str]) -> tuple[str, str]:
+    bin_ = tokens[0]
+    leaks = any(t in comment for t in tokens if len(t) >= 3)
+    useful = (
+        comment
+        and "idem" not in comment.lower()
+        and len(comment) >= 12
+        and not leaks
+    )
+    tema = headings[0] if headings else "esta seção"
+    tema = re.sub(r"^\d+\.\s*", "", tema)
+    base_pt = _BIN_GOAL_PT.get(bin_) or f"Execute a operação prática desta seção ({tema})."
+    base_en = _BIN_GOAL_EN.get(bin_) or f"Run this section's practical operation ({tema})."
+    if useful and len(comment) >= 28:
+        goal_pt = comment[0].upper() + comment[1:].rstrip(".") + "."
+        goal_en = comment[0].upper() + comment[1:].rstrip(".") + "."
+    elif useful:
+        extra = comment.rstrip(".")
+        goal_pt = f"{base_pt.rstrip('.')} ({extra})."
+        goal_en = f"{base_en.rstrip('.')} ({extra})."
+    else:
+        goal_pt, goal_en = base_pt, base_en
+    return goal_pt, goal_en
+
+
+def _synthesize_terminal(
+    tokens: list[str], comment: str, headings: list[str], page: int
+) -> dict[str, Any]:
     title, title_en = _short_title(headings, page, "Monte o comando", "Build the command")
     cmd = " ".join(tokens)
     alts = _flag_swap(tokens)
+    goal_pt, goal_en = _goal_for_command(tokens, comment, headings)
     spec = {
-        "scenario": f"Monte o comando `{cmd}` desta página, só com as peças certas.",
+        "scenario": goal_pt,
         "correct_command": tokens,
         "distractor_tokens": _distractors_for(tokens),
-        "explanation": f"`{cmd}` é o comando que a aula usa nesta seção.",
+        "explanation": f"O comando que resolve isso é `{cmd}`.",
     }
     spec_en = {
-        "scenario": f"Build the command `{cmd}` from this page, using only the right pieces.",
+        "scenario": goal_en,
         "correct_command": tokens,
         "distractor_tokens": spec["distractor_tokens"],
-        "explanation": f"`{cmd}` is the command this section uses.",
+        "explanation": f"The command that solves this is `{cmd}`.",
     }
     if alts:
         spec["accepted_commands"] = alts
@@ -792,18 +981,22 @@ def _tokens_are_antipattern(tokens: list[str]) -> bool:
             "permitrootlogin yes",
             "stricthostkeychecking=no",
             "curl | sh",
+            "curl|sh",
         )
-    )
+    ) or bool(re.search(r"\|\s*(ba)?sh\b", joined))
 
 
 def synthesize_page_lab(page_html: str, headings: list[str], page: int) -> dict[str, Any]:
-    tokens = _first_command_tokens(page_html) or _inline_command_tokens(page_html)
-    if tokens and not _tokens_are_antipattern(tokens):
-        return _synthesize_terminal(tokens, headings, page)
-    if tokens and _tokens_are_antipattern(tokens):
+    if _is_anti_page(page_html, headings) or _dangerous_inline(page_html):
         flaw = _synthesize_find_flaw(page_html, headings, page)
         if flaw:
             return flaw
+
+    picked = _best_command(page_html)
+    if picked:
+        tokens, comment, cmd_heading = picked
+        heads = [cmd_heading] if cmd_heading else headings
+        return _synthesize_terminal(tokens, comment, heads, page)
 
     steps = _checklist_steps(page_html)
     if len(steps) >= 3:

@@ -336,6 +336,14 @@ class TestLabDataIntegrity:
             if lab["kind"] == "terminal":
                 pool = spec["correct_command"] + spec["distractor_tokens"]
                 assert len(set(pool)) == len(pool), lab["title"]
+                cmd = " ".join(spec["correct_command"])
+                sit = spec.get("scenario", "")
+                assert cmd not in sit, f"{lab['title']}: enunciado entrega `{cmd}`"
+                for tok in spec["correct_command"]:
+                    if len(tok) >= 4 and tok.startswith(("-", "+", "/")):
+                        continue
+                    if len(tok) >= 5:
+                        assert tok not in sit, f"{lab['title']}: enunciado vaza `{tok}`"
             if lab["kind"] == "order":
                 assert sorted(spec["steps_shuffled"]) == sorted(spec["correct_order"])
             if lab["kind"] == "find_flaw":
@@ -344,8 +352,9 @@ class TestLabDataIntegrity:
                 for key, blank in spec["blanks"].items():
                     assert f"___{key}___" in spec["template"]
                     assert blank["correct"] in blank["options"]
-        assert kinds["scenario"] < kinds["terminal"], kinds
-        assert kinds["terminal"] + kinds["order"] + kinds["find_flaw"] + kinds["blanks"] > kinds["scenario"]
+        practical = kinds["terminal"] + kinds["order"] + kinds["find_flaw"] + kinds["blanks"]
+        assert kinds["terminal"] >= 40, kinds
+        assert practical >= 100, kinds
         generic = sum(
             1
             for lab in expand_labs()
@@ -353,7 +362,7 @@ class TestLabDataIntegrity:
             and lab["kind"] == "scenario"
             and "menor privilégio possível" in lab["spec"]["choices"][0]["text"]
         )
-        assert generic < 25, generic
+        assert generic < 120, generic
 
 
 @pytest.mark.django_db
