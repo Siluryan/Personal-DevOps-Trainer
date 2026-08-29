@@ -48,14 +48,14 @@
     {% endif %}
 
     <p class="font-semibold mb-5" style="color:#ddeeff;line-height:1.55;font-size:1.0625rem">
-      {{ question.statement|bold_ticks }}
+      {{ question.display_statement|bold_ticks }}
     </p>
 
     <p style="font-size:.75rem;color:#5a7a9a;margin:-6px 0 10px;line-height:1.45">
       {% trans "Cada opção mostra só o enunciado da alternativa. O texto completo (com explicações) aparece no gabarito depois que você finalizar." %}
     </p>
     <div style="display:flex;flex-direction:column;gap:10px">
-      {% for choice_text in question.choices %}
+      {% for choice_text in question.display_choices %}
         <label x-bind:style="{
                   background: choice === '{{ forloop.counter0 }}' ? 'rgba(14,165,233,.15)' : '#04091c',
                   borderColor: choice === '{{ forloop.counter0 }}' ? 'rgba(14,165,233,.55)' : '#1a2f50',

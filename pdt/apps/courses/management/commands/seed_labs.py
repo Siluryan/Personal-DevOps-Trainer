@@ -46,7 +46,9 @@ class Command(BaseCommand):
                 defaults={
                     "kind": entry["kind"],
                     "title": entry["title"],
+                    "title_en": entry.get("title_en", ""),
                     "spec": entry["spec"],
+                    "spec_en": entry.get("spec_en"),
                     "order": entry.get("order", 0),
                     "seed_managed": True,
                 },
@@ -61,10 +63,22 @@ class Command(BaseCommand):
 
             lab.kind = entry["kind"]
             lab.title = entry["title"]
+            lab.title_en = entry.get("title_en", "")
             lab.spec = entry["spec"]
+            lab.spec_en = entry.get("spec_en")
             lab.order = entry.get("order", 0)
             lab.seed_managed = True
-            lab.save(update_fields=["kind", "title", "spec", "order", "seed_managed"])
+            lab.save(
+                update_fields=[
+                    "kind",
+                    "title",
+                    "title_en",
+                    "spec",
+                    "spec_en",
+                    "order",
+                    "seed_managed",
+                ]
+            )
             atualizados += 1
 
         self.stdout.write(self.style.SUCCESS(f"{criados} lab(s) criado(s)."))

@@ -33,7 +33,12 @@ class Command(BaseCommand):
         for entry in GLOSSARY_TERMS:
             term, created = GlossaryTerm.objects.get_or_create(
                 term=entry["term"],
-                defaults={"definition": entry["definition"], "seed_managed": True},
+                defaults={
+                    "definition": entry["definition"],
+                    "term_en": entry.get("term_en", ""),
+                    "definition_en": entry.get("definition_en", ""),
+                    "seed_managed": True,
+                },
             )
             if created:
                 criados += 1
@@ -44,8 +49,10 @@ class Command(BaseCommand):
                 continue
 
             term.definition = entry["definition"]
+            term.term_en = entry.get("term_en", "")
+            term.definition_en = entry.get("definition_en", "")
             term.seed_managed = True
-            term.save(update_fields=["definition", "seed_managed"])
+            term.save(update_fields=["definition", "term_en", "definition_en", "seed_managed"])
             atualizados += 1
 
         self.stdout.write(self.style.SUCCESS(f"{criados} termo(s) criado(s)."))

@@ -50,7 +50,9 @@ class Command(BaseCommand):
                 order=phase_index,
                 defaults={
                     "name": phase_data["name"],
+                    "name_en": phase_data.get("name_en", ""),
                     "description": phase_data.get("description", ""),
+                    "description_en": phase_data.get("description_en", ""),
                     "slug": slugify(phase_data["name"])[:140],
                 },
             )
@@ -62,7 +64,9 @@ class Command(BaseCommand):
                     order=topic_order,
                     defaults={
                         "title": topic_data["title"],
+                        "title_en": topic_data.get("title_en", ""),
                         "summary": topic_data.get("summary", ""),
+                        "summary_en": topic_data.get("summary_en", ""),
                         "slug": slugify(topic_data["title"])[:200],
                     },
                 )
@@ -73,18 +77,34 @@ class Command(BaseCommand):
                     topic=topic,
                     defaults={
                         "intro": lesson_data.get("intro", ""),
+                        "intro_en": lesson_data.get("intro_en", ""),
                         "body": lesson_data.get("body", ""),
+                        "body_en": lesson_data.get("body_en", ""),
                         "practical": lesson_data.get("practical", ""),
+                        "practical_en": lesson_data.get("practical_en", ""),
                         "seed_managed": True,
                     },
                 )
                 if not lesson_created:
                     if lesson.seed_managed or force:
                         lesson.intro = lesson_data.get("intro", "")
+                        lesson.intro_en = lesson_data.get("intro_en", "")
                         lesson.body = lesson_data.get("body", "")
+                        lesson.body_en = lesson_data.get("body_en", "")
                         lesson.practical = lesson_data.get("practical", "")
+                        lesson.practical_en = lesson_data.get("practical_en", "")
                         lesson.seed_managed = True
-                        lesson.save(update_fields=["intro", "body", "practical", "seed_managed"])
+                        lesson.save(
+                            update_fields=[
+                                "intro",
+                                "intro_en",
+                                "body",
+                                "body_en",
+                                "practical",
+                                "practical_en",
+                                "seed_managed",
+                            ]
+                        )
                     else:
                         preservadas += 1
                         self.stdout.write(
@@ -103,8 +123,10 @@ class Command(BaseCommand):
                         url=mat["url"],
                         defaults={
                             "title": mat.get("title", "")[:255],
+                            "title_en": mat.get("title_en", "")[:255],
                             "kind": mat.get("kind", "article"),
                             "description": mat.get("description", ""),
+                            "description_en": mat.get("description_en", ""),
                             "language": mat.get("language", "pt-br"),
                             "order": i,
                         },
@@ -116,7 +138,9 @@ class Command(BaseCommand):
                         order=i,
                         defaults={
                             "statement": qd["statement"],
+                            "statement_en": qd.get("statement_en", ""),
                             "explanation": qd.get("explanation", ""),
+                            "explanation_en": qd.get("explanation_en", ""),
                             "is_active": True,
                             "seed_managed": True,
                         },
@@ -130,11 +154,20 @@ class Command(BaseCommand):
                         continue
 
                     question.statement = qd["statement"]
+                    question.statement_en = qd.get("statement_en", "")
                     question.explanation = qd.get("explanation", "")
+                    question.explanation_en = qd.get("explanation_en", "")
                     question.is_active = True
                     question.seed_managed = True
                     question.save(
-                        update_fields=["statement", "explanation", "is_active", "seed_managed"]
+                        update_fields=[
+                            "statement",
+                            "statement_en",
+                            "explanation",
+                            "explanation_en",
+                            "is_active",
+                            "seed_managed",
+                        ]
                     )
                     self._write_choices(question, qd.get("choices", []))
 
@@ -153,6 +186,7 @@ class Command(BaseCommand):
             Choice.objects.create(
                 question=question,
                 text=choice["text"][:255],
+                text_en=choice.get("text_en", "")[:255],
                 is_correct=bool(choice.get("correct", False)),
                 order=ci,
             )

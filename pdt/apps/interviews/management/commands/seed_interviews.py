@@ -57,22 +57,26 @@ def _deterministic_shuffle_choices(
     statement: str,
     choices: list[str],
     correct_idx: int,
-) -> tuple[list[str], int]:
-    out = list(choices)
-    if not 0 <= correct_idx < len(out):
+) -> tuple[list[str], int, list[int]]:
+    """Retorna também `permutation`: para cada posição nova, o índice original —
+    usado por quem chama pra reordenar `choices_en` (mesma ordem, ver EN)."""
+    n = len(choices)
+    if not 0 <= correct_idx < n:
         raise ValueError("correct_index fora do intervalo")
-    correct_text = out[correct_idx]
+    correct_text = choices[correct_idx]
     rng = random.Random(
         _shuffle_seed_int(level, order, statement, correct_text)
     )
-    rng.shuffle(out)
+    permutation = list(range(n))
+    rng.shuffle(permutation)
+    out = [choices[i] for i in permutation]
     try:
         new_idx = out.index(correct_text)
     except ValueError as e:
         raise ValueError(
             "texto da alternativa correta ambíguo ou duplicado após embaralhar"
         ) from e
-    return out, new_idx
+    return out, new_idx, permutation
 
 
 class Command(BaseCommand):
@@ -98,20 +102,29 @@ class Command(BaseCommand):
             )
             for idx, data in enumerate(questions):
                 choices = list(data["choices"])
+                choices_en_src = data.get("choices_en")
                 correct_idx = int(data["correct_index"])
                 statement = data["statement"]
                 if not no_shuffle:
-                    choices, correct_idx = _deterministic_shuffle_choices(
+                    choices, correct_idx, permutation = _deterministic_shuffle_choices(
                         level, idx, statement, choices, correct_idx
                     )
+                    choices_en = (
+                        [choices_en_src[i] for i in permutation] if choices_en_src else None
+                    )
+                else:
+                    choices_en = choices_en_src
 
                 if idx < len(existing):
                     q = existing[idx]
                     q.category = data.get("category", "")
                     q.statement = statement
+                    q.statement_en = data.get("statement_en", "")
                     q.choices = choices
+                    q.choices_en = choices_en
                     q.correct_index = correct_idx
                     q.explanation = data.get("explanation", "")
+                    q.explanation_en = data.get("explanation_en", "")
                     q.order = idx
                     q.is_active = True
                     q.save()
@@ -120,9 +133,12 @@ class Command(BaseCommand):
                         level=level,
                         category=data.get("category", ""),
                         statement=statement,
+                        statement_en=data.get("statement_en", ""),
                         choices=choices,
+                        choices_en=choices_en,
                         correct_index=correct_idx,
                         explanation=data.get("explanation", ""),
+                        explanation_en=data.get("explanation_en", ""),
                         order=idx,
                         is_active=True,
                     )

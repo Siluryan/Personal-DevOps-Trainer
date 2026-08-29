@@ -12,16 +12,30 @@ from apps.assessments.models import AdmissionChoice, AdmissionQuestion
 from apps.core.seed_utils import shuffle_seeded
 
 
-def _q(area: str, statement: str, correct: str, wrong: list[str], explanation: str = ""):
-    choices = [{"text": correct, "correct": True}] + [
-        {"text": w, "correct": False} for w in wrong
+def _q(
+    area: str,
+    statement: str,
+    correct: str,
+    wrong: list[str],
+    explanation: str = "",
+    statement_en: str = "",
+    explanation_en: str = "",
+    correct_en: str = "",
+    wrong_en: list[str] | None = None,
+):
+    wrong_en = wrong_en or []
+    choices = [{"text": correct, "text_en": correct_en, "correct": True}] + [
+        {"text": w, "text_en": (wrong_en[i] if i < len(wrong_en) else ""), "correct": False}
+        for i, w in enumerate(wrong)
     ]
     # Determinístico por enunciado: a ordem não muda a cada restart do processo.
     shuffle_seeded(choices, statement)
     return {
         "area": area,
         "statement": statement,
+        "statement_en": statement_en,
         "explanation": explanation,
+        "explanation_en": explanation_en,
         "choices": choices,
     }
 
@@ -113,13 +127,17 @@ class Command(BaseCommand):
                 statement=entry["statement"],
                 defaults={
                     "area": entry["area"],
+                    "statement_en": entry.get("statement_en", ""),
                     "explanation": entry.get("explanation", ""),
+                    "explanation_en": entry.get("explanation_en", ""),
                     "is_active": True,
                 },
             )
             if not was_created:
                 question.area = entry["area"]
+                question.statement_en = entry.get("statement_en", "")
                 question.explanation = entry.get("explanation", "")
+                question.explanation_en = entry.get("explanation_en", "")
                 question.is_active = True
                 question.save()
             question.choices.all().delete()
@@ -127,6 +145,7 @@ class Command(BaseCommand):
                 AdmissionChoice.objects.create(
                     question=question,
                     text=c["text"][:255],
+                    text_en=c.get("text_en", "")[:255],
                     is_correct=c.get("correct", False),
                     order=i,
                 )
