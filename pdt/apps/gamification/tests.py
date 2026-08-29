@@ -119,6 +119,19 @@ class TestRadarPayload:
         assert payload["labels"] == ["T1", "T2"]
         assert payload["points"] == [0, 0]
 
+    def test_radar_usa_title_en_quando_idioma_en(self, two_topics):
+        from django.contrib.auth.models import AnonymousUser
+        from django.utils import translation
+
+        _, t1, t2 = two_topics
+        t1.title_en = "Topic One EN"
+        t1.save(update_fields=["title_en"])
+        t2.title_en = "Topic Two EN"
+        t2.save(update_fields=["title_en"])
+        with translation.override("en"):
+            payload = build_radar_payload(AnonymousUser())
+        assert payload["labels"] == ["Topic One EN", "Topic Two EN"]
+
 
 @pytest.mark.django_db
 class TestTotalScore:

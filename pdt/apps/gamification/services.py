@@ -22,9 +22,9 @@ def build_radar_payload(user) -> dict:
         user_scores = {
             s.topic_id: s.points for s in TopicScore.objects.filter(user=user)
         }
-    labels = [t.title for t in topics]
+    labels = [t.display_title for t in topics]
     points = [user_scores.get(t.id, 0) for t in topics]
-    phases = [t.phase.name for t in topics]
+    phases = [t.phase.display_name for t in topics]
     return {
         "labels": labels,
         "points": points,

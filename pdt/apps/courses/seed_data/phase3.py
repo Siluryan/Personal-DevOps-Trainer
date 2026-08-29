@@ -3,14 +3,18 @@ from ._helpers import m, q
 
 PHASE3 = {
     "name": "Fase 3: Automação e Ciclo de Vida (DevOps & IaC)",
+    "name_en": "Phase 3: Automation and Lifecycle (DevOps & IaC)",
     "description": "Parar de configurar as coisas manualmente e usar código.",
+    "description_en": "Stop configuring things manually and use code instead.",
     "topics": [
         # =====================================================================
         # 3.1 Versionamento com Git
         # =====================================================================
         {
             "title": "Versionamento com Git",
+            "title_en": "Version Control with Git",
             "summary": "Fluxos de trabalho seguros (Gitflow) e proteção de branches.",
+            "summary_en": "Safe workflows (Gitflow) and branch protection.",
             "lesson": {
                 "intro": (
                     "Git é o sistema nervoso central de qualquer time moderno de software. "
@@ -24,6 +28,19 @@ PHASE3 = {
                     "quando você precisa recuperar um commit que parecia perdido. Esta aula "
                     "vai do modelo mental até políticas de proteção de produção, passando "
                     "por workflows do mundo real."
+                ),
+                "intro_en": (
+                    "Git is the central nervous system of any modern software team. "
+                    "It's practically impossible to find a DevOps pipeline that doesn't start "
+                    "with 'a push to the repository.' But there's an abysmal difference between "
+                    "<em>using</em> Git (commit, push, pull) and <em>understanding</em> Git (commits "
+                    "are immutable snapshots, branches are pointers, HEAD is the current position, "
+                    "history is a DAG, a Directed Acyclic Graph). That difference is what separates "
+                    "those who 'survive Git' from those who 'master the flow' during incidents, when "
+                    "a colleague rebases in production and the whole team's work vanishes, or "
+                    "when you need to recover a commit that seemed lost. This lesson goes from the "
+                    "mental model to production protection policies, covering real-world "
+                    "workflows along the way."
                 ),
                 "body": (
                     "<h3>1. Modelo mental: o que Git realmente armazena</h3>"
@@ -314,6 +331,298 @@ gitGraph
                     "<p>Lição: <em>nunca</em> use force-push em main. Use revert. Configure "
                     "branch protection para tornar isso impossível, mesmo para admins.</p>"
                 ),
+                "body_en": """<h3>1. Mental model: what Git actually stores</h3>
+<p>The first thing to understand: Git does not store <em>diffs</em>
+(like SVN), it stores <em>snapshots</em>. Each commit is an immutable
+object that points to a <em>tree</em> (the state of the entire file
+tree), its parent commit(s), author, message, timestamp. All of this
+is addressed by a SHA-1 hash (or SHA-256 in modern repos). That hash
+is deterministic: same content + same parent + same author produces
+the same hash.</p>
+<div class="mermaid">
+gitGraph
+   commit id: "commit A"
+   commit id: "commit B"
+   branch feature
+   checkout feature
+   commit id: "commit C"
+   commit id: "commit D"
+   checkout main
+   commit id: "commit E"
+   merge feature
+</div>
+<p>Internally, <code>.git/objects/</code> contains four types:</p>
+<ul>
+<li><strong>blob</strong>: the content of a file.</li>
+<li><strong>tree</strong>: a directory (list of blobs/trees + names + perms).</li>
+<li><strong>commit</strong>: points to a root tree, parents, author, message.</li>
+<li><strong>tag</strong>: a signed annotation for a commit.</li>
+</ul>
+<p>Branches and tags are just <em>refs</em>, plain text files under
+<code>.git/refs/</code> containing a hash. <code>HEAD</code> is the ref
+that points to the current branch (or directly to a commit in
+'detached HEAD').</p>
+<p>Try it yourself:</p>
+<pre><code>$ echo 'olá' > hello.txt
+$ git add hello.txt
+$ git commit -m 'first'
+$ git cat-file -p HEAD
+tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904
+parent ...
+author Você &lt;voce@ex.com&gt; ...
+first
+$ git cat-file -p 4b825...   # shows the tree</code></pre>
+<p>This model matters: when you 'reset', 'rebase' or 'cherry-pick',
+you are manipulating pointers and creating <em>new</em> commits,
+rarely deleting objects. That's what makes Git surprisingly
+recoverable (via <code>reflog</code>) even after 'destructive'
+operations.</p>
+
+<h3>2. Workflows: pick what matches your team</h3>
+<p>There is no universally best workflow, only the one that matches
+the team's maturity level, the type of product and the deploy
+frequency.</p>
+<h4>2.1 Trunk-Based Development (TBD)</h4>
+<ul>
+<li>Everyone commits directly to <code>main</code> (or opens <em>very</em>
+short-lived PRs, living hours).</li>
+<li>Incomplete code goes into <code>main</code> hidden behind
+<strong>feature flags</strong>.</li>
+<li>Build/test/deploy runs on every commit.</li>
+<li>Google/Meta/Netflix teams use variations of this.</li>
+</ul>
+<p>Advantages: zero merge hell, real continuous integration, frequent
+deploys (several times a day). Disadvantages: requires a very good
+test suite, mature feature flags, a 'never break trunk' culture.</p>
+<h4>2.2 GitHub Flow</h4>
+<ul>
+<li><code>main</code> is always deployable.</li>
+<li>Each feature lives in a short branch (<code>feat/something</code>).</li>
+<li>Open the PR early, discuss, review, merge.</li>
+<li>Deploy directly from main.</li>
+</ul>
+<p>Simple, popular in modern SaaS. It's 'TBD with PRs as a review ritual'.</p>
+<h4>2.3 Gitflow (Vincent Driessen, 2010)</h4>
+<p>It was the market standard for a long time:</p>
+<ul>
+<li><code>main</code>: release tags.</li>
+<li><code>develop</code>: continuous integration.</li>
+<li><code>feature/*</code>: new features (branch off develop).</li>
+<li><code>release/*</code>: stabilization for a release.</li>
+<li><code>hotfix/*</code>: urgent fixes on main.</li>
+</ul>
+<p>Fits well in products with planned releases (mobile with a
+quarterly release approved by Apple, embedded software, games). In
+modern SaaS it's generally too bureaucratic and gets in the way of
+continuous delivery. Even the original author published a retraction
+saying that 'in SaaS, prefer GitHub Flow'.</p>
+<h4>2.4 Release branching (per-version forks)</h4>
+<p>Common in long-lived projects with multiple versions supported in
+parallel (Linux kernel, Postgres, Kubernetes). Each major version
+keeps a separate branch (<code>release-1.28</code>) that receives
+backports of selected fixes.</p>
+
+<h3>3. Branch protection policy in production</h3>
+<p>On <code>main</code> (or equivalent), configure in GitHub/GitLab:</p>
+<ul>
+<li><strong>Required Pull Request</strong> (no direct push).</li>
+<li><strong>At least 1 approved review</strong> (1-2 depending on
+criticality; 2 for sensitive paths in CODEOWNERS).</li>
+<li><strong>Required green status checks</strong> (CI build, lint,
+tests, SAST, SCA, IaC scan, secret scan).</li>
+<li><strong>Force-push blocking</strong>.</li>
+<li><strong>Linear history</strong> (no merge commits, forces rebase or
+squash).</li>
+<li><strong>Signed commits</strong> required (GPG or SSH).</li>
+<li><strong>Conversation resolution</strong>: comments need to be
+marked resolved.</li>
+<li><strong>Restrict who can push</strong>: include maintainers, but
+<em>include admins in the rule</em>. The phrase 'I'm admin, I can skip
+review' has already caused enough incidents that GitHub and GitLab
+added checkboxes just for that.</li>
+</ul>
+<p>On GitHub, also configure <strong>tag protection</strong> and
+<strong>environment protection</strong> so that deploying to
+production requires manual approval and/or a wait timer.</p>
+
+<h3>4. Commit best practices</h3>
+<h4>4.1 Atomicity</h4>
+<p>One commit = one logical change. Mixing 'fix bug X' + 'refactor
+component Y' + 'update dependency Z' in the same commit makes
+review, bisect, and selective revert harder.</p>
+<p>Use <code>git add -p</code> (patch) to stage specific chunks of the
+diff, not the whole file:</p>
+<pre><code>$ git add -p src/auth.py
+Stage this hunk [y,n,q,a,d,e,?]?</code></pre>
+<h4>4.2 A message with 'why', not just 'what'</h4>
+<p>Bad: <code>fix bug</code>, <code>update code</code>, <code>asdf</code>.</p>
+<p>Good:</p>
+<pre><code>fix(auth): block login após 5 tentativas em 15min
+
+Antes, força bruta era teórica, sem rate limit no endpoint /login.
+Implementa contador em Redis com TTL, retornando 429 após threshold.
+
+Refs: SEC-1234, OWASP A07:2021</code></pre>
+<p>The diff already shows the 'what'. The 'why' is what the reviewer
+(and you, 6 months from now) needs.</p>
+<h4>4.3 Conventional Commits</h4>
+<p>A simple, popular convention:</p>
+<pre><code>&lt;type&gt;(&lt;scope&gt;): &lt;description&gt;
+
+feat(api): adiciona endpoint /v2/users
+fix(payment): corrige race condition em refund
+chore(deps): atualiza django para 5.1.4
+docs(readme): exemplo de docker compose
+refactor(core): extrai service do view
+test(api): cobre 401 em /admin
+ci: roda trivy em pull request
+perf(db): cria índice em users(email)
+BREAKING CHANGE: removido campo deprecated 'name'</code></pre>
+<p>Tools like <code>commitlint</code>, <code>commitizen</code>,
+<code>release-please</code>, <code>semantic-release</code> consume
+this convention to generate an automatic changelog and bump the
+semver version: <code>fix:</code> = patch (1.0.1), <code>feat:</code>
+= minor (1.1.0), <code>BREAKING CHANGE:</code> = major (2.0.0).</p>
+<h4>4.4 Signed commits</h4>
+<p>Without signing, anyone can set <code>user.email</code> to
+<code>cto@empresa.com</code> and make commits under the CTO's name.
+GitHub/GitLab display it as the author without question — it isn't
+'sophisticated' spoofing, it's normal Git behavior.</p>
+<p>Configure GPG or SSH signing:</p>
+<pre><code># SSH (simpler; works with the same auth key)
+git config --global user.signingkey ~/.ssh/id_ed25519.pub
+git config --global gpg.format ssh
+git config --global commit.gpgsign true
+git config --global tag.gpgsign true</code></pre>
+<p>On GitHub: Settings → SSH and GPG keys → New SSH key (Signing key).
+In branch protection, check 'Require signed commits'. Whoever doesn't
+sign doesn't merge.</p>
+
+<h3>5. Merge, rebase and cherry-pick: when to use each one</h3>
+<h4>5.1 Merge</h4>
+<p>Creates a commit with 2+ parents. Preserves history untouched.</p>
+<pre><code>$ git checkout main
+$ git merge feature/login
+Merge made by the 'recursive' strategy.</code></pre>
+<p>Ideal when: you want to keep the branch's context visible ('these
+10 commits were feature X'). Keeps original attribution. Doesn't
+rewrite anything.</p>
+<h4>5.2 Squash merge</h4>
+<p>Combines every commit in the PR into a single one, using the PR's
+message. Main's history stays linear and clean, but you lose
+intermediate granularity.</p>
+<p>Good for: PRs with 'wip', 'fix typo', 'fix lint' that pollute
+history. Bad for: large PRs where intermediate commits have value.</p>
+<h4>5.3 Rebase</h4>
+<p>Reapplies commits from the current branch <em>on top of</em>
+another base, creating new hashes (same change, new commit).</p>
+<pre><code>$ git checkout feature/login
+$ git rebase main
+Successfully rebased and updated refs/heads/feature/login.</code></pre>
+<p>Result: the <code>feature/login</code> branch now 'looks like' it
+branched from the latest version of main. History becomes linear.
+Good for 'cleaning up' the PR before merging.</p>
+<p><strong>GOLDEN RULE</strong>: never rebase history that's already
+shared. If you rebased commits that other people already have, the
+next time they pull, they'll get a conflict (or worse, they'll
+re-introduce the old commits).</p>
+<p>Interactive rebase is powerful for 'rewriting' local commits before
+the push:</p>
+<pre><code>$ git rebase -i HEAD~5
+pick a1b2c3 feat(api): novo endpoint
+squash d4e5f6 fix typo
+squash 7g8h9i wip
+reword 0j1k2l adiciona testes
+drop 3m4n5o commit acidental</code></pre>
+<h4>5.4 Cherry-pick</h4>
+<p>Applies a specific commit onto another branch:</p>
+<pre><code>$ git checkout release-1.28
+$ git cherry-pick a1b2c3   # backport do fix
+$ git push origin release-1.28</code></pre>
+<p>The classic pattern for backporting an urgent fix onto an old
+release branch without bringing in all of main's features.</p>
+
+<h3>6. Recovery: how to save yourself from almost anything</h3>
+<h4>6.1 reflog: the safety rope</h4>
+<p><code>git reflog</code> keeps a <em>local</em> record of every
+movement of <code>HEAD</code> (and of each branch) for 90 days by
+default. Even after <code>git reset --hard</code>, <code>git
+rebase</code>, or deleting a branch, the commits are still there.</p>
+<pre><code>$ git reflog
+abc1234 HEAD@{0}: reset: moving to HEAD~3
+def5678 HEAD@{1}: commit: feat: nova feature crítica
+...
+$ git reset --hard def5678   # voltei para o estado anterior</code></pre>
+<h4>6.2 stash</h4>
+<p>Archives uncommitted changes to resume later:</p>
+<pre><code>$ git stash push -m 'wip do refactor'
+$ git stash list
+stash@{0}: On feature/x: wip do refactor
+$ git stash pop   # retoma e remove da pilha
+$ git stash apply stash@{0}   # aplica sem remover</code></pre>
+<h4>6.3 revert: a safe undo on main</h4>
+<p>Creates a <em>new</em> commit that reverses the previous one. It
+doesn't rewrite history, so it can be used on main without affecting
+anyone:</p>
+<pre><code>$ git revert abc1234
+[main 7g8h9i] Revert 'feat: feature ruim'</code></pre>
+<h4>6.4 reset: be careful on shared branches</h4>
+<p><code>git reset</code> has 3 modes:</p>
+<ul>
+<li><code>--soft</code>: moves HEAD, keeps index and working tree.</li>
+<li><code>--mixed</code> (default): moves HEAD, resets index, keeps working tree.</li>
+<li><code>--hard</code>: moves HEAD, resets index and working tree (dangerous!).</li>
+</ul>
+<p>On a local branch: fine. On a shared branch: NEVER combined with
+force-push, except in an emergency (and with a heads-up to the team).</p>
+<h4>6.5 bisect: bug hunting via binary search</h4>
+<p>When a bug showed up 'somewhere in the last 200 commits', use:</p>
+<pre><code>$ git bisect start
+$ git bisect bad HEAD          # commit atual está quebrado
+$ git bisect good v1.0         # esta tag estava ok
+Bisecting: 100 revisions left to test
+$ # roda teste; se passa: git bisect good; se falha: git bisect bad
+$ git bisect run pytest test_login.py    # automatiza!</code></pre>
+<p>In about 7 steps you land on the bad commit out of 200. In large
+projects (the Linux kernel), bisect is how maintainers hunt down
+regressions.</p>
+
+<h3>7. Common anti-patterns (and how to avoid them)</h3>
+<ul>
+<li><strong>'The 3000-line PR'</strong>: nobody really reviews it.
+Break it into smaller PRs, or accept that it will be a rubber stamp.</li>
+<li><strong>'Force push to main to hide a mistake'</strong>: the
+GitHub/GitLab audit log keeps it. You only hide it from yourself. Do a
+<code>revert</code> instead.</li>
+<li><strong>'One massive "initial commit"'</strong>: no history means
+no bisect, no useful blame. Make small commits from day 0.</li>
+<li><strong>'.gitignore after committing a secret'</strong>: the
+secret stays in history forever. The only real fix is to rotate the
+secret immediately. Removing it from history (BFG, git filter-repo)
+is theater — forks/clones already exist.</li>
+<li><strong>'Committing giant files'</strong>: repos fill up fast. Use
+Git LFS for media/binaries (&gt;10MB).</li>
+<li><strong>'Long-lived branches (weeks/months)'</strong>: guaranteed
+merge hell. Merge main back into the branch frequently.</li>
+</ul>
+
+<h3>8. Real case: the Sunday force-push</h3>
+<p>Company X. Sunday, 10am. A dev on call sees that an accidental
+merge broke main. They run <code>git reset --hard HEAD~3</code>
+and <code>git push --force origin main</code>. Did that solve it? No:</p>
+<ul>
+<li>The other 30 devs on Monday start pulling/cloning and hitting
+strange conflicts.</li>
+<li>The CI/CD that caches artifacts by SHA is left stranded, the SHA
+no longer exists.</li>
+<li>Tags that pointed to those commits disappeared from view (but
+they're in the reflog).</li>
+<li>Compliance audit: '...you just rewrote 3 production commits with
+no traceability.'</li>
+</ul>
+<p>Lesson: <em>never</em> use force-push on main. Use revert.
+Configure branch protection to make that impossible, even for
+admins.</p>""",
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
                     "<ol>"
@@ -337,15 +646,44 @@ gitGraph
                     "gerar changelog/versionamento automático no GitHub Actions.</li>"
                     "</ol>"
                 ),
+                "practical_en": (
+                    "<p><strong>Full hands-on exercise</strong>:</p>"
+                    "<ol>"
+                    "<li>Configure a local SSH signing key + GitHub. Verify commits show up "
+                    "as 'Verified'.</li>"
+                    "<li>In a personal repo, configure branch protection on <code>main</code>: "
+                    "required PR, 1 review, status checks (basic CI), block force-push, "
+                    "linear history, signed commits.</li>"
+                    "<li>Create a PR with 5 commits: 'wip', 'fix typo', 'feat: real', 'wip 2', "
+                    "'fix lint'. Run <code>git rebase -i HEAD~5</code> to squash/reorder it "
+                    "into 1 or 2 semantic commits.</li>"
+                    "<li>Push force-with-lease on the branch (not on main). Verify main is "
+                    "protected, try <code>git push -f origin main</code> and see the "
+                    "rejection.</li>"
+                    "<li>Merge via squash. Check main's history: "
+                    "<code>git log --oneline --graph --all</code>.</li>"
+                    "<li>Simulate an incident: make a bad commit on local main, then recover "
+                    "via <code>reflog</code> without losing data.</li>"
+                    "<li>Bonus: configure <code>commitlint</code> + Husky to validate "
+                    "Conventional Commits locally; <code>release-please</code> to generate "
+                    "an automatic changelog/version bump in GitHub Actions.</li>"
+                    "</ol>"
+                ),
             },
             "materials": [
-                m("Pro Git Book", "https://git-scm.com/book/en/v2", "book", "A referência."),
-                m("Atlassian Gitflow", "https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow", "article", ""),
-                m("GitHub Branch Protection", "https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches", "docs", ""),
-                m("Trunk Based Development", "https://trunkbaseddevelopment.com/", "article", ""),
-                m("Conventional Commits", "https://www.conventionalcommits.org/", "article", ""),
+                m("Pro Git Book", "https://git-scm.com/book/en/v2", "book", "A referência.",
+                  title_en="Pro Git Book", description_en="The reference."),
+                m("Atlassian Gitflow", "https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow", "article", "",
+                  title_en="Atlassian Gitflow", description_en=""),
+                m("GitHub Branch Protection", "https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches", "docs", "",
+                  title_en="GitHub Branch Protection", description_en=""),
+                m("Trunk Based Development", "https://trunkbaseddevelopment.com/", "article", "",
+                  title_en="Trunk Based Development", description_en=""),
+                m("Conventional Commits", "https://www.conventionalcommits.org/", "article", "",
+                  title_en="Conventional Commits", description_en=""),
                 m("Oh Shit, Git!?!", "https://ohshitgit.com/", "article",
-                  "Receitas para sair de roubadas comuns."),
+                  "Receitas para sair de roubadas comuns.",
+                  title_en="Oh Shit, Git!?!", description_en="Recipes for getting out of common Git messes."),
             ],
             "questions": [
                 q("`git rebase` faz:",
@@ -353,61 +691,121 @@ gitGraph
                   ["Faz merge preservando cada commit exatamente como já estava no branch.",
                    "Apaga o branch inteiro junto com o histórico inteiro associado a ele.",
                    "Sincroniza o repositório local com o remoto, sem alterar commit."],
-                  "Rebase gera novos hashes; não use em história já compartilhada."),
+                  "Rebase gera novos hashes; não use em história já compartilhada.",
+                  statement_en="`git rebase` does:",
+                  correct_en="Reapplies commits onto another base, rewriting history.",
+                  wrong_en=["Merges while preserving each commit exactly as it was on the branch.",
+                            "Deletes the entire branch along with its whole associated history.",
+                            "Syncs the local repository with the remote one, without touching any commit."],
+                  explanation_en="Rebase generates new hashes; don't use it on history that's already shared."),
                 q("Por que evitar force push em main?",
                   "Pode reescrever história compartilhada e quebrar o time.",
                   ["É mais lento que um push comum, mas funciona normalmente.",
                    "É ilegal em muitos contextos corporativos regulados por auditoria.",
                    "Não funciona em repositório hospedado especificamente no GitHub."],
-                  "Qualquer dev com a história anterior fica desincronizado e pode perder commits."),
+                  "Qualquer dev com a história anterior fica desincronizado e pode perder commits.",
+                  statement_en="Why avoid force-pushing to main?",
+                  correct_en="It can rewrite shared history and break the team's work.",
+                  wrong_en=["It's slower than a regular push, but still works fine otherwise.",
+                            "It's illegal in many corporate contexts regulated by audit rules.",
+                            "It simply doesn't work on a repository hosted specifically on GitHub."],
+                  explanation_en="Any dev with the previous history becomes out of sync and can lose commits."),
                 q("Signed commits servem para:",
                   "Provar autoria via GPG/SSH.",
                   ["Acelerar o push para o repositório remoto configurado.",
                    "Substituir a necessidade de criar um branch separado.",
                    "Comprimir o tamanho de cada commit antes de enviar."],
-                  "Evita spoofing, atacante consegue dizer 'commit do CTO' sem assinatura. Com GPG, GitHub mostra 'Verified'."),
+                  "Evita spoofing, atacante consegue dizer 'commit do CTO' sem assinatura. Com GPG, GitHub mostra 'Verified'.",
+                  statement_en="Signed commits are used to:",
+                  correct_en="Prove authorship via GPG/SSH.",
+                  wrong_en=["Speed up the push to the configured remote repository.",
+                            "Replace the need to create a separate branch for the work.",
+                            "Compress the size of each commit before sending it."],
+                  explanation_en="Prevents spoofing — without a signature, an attacker can claim a commit is 'from the CTO'. With GPG, GitHub shows 'Verified'."),
                 q("Em PR, o que é review obrigatório?",
                   "Regra que exige aprovação humana antes do merge.",
                   ["Bloqueia o repositório inteiro para qualquer nova alteração.",
                    "Conta automaticamente como um deploy feito em produção.",
                    "Pula a execução do CI configurado para aquele repositório."],
-                  "Combinada com CODEOWNERS, garante que pessoas certas sejam ouvidas."),
+                  "Combinada com CODEOWNERS, garante que pessoas certas sejam ouvidas.",
+                  statement_en="In a PR, what does a required review mean?",
+                  correct_en="A rule requiring human approval before the merge happens.",
+                  wrong_en=["It locks the entire repository against any new change.",
+                            "It automatically counts as a deploy made to production.",
+                            "It skips running the CI configured for that repository."],
+                  explanation_en="Combined with CODEOWNERS, it guarantees the right people get heard."),
                 q("Diferença entre merge e rebase:",
                   "Merge preserva história; rebase a reescreve linearmente.",
                   ["Os dois comandos são idênticos, sem diferença real entre eles.",
                    "O rebase é mais lento de executar do que um merge comum.",
                    "O merge apaga o commit mais antigo do branch de origem."],
-                  "Escolha conforme política do time. Misturar pode confundir o histórico."),
+                  "Escolha conforme política do time. Misturar pode confundir o histórico.",
+                  statement_en="Difference between merge and rebase:",
+                  correct_en="Merge preserves history; rebase rewrites it linearly.",
+                  wrong_en=["The two commands are identical, with no real difference between them.",
+                            "Rebase is slower to run than a regular merge operation.",
+                            "Merge deletes the oldest commit from the source branch."],
+                  explanation_en="Pick one based on team policy. Mixing them can confuse the history."),
                 q("`.gitignore` serve para:",
                   "Listar arquivos a não rastrear (ex.: .env).",
                   ["Apagar o histórico de commit já registrado no repositório inteiro.",
                    "Bloquear um push específico feito para o branch principal.",
                    "Substituir o arquivo LICENSE do projeto por outro modelo."],
-                  "Para arquivos já rastreados, é preciso `git rm --cached` antes."),
+                  "Para arquivos já rastreados, é preciso `git rm --cached` antes.",
+                  statement_en="`.gitignore` is used to:",
+                  correct_en="List files that should not be tracked (e.g. .env).",
+                  wrong_en=["Erase commit history already recorded across the entire repository.",
+                            "Block a specific push made against the main branch.",
+                            "Replace the project's LICENSE file with a different template."],
+                  explanation_en="For files already tracked, you need `git rm --cached` first."),
                 q("Trunk-based development prefere:",
                   "Branches curtas e merge frequente em main.",
                   ["Branch de vida longa, mantida aberta por semanas ou meses.",
                    "Usar só tag de versão, sem branch de trabalho intermediário.",
                    "Trabalhar sem um branch principal de referência compartilhado."],
-                  "Reduz merge hell. Exige feature flags e suite de testes confiável."),
+                  "Reduz merge hell. Exige feature flags e suite de testes confiável.",
+                  statement_en="Trunk-based development prefers:",
+                  correct_en="Short-lived branches and frequent merges into main.",
+                  wrong_en=["A long-lived branch, kept open for weeks or months at a time.",
+                            "Using only version tags, with no intermediate working branch.",
+                            "Working without any shared main reference branch at all."],
+                  explanation_en="Reduces merge hell. Requires feature flags and a reliable test suite."),
                 q("`git stash` faz:",
                   "Salva mudanças locais pendentes para retomar depois.",
                   ["Envia o commit local direto para o repositório remoto configurado.",
                    "Apaga o commit mais recente feito no branch atual.",
                    "Cria um branch novo a partir do commit atual do repositório."],
-                  "Stash empilha. Use `git stash pop` para retomar; aplique a branch correta."),
+                  "Stash empilha. Use `git stash pop` para retomar; aplique a branch correta.",
+                  statement_en="`git stash` does:",
+                  correct_en="Saves pending local changes so you can resume them later.",
+                  wrong_en=["Sends the local commit straight to the configured remote repository.",
+                            "Deletes the most recent commit made on the current branch.",
+                            "Creates a new branch starting from the repository's current commit."],
+                  explanation_en="Stash stacks entries. Use `git stash pop` to resume; make sure you apply it to the right branch."),
                 q("Conventional Commits é:",
                   "Convenção de mensagens (feat:, fix:, chore:).",
                   ["Um substituto completo para o próprio Git como ferramenta.",
                    "O hash único gerado automaticamente para cada commit novo.",
                    "Um linter que verifica erro de sintaxe dentro do código-fonte."],
-                  "Permite gerar changelog e versionamento automático (semver)."),
+                  "Permite gerar changelog e versionamento automático (semver).",
+                  statement_en="Conventional Commits is:",
+                  correct_en="A message convention (feat:, fix:, chore:).",
+                  wrong_en=["A complete substitute for Git itself as a tool.",
+                            "The unique hash automatically generated for every new commit.",
+                            "A linter that checks for syntax errors inside the source code."],
+                  explanation_en="Enables automatic changelog generation and version bumping (semver)."),
                 q("Em LFS, arquivos grandes:",
                   "Ficam em storage separado, com pointer no repo.",
                   ["Apagam o histórico de commit anterior relacionado ao arquivo.",
                    "Simplesmente não funcionam dentro de um repositório Git comum.",
                    "Ficam compactados dentro de um arquivo zip anexado ao commit."],
-                  "Útil para mídia/binários. Repo principal continua leve; LFS é cobrado por banda."),
+                  "Útil para mídia/binários. Repo principal continua leve; LFS é cobrado por banda.",
+                  statement_en="In LFS, large files:",
+                  correct_en="Live in separate storage, with a pointer left in the repo.",
+                  wrong_en=["Erase the previous commit history related to that file.",
+                            "Simply don't work at all inside a regular Git repository.",
+                            "Get compressed inside a zip file attached to the commit."],
+                  explanation_en="Useful for media/binaries. The main repo stays lightweight; LFS storage is billed by bandwidth."),
             ],
         },
         # =====================================================================
@@ -415,7 +813,9 @@ gitGraph
         # =====================================================================
         {
             "title": "Infraestrutura como Código (Terraform)",
+            "title_en": "Infrastructure as Code (Terraform)",
             "summary": "Criar servidores usando arquivos de configuração versionáveis.",
+            "summary_en": "Creating servers using version-controllable configuration files.",
             "lesson": {
                 "intro": (
                     "Antes do IaC, infraestrutura era um conjunto de cliques no console que "
@@ -427,6 +827,17 @@ gitGraph
                     "<code>terraform apply</code>; documentar vira ler o repo. Esta aula "
                     "foca em Terraform, o padrão de fato para IaC multi-cloud, hoje com fork "
                     "open source (OpenTofu) após mudança de licença em 2023."
+                ),
+                "intro_en": (
+                    "Before IaC, infrastructure was a bunch of console clicks nobody ever "
+                    "documented. When the server went down, figuring out 'how it was originally "
+                    "configured' was archaeology. When the engineer who clicked it into "
+                    "existence left the company, the knowledge left with them. IaC flips this "
+                    "around: infrastructure is described in files versioned in Git, reviewed via "
+                    "PR and applied through a pipeline. Reproducing an environment becomes "
+                    "<code>terraform apply</code>; documenting it becomes reading the repo. This "
+                    "lesson focuses on Terraform, the de facto standard for multi-cloud IaC, "
+                    "today with an open source fork (OpenTofu) after the 2023 license change."
                 ),
                 "body": (
                 """<h3>1. Por que IaC importa de verdade</h3>
@@ -798,6 +1209,385 @@ deixando-a vazar em log de CI ou output de plan.</li>
 aleatório quando uma nova versão muda comportamento sem aviso.</li>
 </ul>"""
                 ),
+                "body_en": """<h3>1. Why IaC really matters</h3>
+<p>Five concrete gains justify swapping clicks for code. The first is
+<strong>reproducibility</strong>: dev, staging and prod come
+literally from the same code, not from a manual effort to make them
+"look alike" — a production bug becomes reproducible in staging in
+seconds, because the staging environment IS the same `apply`. The
+second is <strong>PR review</strong>: a change to a VPC goes through
+the same code review flow as application code, with an explicit diff,
+comments and approval — instead of someone clicking directly in the
+production console. The third is <strong>traceability</strong>:
+<code>git blame</code> on <code>main.tf</code> shows exactly who
+changed that S3 bucket and why, turning audit into something trivial
+instead of archaeology. The fourth is <strong>disaster recovery</strong>:
+if an entire cluster gets destroyed, <code>terraform apply</code>
+rebuilds everything from code — mature companies deliberately test
+this scenario in "Game Days". And the fifth is <strong>compliance</strong>:
+a policy like "every bucket must have encryption" stops being a wiki
+reminder and becomes an enforceable rule (Sentinel, OPA, tfsec) that
+blocks the `apply` if violated.</p>
+<div class="mermaid">
+flowchart LR
+    A["main.tf"] --> B["terraform plan"]
+    B --> C["Mostra o diff: o que vai mudar"]
+    C --> D{"Aprovado?"}
+    D -- "Sim" --> E["terraform apply"]
+    E --> F["Infraestrutura real atualizada"]
+    D -- "Não" --> A
+</div>
+
+
+<h3>2. Anatomy of Terraform</h3>
+<p>Terraform uses HCL (HashiCorp Configuration Language), a
+declarative, JSON-like DSL, but designed to be human-readable:</p>
+<pre><code># main.tf
+terraform {
+  required_version = "&gt;= 1.6.0"
+  required_providers {
+    aws = { source = "hashicorp/aws", version = "~&gt; 5.40" }
+  }
+  backend "s3" {
+    bucket         = "empresa-tfstate-prod"
+    key            = "network/main.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "tfstate-lock"
+    encrypt        = true
+  }
+}
+
+provider "aws" {
+  region = var.region
+  default_tags {
+    tags = {
+      Owner       = "platform-team"
+      Environment = var.env
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
+variable "env"    { type = string }
+variable "region" { type = string, default = "us-east-1" }
+
+resource "aws_s3_bucket" "app_data" {
+  bucket = "empresa-app-${var.env}-${random_id.suffix.hex}"
+}
+
+resource "aws_s3_bucket_versioning" "app_data" {
+  bucket = aws_s3_bucket.app_data.id
+  versioning_configuration { status = "Enabled" }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "app_data" {
+  bucket = aws_s3_bucket.app_data.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.app.arn
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "app_data" {
+  bucket                  = aws_s3_bucket.app_data.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+output "bucket_name" {
+  value = aws_s3_bucket.app_data.id
+}</code></pre>
+<p>Six concepts underpin any Terraform file. A
+<strong>provider</strong> is the plugin that knows how to talk to a
+specific system's API — aws, azurerm, google, kubernetes, github,
+cloudflare, datadog. A <strong>resource</strong> declares intent: "I
+want an S3 bucket called X", and Terraform decides on its own whether
+it needs to create, update or destroy something, comparing against the
+current state. A <strong>data source</strong> only READS something
+that already exists, without managing its lifecycle (<code>data
+"aws_ami" "ubuntu"</code>). A <strong>variable</strong> is the
+module's input parameter. An <strong>output</strong> exposes a value
+after apply, for another module to consume via remote_state. And
+<strong>locals</strong> are derived variables, computed inside the
+module itself.</p>
+
+<h3>3. Basic workflow: init → plan → apply</h3>
+<pre><code>$ terraform init      # baixa providers, configura backend
+$ terraform validate  # checa sintaxe
+$ terraform fmt -recursive  # formata
+$ terraform plan -out=tfplan
+Plan: 4 to add, 1 to change, 0 to destroy.
+$ terraform apply tfplan</code></pre>
+<p>The <strong>plan</strong> step matters most in this flow: it
+generates an explicit diff between the current and desired state,
+BEFORE any real change happens. Always read that diff — in CI, the
+mature standard is running plan automatically on every PR and
+requiring the output to appear as a comment (the Atlantis tool
+automates exactly that), so that whoever reviews the code also
+reviews its real effect on the infrastructure before approving.</p>
+<pre><code>terraform plan -target=aws_s3_bucket.app_data   # foco
+terraform apply -refresh-only                    # só atualiza state
+terraform destroy -target=aws_instance.test       # destruição cirúrgica
+terraform state list
+terraform state show aws_s3_bucket.app_data
+terraform import aws_s3_bucket.legacy bucket-name
+terraform graph | dot -Tpng &gt; deps.png
+terraform console   # REPL para testar expressões</code></pre>
+
+<h3>4. State is critical, treat it with paranoia</h3>
+<p>The <code>terraform.tfstate</code> is a JSON file that maps each
+<em>resource in the code</em> to its <em>real ID</em> in the cloud.
+Without it, Terraform simply "forgets" what it manages and has no way
+to compute any diff. And the problem gets worse: that same file stores
+sensitive values in <strong>plain text</strong> — RDS password, IAM
+key — because Terraform needs those values to compute the next plan.
+This completely changes how state should be treated: it must never be
+committed to Git (put it straight into <code>.gitignore</code>); it
+must live in a remote backend with locking — S3+DynamoDB on the AWS
+side, GCS on GCP, Azure Storage on Azure, or a dedicated platform like
+Terraform Cloud, Spacelift or Atlantis; it must have encryption at
+rest enabled on the backend itself via KMS/CMEK; it must have
+versioning enabled on the bucket, because sooner or later a state will
+get corrupted and the previous version is the only way back; it must
+use real locking (DynamoDB on AWS, Cloud Storage on GCP, internal lock
+on Terraform Cloud) to prevent two simultaneous `apply` runs from
+corrupting the same file; it must never be edited by hand — the
+commands <code>terraform state mv|rm|replace-provider</code> or a
+re-import exist exactly for that; and it must have restricted access
+in production, where only CI reads the real state and developers get,
+at most, a read-only role.</p>
+<pre><code>terraform {
+  backend "s3" {
+    bucket         = "empresa-tfstate"
+    key            = "prod/network.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "tfstate-lock"
+    encrypt        = true
+    kms_key_id     = "arn:aws:kms:us-east-1:111:key/xxx"
+  }
+}</code></pre>
+
+<h3>5. Modules: reuse without copy-paste</h3>
+<p>A module is just a folder with inputs (variables), resources and
+outputs — and it serves to encapsulate a pattern the whole company
+reuses, instead of each team reinventing the same RDS configuration
+with small, incompatible variations between them:</p>
+<pre><code>modules/
+  rds-postgres/
+    main.tf       # cria RDS com encryption + backup + parameter group
+    variables.tf  # name, allocated_storage, instance_class, vpc_id...
+    outputs.tf    # endpoint, port, secret_arn
+    README.md     # como usar</code></pre>
+<pre><code>module "app_db" {
+  source  = "git::https://github.com/empresa/tf-modules.git//rds-postgres?ref=v1.4.0"
+  name    = "app-prod"
+  vpc_id  = data.aws_vpc.main.id
+  size    = "db.r5.large"
+}
+
+output "db_endpoint" {
+  value = module.app_db.endpoint
+}</code></pre>
+<p>A well-maintained module versions with semver Git tags
+(<code>v1.0.0</code>, <code>v1.4.0</code>), stays small and composable
+instead of turning into a "megamodule" that tries to do everything,
+carries a README with a real usage example and an inputs/outputs
+table — auto-generated by <code>terraform-docs</code> — and has real
+tests, with <code>terratest</code> or <code>kitchen-terraform</code>,
+instead of trusting that "it's always worked so far".</p>
+
+<h3>6. Variables, locals and data sources</h3>
+<pre><code>variable "env" {
+  type        = string
+  description = "Ambiente (dev/staging/prod)"
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.env)
+    error_message = "env deve ser dev, staging ou prod."
+  }
+}
+
+variable "db_password" {
+  type      = string
+  sensitive = true   # esconde de outputs/logs
+}
+
+locals {
+  is_prod   = var.env == "prod"
+  instance  = local.is_prod ? "db.r5.large" : "db.t3.medium"
+  multi_az  = local.is_prod
+  tags = merge(
+    var.tags,
+    { Env = var.env, ManagedBy = "terraform" }
+  )
+}
+
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"]   # Canonical
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+  }
+}</code></pre>
+<p>The <code>validation</code> block on the <code>env</code> variable
+is what turns a typo ("prd" instead of "prod") from a silent bug
+discovered only after apply into an immediate error, right at the
+plan stage. And marking <code>db_password</code> as <code>sensitive =
+true</code> doesn't encrypt anything — it only instructs Terraform to
+mask that value in any log or console output, preventing it from
+accidentally leaking into a CI history.</p>
+
+<h3>7. Drift: reality ≠ code</h3>
+<p>Drift happens when someone manually changes something in the
+console, making real infrastructure silently diverge from what the
+code describes. <code>terraform plan</code> itself detects this,
+because it always compares the REAL state (queried via API) against
+the desired one, not just the saved state:</p>
+<pre><code>$ terraform plan
+# aws_security_group.web has been changed
+  ~ ingress {
+      - cidr_blocks = ["10.0.0.0/8"]   # removido manualmente!
+      + cidr_blocks = ["10.0.0.0/8", "0.0.0.0/0"]
+  }</code></pre>
+<p>Three strategies mitigate drift before it becomes an incident: a
+nightly CI job running <code>terraform plan</code> and alerting on any
+difference; an SCP or Azure Policy blocking manual changes in
+production, leaving devs with read-only access; or a dedicated
+continuous-detection tool, like Driftctl or AWS Config rules. When a
+resource already exists outside of Terraform and needs to be
+"officialized", the path is import — the classic way via CLI, or
+declaratively from Terraform 1.5+:</p>
+<pre><code># Forma clássica (CLI)
+terraform import aws_s3_bucket.legacy meu-bucket-existente
+
+# Terraform 1.5+: import block declarativo
+import {
+  to = aws_s3_bucket.legacy
+  id = "meu-bucket-existente"
+}</code></pre>
+
+<h3>8. Production best practices</h3>
+<p>Separate environments prevent a dev `apply` from accidentally
+hitting production — via workspaces (same backend, different key
+prefix, more fragile in production) or, preferred by many teams,
+separate directories (<code>envs/dev/</code>, <code>envs/prod/</code>)
+or Terragrunt. The <code>.terraform.lock.hcl</code> file must always be
+committed — it pins the exact hash of each provider, preventing an
+`init` on another machine from pulling a slightly different version
+and producing an unexpected plan. Lint and security scanning (tflint,
+tfsec, checkov) running in CI catch configuration errors before the
+plan, not after the incident. Plan on the PR should be mandatory —
+Atlantis or GitHub Actions commenting the output automatically — with
+apply gated only after human review and explicit approval. Automatic
+apply should only happen from main, and even then with locking and
+extra human approval in production. Mandatory tags (Owner,
+Environment, CostCenter, ManagedBy) via <code>default_tags</code> on
+the provider, reinforced by Sentinel or OPA, make cost and
+responsibility tracking possible at scale. Preferring <code>for_each</code>
+over <code>count</code> on critical resources prevents removing an
+item from the middle of a list from forcing the recreation of every
+subsequent item — <code>for_each</code> uses stable keys,
+<code>count</code> uses a positional index. And apply with
+<code>-target</code> should be the exception, not routine — used out
+of context, it tends to accumulate drift instead of resolving it.</p>
+
+<h3>9. Terraform pipeline with GitHub Actions</h3>
+<pre><code>name: terraform
+on:
+  pull_request:
+    paths: ['envs/**', 'modules/**']
+  push:
+    branches: [main]
+permissions:
+  id-token: write   # OIDC
+  contents: read
+  pull-requests: write
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::111:role/gh-actions-tf
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.7.5 }
+      - run: terraform fmt -check -recursive
+      - run: terraform init
+      - run: terraform validate
+      - run: tflint --recursive
+      - run: tfsec .
+      - run: terraform plan -out=tfplan
+      - uses: actions/upload-artifact@v4
+        with: { name: tfplan, path: tfplan }
+  apply:
+    needs: plan
+    if: github.ref == 'refs/heads/main'
+    environment: production   # gate manual
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: ..., aws-region: us-east-1 }
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform init
+      - uses: actions/download-artifact@v4
+        with: { name: tfplan }
+      - run: terraform apply tfplan</code></pre>
+<p>It's worth highlighting five details of this pipeline that aren't
+accidental: <code>concurrency</code> cancels an old run of the same
+branch when a new push arrives, avoiding wasted CI minutes on an
+already-obsolete commit; <code>permissions</code> follows the
+least-privilege principle, granting write only where actually
+necessary; OIDC authenticates against AWS with no long-lived key
+stored at all; <code>environment: production</code> implements the
+manual gate — with an extra secret, wait timer or required reviewer
+configurable directly in the GitHub UI; and the Cosign signature in
+the build step lets a Kubernetes admission controller verify the
+image's integrity before running it.</p>
+
+<h3>10. OpenTofu, Pulumi, CDK: alternatives</h3>
+<p>After HashiCorp changed Terraform's license to BSL in 2023, the
+community forked an open source project — <strong>OpenTofu</strong> —
+compatible with existing modules and maintained by the Linux
+Foundation; for many teams, it became the de facto default.
+<strong>Pulumi</strong> takes a different path: IaC written in a real
+programming language (Python, TypeScript, Go), with native loops,
+conditionals and classes — more expressive power, at the cost of less
+restriction, which can turn into a mess if poorly architected, since
+HCL forces a more declarative, deliberately limited style by design.
+<strong>CDK</strong> (both AWS CDK and CDKTF) generates CloudFormation
+or HCL from code, offering good abstraction with moderate lock-in to
+the chosen tool. And <strong>Crossplane</strong> declares
+infrastructure as Kubernetes' own Custom Resources, fitting well in
+teams that are already Kubernetes-first and prefer to keep everything
+inside the same control plane.</p>
+
+<h3>11. Common anti-patterns</h3>
+<ul>
+<li><strong>tfstate in Git</strong>: guaranteed password leak, given
+that state stores secrets in plain text (section 4).</li>
+<li><strong>Editing the console and forgetting to import</strong>:
+drift grows silently until it becomes an incident (section 7).</li>
+<li><strong>Giant "rules-them-all" module</strong>: nearly impossible
+to test and debug, the opposite of the small, composable module from
+section 5.</li>
+<li><strong>Local apply in production</strong>: no review, no
+audit — always force it through the pipeline (section 9).</li>
+<li><strong>Hardcoding a region or account</strong>: use a variable
+with an explicit default instead of a fixed value scattered through
+the code.</li>
+<li><strong>Forgetting <code>sensitive = true</code></strong> on a
+password, letting it leak into a CI log or plan output.</li>
+<li><strong>Provider without a version constraint</strong>: breaks on
+a random deploy when a new version changes behavior without
+warning.</li>
+</ul>""",
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
                     "<ol>"
@@ -817,14 +1607,39 @@ aleatório quando uma nova versão muda comportamento sem aviso.</li>
                     "comentário do PR e exigir 'apply' como comando manual.</li>"
                     "</ol>"
                 ),
+                "practical_en": (
+                    "<p><strong>Full hands-on exercise</strong>:</p>"
+                    "<ol>"
+                    "<li>Configure a remote S3+DynamoDB backend with encryption, versioning "
+                    "and a bucket policy denying deletion without MFA.</li>"
+                    "<li>Create an <code>s3-secure-bucket</code> module with: versioning, "
+                    "KMS encryption, public access block, lifecycle (move to IA after 30d).</li>"
+                    "<li>Use the module in two environments (<code>envs/dev</code> and "
+                    "<code>envs/staging</code>) with different tfvars.</li>"
+                    "<li>Configure <code>tflint</code> + <code>tfsec</code> in pre-commit "
+                    "and in CI (GitHub Actions with OIDC for AWS).</li>"
+                    "<li>Run plan, apply, then change something manually in the console. Run "
+                    "plan again and see the drift. Use <code>terraform apply -refresh-only</code> "
+                    "or re-apply to reconcile.</li>"
+                    "<li>Import a pre-existing resource using an <code>import</code> block.</li>"
+                    "<li>Bonus: configure Atlantis (or GitHub Actions) to post the plan as a "
+                    "PR comment and require 'apply' as a manual command.</li>"
+                    "</ol>"
+                ),
             },
             "materials": [
-                m("Terraform docs", "https://developer.hashicorp.com/terraform/docs", "docs", ""),
-                m("Terraform Up & Running (livro)", "https://www.terraformupandrunning.com/", "book", ""),
-                m("OpenTofu", "https://opentofu.org/", "tool", "Fork open source do Terraform."),
-                m("Terragrunt", "https://terragrunt.gruntwork.io/", "tool", ""),
-                m("tflint", "https://github.com/terraform-linters/tflint", "tool", ""),
-                m("Atlantis (Terraform PR automation)", "https://www.runatlantis.io/", "tool", ""),
+                m("Terraform docs", "https://developer.hashicorp.com/terraform/docs", "docs", "",
+                  title_en="Terraform docs", description_en=""),
+                m("Terraform Up & Running (livro)", "https://www.terraformupandrunning.com/", "book", "",
+                  title_en="Terraform Up & Running (book)", description_en=""),
+                m("OpenTofu", "https://opentofu.org/", "tool", "Fork open source do Terraform.",
+                  title_en="OpenTofu", description_en="Open source fork of Terraform."),
+                m("Terragrunt", "https://terragrunt.gruntwork.io/", "tool", "",
+                  title_en="Terragrunt", description_en=""),
+                m("tflint", "https://github.com/terraform-linters/tflint", "tool", "",
+                  title_en="tflint", description_en=""),
+                m("Atlantis (Terraform PR automation)", "https://www.runatlantis.io/", "tool", "",
+                  title_en="Atlantis (Terraform PR automation)", description_en=""),
             ],
             "questions": [
                 q("`terraform plan` faz:",
@@ -832,61 +1647,121 @@ aleatório quando uma nova versão muda comportamento sem aviso.</li>
                   ["Aplica a mudança direto no provedor, sem mostrar diff antes.",
                    "Apaga o arquivo de estado atual armazenado remotamente.",
                    "Cria uma cópia de backup do estado atual do Terraform."],
-                  "Plan gera plano determinístico (que apply vai consumir). Ler atentamente evita surpresas."),
+                  "Plan gera plano determinístico (que apply vai consumir). Ler atentamente evita surpresas.",
+                  statement_en="`terraform plan` does:",
+                  correct_en="Calculates the diff between current and desired state, without applying it.",
+                  wrong_en=["Applies the change directly to the provider, without showing a diff first.",
+                            "Deletes the current state file stored remotely in the backend.",
+                            "Creates a backup copy of Terraform's current state file."],
+                  explanation_en="Plan generates a deterministic plan (which apply will consume). Reading it carefully avoids surprises."),
                 q("Estado remoto serve para:",
                   "Compartilhar entre membros do time com lock.",
                   ["Substitui a necessidade de configurar IAM na conta.",
                    "Habilita o protocolo HTTPS nas chamadas feitas à API.",
                    "Acelera o tempo de execução do comando plan localmente."],
-                  "Sem state remoto, devs apagam o trabalho um do outro. Com lock, só um apply roda por vez."),
+                  "Sem state remoto, devs apagam o trabalho um do outro. Com lock, só um apply roda por vez.",
+                  statement_en="Remote state is used to:",
+                  correct_en="Share state between team members with locking.",
+                  wrong_en=["Replace the need to configure IAM on the account entirely.",
+                            "Enable the HTTPS protocol on calls made to the API.",
+                            "Speed up how long the plan command takes to run locally."],
+                  explanation_en="Without remote state, devs overwrite each other's work. With locking, only one apply runs at a time."),
                 q("Por que NÃO commitar tfstate?",
                   "Pode conter segredos e gera conflito.",
                   ["Falha silenciosamente o comando git ao tentar versionar.",
                    "Não é uma prática permitida pela documentação oficial.",
                    "É um arquivo grande demais para caber no limite do GitHub."],
-                  "State guarda valores reais (incluindo passwords). Em git público, vira manchete instantânea."),
+                  "State guarda valores reais (incluindo passwords). Em git público, vira manchete instantânea.",
+                  statement_en="Why should tfstate NOT be committed?",
+                  correct_en="It can contain secrets and generates merge conflicts.",
+                  wrong_en=["It silently fails the git command whenever you try to version it.",
+                            "It's simply not a practice allowed by the official documentation.",
+                            "It's a file too large to fit within GitHub's size limit."],
+                  explanation_en="State stores real values (including passwords). In a public git repo, it instantly becomes a headline."),
                 q("Módulo Terraform serve para:",
                   "Encapsular e reutilizar componentes de infra.",
                   ["Criar uma VPN entre duas redes distintas na nuvem.",
                    "Substituir o provider configurado no bloco terraform.",
                    "Gerar log detalhado de cada execução do comando apply."],
-                  "Padroniza configurações da empresa. Versione com tags Git."),
+                  "Padroniza configurações da empresa. Versione com tags Git.",
+                  statement_en="A Terraform module is used to:",
+                  correct_en="Encapsulate and reuse infrastructure components.",
+                  wrong_en=["Create a VPN between two distinct networks in the cloud.",
+                            "Replace the provider configured in the terraform block.",
+                            "Generate a detailed log of every apply command execution."],
+                  explanation_en="Standardizes the company's configurations. Version it with Git tags."),
                 q("`terraform import` serve para:",
                   "Trazer recurso existente para o estado.",
                   ["Renomear um módulo já existente dentro do código.",
                    "Aplicar um plano previamente gerado pelo comando plan.",
                    "Apagar um recurso já gerenciado pelo estado atual."],
-                  "Útil ao migrar de console-feito para IaC. TF 1.5+ tem `import` block declarativo."),
+                  "Útil ao migrar de console-feito para IaC. TF 1.5+ tem `import` block declarativo.",
+                  statement_en="`terraform import` is used to:",
+                  correct_en="Bring an existing resource into the managed state.",
+                  wrong_en=["Rename a module that already exists within the code.",
+                            "Apply a plan that was previously generated by the plan command.",
+                            "Delete a resource that's already managed by the current state."],
+                  explanation_en="Useful when migrating from console-made resources to IaC. TF 1.5+ has a declarative `import` block."),
                 q("OpenTofu é:",
                   "Fork open source do Terraform mantido pela Linux Foundation.",
                   ["Outro provider oficial mantido diretamente pela HashiCorp original.",
                    "Uma DSL completamente diferente, com pouca relação prévia com o HCL.",
                    "Uma extensão de IDE que só destaca a sintaxe do HCL no editor."],
-                  "Criado após mudança de licença do Terraform para BSL. Compatível com módulos existentes."),
+                  "Criado após mudança de licença do Terraform para BSL. Compatível com módulos existentes.",
+                  statement_en="OpenTofu is:",
+                  correct_en="An open source fork of Terraform maintained by the Linux Foundation.",
+                  wrong_en=["Another official provider maintained directly by HashiCorp itself.",
+                            "A completely different DSL, with little prior relation to HCL.",
+                            "An IDE extension that only highlights HCL syntax in the editor."],
+                  explanation_en="Created after Terraform's license changed to BSL. Compatible with existing modules."),
                 q("Para evitar drift:",
                   "Faça plan/apply periodicamente e proíba mudanças manuais.",
                   ["Apague o arquivo de estado ao perceber qualquer divergência.",
                    "Use só o console para fazer qualquer mudança de infraestrutura.",
                    "Edite o tfstate manualmente quando precisar corrigir algo pontual."],
-                  "Drift detection em CI noturno é boa prática. Combine com SCPs que bloqueiem mudanças manuais."),
+                  "Drift detection em CI noturno é boa prática. Combine com SCPs que bloqueiem mudanças manuais.",
+                  statement_en="To avoid drift:",
+                  correct_en="Run plan/apply periodically and forbid manual changes.",
+                  wrong_en=["Delete the state file whenever you notice any divergence.",
+                            "Use only the console to make any infrastructure change at all.",
+                            "Edit the tfstate by hand whenever you need to fix something specific."],
+                  explanation_en="Nightly drift detection in CI is good practice. Combine it with SCPs that block manual changes."),
                 q("Variável sensível em Terraform:",
                   "Marque com sensitive = true.",
                   ["Coloque o valor dentro da description da própria variável.",
                    "Imprima o valor no output, para conferência manual posterior.",
                    "Coloque o valor dentro de um comentário no próprio arquivo."],
-                  "Evita que o valor apareça em outputs/log. Combine com TFC/Vault para evitar plaintext no state."),
+                  "Evita que o valor apareça em outputs/log. Combine com TFC/Vault para evitar plaintext no state.",
+                  statement_en="A sensitive variable in Terraform:",
+                  correct_en="Mark it with sensitive = true.",
+                  wrong_en=["Put the value inside the variable's own description field.",
+                            "Print the value in the output, for later manual verification.",
+                            "Put the value inside a comment within the file itself."],
+                  explanation_en="Prevents the value from appearing in outputs/logs. Combine with TFC/Vault to avoid plaintext in state."),
                 q("Provider é:",
                   "Plugin que conecta Terraform a uma API (AWS, GCP, etc.).",
                   ["Um tipo específico de variável usado dentro do HCL.",
                    "O hash calculado a partir do plano gerado pelo Terraform.",
                    "O backend responsável por guardar o estado remotamente."],
-                  "Existem providers oficiais e da comunidade (Cloudflare, GitHub, K8s, Datadog...)."),
+                  "Existem providers oficiais e da comunidade (Cloudflare, GitHub, K8s, Datadog...).",
+                  statement_en="A provider is:",
+                  correct_en="The plugin that connects Terraform to an API (AWS, GCP, etc.).",
+                  wrong_en=["A specific type of variable used within HCL syntax.",
+                            "The hash calculated from the plan Terraform generated.",
+                            "The backend responsible for storing state remotely."],
+                  explanation_en="There are official and community providers (Cloudflare, GitHub, K8s, Datadog...)."),
                 q("Lock em backend remoto evita:",
                   "Dois apply simultâneos corrompendo estado.",
                   ["Custo adicional cobrado pelo provedor de nuvem utilizado.",
                    "Backup automático do estado feito antes de cada apply.",
                    "Importação de um recurso já existente para dentro do estado."],
-                  "S3+DynamoDB usa item lock; TFC usa lock interno. Sem isso, race condition no state."),
+                  "S3+DynamoDB usa item lock; TFC usa lock interno. Sem isso, race condition no state.",
+                  statement_en="Locking on a remote backend prevents:",
+                  correct_en="Two simultaneous applies corrupting the state.",
+                  wrong_en=["Extra cost charged by the cloud provider being used.",
+                            "An automatic backup of state made before every apply.",
+                            "Importing an already-existing resource into the state."],
+                  explanation_en="S3+DynamoDB uses item locking; TFC uses an internal lock. Without it, race conditions hit the state."),
             ],
         },
         # =====================================================================
@@ -894,7 +1769,9 @@ aleatório quando uma nova versão muda comportamento sem aviso.</li>
         # =====================================================================
         {
             "title": "Gestão de Configuração (Ansible)",
+            "title_en": "Configuration Management (Ansible)",
             "summary": "Padronizar o que acontece dentro do servidor automaticamente.",
+            "summary_en": "Automatically standardizing what happens inside the server.",
             "lesson": {
                 "intro": (
                     "Terraform criou o servidor. Agora, quem instala nginx? Quem configura "
@@ -906,6 +1783,17 @@ aleatório quando uma nova versão muda comportamento sem aviso.</li>
                     "uma ferramenta o aplica de forma idempotente. Ansible é o padrão de "
                     "fato hoje, especialmente por ser <em>agentless</em>: nada para instalar "
                     "no host gerenciado, só SSH e Python."
+                ),
+                "intro_en": (
+                    "Terraform created the server. Now, who installs nginx? Who configures "
+                    "fail2ban? Who applies SSH hardening? Who makes sure all 50 machines use "
+                    "the same timezone? Before, this was 'a document in Confluence' that nobody "
+                    "followed. Result: <em>snowflake servers</em>, each server unique, "
+                    "irreproducible, and nobody remembers how it was configured. During an "
+                    "incident, a nightmare. Configuration management solves this: describe the "
+                    "desired state, a tool applies it idempotently. Ansible is the de facto "
+                    "standard today, especially for being <em>agentless</em>: nothing to install "
+                    "on the managed host, just SSH and Python."
                 ),
                 "body": (
                 """<h3>1. Ansible vs alternativas</h3>
@@ -1203,6 +2091,307 @@ execução vira uma incógnita sobre se a role ainda funciona como
 esperado.</li>
 </ul>"""
                 ),
+                "body_en": """<h3>1. Ansible vs alternatives</h3>
+<table>
+<tr><th>Tool</th><th>Model</th><th>Language</th><th>Notes</th></tr>
+<tr><td>Ansible</td><td>Agentless (SSH/WinRM)</td><td>YAML</td><td>De facto standard today. Gentle learning curve.</td></tr>
+<tr><td>Chef</td><td>Agent</td><td>Ruby DSL</td><td>Powerful, complex. Rarer today.</td></tr>
+<tr><td>Puppet</td><td>Agent</td><td>Own DSL</td><td>Strong in regulated/large environments.</td></tr>
+<tr><td>Salt</td><td>Agent or agentless</td><td>YAML/Jinja</td><td>Good at scale (event-driven).</td></tr>
+</table>
+<p>Ansible consolidated itself as the standard through a simple
+combination of factors: zero footprint on the managed host (nothing
+beyond SSH and Python needs to exist there, unlike Chef and Puppet
+which require a permanently running agent), YAML readable even by
+someone who doesn't write Ansible every day, a huge community via
+Galaxy, and native integration with the major clouds.</p>
+<div class="mermaid">
+flowchart LR
+    Control["Nó de controle"] -- "SSH, sem agente" --> H1["Servidor 1"]
+    Control -- "SSH, sem agente" --> H2["Servidor 2"]
+    Control -- "SSH, sem agente" --> H3["Servidor 3"]
+</div>
+
+
+<h3>2. Anatomy: inventory, playbooks, modules, roles</h3>
+<h4>2.1 Inventory</h4>
+<p>The inventory is the list of managed hosts, and it can be static or
+dynamic:</p>
+<pre><code># inventory.ini
+[web]
+web1.example.com
+web2.example.com
+
+[db]
+db1.example.com ansible_user=admin
+
+[prod:children]
+web
+db
+
+[prod:vars]
+env=production</code></pre>
+<p>In a cloud environment, dynamic inventory stops being optional and
+becomes essential: instead of maintaining a fixed IP list that changes
+with every auto-scaling event, a plugin queries AWS, GCP or Azure
+directly and generates the inventory in real time, always reflecting
+the current state:</p>
+<pre><code># aws_ec2.yml
+plugin: amazon.aws.aws_ec2
+regions: [us-east-1]
+filters:
+  tag:Environment: production
+  instance-state-name: running
+keyed_groups:
+  - key: tags.Role
+    prefix: role</code></pre>
+<h4>2.2 Playbook</h4>
+<p>A playbook is the YAML that describes plays and tasks — what to do,
+on which host, in what order:</p>
+<pre><code>---
+- name: Provisionar servidor web
+  hosts: web
+  become: yes
+  vars:
+    nginx_port: 80
+  tasks:
+    - name: Atualiza apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Instala nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+
+    - name: Configura site
+      ansible.builtin.template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/app
+        owner: root
+        group: root
+        mode: '0644'
+      notify: reload nginx
+
+    - name: Habilita site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/app
+        dest: /etc/nginx/sites-enabled/app
+        state: link
+      notify: reload nginx
+
+    - name: Garante nginx ativo
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: reload nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded</code></pre>
+<p>The <code>notify</code> + <code>handlers</code> pair solves a
+specific problem: "reload nginx, but only if something actually
+changed" — even if several tasks trigger the same notify, the handler
+runs only once, at the end of the whole play, avoiding a redundant
+reload.</p>
+<h4>2.3 Modules</h4>
+<p>Each task calls a specific <em>module</em> —
+<code>apt</code>, <code>yum</code>, <code>copy</code>,
+<code>template</code>, <code>file</code>, <code>lineinfile</code>,
+<code>blockinfile</code>, <code>systemd</code>, <code>user</code>,
+<code>cron</code>, <code>uri</code>, <code>postgresql_db</code>,
+<code>community.docker.docker_container</code>. The property that
+distinguishes these modules from an equivalent shell script is that
+they are idempotent: calling the same module repeatedly always
+converges to the same state, with no cumulative side effect
+(section 3).</p>
+<h4>2.4 Roles</h4>
+<p>A role is the standard structure for reusing configuration across
+different playbooks:</p>
+<pre><code>roles/
+  webserver/
+    tasks/main.yml
+    handlers/main.yml
+    templates/nginx.conf.j2
+    files/index.html
+    vars/main.yml
+    defaults/main.yml   # valores padrão (override-friendly)
+    meta/main.yml       # dependências, autor</code></pre>
+<pre><code>- hosts: web
+  roles:
+    - role: common
+    - role: webserver
+      vars:
+        nginx_port: 8080</code></pre>
+
+<h3>3. Idempotency: the heart of Ansible</h3>
+<p>Idempotency means applying the same configuration N times always
+produces the same final state, not N accumulated effects — this
+property is what makes Ansible safe to run repeatedly without fear,
+and it underpins three distinct scenarios: convergence (running on an
+already-configured server doesn't break anything, it just confirms
+it's already correct), CI (a repeated dry-run doesn't cause accidental
+drift), and self-healing (a periodic agent can keep the desired state
+on its own, correcting any deviation). Ansible's native modules
+respect this by design:</p>
+<pre><code># 1ª vez: instala. Demais: 'ok' (não muda nada)
+- ansible.builtin.apt:
+    name: nginx
+    state: present
+
+# Insere linha SE não existir; idempotente
+- ansible.builtin.lineinfile:
+    path: /etc/sysctl.conf
+    line: 'net.ipv4.ip_forward = 1'
+    regexp: '^net.ipv4.ip_forward'</code></pre>
+<p>The problem shows up when you need to resort to
+<code>shell</code>/<code>command</code>, which by nature are NOT
+idempotent — running them has the same effect every time, with no
+prior state check. The way out is using <code>creates</code>,
+<code>removes</code> or <code>changed_when</code> to simulate
+idempotency manually:</p>
+<pre><code>- ansible.builtin.shell: |
+    /opt/setup.sh &amp;&amp; touch /var/lib/setup.done
+  args:
+    creates: /var/lib/setup.done   # só roda se arquivo não existir
+
+- ansible.builtin.command: my-tool status
+  register: result
+  changed_when: "'CHANGED' in result.stdout"
+  failed_when: result.rc &gt; 1</code></pre>
+
+<h3>4. Variables: precedence and secrets</h3>
+<p>The precedence order determines which value wins when the same
+variable is defined in more than one place, from lowest to highest
+weight: role defaults, then inventory vars (group_vars/host_vars),
+then play vars, then task vars, and finally <code>--extra-vars</code>
+on the command line, which always beats every other level. For
+secrets, <strong>Ansible Vault</strong> encrypts the entire file at
+rest:</p>
+<pre><code>$ ansible-vault create group_vars/prod/secrets.yml
+Vault password: ****
+$ # editor abre, você escreve em texto, ele criptografa
+$ cat group_vars/prod/secrets.yml
+$ANSIBLE_VAULT;1.1;AES256
+323435...
+$ ansible-playbook site.yml --ask-vault-pass</code></pre>
+<p>In production, the more mature standard is to avoid even Vault and
+fetch the secret directly from a dedicated manager at execution time,
+via lookup:</p>
+<pre><code>vars:
+  db_password: "{{ lookup('amazon.aws.aws_secret', 'prod/db/password') }}"</code></pre>
+
+<h3>5. Jinja2 templates</h3>
+<pre><code># templates/nginx.conf.j2
+server {
+    listen {{ nginx_port }};
+    server_name {{ ansible_fqdn }};
+
+    {% if env == 'production' %}
+    ssl_certificate /etc/letsencrypt/live/{{ ansible_fqdn }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ ansible_fqdn }}/privkey.pem;
+    {% endif %}
+
+    {% for upstream in upstreams %}
+    upstream {{ upstream.name }} {
+        {% for srv in upstream.servers %}
+        server {{ srv }};
+        {% endfor %}
+    }
+    {% endfor %}
+}</code></pre>
+<p>A Jinja2 template lets you generate a different configuration file
+per environment from a single source — the same template produces a
+config with no SSL in dev and with SSL in production, controlled
+entirely by the <code>env</code> variable.</p>
+
+<h3>6. Operating at scale</h3>
+<p>Running Ansible against dozens or hundreds of hosts calls for finer
+control than "run on everything, always". The <code>--check</code>
+flag does a dry-run without actually applying anything, and
+<code>--diff</code> shows exactly which change would be made to each
+file. <code>--limit web1.example.com</code> restricts execution to a
+single host, useful for testing before applying to everyone.
+<code>--tags install</code> or <code>--skip-tags reboot</code> give
+granular control over which tasks run. The <code>forks</code>
+parameter (default 5) controls how many hosts are processed in
+parallel. The execution strategy matters too: <code>linear</code> (the
+default) waits for all hosts to finish each task before moving to the
+next one, <code>free</code> lets each host proceed at its own
+independent pace, and <code>host_pinned</code> pins each host to a
+specific worker. And <code>serial: 25%</code> implements a rolling
+upgrade — applying to 25% of hosts at a time, letting you detect a
+problem before it affects the whole fleet.</p>
+
+<h3>7. Testing: Molecule + ansible-lint</h3>
+<p><code>molecule</code> runs a role inside an isolated container or VM
+and validates both the result and actual idempotency — it's not enough
+for the role to "seem" idempotent, Molecule runs it twice and confirms
+that the second run reports no change at all:</p>
+<pre><code># molecule/default/molecule.yml
+driver:
+  name: docker
+platforms:
+  - name: ubuntu-22
+    image: geerlingguy/docker-ubuntu2204-ansible
+verifier:
+  name: ansible</code></pre>
+<pre><code>$ molecule test
+# create container, converge (rodar a role), idempotence (rodar de novo,
+# verificar que nenhuma task reportou changed=true), verify, destroy</code></pre>
+<p><code>ansible-lint</code> complements this by catching common
+anti-patterns even before you run anything:</p>
+<pre><code>$ ansible-lint roles/webserver
+WARNING: name[missing] - All tasks should be named
+ERROR: command-instead-of-shell - Use shell only when shell features needed</code></pre>
+
+<h3>8. AWX/Tower and governance</h3>
+<p>At scale, running <code>ansible-playbook</code> manually from
+someone's laptop becomes a governance problem: who ran it, when, with
+which variables? AWX (the open source version) and Ansible Tower (the
+commercial version) solve this with a centralized UI, RBAC, variable
+surveys, scheduling, audit logging and secret-management
+integration — everything traceable, instead of relying on individual
+discipline.</p>
+
+<h3>9. Ansible vs Terraform: complementary, not substitutes</h3>
+<p>The division of responsibility follows a simple rule: Terraform
+provisions the RESOURCE in the cloud — VM, VPC, RDS, IAM — in a
+declarative world that keeps state (previous lesson); Ansible
+configures the INSIDE of that already-created resource — installing a
+package, deploying an application, orchestrating a command — in a
+procedural world, but one that behaves idempotently (section 3). The
+most common pattern in practice is Terraform creating the EC2
+instance, exposing the IP as an output, and then Ansible-pull or a
+GitHub Action running the playbooks against that freshly created IP. A
+more advanced alternative builds a "golden" AMI already ready with
+Packer + Ansible, leaving Terraform to just instantiate that ready
+image — the choice between an immutable image and a mutable server
+configured afterward is an architectural decision with real
+implications for deploy speed and drift surface.</p>
+
+<h3>10. Common anti-patterns</h3>
+<ul>
+<li><strong>Task with no <code>name</code></strong>: makes the
+execution log impossible to interpret afterward.</li>
+<li><strong>Overusing <code>shell</code>/<code>command</code></strong>:
+loses the idempotency that is Ansible's central point (section 3).</li>
+<li><strong>Password in plain text in the playbook</strong>: use Vault
+or a lookup directly against a secrets manager (section 4).</li>
+<li><strong>Role with no <code>defaults</code></strong>: forces
+whoever uses the role to guess every required variable, instead of
+having a sensible value ready.</li>
+<li><strong>Always running as root</strong>: use <code>become</code>
+only on tasks that really require elevated privilege.</li>
+<li><strong>Giant static inventory in a cloud environment</strong>:
+use dynamic inventory (section 2.1) so it never goes stale.</li>
+<li><strong>No automated testing (Molecule)</strong>: every run
+becomes a question mark over whether the role still works as
+expected.</li>
+</ul>""",
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
                     "<ol>"
@@ -1222,74 +2411,157 @@ esperado.</li>
                     "survey de variáveis.</li>"
                     "</ol>"
                 ),
+                "practical_en": (
+                    "<p><strong>Full hands-on exercise</strong>:</p>"
+                    "<ol>"
+                    "<li>Create a <code>webserver</code> role with tasks/handlers/templates/defaults "
+                    "that: installs nginx, copies config (Jinja2 template), enables systemd, "
+                    "configures logrotate.</li>"
+                    "<li>Add a <code>hardening</code> role: SSH key-only, fail2ban, "
+                    "basic ufw, automatic security updates.</li>"
+                    "<li>Use <code>ansible-vault</code> for the DB password in "
+                    "<code>group_vars/prod/secrets.yml</code>.</li>"
+                    "<li>Configure AWS EC2 dynamic inventory with tag filters.</li>"
+                    "<li>Run the playbook twice; verify <code>changed=0</code> on the "
+                    "second run (idempotency).</li>"
+                    "<li>Configure Molecule with Docker to test the role in CI.</li>"
+                    "<li>Add <code>ansible-lint</code> to pre-commit.</li>"
+                    "<li>Bonus: AWX on Docker Compose to run the playbook via UI with "
+                    "a variable survey.</li>"
+                    "</ol>"
+                ),
             },
             "materials": [
-                m("Ansible docs", "https://docs.ansible.com/", "docs", ""),
-                m("Ansible Galaxy", "https://galaxy.ansible.com/", "tool", ""),
-                m("Ansible for DevOps (livro)", "https://www.ansiblefordevops.com/", "book", ""),
-                m("ansible-lint", "https://ansible.readthedocs.io/projects/lint/", "tool", ""),
-                m("Molecule (testes)", "https://ansible.readthedocs.io/projects/molecule/", "tool", ""),
-                m("AWX (open source Tower)", "https://github.com/ansible/awx", "tool", ""),
+                m("Ansible docs", "https://docs.ansible.com/", "docs", "",
+                  title_en="Ansible docs", description_en=""),
+                m("Ansible Galaxy", "https://galaxy.ansible.com/", "tool", "",
+                  title_en="Ansible Galaxy", description_en=""),
+                m("Ansible for DevOps (livro)", "https://www.ansiblefordevops.com/", "book", "",
+                  title_en="Ansible for DevOps (book)", description_en=""),
+                m("ansible-lint", "https://ansible.readthedocs.io/projects/lint/", "tool", "",
+                  title_en="ansible-lint", description_en=""),
+                m("Molecule (testes)", "https://ansible.readthedocs.io/projects/molecule/", "tool", "",
+                  title_en="Molecule (testing)", description_en=""),
+                m("AWX (open source Tower)", "https://github.com/ansible/awx", "tool", "",
+                  title_en="AWX (open source Tower)", description_en=""),
             ],
             "questions": [
                 q("Ansible exige agente nos hosts gerenciados?",
                   "Não, basta SSH e Python.",
                   ["Sim, daemon obrigatório.", "Sim, agente em C.", "Sim, kubelet."],
-                  "Em hosts mínimos sem Python, há `raw` module para bootstrap. Em Windows, WinRM."),
+                  "Em hosts mínimos sem Python, há `raw` module para bootstrap. Em Windows, WinRM.",
+                  statement_en="Does Ansible require an agent on managed hosts?",
+                  correct_en="No — SSH and Python are enough.",
+                  wrong_en=["Yes, a mandatory daemon.", "Yes, a C agent.", "Yes, kubelet."],
+                  explanation_en="On minimal hosts without Python, the `raw` module can bootstrap. On Windows, WinRM."),
                 q("Idempotência significa:",
                   "Rodar a mesma tarefa N vezes resulta no mesmo estado.",
                   ["Falha imediatamente ao encontrar qualquer laço de repetição.",
                    "Cria um recurso novo a cada execução, mesmo sem mudança real.",
                    "Produz resultado diferente a cada execução, de forma aleatória."],
-                  "Permite rodar playbooks com confiança em sistemas já configurados (convergência)."),
+                  "Permite rodar playbooks com confiança em sistemas já configurados (convergência).",
+                  statement_en="Idempotency means:",
+                  correct_en="Running the same task N times yields the same state.",
+                  wrong_en=["It fails immediately if it finds any kind of loop.",
+                            "It creates a new resource on every run, even with no real change.",
+                            "It produces a different result every run, at random."],
+                  explanation_en="It lets you run playbooks confidently on already-configured systems (convergence)."),
                 q("ansible-vault serve para:",
                   "Criptografar arquivos com segredos no repositório.",
                   ["Substituir completamente a necessidade de usar um KMS externo.",
                    "Comprimir o tamanho do playbook antes de rodar no host.",
                    "Compactar log gerado durante a execução do playbook."],
-                  "Bom para projetos pequenos. Em escala, prefira lookups para Vault/Secrets Manager."),
+                  "Bom para projetos pequenos. Em escala, prefira lookups para Vault/Secrets Manager.",
+                  statement_en="ansible-vault is used to:",
+                  correct_en="Encrypt files that hold secrets in the repository.",
+                  wrong_en=["Fully replace the need to use an external KMS.",
+                            "Shrink the playbook size before it runs on the host.",
+                            "Compress logs produced while the playbook runs."],
+                  explanation_en="Fine for small projects. At scale, prefer lookups into Vault/Secrets Manager."),
                 q("Inventário pode ser:",
                   "Estático (arquivo) ou dinâmico (script/plugin).",
                   ["Só em formato INI, sem suporte a outro tipo de arquivo.",
                    "Só estático, sem possibilidade de gerar inventário dinâmico.",
                    "Só dinâmico, sem possibilidade de declarar host num arquivo."],
-                  "Dinâmico é essencial em cloud com auto-scaling, onde IPs mudam."),
+                  "Dinâmico é essencial em cloud com auto-scaling, onde IPs mudam.",
+                  statement_en="Inventory can be:",
+                  correct_en="Static (file) or dynamic (script/plugin).",
+                  wrong_en=["INI format only, with no support for other file types.",
+                            "Static only, with no way to generate a dynamic inventory.",
+                            "Dynamic only, with no way to declare a host in a file."],
+                  explanation_en="Dynamic inventory is essential in cloud with auto-scaling, where IPs change."),
                 q("Role em Ansible é:",
                   "Conjunto reutilizável de tasks, handlers, templates, etc.",
                   ["Um comando de shell executado diretamente num host remoto.",
                    "Um tipo específico de host dentro do inventário do Ansible.",
                    "Uma política de acesso do IAM aplicada a uma conta na nuvem."],
-                  "Estrutura padrão (tasks/, handlers/, defaults/, templates/) facilita compartilhamento."),
+                  "Estrutura padrão (tasks/, handlers/, defaults/, templates/) facilita compartilhamento.",
+                  statement_en="An Ansible role is:",
+                  correct_en="A reusable set of tasks, handlers, templates, and related files.",
+                  wrong_en=["A shell command run directly on a remote host.",
+                            "A specific host type inside the Ansible inventory.",
+                            "An IAM access policy applied to a cloud account."],
+                  explanation_en="The standard layout (tasks/, handlers/, defaults/, templates/) makes sharing easier."),
                 q("Handlers são executados:",
                   "Apenas quando um task notifica e tem mudança.",
                   ["Logo no início, antes de qualquer outra task do playbook.",
                    "De forma aleatória, sem relação com o resultado da task.",
                    "Só quando alguma task anterior termina em erro explícito."],
-                  "Padrão clássico: copiar nginx.conf → notify 'restart nginx'. Restart só ocorre se houve mudança."),
+                  "Padrão clássico: copiar nginx.conf → notify 'restart nginx'. Restart só ocorre se houve mudança.",
+                  statement_en="Handlers run:",
+                  correct_en="Only when a task notifies them and a change occurred.",
+                  wrong_en=["Right at the start, before any other playbook task.",
+                            "At random, unrelated to the task outcome.",
+                            "Only when some earlier task ends with an explicit error."],
+                  explanation_en="Classic pattern: copy nginx.conf → notify 'restart nginx'. Restart only if something changed."),
                 q("Diferença entre Ansible e Terraform:",
                   "Ansible foca em config interna; Terraform em provisão de infra.",
                   ["Os dois rodam exclusivamente na máquina local do operador.",
                    "Fazem exatamente a mesma coisa, sem diferença real relevante entre eles.",
                    "Ansible cria a máquina virtual; Terraform configura o que roda dentro dela."],
-                  "Não é regra rígida (Ansible cria recursos cloud, Terraform pode configurar). Mas a pegada é essa."),
+                  "Não é regra rígida (Ansible cria recursos cloud, Terraform pode configurar). Mas a pegada é essa.",
+                  statement_en="Difference between Ansible and Terraform:",
+                  correct_en="Ansible focuses on internal config; Terraform on provisioning infra.",
+                  wrong_en=["Both run exclusively on the operator's local machine.",
+                            "They do exactly the same thing, with no real meaningful difference.",
+                            "Ansible creates the VM; Terraform configures what runs inside it."],
+                  explanation_en="Not a rigid rule (Ansible can create cloud resources; Terraform can configure). But that's the usual split."),
                 q("ansible-lint serve para:",
                   "Detectar más práticas em playbooks.",
                   ["Substituir completamente o próprio Ansible como ferramenta.",
                    "Compilar o arquivo YAML antes de rodar o playbook.",
                    "Publicar a role diretamente no repositório do Galaxy."],
-                  "Pega coisas como 'task sem nome', 'shell sem creates', 'sudo redundante'."),
+                  "Pega coisas como 'task sem nome', 'shell sem creates', 'sudo redundante'.",
+                  statement_en="ansible-lint is used to:",
+                  correct_en="Detect bad practices in playbooks.",
+                  wrong_en=["Fully replace Ansible itself as a tool.",
+                            "Compile the YAML file before running the playbook.",
+                            "Publish the role straight to the Galaxy repository."],
+                  explanation_en="It catches things like 'unnamed task', 'shell without creates', 'redundant sudo'."),
                 q("Modo `--check` faz:",
                   "Dry-run, simulando sem aplicar.",
                   ["Cria uma cópia de backup do host antes de aplicar.",
                    "Reinicia o agente instalado no host gerenciado remotamente.",
                    "Aplica a mudança normalmente, ignorando qualquer erro encontrado."],
-                  "Combine com `--diff` para ver o que mudaria. Útil em PR antes de aplicar."),
+                  "Combine com `--diff` para ver o que mudaria. Útil em PR antes de aplicar.",
+                  statement_en="`--check` mode does:",
+                  correct_en="A dry-run, simulating without applying.",
+                  wrong_en=["Create a backup copy of the host before applying.",
+                            "Restart the agent installed on the remote managed host.",
+                            "Apply the change normally, ignoring any error found."],
+                  explanation_en="Combine with `--diff` to see what would change. Useful in a PR before applying."),
                 q("Para 100+ hosts paralelos:",
                   "Ajuste forks e use estratégias (free, linear).",
                   ["Reduza a execução a um único host de cada vez.",
                    "Não há forma de paralelizar execução em larga escala.",
                    "Use o cron do sistema operacional para agendar a execução."],
-                  "Default fork=5. Aumentar exige memória no controlador. Strategy 'free' não espera todos."),
+                  "Default fork=5. Aumentar exige memória no controlador. Strategy 'free' não espera todos.",
+                  statement_en="For 100+ hosts in parallel:",
+                  correct_en="Tune forks and use strategies (free, linear).",
+                  wrong_en=["Reduce execution to one host at a time.",
+                            "There is no way to parallelize execution at large scale.",
+                            "Use the OS cron to schedule the run."],
+                  explanation_en="Default forks=5. Raising it needs controller memory. Strategy 'free' does not wait for everyone."),
             ],
         },
         # =====================================================================
@@ -1297,7 +2569,9 @@ esperado.</li>
         # =====================================================================
         {
             "title": "Secret Management",
+            "title_en": "Secret Management",
             "summary": "Onde guardar senhas que não seja no código (Vault e similares).",
+            "summary_en": "Where to store passwords that aren't in code (Vault and similar).",
             "lesson": {
                 "intro": (
                     "Em 2022, GitGuardian escaneou 1 bilhão+ commits e encontrou ~10 milhões "
@@ -1307,6 +2581,16 @@ esperado.</li>
                     "Custo médio de incidente: USD 5-50k/dia até detectar. Esta aula é "
                     "sobre como evitar virar manchete: ferramentas, padrões e cultura para "
                     "lidar com segredos. Spoiler: 'colocar em variável de ambiente' não é "
+                    "secret management."
+                ),
+                "intro_en": (
+                    "In 2022, GitGuardian scanned 1 billion+ commits and found ~10 million "
+                    "secrets leaked on public GitHub. AWS tokens, Stripe keys, Postgres "
+                    "passwords, JWT secrets. Within seconds of a public push, bots clone, "
+                    "extract credentials, and start mining crypto on your account. "
+                    "Average incident cost: USD 5-50k/day until detection. This lesson is "
+                    "about how not to become a headline: tools, patterns, and culture for "
+                    "handling secrets. Spoiler: 'put it in an environment variable' is not "
                     "secret management."
                 ),
                 "body": (
@@ -1524,6 +2808,208 @@ cobertura de teste. Se o padrão fosse OIDC com token efêmero (seção
 antes dele expirar sozinho — limitando drasticamente o blast radius do
 mesmo incidente.</p>"""
                 ),
+                "body_en": """<h3>1. Types of secrets</h3>
+<p>Not every secret should be treated the same way, and the right
+category drives the protection strategy. <strong>Static</strong>
+secrets — database passwords, API keys, service tokens — are created
+manually and change rarely; they still belong in a vault and should
+rotate periodically, because "almost never changes" is not the same as
+"never needs to change". <strong>Dynamic</strong> secrets invert the
+model: the vault itself creates the credential on demand, with a short
+TTL — Vault, for example, generates a temporary Postgres user with a
+random password valid for one hour and then revokes it on its own,
+shrinking the exposure window to roughly the real usage time.
+<strong>Ephemeral tokens</strong> (JWT/STS/OIDC) go further: short TTL
+and they never exist as persistent storage anywhere — AssumeRole on
+AWS, Workload Identity on GCP, and Managed Identity on Azure follow
+this model. And <strong>certificates</strong> (TLS, mTLS, SSH CA)
+typically live 7 to 90 days and renew automatically via ACME or an
+equivalent tool (Vault PKI, smallstep, cert-manager).</p>
+<div class="mermaid">
+flowchart TD
+    App["Aplicação"] -- "Pede segredo em runtime" --> Vault["Cofre de segredos"]
+    Vault --> Auth{"Identidade autorizada?"}
+    Auth -- "Sim" --> Return["Retorna segredo de curta duração"]
+    Auth -- "Não" --> Deny["Nega o acesso"]
+</div>
+
+
+<h3>2. Where NEVER to store secrets</h3>
+<p>Seven places look convenient but guarantee a leak sooner or later.
+<strong>Git</strong> — even in a private repo — never forgets: forks,
+clones, exports, and history keep the secret indefinitely, even if the
+commit is later "reverted". <strong>Slack/Teams/Discord</strong>
+archives messages in logs, integrations, and e-discovery exports, often
+retained for years by the company's own retention policy.
+<strong>Email</strong> has the same problem, and also passes through
+external servers along the way. An <code>ENV</code> or <code>ARG</code>
+in a <strong>Dockerfile</strong> writes the secret straight into an
+image LAYER — anyone with pull permission can extract it with
+<code>docker history image</code>. Application or CI
+<strong>logs</strong> end up retained for 30+ days in any typical SIEM
+or observability SaaS. A CI environment variable <strong>without
+masking</strong> appears in plaintext as soon as some step runs
+<code>echo $VAR</code>, intentional or not. And even a browser
+extension with <strong>cloud sync</strong> enabled can carry the secret
+outside company control without anyone noticing.</p>
+
+<h3>3. Modern vaults</h3>
+<table>
+<tr><th>Vault</th><th>Strengths</th></tr>
+<tr><td>HashiCorp Vault</td><td>Multi-cloud, dynamic secrets, transit, PKI, OIDC. Self-hosted or Cloud.</td></tr>
+<tr><td>AWS Secrets Manager</td><td>Native AWS integration, automatic RDS rotation, cross-region replication.</td></tr>
+<tr><td>AWS Parameter Store</td><td>Cheaper, simpler; good for configs and less-critical secrets.</td></tr>
+<tr><td>Azure Key Vault</td><td>Entra ID integration, HSM-backed.</td></tr>
+<tr><td>GCP Secret Manager</td><td>Versioning, replication, granular IAM.</td></tr>
+<tr><td>1Password / Bitwarden</td><td>Good for humans + secret automation (1Password Connect).</td></tr>
+<tr><td>Doppler / Infisical</td><td>Small SaaS products focused on developer experience.</td></tr>
+</table>
+
+<h3>4. Pattern: never read the vault directly from the app (if possible)</h3>
+<p>Having the application talk to the vault directly looks simple, but
+it needs a dedicated client, retries, cache, its own auth, and specific
+error handling — and if the vault itself has an incident, the app falls
+with it, creating a new single point of failure exactly where you should
+not have one. Three patterns avoid that direct coupling.</p>
+<h4>4.1 Sidecar/Init container injector</h4>
+<p>A separate container pulls the secret from the vault and writes it to
+a shared file or volume; the application only reads the file, with no
+vault logic embedded in it. Vault Agent is the classic example of this
+pattern:</p>
+<pre><code># Pod K8s
+annotations:
+  vault.hashicorp.com/agent-inject: 'true'
+  vault.hashicorp.com/role: 'app'
+  vault.hashicorp.com/agent-inject-secret-db: 'database/creds/app'</code></pre>
+<h4>4.2 Operator on K8s</h4>
+<p>The <strong>External Secrets Operator</strong> (ESO) follows the same
+spirit, but natively for Kubernetes: you create an
+<code>ExternalSecret</code> Custom Resource pointing at the vault, and
+ESO populates a native <code>Secret</code> in the namespace, which the
+application consumes exactly like any ordinary Secret, without knowing
+the real source is external:</p>
+<pre><code>apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata: { name: app-db }
+spec:
+  secretStoreRef: { name: aws-sm, kind: ClusterSecretStore }
+  target: { name: app-db-secret }
+  data:
+    - secretKey: password
+      remoteRef: { key: prod/app/db, property: password }</code></pre>
+<h4>4.3 OIDC/Workload Identity</h4>
+<p>In a CI/CD pipeline, the ideal is to store NO secret at all: GitHub
+Actions issues an ephemeral JWT, AWS validates that token via OIDC and
+returns short-lived STS credentials — no long-lived secret is ever
+saved in GitHub:</p>
+<pre><code>permissions:
+  id-token: write
+  contents: read
+jobs:
+  deploy:
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::111111111111:role/gh-deployer
+          aws-region: us-east-1
+      - run: aws s3 sync ./build s3://app-prod   # sem keys!</code></pre>
+<h3>5. Rotation</h3>
+<p>A common policy differentiates rotation by credential type: human
+credentials (password, MFA reset) every 90 days; static machine
+credentials every 30 to 90 days; critical credentials (root, KMS master
+key) with extra care, but ideally every 365 days with accompanying
+audit; and any suspected leak triggers IMMEDIATE rotation, without
+waiting for the scheduled cycle. Vault with dynamic secrets already
+solves this "for free" — the short TTL IS the rotation. For static
+secrets, automation is the path: once enabled, AWS Secrets Manager runs
+a Lambda that creates the new password, updates RDS, and updates the
+secret itself — the application fetches via a TTL cache and receives
+the new password automatically, with no manual intervention at swap
+time.</p>
+
+<h3>6. Detection in PRs and in code</h3>
+<p>Accidents happen even with a well-designed process — real defense is
+having several layers catching the same mistake at different points. The
+<strong>pre-commit hook</strong> (gitleaks, trufflehog, detect-secrets)
+blocks the push before it leaves the developer's laptop. The
+<strong>CI check</strong> catches what slipped past a skipped pre-commit
+— the layer where <code>--no-verify</code> is not available.
+<strong>GitHub Secret Scanning</strong> is on by default for public
+repos (and via Advanced Security for private ones), detects 200+ known
+patterns, and in many cases notifies the provider itself (AWS, Stripe)
+which can revoke the key automatically before anyone notices the leak.
+And a <strong>periodic audit</strong> of old repositories with
+trufflehog or gitleaks-search catches what was forgotten years ago,
+before these layers existed:</p>
+<pre><code># .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks</code></pre>
+<h3>7. IF a secret leaked: what to do</h3>
+<ol>
+<li><strong>Rotate immediately</strong>, even if the first response was
+only a <code>git rm --cached</code> — history still carries the original
+value, so the only real defense is changing the credential.</li>
+<li><strong>Check usage</strong> in provider logs (CloudTrail, Stripe
+events) — the secret may already be actively exploited, not just
+theoretically exposed.</li>
+<li>Consider removing it from history (BFG, git filter-repo) — that
+cleans the main repository, but does not undo what forks and clones
+already copied, so it is more hygiene than containment.</li>
+<li>Tell the team and security — hiding the incident only delays real
+mitigation.</li>
+<li>Do the postmortem: how the secret leaked specifically, and what
+changes in the process so it does not happen again.</li>
+</ol>
+
+<h3>8. K8s Secrets: caveats</h3>
+<p>The native Kubernetes <code>Secret</code> is only
+<strong>base64</strong>, not encryption — <code>kubectl get secret -o
+yaml</code> reveals the value in plaintext to anyone with read access
+to that object. In a multi-tenant or shared cluster, four measures close
+that gap: enable <strong>encryption-at-rest</strong> on etcd via
+<code>EncryptionConfiguration</code> with KMS; apply restrictive RBAC so
+only the application namespace reads its own secrets; adopt
+SealedSecrets (Bitnami) for GitOps flows — the ENCRYPTED secret can be
+committed to Git safely, and only the in-cluster controller can decrypt;
+or use SOPS with KMS to keep an encrypted, commit-friendly YAML/JSON
+file. External Secrets Operator (section 4.2) remains the more modern
+pattern when the source of truth is a real external vault.</p>
+
+<h3>9. Vault transit engine: encryption as a service</h3>
+<p>When sensitive data must live in a database — tax IDs, cards,
+medical records — the alternative to implementing encryption inside the
+application itself (with real risk of getting it wrong) is to delegate
+to Vault transit: the app sends plaintext and gets back ciphertext ready
+to store, without EVER handling the encryption key directly:</p>
+<pre><code># app envia plaintext, recebe ciphertext
+POST /v1/transit/encrypt/customer-pii
+{ "plaintext": "MTIzNDU2Nzg5" }   # base64
+→ { "ciphertext": "vault:v2:abc..." }
+
+# DB armazena 'vault:v2:abc...'
+# Para ler, app chama /decrypt</code></pre>
+<p>The key never leaves Vault at any point in this flow, rotation stays
+centralized in one place, and every encrypt/decrypt call produces an
+audit record — a direct compliance requirement under PCI, LGPD, and
+HIPAA.</p>
+
+<h3>10. Real case: Codecov breach (2021)</h3>
+<p>Attackers injected code into the bash script distributed by Codecov
+(the <code>bash &lt;(curl ...)</code> pattern, run directly in thousands
+of CI pipelines worldwide). That compromised script exfiltrated
+environment variables from the CI where it ran — including any secret
+stored there. The result was thousands of keys and tokens leaked across
+hundreds of companies that did not even know they were exposed until the
+incident was publicly disclosed. The practical lesson: a secret stored
+as a CI environment variable is vulnerable to ANY third-party script that
+runs in that environment, even an apparently harmless test-coverage
+script. If the pattern had been OIDC with an ephemeral token (section
+4.3), even an attacker capturing the token would have only minutes
+before it expired on its own — drastically limiting the blast radius of
+the same incident.</p>""",
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
                     "<ol>"
@@ -1540,14 +3026,36 @@ mesmo incidente.</p>"""
                     "decripte localmente para uso.</li>"
                     "</ol>"
                 ),
+                "practical_en": (
+                    "<p><strong>Full hands-on exercise</strong>:</p>"
+                    "<ol>"
+                    "<li>Configure Vault in Docker. Enable KV-v2 and create secrets.</li>"
+                    "<li>Configure GitHub Actions with OIDC for AWS, without storing access "
+                    "keys in GitHub. The job pulls a secret from Secrets Manager and uses it.</li>"
+                    "<li>On local K8s (kind/minikube), install External Secrets Operator. "
+                    "Create an ExternalSecret pointing at AWS Secrets Manager (or Vault).</li>"
+                    "<li>Configure gitleaks as a pre-commit hook + GitHub Action. Commit "
+                    "a fake AWS key and watch the block.</li>"
+                    "<li>Enable GitHub Secret Scanning on your public repo.</li>"
+                    "<li>Configure automatic RDS rotation via AWS Secrets Manager.</li>"
+                    "<li>Bonus: SOPS + KMS — encrypt a config file, commit it, "
+                    "decrypt locally for use.</li>"
+                    "</ol>"
+                ),
             },
             "materials": [
-                m("HashiCorp Vault docs", "https://developer.hashicorp.com/vault/docs", "docs", ""),
-                m("AWS Secrets Manager", "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html", "docs", ""),
-                m("Azure Key Vault", "https://learn.microsoft.com/azure/key-vault/general/overview", "docs", ""),
-                m("GitHub OIDC", "https://docs.github.com/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect", "docs", ""),
-                m("Mozilla SOPS", "https://github.com/getsops/sops", "tool", ""),
-                m("External Secrets Operator (K8s)", "https://external-secrets.io/", "tool", ""),
+                m("HashiCorp Vault docs", "https://developer.hashicorp.com/vault/docs", "docs", "",
+                  title_en="HashiCorp Vault docs", description_en=""),
+                m("AWS Secrets Manager", "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html", "docs", "",
+                  title_en="AWS Secrets Manager", description_en=""),
+                m("Azure Key Vault", "https://learn.microsoft.com/azure/key-vault/general/overview", "docs", "",
+                  title_en="Azure Key Vault", description_en=""),
+                m("GitHub OIDC", "https://docs.github.com/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect", "docs", "",
+                  title_en="GitHub OIDC", description_en=""),
+                m("Mozilla SOPS", "https://github.com/getsops/sops", "tool", "",
+                  title_en="Mozilla SOPS", description_en=""),
+                m("External Secrets Operator (K8s)", "https://external-secrets.io/", "tool", "",
+                  title_en="External Secrets Operator (K8s)", description_en=""),
             ],
             "questions": [
                 q("Senha em código é:",
@@ -1555,61 +3063,121 @@ mesmo incidente.</p>"""
                   ["Encriptada automaticamente por padrão em qualquer repositório git.",
                    "Uma boa prática amplamente recomendada por especialista em segurança.",
                    "Imune a vazamento mesmo com o repositório tornado público sem querer."],
-                  "Crawlers buscam por padrões como `AKIA...` em segundos após push público."),
+                  "Crawlers buscam por padrões como `AKIA...` em segundos após push público.",
+                  statement_en="A password in code is:",
+                  correct_en="A critical risk — a public clone is enough to leak it.",
+                  wrong_en=["Encrypted by default in any git repository.",
+                            "A widely recommended practice among security specialists.",
+                            "Immune to leaks even if the repo is made public by accident."],
+                  explanation_en="Crawlers search for patterns like `AKIA...` within seconds of a public push."),
                 q("Vault dynamic secrets:",
                   "Geram credenciais temporárias por demanda.",
                   ["Substituem completamente a necessidade de usar TLS na conexão.",
                    "Um registro de DNS apontando para o endereço do serviço.",
                    "Um arquivo criptografado guardado localmente no disco do usuário."],
-                  "Diminui janela de exposição, e revogação é trivial, basta TTL expirar."),
+                  "Diminui janela de exposição, e revogação é trivial, basta TTL expirar.",
+                  statement_en="Vault dynamic secrets:",
+                  correct_en="Generate temporary credentials on demand.",
+                  wrong_en=["Fully replace the need to use TLS on the connection.",
+                            "A DNS record pointing at the service address.",
+                            "An encrypted file stored locally on the user's disk."],
+                  explanation_en="They shrink the exposure window, and revocation is trivial — just wait for TTL to expire."),
                 q("OIDC em CI evita:",
                   "Armazenar chaves longas estáticas.",
                   ["Substituir a necessidade de usar container Docker no pipeline.",
                    "Atualizar a dependência do projeto antes de cada deploy.",
                    "Reduzir o tempo total gasto durante a etapa de build."],
-                  "GitHub emite token JWT efêmero; AWS valida e devolve credencial STS, sem segredo persistente."),
+                  "GitHub emite token JWT efêmero; AWS valida e devolve credencial STS, sem segredo persistente.",
+                  statement_en="OIDC in CI avoids:",
+                  correct_en="Storing long-lived static keys.",
+                  wrong_en=["Replacing the need to use Docker containers in the pipeline.",
+                            "Updating project dependencies before every deploy.",
+                            "Reducing total time spent in the build stage."],
+                  explanation_en="GitHub issues an ephemeral JWT; AWS validates it and returns STS credentials — no persistent secret."),
                 q("SOPS criptografa:",
                   "Arquivos YAML/JSON com chaves KMS.",
                   ["Só senha em texto puro, sem suporte a outro tipo de dado.",
                    "Só hash calculado a partir do conteúdo do arquivo original.",
                    "Só arquivo binário, sem suporte a formato de texto estruturado."],
-                  "Permite commitar arquivo cripto no repo (GitOps friendly). Decryption só com permissão KMS."),
+                  "Permite commitar arquivo cripto no repo (GitOps friendly). Decryption só com permissão KMS.",
+                  statement_en="SOPS encrypts:",
+                  correct_en="YAML/JSON files with KMS keys.",
+                  wrong_en=["Only plaintext passwords, with no support for other data types.",
+                            "Only a hash computed from the original file contents.",
+                            "Only binary files, with no support for structured text formats."],
+                  explanation_en="Lets you commit encrypted files to the repo (GitOps-friendly). Decryption requires KMS permission."),
                 q("Rotação automática reduz:",
                   "Janela de exposição se a senha vazar.",
                   ["A latência de rede entre o cliente e o cofre de segredo.",
                    "O custo mensal cobrado pelo serviço de gerenciamento de chave.",
                    "O tamanho em disco do arquivo onde a credencial fica salva."],
-                  "Mesmo se um atacante captura, a credencial vira inválida em poucos dias."),
+                  "Mesmo se um atacante captura, a credencial vira inválida em poucos dias.",
+                  statement_en="Automatic rotation reduces:",
+                  correct_en="The exposure window if the password leaks.",
+                  wrong_en=["Network latency between the client and the secrets vault.",
+                            "The monthly cost charged by the key-management service.",
+                            "Disk size of the file where the credential is stored."],
+                  explanation_en="Even if an attacker captures it, the credential becomes invalid within a few days."),
                 q("Compartilhar segredo via Slack:",
                   "Risco de exposição persistente, preferir cofres.",
                   ["Auto-expira depois de um tempo configurado pela plataforma.",
                    "Uma boa prática amplamente aceita para troca rápida de informação.",
                    "Encriptado por padrão em qualquer canal de mensagem corporativo."],
-                  "Mensagens permanecem em logs corporativos, integrações, exports. Use 1Password share / Vault link com TTL."),
+                  "Mensagens permanecem em logs corporativos, integrações, exports. Use 1Password share / Vault link com TTL.",
+                  statement_en="Sharing a secret via Slack:",
+                  correct_en="Risks persistent exposure — prefer vaults.",
+                  wrong_en=["Auto-expires after a time configured by the platform.",
+                            "A widely accepted practice for quick information exchange.",
+                            "Encrypted by default in any corporate messaging channel."],
+                  explanation_en="Messages linger in corporate logs, integrations, and exports. Use 1Password share / Vault link with TTL."),
                 q("`.env.example` deve conter:",
                   "Apenas as chaves esperadas, sem valores reais.",
                   ["Um backup completo do banco de dado de produção da empresa.",
                    "Um token de acesso direto ao serviço de KMS da conta.",
                    "A senha real usada no ambiente de produção da aplicação."],
-                  "Documenta variáveis necessárias, mas valores ficam fora do repo."),
+                  "Documenta variáveis necessárias, mas valores ficam fora do repo.",
+                  statement_en="`.env.example` should contain:",
+                  correct_en="Only the expected keys, with no real values.",
+                  wrong_en=["A full backup of the company's production database.",
+                            "A direct access token to the account's KMS service.",
+                            "The real password used in the application's production environment."],
+                  explanation_en="It documents required variables, but values stay out of the repo."),
                 q("Pre-commit hook útil:",
                   "Detectar segredos com gitleaks ou trufflehog.",
                   ["Forçar um push direto para o branch principal do repositório.",
                    "Apagar o histórico de commit relacionado ao segredo vazado.",
                    "Comprimir o tamanho total do repositório antes do commit."],
-                  "Bloqueia push antes do segredo sair do laptop. Combine com checagem server-side."),
+                  "Bloqueia push antes do segredo sair do laptop. Combine com checagem server-side.",
+                  statement_en="A useful pre-commit hook:",
+                  correct_en="Detect secrets with gitleaks or trufflehog.",
+                  wrong_en=["Force a direct push to the repository's main branch.",
+                            "Delete the commit history related to a leaked secret.",
+                            "Compress the total repository size before the commit."],
+                  explanation_en="Blocks the push before the secret leaves the laptop. Combine with server-side checks."),
                 q("Em K8s, segredos como Secret são:",
                   "Base64 encoded, NÃO criptografados por padrão.",
                   ["Hash irreversível, sem caminho de volta até o valor original.",
                    "Criptografado automaticamente com uma chave gerenciada pelo cluster.",
                    "Incapaz de armazenar valor binário dentro do mesmo objeto."],
-                  "Habilite encryption-at-rest no etcd e use ferramentas como SealedSecrets/External Secrets."),
+                  "Habilite encryption-at-rest no etcd e use ferramentas como SealedSecrets/External Secrets.",
+                  statement_en="In K8s, Secret objects are:",
+                  correct_en="Base64-encoded, NOT encrypted by default.",
+                  wrong_en=["An irreversible hash, with no way back to the original value.",
+                            "Automatically encrypted with a cluster-managed key.",
+                            "Unable to store binary values in the same object."],
+                  explanation_en="Enable encryption-at-rest on etcd and use tools like SealedSecrets/External Secrets."),
                 q("Vault transit engine serve para:",
                   "Criptografia como serviço (encrypt/decrypt) sem expor a chave.",
                   ["Auditoria detalhada de permissão concedida a cada usuário do IAM da conta.",
                    "Provisionamento automático de máquina virtual sob demanda na infraestrutura.",
                    "Backup periódico do log gerado pela aplicação rodando em produção."],
-                  "App envia plaintext, recebe ciphertext. Chave nunca sai do Vault. Bom para campos sensíveis em DB."),
+                  "App envia plaintext, recebe ciphertext. Chave nunca sai do Vault. Bom para campos sensíveis em DB.",
+                  statement_en="Vault transit engine is used for:",
+                  correct_en="Encryption as a service (encrypt/decrypt) without exposing the key.",
+                  wrong_en=["Detailed auditing of IAM permissions granted to each account user.",
+                            "Automatic on-demand provisioning of virtual machines in the infrastructure.",
+                            "Periodic backup of logs produced by the application running in production."],
+                  explanation_en="The app sends plaintext and receives ciphertext. The key never leaves Vault. Good for sensitive DB fields."),
             ],
         },
         # =====================================================================
@@ -1617,7 +3185,9 @@ mesmo incidente.</p>"""
         # =====================================================================
         {
             "title": "CI/CD Básico",
+            "title_en": 'Basic CI/CD',
             "summary": "Criar uma esteira simples que testa e move o código para o servidor.",
+            "summary_en": 'Build a simple pipeline that tests and moves code to the server.',
             "lesson": {
                 "intro": (
                     "Em times sem CI/CD, deploy é evento. Engenheiros se preparam por dias, "
@@ -1628,6 +3198,16 @@ mesmo incidente.</p>"""
                     "<em>sem</em> aumentar risco. Esta aula cobre os princípios, padrões "
                     "(blue-green, canary, rolling), pipeline-as-code, e como medir saúde "
                     "do processo (DORA metrics)."
+                ),
+                "intro_en": (
+                    "In teams without CI/CD, deploy is an event. Engineers prepare for days, "
+                    "schedule a night window, follow a Confluence checklist, and something still "
+                    "breaks in production. In teams with mature CI/CD, deploy is a non-event, "
+                    "several times a day, automatically, with rollback in seconds. CI/CD is not "
+                    "a luxury — it is what makes frequent delivery possible <em>without</em> "
+                    "increasing risk. This lesson covers principles, patterns "
+                    "(blue-green, canary, rolling), pipeline-as-code, and how to measure process "
+                    "health (DORA metrics)."
                 ),
                 "body": (
                 """<h3>1. CI vs CD vs CD: três conceitos, duas siglas</h3>
@@ -1925,6 +3505,301 @@ detecção de drift é nativa — qualquer mudança manual feita fora do
 Git é automaticamente revertida pelo <code>selfHeal</code> na próxima
 reconciliação.</p>"""
                 ),
+                "body_en": """<h3>1. CI vs CD vs CD: three concepts, two acronyms</h3>
+<p><strong>CI (Continuous Integration)</strong> means that on every
+commit, code is merged and validated immediately — build, lint,
+unit tests, SAST, SCA — with the goal of finding problems in
+minutes, not days later when they are buried under other changes.
+The rule that sustains this: if the build breaks, the WHOLE team stops
+until it is fixed, instead of stacking more work on a broken base.
+<strong>CD (Continuous Delivery)</strong> goes one step further:
+the artifact is always ready to deploy at any moment, but a
+HUMAN still presses the final button — common in teams that prefer to
+keep that explicit approval. And <strong>CD (Continuous Deployment)</strong>
+removes even that last manual step: every commit that passes the
+full pipeline goes to production automatically, with no intervention —
+a maturity level that needs very robust tests and telemetry before
+it makes sense.</p>
+<div class="mermaid">
+flowchart LR
+    A["Commit"] --> B["Build"]
+    B --> C["Testes automatizados"]
+    C --> D{"Passou?"}
+    D -- "Sim" --> E["Deploy"]
+    D -- "Não" --> F["Notifica o time"]
+</div>
+
+
+<h3>2. Minimum quality pipeline</h3>
+<pre><code>commit → lint → unit tests → build → security scans →
+         push artefato → deploy dev → integration tests →
+         deploy staging → smoke + e2e → [approval] → deploy prod</code></pre>
+<p>Each stage must <strong>fail fast</strong> — lint in
+seconds, unit tests under 5 minutes, integration tests under
+15 — because a slow pipeline is one the team learns to
+ignore or skip, effectively nullifying the whole point of having it.</p>
+
+<h3>3. GitHub Actions: complete sample pipeline</h3>
+<pre><code>name: ci-cd
+on:
+  push: { branches: [main] }
+  pull_request: {}
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  security-events: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12', cache: 'pip' }
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy app
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: ci }
+        options: --health-cmd pg_isready
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r requirements-dev.txt
+      - run: pytest --cov=app --cov-report=xml
+      - uses: codecov/codecov-action@v4
+  security:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+      - uses: returntocorp/semgrep-action@v1
+        with: { config: p/owasp-top-ten }
+      - uses: gitleaks/gitleaks-action@v2
+  build:
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: |
+            ghcr.io/empresa/app:${{ github.sha }}
+            ghcr.io/empresa/app:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/empresa/app:${{ github.sha }}
+          severity: 'CRITICAL'
+          exit-code: '1'
+      - uses: sigstore/cosign-installer@v3
+      - run: cosign sign --yes ghcr.io/empresa/app@${{ steps.push.outputs.digest }}
+  deploy-staging:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::111:role/deployer
+          aws-region: us-east-1
+      - run: ./scripts/deploy.sh staging ${{ github.sha }}
+      - run: ./scripts/smoke-tests.sh https://staging.app
+  deploy-prod:
+    needs: deploy-staging
+    environment: production   # gate manual
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./scripts/deploy.sh prod ${{ github.sha }}</code></pre>
+<p>Five details of this pipeline are not accidental:
+<code>concurrency</code> cancels an older run on the same branch when
+a new push arrives, avoiding spending CI minutes on an already
+obsolete commit; <code>permissions</code> follows least
+privilege, granting write only where it is truly needed;
+OIDC authenticates to AWS with no long-lived key stored;
+<code>environment: production</code> implements the manual gate — with
+extra secrets, wait timers, or required reviewers configurable
+directly in the GitHub UI; and Cosign signing in the
+build stage lets a Kubernetes admission controller verify
+image integrity before running it.</p>
+
+<h3>4. Deploy strategies</h3>
+<h4>4.1 Recreate</h4>
+<p>The simplest strategy: kill all old pods and bring the
+new ones up next. Causes real downtime during the transition — acceptable
+in dev/QA, practically unacceptable in production.</p>
+<h4>4.2 Rolling</h4>
+<p>Replaces replicas one by one gradually — the Kubernetes
+default. No downtime IF the application supports multiple versions
+coexisting during the transition — rollback, however, is
+literally rolling the process back, and therefore relatively
+slow:</p>
+<pre><code>spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0</code></pre>
+<h4>4.3 Blue-Green</h4>
+<p>Keeps two identical environments running at once — blue (the
+current version) and green (the new one). Deploy happens on green, is
+validated in isolation, and only then the load balancer flips traffic
+from one side to the other in one shot. That makes rollback almost
+instant — just flip back — at the cost of doubled resources for the
+whole transition window, acceptable for systems that tolerate that
+duplication for a few hours.</p>
+<h4>4.4 Canary</h4>
+<p>Releases the new version to a small fraction of users (5%, for
+example), monitors real metrics (errors, latency, business KPIs), and only
+then gradually increases to 25%, 50%, 100% — or rolls back
+immediately if something goes wrong. The name comes from the canary used in
+coal mines: the bird died before the gas affected miners, serving as
+an early alarm — here, the small traffic fraction feels the
+problem before it hits most users. Argo Rollouts and
+Flagger automate this, promoting the version automatically
+based on Prometheus or Datadog metrics.</p>
+<h4>4.5 Feature flags</h4>
+<p>Fully decouples deploy from release: code reaches
+production already OFF, and is turned on gradually later, controlled by
+flag — not by a new deploy. LaunchDarkly, Unleash, OpenFeature, and
+ConfigCat dominate this pattern, enabling A/B
+tests, instant kill switches, and rollback without any
+redeploy:</p>
+<pre><code>if (flags.isEnabled('new-checkout-flow', user)) {
+    return newCheckout(req);
+}
+return oldCheckout(req);</code></pre>
+
+<h3>5. Immutable artifacts</h3>
+<p>The core principle: the SAME binary or image that passed
+staging is exactly what goes to production, identified by hash or
+SHA — never a "rebuild for production", because rebuilding means
+testing one thing and running something slightly different. In practice that
+requires tagging by commit SHA (<code>app:abc1234</code>) or semver
+(<code>app:v1.4.2</code>), never <code>latest</code> in production — that
+tag is not traceable to any specific commit; build once,
+promoting the same artifact across environments instead of rebuilding at
+each stage; configuration injected via environment variables or external
+secrets, never baked in at build time; and Cosign
+signing guaranteeing the artifact was not tampered with between build and
+execution.</p>
+
+<h3>6. Pipeline-as-code</h3>
+<p>The pipeline lives inside the repository itself —
+<code>.github/workflows/</code>, <code>.gitlab-ci.yml</code>,
+<code>Jenkinsfile</code>, <code>buildspec.yml</code> — versioned,
+reviewed in PRs like any other code, and fully auditable.
+That ends the classic Jenkins-configured-by-hand-in-the-UI scenario,
+where only one specific admin knows what is actually configured on the
+server.</p>
+
+<h3>7. DORA metrics</h3>
+<p>Long-running Google research (the DORA team) correlated
+high engineering performance with four specific metrics, not with
+subjective intuition that "this team is fast". <strong>Deployment
+Frequency</strong> measures how many times per day, week, or month the team
+deploys — an elite team deploys several times a day.
+<strong>Lead Time for Changes</strong> measures time from commit to
+production — elite stays under one hour.
+<strong>Mean Time to Restore</strong> (MTTR) measures how long it takes
+to recover from an incident — elite also under one hour. And
+<strong>Change Failure Rate</strong> measures the percentage of deploys that
+cause incidents — elite sits between 0% and 15%. The most
+counterintuitive finding is that elite teams have all FOUR metrics
+high at once — there is no real trade-off between speed and
+stability when the process is good enough. What enables that
+is automated testing, automated deploy, trunk-based
+development, and observability — the pieces described in earlier
+sections of this lesson.</p>
+
+<h3>8. Cache, matrix, and optimization</h3>
+<p>Dependency cache (pip, npm, Go modules, Docker image
+layers) should be keyed on the lockfile hash, not the
+branch name — so the cache is reused across different branches that
+share the same dependencies, instead of rebuilding from scratch on
+every new PR. Matrix builds run multiple combinations in parallel —
+Python 3.10/3.11/3.12 crossed with Linux/macOS, for example — in
+roughly the time of ONE run, not the sum of all. Reusable workflows
+(GitHub's native feature) or <code>include</code> in
+GitLab avoid duplicating the same pipeline config across multiple
+repositories. And self-hosted runners make sense specifically for
+heavy builds or hardware-specific needs, like GPUs, that hosted
+runners do not offer.</p>
+
+<h3>9. Anti-patterns</h3>
+<ul>
+<li><strong>Manual production deploy</strong>: opens the door to recurring human
+error — exactly what automation exists to
+eliminate.</li>
+<li><strong>Pipeline with no real tests</strong>: "deploy straight through" becomes
+Russian roulette dressed up as process.</li>
+<li><strong>High rate of bugs escaping with green CI</strong>: a direct signal
+that existing tests do not cover what actually
+matters.</li>
+<li><strong>Slow pipeline (1h+)</strong>: nobody truly waits,
+and the team learns to skip stages (section 2).</li>
+<li><strong>Flaky (intermittent) tests</strong>: erode trust
+in the CI signal itself — after a few random failures, the team
+stops trusting real failures too.</li>
+<li><strong>Build done "manually" straight in production</strong>: "I just
+recompiled there" becomes exactly the kind of environment-specific bug nobody
+can reproduce later.</li>
+<li><strong>Only main is tested</strong>: without CI on PRs,
+problems only appear AFTER merge, when they are more expensive to revert.</li>
+</ul>
+
+<h3>10. GitOps</h3>
+<p>The GitOps principle: the Git repository is the source of truth for the
+DESIRED cluster state, not a history of commands applied
+manually. Argo CD or Flux continuously watch the repository
+and reconcile the real cluster against what is declared — with no
+manual <code>kubectl apply</code> in the middle:</p>
+<pre><code># cluster/applications/app.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: { name: app, namespace: argocd }
+spec:
+  source:
+    repoURL: https://github.com/empresa/k8s-config
+    path: apps/app/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }</code></pre>
+<p>The advantages follow directly from the model: rollback becomes a simple
+<code>git revert</code>, audit becomes <code>git log</code>, and
+drift detection is native — any manual change made outside
+Git is automatically reverted by <code>selfHeal</code> on the next
+reconciliation.</p>
+""",
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
                     "<ol>"
@@ -1942,14 +3817,37 @@ reconciliação.</p>"""
                     "<li>Bonus 2: meça suas DORA metrics com Four Keys do Google.</li>"
                     "</ol>"
                 ),
+                "practical_en": (
+                    "<p><strong>Full hands-on exercise</strong>:</p>"
+                    "<ol>"
+                    "<li>Create a Python repo with a simple app and a test suite.</li>"
+                    "<li>Add GitHub Actions: lint (ruff), test (pytest), security "
+                    "(trivy + semgrep + gitleaks), build (Docker to GHCR), sign with "
+                    "Cosign.</li>"
+                    "<li>Configure tagging by SHA + semver tag (release-please).</li>"
+                    "<li>Add a <code>production</code> environment with required reviewers + "
+                    "a 10-minute wait timer.</li>"
+                    "<li>Implement canary: deploy to 10% → smoke test → 50% → 100%, "
+                    "with automatic rollback on error rate.</li>"
+                    "<li>Bonus: Argo CD on a kind cluster pointing at a manifests repo; "
+                    "demonstrate GitOps (change a manifest, watch Argo apply it).</li>"
+                    "<li>Bonus 2: measure your DORA metrics with Google's Four Keys.</li>"
+                    "</ol>"
+                ),
             },
             "materials": [
-                m("GitHub Actions docs", "https://docs.github.com/actions", "docs", ""),
-                m("GitLab CI/CD", "https://docs.gitlab.com/ee/ci/", "docs", ""),
-                m("Jenkins handbook", "https://www.jenkins.io/doc/book/", "docs", ""),
-                m("Continuous Delivery (livro)", "https://continuousdelivery.com/", "book", ""),
-                m("Argo CD", "https://argo-cd.readthedocs.io/", "tool", ""),
-                m("DORA metrics", "https://dora.dev/", "article", "Pesquisa do Google sobre DevOps."),
+                m("GitHub Actions docs", "https://docs.github.com/actions", "docs", "",
+                  title_en="GitHub Actions docs", description_en=""),
+                m("GitLab CI/CD", "https://docs.gitlab.com/ee/ci/", "docs", "",
+                  title_en="GitLab CI/CD", description_en=""),
+                m("Jenkins handbook", "https://www.jenkins.io/doc/book/", "docs", "",
+                  title_en="Jenkins handbook", description_en=""),
+                m("Continuous Delivery (livro)", "https://continuousdelivery.com/", "book", "",
+                  title_en="Continuous Delivery (book)", description_en=""),
+                m("Argo CD", "https://argo-cd.readthedocs.io/", "tool", "",
+                  title_en="Argo CD", description_en=""),
+                m("DORA metrics", "https://dora.dev/", "article", "Pesquisa do Google sobre DevOps.",
+                  title_en="DORA metrics", description_en="Google research on DevOps."),
             ],
             "questions": [
                 q("CI difere de CD porque:",
@@ -1957,61 +3855,121 @@ reconciliação.</p>"""
                   ["CD pula a etapa de teste, indo direto para o deploy.",
                    "CI já inclui o deploy automático em produção, sem etapa a mais.",
                    "Os dois termos descrevem exatamente o mesmo processo, sem diferença."],
-                  "CD pode ser delivery (manual aprovar) ou deployment (totalmente automático)."),
+                  "CD pode ser delivery (manual aprovar) ou deployment (totalmente automático).",
+                  statement_en="CI differs from CD because:",
+                  correct_en="CI integrates/tests code; CD delivers/deploys automatically.",
+                  wrong_en=["CD skips the test stage and goes straight to deploy.",
+                            "CI already includes automatic production deploy, with no extra stage.",
+                            "Both terms describe exactly the same process, with no difference."],
+                  explanation_en="CD can mean delivery (manual approval) or deployment (fully automatic)."),
                 q("Deploy canário:",
                   "Libera para uma fração de usuários antes do total.",
                   ["Uma ferramenta de edição de código, não uma estratégia de deploy.",
                    "Roda só em ambiente de desenvolvimento, fora de produção.",
                    "Substitui completamente a estratégia blue-green de deploy."],
-                  "Origem: canário em mina de carvão. Métricas guiam quando avançar/reverter."),
+                  "Origem: canário em mina de carvão. Métricas guiam quando avançar/reverter.",
+                  statement_en="Canary deploy:",
+                  correct_en="Releases to a fraction of users before everyone.",
+                  wrong_en=["A code-editing tool, not a deploy strategy.",
+                            "Runs only in a development environment, outside production.",
+                            "Fully replaces the blue-green deploy strategy."],
+                  explanation_en="Origin: canary in a coal mine. Metrics guide when to advance or roll back."),
                 q("Pipeline as code é:",
                   "Definir o pipeline em arquivo versionado no repo.",
                   ["Deixar de vincular o pipeline a qualquer controle de versão.",
                    "Rodar o pipeline manualmente, disparado por alguém a cada vez.",
                    "Escrever o pipeline só em script bash, sem outro formato aceito."],
-                  "Mudanças no pipeline passam pelo mesmo PR review do código."),
+                  "Mudanças no pipeline passam pelo mesmo PR review do código.",
+                  statement_en="Pipeline as code is:",
+                  correct_en="Defining the pipeline in a versioned file in the repo.",
+                  wrong_en=["Leaving the pipeline unbound from any version control.",
+                            "Running the pipeline manually, triggered by someone each time.",
+                            "Writing the pipeline only as a bash script, with no other accepted format."],
+                  explanation_en="Pipeline changes go through the same PR review as application code."),
                 q("Falha de teste deve:",
                   "Bloquear o merge/deploy.",
                   ["Ser ignorada, seguindo o pipeline até o final normalmente.",
                    "Acelerar o processo de release para compensar o atraso.",
                    "Gerar só um aviso (warning), sem impedir o merge."],
-                  "Sem 'pode pode' o pipeline morre. Triagem ágil para flaky tests é essencial."),
+                  "Sem 'pode pode' o pipeline morre. Triagem ágil para flaky tests é essencial.",
+                  statement_en="A test failure should:",
+                  correct_en="Block the merge/deploy.",
+                  wrong_en=["Be ignored, letting the pipeline finish normally.",
+                            "Speed up the release process to make up for the delay.",
+                            "Only emit a warning, without blocking the merge."],
+                  explanation_en="Without a hard stop, the pipeline is dead. Agile triage for flaky tests is essential."),
                 q("Rollback rápido depende de:",
                   "Artefatos imutáveis e healthchecks.",
                   ["Deixar de vincular o artefato a qualquer controle de versão.",
                    "Fazer só um backup do disco antes de cada deploy.",
                    "Reconstruir o artefato inteiro do zero a cada rollback necessário."],
-                  "Re-deploy do artefato anterior leva segundos; rebuild leva minutos."),
+                  "Re-deploy do artefato anterior leva segundos; rebuild leva minutos.",
+                  statement_en="Fast rollback depends on:",
+                  correct_en="Immutable artifacts and healthchecks.",
+                  wrong_en=["Leaving the artifact unbound from any version control.",
+                            "Only taking a disk backup before each deploy.",
+                            "Rebuilding the entire artifact from scratch on every rollback."],
+                  explanation_en="Re-deploying the previous artifact takes seconds; a rebuild takes minutes."),
                 q("Cache em CI serve para:",
                   "Acelerar builds reaproveitando dependências.",
                   ["Compactar o log gerado durante a execução do pipeline.",
                    "Trocar o runner usado para executar o pipeline de CI.",
                    "Substituir a necessidade de rodar teste automatizado."],
-                  "Cuide de invalidação correta (chave por lockfile, não por branch arbitrário)."),
+                  "Cuide de invalidação correta (chave por lockfile, não por branch arbitrário).",
+                  statement_en="CI cache is used to:",
+                  correct_en="Speed up builds by reusing dependencies.",
+                  wrong_en=["Compress logs produced while the pipeline runs.",
+                            "Swap the runner used to execute the CI pipeline.",
+                            "Replace the need to run automated tests."],
+                  explanation_en="Mind correct invalidation (key by lockfile, not by an arbitrary branch)."),
                 q("Matrix builds servem para:",
                   "Rodar a mesma pipeline com várias combinações (versões/SO).",
                   ["Reduzir o número de teste executado ao longo do pipeline de CI inteiro.",
                    "Aumentar o tamanho do cache usado durante o build da aplicação inteira.",
                    "Trocar a IDE usada pelo desenvolvedor durante o trabalho diário."],
-                  "Ex.: testar Python 3.10/3.11/3.12 × Linux/macOS em paralelo."),
+                  "Ex.: testar Python 3.10/3.11/3.12 × Linux/macOS em paralelo.",
+                  statement_en="Matrix builds are used to:",
+                  correct_en="Run the same pipeline across several combinations (versions/OS).",
+                  wrong_en=["Reduce the number of tests run across the whole CI pipeline.",
+                            "Increase cache size used during the full application build.",
+                            "Swap the IDE the developer uses for daily work."],
+                  explanation_en="E.g. test Python 3.10/3.11/3.12 × Linux/macOS in parallel."),
                 q("Trunk-based + CI/CD geralmente exige:",
                   "Feature flags e testes automatizados fortes.",
                   ["Rodar sem etapa de integração contínua configurada.",
                    "Fazer o deploy manualmente a cada nova versão lançada.",
                    "Manter branch de vida longa, aberta por semanas seguidas."],
-                  "Sem flags, código incompleto não pode ir para main com segurança."),
+                  "Sem flags, código incompleto não pode ir para main com segurança.",
+                  statement_en="Trunk-based + CI/CD usually requires:",
+                  correct_en="Feature flags and strong automated tests.",
+                  wrong_en=["Running with no continuous integration stage configured.",
+                            "Deploying manually for every new version released.",
+                            "Keeping long-lived branches open for weeks."],
+                  explanation_en="Without flags, incomplete code cannot safely land on main."),
                 q("Artefato imutável significa:",
                   "Mesma versão (hash) é sempre a mesma, usado em todos os ambientes.",
                   ["Pode ser editado livremente depois de publicado, sem gerar nenhum hash novo.",
                    "Existe apenas localmente, na própria máquina que fez o build original.",
                    "Tem um TTL definido, expirando automaticamente depois de um tempo configurado."],
-                  "Tag SHA + assinatura (Cosign) garante. 'latest' móvel é o oposto."),
+                  "Tag SHA + assinatura (Cosign) garante. 'latest' móvel é o oposto.",
+                  statement_en="An immutable artifact means:",
+                  correct_en="The same version (hash) is always identical, used across all environments.",
+                  wrong_en=["It can be freely edited after publish without producing a new hash.",
+                            "It exists only locally, on the machine that did the original build.",
+                            "It has a defined TTL and expires automatically after a configured time."],
+                  explanation_en="SHA tags + signing (Cosign) guarantee it. Movable 'latest' is the opposite."),
                 q("Argo CD aplica padrão:",
                   "GitOps, repo Git é a fonte da verdade.",
                   ["Baseado em transferência de arquivo via FTP tradicional.",
                    "Aplicado manualmente por alguém direto no cluster.",
                    "Baseado em tarefa agendada (cron) rodando periodicamente."],
-                  "Argo observa o repo; quando muda, reconcilia o cluster com o declarado."),
+                  "Argo observa o repo; quando muda, reconcilia o cluster com o declarado.",
+                  statement_en="Argo CD applies the pattern:",
+                  correct_en="GitOps — the Git repo is the source of truth.",
+                  wrong_en=["Based on traditional FTP file transfer.",
+                            "Applied manually by someone directly on the cluster.",
+                            "Based on a cron job running periodically."],
+                  explanation_en="Argo watches the repo; when it changes, it reconciles the cluster to the declared state."),
             ],
         },
         # =====================================================================
@@ -2019,7 +3977,9 @@ reconciliação.</p>"""
         # =====================================================================
         {
             "title": "Linting de Código e IaC",
+            "title_en": 'Code and IaC Linting',
             "summary": "Ferramentas que avisam se você escreveu algo inseguro.",
+            "summary_en": 'Tools that warn you when you wrote something insecure.',
             "lesson": {
                 "intro": (
                     "Linter é a primeira linha de defesa contra bugs e más práticas. "
@@ -2028,6 +3988,14 @@ reconciliação.</p>"""
                     "discussões eternas sobre tabs vs spaces), e em alguns casos pega "
                     "anti-patterns de segurança óbvios. Ignorar linter é como dirigir sem "
                     "espelhos, possível, mas por quê?"
+                ),
+                "intro_en": (
+                    "A linter is the first line of defense against bugs and bad practices. "
+                    "It costs almost nothing (seconds in the editor + seconds in CI), catches ~80% of "
+                    "what humans tire of hunting in review, standardizes style (no more endless "
+                    "tabs-vs-spaces debates), and in some cases catches obvious security "
+                    "anti-patterns. Ignoring a linter is like driving without mirrors — "
+                    "possible, but why?"
                 ),
                 "body": (
                 """<h3>1. O que linters fazem</h3>
@@ -2229,6 +4197,204 @@ fixers são agressivos o suficiente para mudar semântica sem querer,
 não só estilo.</li>
 </ul>"""
                 ),
+                "body_en": """<h3>1. What linters do</h3>
+<p>A linter performs <strong>static analysis</strong>: it reads code without
+running it and looks for patterns, in five broad categories. The first is
+<strong>style</strong> — indentation, naming, line length, import
+order — the kind of thing that burns minutes of human review without
+adding anything beyond visual consistency. The second is <strong>simple
+bugs</strong>: unused variables, wrong type comparisons,
+functions that forget to return on some path. The third is known
+<strong>anti-patterns</strong>: use of <code>eval()</code>,
+catastrophic regex (which can hang the process on adversarial input),
+mutable default arguments (a classic Python trap), hardcoded
+passwords. The fourth is <strong>performance</strong>: suggesting list
+comprehensions instead of equivalent loops, avoiding string concatenation
+inside loops. And the fifth is <strong>type checking</strong> (mypy, tsc),
+which verifies that declared types actually agree in
+languages with type hints. A linter does not replace SAST — but the line
+between them has blurred: Bandit and Semgrep now cover both roles
+at once.</p>
+<div class="mermaid">
+flowchart LR
+    A["Código escrito"] --> B["Linter roda"]
+    B --> C{"Viola alguma regra?"}
+    C -- "Sim" --> D["Bloqueia commit ou PR"]
+    C -- "Não" --> E["Segue pro CI"]
+</div>
+
+
+<h3>2. Linters by language</h3>
+<h4>2.1 Python</h4>
+<p><strong>Ruff</strong> became the new default — written in Rust,
+it replaces <code>flake8</code>, <code>isort</code>,
+<code>pyupgrade</code>, <code>autoflake</code>, and <code>black</code> in a
+single tool, 10 to 100× faster, covering lint and formatting
+at once. <strong>mypy</strong> and <strong>pyright</strong> handle
+type checking specifically. And <strong>Bandit</strong> keeps an exclusive
+focus on security, even with Ruff already covering much of that via
+plugin.</p>
+<pre><code># pyproject.toml
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+[tool.ruff.lint]
+select = [
+  "E", "W",   # pycodestyle
+  "F",         # pyflakes
+  "I",         # isort
+  "N",         # pep8-naming
+  "UP",        # pyupgrade
+  "B",         # bugbear
+  "S",         # bandit
+  "SIM",       # simplify
+]
+ignore = ["E501"]   # justifique cada um</code></pre>
+<h4>2.2 JavaScript/TypeScript</h4>
+<p><strong>ESLint</strong> remains the standard, extensible via
+plugins (typescript-eslint, react, next, security).
+<strong>Prettier</strong> handles formatting only, deliberately
+opinionated to kill style debates. <code>tsc --noEmit</code> runs
+the TypeScript type checker without emitting output. And
+<strong>Biome</strong>, written in Rust, is the newer alternative that
+integrates lint and format in one tool, along the same lines as Ruff for
+Python.</p>
+<h4>2.3 Go</h4>
+<p><strong>golangci-lint</strong> aggregates 50+ individual linters
+(errcheck, govet, ineffassign, gosec, staticcheck) under one
+configuration. <strong>gofmt</strong> and <strong>goimports</strong> handle the
+language's standard formatting — Go is unusual in having official formatting
+enforced by the toolchain itself, ending style debates for
+good.</p>
+<h4>2.4 Shell/Bash</h4>
+<p><strong>shellcheck</strong> is the undisputed standard — it catches subtle,
+common mistakes like unquoted variables (<code>$var</code> without quotes,
+which breaks when the value has spaces) or a <code>cd $dir &amp;&amp; rm</code>
+that deletes the wrong directory if `cd` fails silently.
+<strong>shfmt</strong> handles formatting.</p>
+<h4>2.5 Others</h4>
+<p>Each file format tends to have its dedicated linter:
+<code>yamllint</code> for YAML, <code>markdownlint</code> for
+Markdown, <code>jq</code> plus schemas for JSON, and
+<code>sqlfluff</code> for SQL.</p>
+
+<h3>3. IaC linters</h3>
+<h4>3.1 Dockerfile</h4>
+<p><strong>hadolint</strong> catches Docker-specific anti-patterns —
+things that only make sense in the context of building an
+image:</p>
+<pre><code>$ hadolint Dockerfile
+Dockerfile:5 DL3008 Pin versions in apt-get install. Instead of `apt install foo`,
+use `apt install foo=1.2.3`.
+Dockerfile:7 DL3009 Delete the apt-get lists after installing.
+Dockerfile:10 DL3025 Use arguments JSON notation for CMD and ENTRYPOINT.</code></pre>
+<h4>3.2 Terraform</h4>
+<p><strong>tflint</strong> is Terraform-specific linting, with
+provider rulesets — the AWS variant detects invalid instance types
+or nonexistent AMIs before plan even runs.
+<strong>tfsec</strong> and <strong>checkov</strong> focus on security:
+public buckets, security groups open to <code>0.0.0.0/0</code>,
+disabled encryption. And <code>terraform fmt</code> handles the
+language's native formatting.</p>
+<h4>3.3 Kubernetes</h4>
+<p><strong>kubeval</strong> and <strong>kubeconform</strong> validate
+manifests against the target Kubernetes version schema.
+<strong>kube-linter</strong> and similar <strong>polaris</strong> go
+beyond the schema and check real best practices — securityContext
+set, resource limits present, liveness probes configured. And
+<strong>checkov</strong>, already mentioned for Terraform, also covers
+Kubernetes manifests and Helm charts.</p>
+<h4>3.4 Ansible</h4>
+<p><strong>ansible-lint</strong> detects unnamed tasks (harder to
+debug playbook output), <code>shell</code> without
+<code>creates</code> (making the task non-idempotent), and
+redundant <code>become</code> where it is no longer needed.</p>
+
+<h3>4. Pre-commit + CI: defense in depth</h3>
+<p>The modern pattern is to run everything LOCALLY before the commit — via
+the <strong>pre-commit</strong> framework — and run again in CI as a
+second layer, because not every developer remembers to install the local
+hook:</p>
+<pre><code># .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff       # lint
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.13.0-beta
+    hooks:
+      - id: hadolint-docker
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/aquasecurity/tfsec
+    rev: v1.28.0
+    hooks:
+      - id: tfsec</code></pre>
+<pre><code>$ pre-commit install   # instala hook git
+$ pre-commit run --all-files   # roda em todo repo
+ruff..............................Passed
+hadolint..........................Failed
+  Dockerfile:7 DL3009 Delete apt lists after install</code></pre>
+<p>The reason to repeat everything in CI (<code>pre-commit run --all-files</code>
+again) is that a developer can skip the local hook with
+<code>--no-verify</code> — CI is the layer that has no such escape
+hatch.</p>
+
+<h3>5. Auto-fix</h3>
+<p>Most modern linters can fix the problems they
+find when the fix is mechanical and unambiguous:
+<code>ruff check --fix</code> organizes imports and removes dead code,
+<code>ruff format</code> formats in black style, <code>prettier
+--write</code> covers JS/TS/CSS/JSON/Markdown, and <code>terraform fmt
+-recursive</code> formats HCL. Combining that with a PR bot — lefthook,
+treefmt, or a GitHub Action that commits the fix automatically —
+ends the manual cycle of "run, fix, commit again".</p>
+
+<h3>6. False positives: how to handle them</h3>
+<p>Suppressing a linter alert is legitimate, but only when it comes
+with an explicit reason in the comment itself — without that, the
+suppression becomes a mystery for whoever reads the code later:</p>
+<pre><code>SQL = (
+    "SELECT * FROM users WHERE id IN (" + ids_csv + ")"  # noqa: S608 - ids_csv é validado em validate_ids() acima
+)</code></pre>
+<p>A <code># noqa</code> without justification becomes permanent noise that
+nobody understands anymore. Auditing suppressions periodically
+(<code>grep -r 'noqa' .</code>) is how you ensure they still
+make sense months later.</p>
+
+<h3>7. Linters in the editor</h3>
+<p>When the error appears while the code is still being typed, the
+fix cost drops nearly to zero — no waiting for CI to
+run minutes later to discover a typo. VS Code, JetBrains,
+Vim/Neovim, and Emacs support this natively via LSP, with integrations
+like ruff-lsp, ESLint, and tflint.</p>
+
+<h3>8. Anti-patterns</h3>
+<ul>
+<li><strong>Disabling every rule</strong>: the linter stops being
+useful at all — on legacy code, migrate by enabling rules
+gradually instead of turning everything off at once.</li>
+<li><strong>Suppressing without commenting why</strong>: becomes permanent
+clutter nobody understands (section 6).</li>
+<li><strong>Linter only in CI</strong>: feedback takes minutes
+instead of seconds — add pre-commit and editor integration (sections
+4 and 7).</li>
+<li><strong>Style debates in code review</strong>: leave that to
+the linter/formatter automatically; humans should review
+logic, security, and design — not indentation.</li>
+<li><strong>Auto-fix applied without reviewing the diff</strong>: some
+fixers are aggressive enough to change semantics by accident,
+not just style.</li>
+</ul>""",
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
                     "<ol>"
@@ -2247,14 +4413,38 @@ não só estilo.</li>
                     "<li>Bonus: bot de auto-format que comita correções no PR.</li>"
                     "</ol>"
                 ),
+                "practical_en": (
+                    "<p><strong>Full hands-on exercise</strong>:</p>"
+                    "<ol>"
+                    "<li>In a Python project, configure <code>pyproject.toml</code> with "
+                    "Ruff covering: pycodestyle, pyflakes, isort, pyupgrade, bugbear, "
+                    "bandit, simplify.</li>"
+                    "<li>Add mypy or pyright in strict mode for types.</li>"
+                    "<li>Configure pre-commit with hooks: ruff, hadolint, shellcheck, "
+                    "gitleaks, tflint (if you have TF), markdownlint, yamllint.</li>"
+                    "<li>Add a GitHub Action that runs <code>pre-commit run "
+                    "--all-files</code>.</li>"
+                    "<li>Configure VS Code to show lint inline (Ruff, Pylance "
+                    "extensions).</li>"
+                    "<li>Run on legacy code: fix easy ones with <code>--fix</code>, "
+                    "document those that need a conscious suppression.</li>"
+                    "<li>Bonus: an auto-format bot that commits fixes on the PR.</li>"
+                    "</ol>"
+                ),
             },
             "materials": [
-                m("pre-commit", "https://pre-commit.com/", "tool", ""),
-                m("Ruff (Python)", "https://docs.astral.sh/ruff/", "tool", ""),
-                m("hadolint (Dockerfile)", "https://github.com/hadolint/hadolint", "tool", ""),
-                m("tflint", "https://github.com/terraform-linters/tflint", "tool", ""),
-                m("Checkov (IaC security)", "https://www.checkov.io/", "tool", ""),
-                m("ESLint", "https://eslint.org/docs/latest/", "docs", ""),
+                m("pre-commit", "https://pre-commit.com/", "tool", "",
+                  title_en="pre-commit", description_en=""),
+                m("Ruff (Python)", "https://docs.astral.sh/ruff/", "tool", "",
+                  title_en="Ruff (Python)", description_en=""),
+                m("hadolint (Dockerfile)", "https://github.com/hadolint/hadolint", "tool", "",
+                  title_en="hadolint (Dockerfile)", description_en=""),
+                m("tflint", "https://github.com/terraform-linters/tflint", "tool", "",
+                  title_en="tflint", description_en=""),
+                m("Checkov (IaC security)", "https://www.checkov.io/", "tool", "",
+                  title_en="Checkov (IaC security)", description_en=""),
+                m("ESLint", "https://eslint.org/docs/latest/", "docs", "",
+                  title_en="ESLint", description_en=""),
             ],
             "questions": [
                 q("hadolint detecta:",
@@ -2262,61 +4452,121 @@ não só estilo.</li>
                   ["DNS quebrado, um problema de rede não relacionado a Dockerfile.",
                    "Erro de JavaScript, algo que hadolint não analisa nem entende.",
                    "Bug no código Java, fora do escopo de análise do hadolint."],
-                  "Pega coisas como `apt-get install` sem `--no-install-recommends`, falta de USER."),
+                  "Pega coisas como `apt-get install` sem `--no-install-recommends`, falta de USER.",
+                  statement_en="hadolint detects:",
+                  correct_en="Bad practices in Dockerfiles.",
+                  wrong_en=["Broken DNS — a network issue unrelated to Dockerfiles.",
+                            "JavaScript errors — something hadolint does not analyze.",
+                            "Bugs in Java code — outside hadolint's analysis scope."],
+                  explanation_en="Catches things like `apt-get install` without `--no-install-recommends`, missing USER."),
                 q("Linter difere de SAST porque:",
                   "Linter foca em estilo/erros simples; SAST em vulnerabilidades.",
                   ["SAST não roda dentro de pipeline de CI moderno algum.",
                    "Linter serve só para código escrito em JavaScript ou TypeScript.",
                    "Os dois termos descrevem exatamente a mesma coisa, sem diferença."],
-                  "Linha entre os dois é borrada hoje (Bandit, Semgrep cobrem ambos)."),
+                  "Linha entre os dois é borrada hoje (Bandit, Semgrep cobrem ambos).",
+                  statement_en="A linter differs from SAST because:",
+                  correct_en="Linters focus on style/simple errors; SAST on vulnerabilities.",
+                  wrong_en=["SAST never runs inside any modern CI pipeline.",
+                            "Linters only work for JavaScript or TypeScript code.",
+                            "Both terms describe exactly the same thing, with no difference."],
+                  explanation_en="The line between them is blurred today (Bandit, Semgrep cover both)."),
                 q("pre-commit serve para:",
                   "Rodar verificações antes do commit.",
                   ["Apagar um branch específico do repositório remoto.",
                    "Substituir completamente a necessidade de ter um CI configurado.",
                    "Compactar o log gerado durante a execução do commit."],
-                  "Feedback em segundos. CI ainda valida no servidor (defesa em camadas)."),
+                  "Feedback em segundos. CI ainda valida no servidor (defesa em camadas).",
+                  statement_en="pre-commit is used to:",
+                  correct_en="Run checks before the commit.",
+                  wrong_en=["Delete a specific branch from the remote repository.",
+                            "Fully replace the need to have CI configured.",
+                            "Compress logs produced during the commit."],
+                  explanation_en="Feedback in seconds. CI still validates on the server (defense in depth)."),
                 q("Configurar linter no CI evita:",
                   "Que erros de estilo quebrem o build/peças posteriores.",
                   ["Um backup automático do repositório antes de cada commit.",
                    "O custo mensal cobrado pela ferramenta de linter escolhida.",
                    "A latência de resposta percebida ao rodar o linter localmente."],
-                  "Style guide automatizado é menos cansativo que review humano."),
+                  "Style guide automatizado é menos cansativo que review humano.",
+                  statement_en="Configuring a linter in CI avoids:",
+                  correct_en="Style errors breaking the build / later stages.",
+                  wrong_en=["An automatic repository backup before each commit.",
+                            "The monthly cost charged by the chosen linter tool.",
+                            "Perceived response latency when running the linter locally."],
+                  explanation_en="An automated style guide is less exhausting than human review."),
                 q("Falsos positivos podem ser:",
                   "Suprimidos com comentários # noqa, // eslint-disable, etc.",
                   ["Um bug dentro do próprio compilador da linguagem utilizada.",
                    "Ignorados só em ambiente de produção, sem afetar outro estágio.",
                    "Erros reais que precisam ser corrigidos antes do próximo deploy."],
-                  "Sempre justifique no comentário; supressão sem motivo vira lixo."),
+                  "Sempre justifique no comentário; supressão sem motivo vira lixo.",
+                  statement_en="False positives can be:",
+                  correct_en="Suppressed with comments like # noqa, // eslint-disable, etc.",
+                  wrong_en=["A bug inside the language compiler itself.",
+                            "Ignored only in production, without affecting other stages.",
+                            "Real errors that must be fixed before the next deploy."],
+                  explanation_en="Always justify in the comment; unexplained suppressions become clutter."),
                 q("Por que não desativar todas as regras?",
                   "Reduz a utilidade do linter quase a zero.",
                   ["Torna a execução do linter mais rápida no editor.",
                    "Faz o pipeline de CI passar mesmo com problema real presente.",
                    "Reduz o custo mensal pago pela licença da ferramenta."],
-                  "Time perde o feedback. Em legados, ative gradualmente em vez de desligar tudo."),
+                  "Time perde o feedback. Em legados, ative gradualmente em vez de desligar tudo.",
+                  statement_en="Why not disable every rule?",
+                  correct_en="It reduces the linter's usefulness almost to zero.",
+                  wrong_en=["It makes the linter run faster in the editor.",
+                            "It makes the CI pipeline pass even with a real problem present.",
+                            "It reduces the monthly cost of the tool license."],
+                  explanation_en="The team loses feedback. On legacy code, enable rules gradually instead of turning everything off."),
                 q("ruff substitui:",
                   "Vários linters Python (flake8, isort, etc.) com performance maior.",
                   ["Substitui completamente a linguagem Python inteira, não só o linter.",
                    "Substitui o framework de teste pytest usado no projeto.",
                    "Substitui o gerenciador de pacote pip usado para instalar dependência."],
-                  "Escrito em Rust; lint + format. Reduz minutos de CI para segundos."),
+                  "Escrito em Rust; lint + format. Reduz minutos de CI para segundos.",
+                  statement_en="ruff replaces:",
+                  correct_en="Several Python linters (flake8, isort, etc.) with higher performance.",
+                  wrong_en=["The entire Python language itself, not just the linter.",
+                            "The pytest test framework used in the project.",
+                            "The pip package manager used to install dependencies."],
+                  explanation_en="Written in Rust; lint + format. Shrinks minutes of CI into seconds."),
                 q("Lint em IaC importa porque:",
                   "Erros em IaC se traduzem em erros de produção.",
                   ["Reduz o custo mensal da infraestrutura provisionada pelo Terraform.",
                    "Bloqueia a criação de política nova dentro do IAM da conta.",
                    "Acelera a execução do comando plan do Terraform localmente."],
-                  "tfsec/checkov barram bucket público, role com '*' antes do plan."),
+                  "tfsec/checkov barram bucket público, role com '*' antes do plan.",
+                  statement_en="Linting IaC matters because:",
+                  correct_en="IaC mistakes translate into production mistakes.",
+                  wrong_en=["It reduces the monthly cost of infrastructure provisioned by Terraform.",
+                            "It blocks creation of new policies inside the account IAM.",
+                            "It speeds up Terraform plan locally."],
+                  explanation_en="tfsec/checkov block public buckets and roles with '*' before plan."),
                 q("Editor integration de linter:",
                   "Mostra problemas em tempo real, encurtando o feedback.",
                   ["Decora a interface do editor, sem trazer benefício funcional real.",
                    "É um recurso opcional, útil só para quem está começando agora.",
                    "Substitui completamente a necessidade de rodar o CI depois."],
-                  "Erros aparecem enquanto digita. Reduz tempo de mental context-switch."),
+                  "Erros aparecem enquanto digita. Reduz tempo de mental context-switch.",
+                  statement_en="Editor integration for a linter:",
+                  correct_en="Shows issues in real time, shortening feedback.",
+                  wrong_en=["Decorates the editor UI without real functional benefit.",
+                            "Is optional, useful only for beginners.",
+                            "Fully replaces the need to run CI afterward."],
+                  explanation_en="Errors appear as you type. Reduces mental context-switching time."),
                 q("Auto-fix em linters:",
                   "Aplica correções automaticamente quando seguro.",
                   ["Reverte o código para uma versão anterior automaticamente.",
                    "Apaga arquivo considerado desnecessário pelo linter.",
                    "Quebra o commit em vários pedaços menores automaticamente."],
-                  "Bom para imports, formatação. Tenha cuidado com regras semânticas (ex.: cuidado com fixers que mudam comportamento)."),
+                  "Bom para imports, formatação. Tenha cuidado com regras semânticas (ex.: cuidado com fixers que mudam comportamento).",
+                  statement_en="Auto-fix in linters:",
+                  correct_en="Applies corrections automatically when it is safe.",
+                  wrong_en=["Reverts code to a previous version automatically.",
+                            "Deletes files the linter considers unnecessary.",
+                            "Splits the commit into several smaller pieces automatically."],
+                  explanation_en="Good for imports and formatting. Be careful with semantic rules (fixers that change behavior)."),
             ],
         },
         # =====================================================================
@@ -2324,7 +4574,9 @@ não só estilo.</li>
         # =====================================================================
         {
             "title": "SAST",
+            "title_en": 'SAST',
             "summary": "Análise estática de código no pipeline.",
+            "summary_en": 'Static code analysis in the pipeline.',
             "lesson": {
                 "intro": (
                     "SAST (Static Application Security Testing) é o 'antivírus do código': "
@@ -2335,6 +4587,16 @@ não só estilo.</li>
                     "(não substitui DAST nem pentest), mas pega muito do baixo-pendurado. "
                     "Esta aula cobre como funciona, ferramentas, integração no PR, triagem "
                     "de falsos positivos e custom rules para padrões do seu domínio."
+                ),
+                "intro_en": (
+                    "SAST (Static Application Security Testing) is the 'antivirus for code': "
+                    "it reads your source without executing it and looks for insecure patterns — SQL "
+                    "injection, XSS, dangerous deserialization, path traversal, hardcoded "
+                    "secrets. It is the cheapest defense against classic vulnerabilities, "
+                    "finding in seconds what a human in review would miss. It is not infallible "
+                    "(it does not replace DAST or pentests), but it catches a lot of low-hanging fruit. "
+                    "This lesson covers how it works, tools, PR integration, false-positive "
+                    "triage, and custom rules for patterns in your domain."
                 ),
                 "body": (
                 """<h3>1. Como SAST funciona internamente</h3>
@@ -2559,6 +4821,226 @@ aparece constantemente; regra desatualizada para de pegar o que hoje já
 é conhecido.</li>
 </ul>"""
                 ),
+                "body_en": """<h3>1. How SAST works internally</h3>
+<p>Five stages turn source code into a vulnerability finding.
+First, <strong>parsing</strong> turns code text into an AST
+(Abstract Syntax Tree) — a tree that represents
+syntax without ambiguity. Next, <strong>control-flow
+analysis</strong> (CFG) maps how execution can jump between blocks —
+which `if` leads to which `return`, where a loop can end. The most
+important stage is <strong>data-flow analysis</strong> (taint
+analysis): it tracks a "dirty" value — typically user
+input — from where it enters the system (the "source") to where it
+does something dangerous (the "sink", such as running SQL, calling a shell,
+or running `eval`). If that dirty value travels that path WITHOUT any
+sanitization in between, the tool reports a vulnerability —
+even without ever executing the real code:</p>
+<div class="mermaid">
+flowchart LR
+    A["Código-fonte"] --> B["SAST analisa sem executar"]
+    B --> C{"Encontrou padrão vulnerável?"}
+    C -- "Sim" --> D["Reporta linha e tipo de falha"]
+    C -- "Não" --> E["Aprova o build"]
+</div>
+
+<pre><code>def view(request):
+    user_id = request.GET.get('id')        # source: tainted
+    query = f"SELECT * FROM u WHERE id={user_id}"   # propaga taint
+    cursor.execute(query)                  # sink: SQL injection!</code></pre>
+<p>Real sanitization breaks that chain — the taint stops
+propagating because the value is no longer raw user input:</p>
+<pre><code>user_id = int(request.GET.get('id'))  # cast → não tainted (escopo)
+cursor.execute("SELECT * FROM u WHERE id=%s", [user_id])  # parametrizado, ok</code></pre>
+<p>After that comes <strong>rule application</strong> — predefined
+patterns (covering the OWASP Top 10) or custom ones written for the company's
+specific domain — and finally <strong>reporting</strong>, typically
+in SARIF, JSON, or HTML, consumable by both humans and other
+pipeline tools.</p>
+
+<h3>2. Rule types</h3>
+<p>Not every SAST rule works the same way, and the type you choose
+directly affects precision and compute cost. A <strong>simple
+pattern</strong> is regex or a basic AST match looking for a specific call
+— Bandit <code>B102</code>, for example, flags any use of
+<code>exec()</code> without understanding surrounding context.
+<strong>Taint analysis</strong> (section 1) tracks the full
+source → sanitizer → sink path — much more precise but also much more
+expensive, because it must simulate data flow through the whole
+program. <strong>Symbolic execution</strong> goes further: it simulates
+program execution with symbolic values (not concrete ones),
+able to find deep bugs that depend on rare combinations of
+conditions. And <strong>custom rules</strong> are what the company itself
+writes for its domain — for example, "any log that
+includes the <code>cpf</code> variable blocks the merge", a pattern
+no generic tool would know in advance.</p>
+
+<h3>3. Open-source tools</h3>
+<h4>3.1 Semgrep</h4>
+<p>It became the modern default by combining simple syntax (YAML plus
+a pattern that looks like the code itself) with multi-language support and
+ready-made OWASP rules, plus making custom rules easy
+without learning a complex DSL:</p>
+<pre><code># .semgrep/no-print-in-prod.yml
+rules:
+  - id: no-print
+    languages: [python]
+    severity: WARNING
+    message: "Use logging em vez de print()"
+    pattern: print(...)
+    paths:
+      include: ['app/**/*.py']
+      exclude: ['tests/**', 'scripts/**']</code></pre>
+<pre><code>$ semgrep --config p/owasp-top-ten
+$ semgrep --config p/python --config .semgrep/
+$ semgrep --config auto   # detecta linguagem e usa registry</code></pre>
+<h4>3.2 Bandit (Python)</h4>
+<pre><code>$ bandit -r app/
+&gt;&gt; Issue: [B201:flask_debug_true] A Flask app appears to be run with debug=True
+   Severity: High   Confidence: Medium
+   Location: app.py:42</code></pre>
+<h4>3.3 CodeQL (GitHub)</h4>
+<p>Takes a different approach: it builds a fact database over the whole
+repository and lets you write SQL-like queries to
+find arbitrarily complex patterns — far more powerful than
+regex, and free for public repositories:</p>
+<pre><code>// query CodeQL
+import python
+from FunctionDef f
+where f.getName() = "login" and not exists(f.getBody().getAStmt())
+select f, "Função login sem corpo"</code></pre>
+<h4>3.4 Others</h4>
+<p>Each language tends to have a dominant specialized tool:
+<strong>Brakeman</strong> for Ruby/Rails, <strong>gosec</strong> for
+Go, <strong>SpotBugs</strong>/Find-Sec-Bugs for Java. And
+<strong>SonarQube</strong>/SonarCloud, commercial with a free tier,
+combines SAST with general code-quality metrics in the same
+tool.</p>
+
+<h3>4. Pipeline integration</h3>
+<p>The ideal integration point is as a required check on the PR itself,
+not as a separate report someone consults later:</p>
+<pre><code># GitHub Actions
+- name: Semgrep
+  uses: returntocorp/semgrep-action@v1
+  with:
+    config: p/owasp-top-ten
+    auditOn: push
+    publishToken: ${{ secrets.SEMGREP_APP_TOKEN }}</code></pre>
+<p>Running SAST for the first time on legacy code typically produces
+hundreds of findings accumulated over years — blocking merge on
+all of them at once paralyzes the whole team. The way out is
+<strong>diff-only</strong>: comment on the PR only findings on lines
+that PR specifically touched, leaving legacy for a dedicated
+tech-debt effort without blocking new work. The blocking rule
+then follows severity: Critical/High blocks merge directly;
+Medium becomes an automatic issue with a sprint deadline; Low/Info only
+enters the backlog, without forcing immediate action.</p>
+
+<h3>5. Triaging false positives</h3>
+<p>False positives are normal — many vulnerability patterns depend on
+context the tool cannot see alone. What prevents
+chaos is a structured process: weekly triage by a
+security champion or rotating squad; when confirming a true
+false positive, suppression goes DIRECTLY in code with an
+explicit justification (<code># nosec - input validated in
+validate()</code>), never silent; alternatively, a baseline file
+(<code>.semgrepignore</code>) records bulk suppressions; and a
+quarterly audit revisits old suppressions, because surrounding code may
+have changed since the suppression was justified. The most expensive
+mistake here is suppressing "in bulk" without analyzing each case — that
+becomes a cover-up that hides real findings along with the false ones.</p>
+
+<h3>6. SAST vs DAST vs IAST vs SCA — complementary</h3>
+<table>
+<tr><th>Type</th><th>What it looks at</th><th>When</th><th>Example</th></tr>
+<tr><td>SAST</td><td>Code (white box)</td><td>Pre-deploy/PR</td><td>Semgrep, CodeQL</td></tr>
+<tr><td>DAST</td><td>Running app (black box)</td><td>Staging/QA</td><td>OWASP ZAP, Burp</td></tr>
+<tr><td>IAST</td><td>Runtime agent</td><td>QA with traffic</td><td>Contrast, Seeker</td></tr>
+<tr><td>SCA</td><td>Dependencies</td><td>Pre-deploy/continuous</td><td>Trivy, Dependabot</td></tr>
+<tr><td>Pentest</td><td>App + infra (human)</td><td>Periodic</td><td>Consultancy/red team</td></tr>
+</table>
+<p>None of these methods alone covers everything, and each catches a different
+class of problem: SAST reaches internal logic DAST would never
+hit by chance, such as a rare code path only reached by a
+specific parameter combination; DAST, in turn, catches
+server or runtime misconfiguration that simply does not exist in
+source code (it is environment config, not a line of Python);
+SCA catches known CVEs in third-party dependencies — something neither SAST nor
+DAST sees because the vulnerable code was not written by your
+team; and pentests combine human creativity, automated tools, and
+business-logic understanding — able to chain individually small
+flaws into a real compromise no automated tool reliably
+replicates.</p>
+
+<h3>7. Custom rules: the real differentiator</h3>
+<p>Default rules cover the OWASP Top 10 — useful, but exactly the same
+set every other company also runs. What really differentiates a mature
+SAST setup are custom rules that capture
+INTERNAL patterns specific to that codebase:</p>
+<pre><code>rules:
+  - id: no-direct-db-cursor
+    pattern: connection.cursor()
+    message: "Use UnitOfWork em vez de cursor direto. Ver ADR-12."
+    severity: ERROR
+    languages: [python]
+    paths: { include: ['app/**'], exclude: ['app/db/uow.py'] }
+
+  - id: log-sem-mascarar-cpf
+    pattern-either:
+      - pattern: logger.info(f"...{$X.cpf}...")
+      - pattern: logger.info(f"...{$X.email}...")
+    message: "PII em log, use mask_pii()"
+    severity: ERROR
+    languages: [python]</code></pre>
+<p>The recommended path is to start small — 3 to 5 rules that capture
+the most recurring mistakes seen in code review — and grow over
+time. Each new rule eliminates a bug type that would otherwise
+keep being caught manually review after review.</p>
+
+<h3>8. Useful metrics</h3>
+<p>Four numbers show whether the SAST program is truly working
+or just generating noise. <strong>MTTR by severity</strong> measures
+average time until a finding is fixed — if a Critical takes
+weeks, declared priority does not match real practice. The
+<strong>false-positive rate</strong> — the fraction of findings that become
+justified suppressions — signals calibration problems above
+30%: at that point rules generate more noise than signal and
+need tuning. <strong>Findings per thousand new lines</strong> (KLOC)
+shows the trend: if it is rising, new code is entering worse
+than the old. And <strong>CI analysis time</strong> matters because
+SAST taking more than five minutes per PR creates enough friction
+for the team to start ignoring or skipping the stage.</p>
+
+<h3>9. SAST limitations</h3>
+<p>SAST simply cannot see an entire category of problems by
+definition — everything that only exists at RUNTIME is out of reach for
+analysis that never executes the code: server misconfiguration
+(<code>debug=True</code> from an environment variable, not from
+source), auth/authz failures that only show up with real session
+data, race conditions that only appear under real concurrency,
+complex business-logic failures (a negative price accepted at checkout),
+or vulnerabilities in a third-party service called via API whose code
+never passes through the scanner. That gap is exactly why SAST must be
+combined with DAST, production observability, threat modeling, and periodic
+pentests — defense in depth, not one layer trying to cover everything.</p>
+
+<h3>10. Anti-patterns</h3>
+<ul>
+<li><strong>Buying an expensive tool and letting it generate a thousand-page
+report nobody reads</strong>: without direct PR integration (section 4),
+the investment produces no real effect.</li>
+<li><strong>Blocking every finding at once on legacy</strong>:
+nobody can merge anything — use a baseline plus diff-only
+(section 4) instead.</li>
+<li><strong>Suppressing every false positive without reading each case</strong>:
+hides real findings along with the noise (section 5).</li>
+<li><strong>Using only default rules</strong>: catches the obvious everyone
+already catches, but misses exactly the internal patterns that matter
+most for that codebase (section 7).</li>
+<li><strong>Never updating rules</strong>: new attack patterns appear
+constantly; outdated rules stop catching what is already
+known today.</li>
+</ul>""",
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
                     "<ol>"
@@ -2574,14 +5056,35 @@ aparece constantemente; regra desatualizada para de pegar o que hoje já
                     "<li>Bonus: complemente com OWASP ZAP em DAST contra staging.</li>"
                     "</ol>"
                 ),
+                "practical_en": (
+                    "<p><strong>Full hands-on exercise</strong>:</p>"
+                    "<ol>"
+                    "<li>Run <code>semgrep --config p/owasp-top-ten</code> on your repo. "
+                    "Triage: for each High finding, decide if it is an FP or a real bug.</li>"
+                    "<li>Add Bandit (if Python) or gosec (if Go) and configure it in CI.</li>"
+                    "<li>Enable GitHub CodeQL on the repo (free for public repos).</li>"
+                    "<li>Configure Semgrep as a required PR check, diff-only.</li>"
+                    "<li>Write 2 custom rules: one for a project anti-pattern "
+                    "(e.g. <code>print()</code> in production code), another for PII "
+                    "patterns in logs.</li>"
+                    "<li>Document the triage process in SECURITY.md.</li>"
+                    "<li>Bonus: complement with OWASP ZAP as DAST against staging.</li>"
+                    "</ol>"
+                ),
             },
             "materials": [
-                m("OWASP Source Code Analysis Tools", "https://owasp.org/www-community/Source_Code_Analysis_Tools", "docs", ""),
-                m("Semgrep", "https://semgrep.dev/docs/", "tool", ""),
-                m("Bandit (Python)", "https://bandit.readthedocs.io/", "tool", ""),
-                m("CodeQL (GitHub)", "https://codeql.github.com/", "tool", ""),
-                m("SonarQube", "https://www.sonarsource.com/products/sonarqube/", "tool", ""),
-                m("OWASP Top 10", "https://owasp.org/www-project-top-ten/", "docs", "Categorias guia para SAST."),
+                m("OWASP Source Code Analysis Tools", "https://owasp.org/www-community/Source_Code_Analysis_Tools", "docs", "",
+                  title_en="OWASP Source Code Analysis Tools", description_en=""),
+                m("Semgrep", "https://semgrep.dev/docs/", "tool", "",
+                  title_en="Semgrep", description_en=""),
+                m("Bandit (Python)", "https://bandit.readthedocs.io/", "tool", "",
+                  title_en="Bandit (Python)", description_en=""),
+                m("CodeQL (GitHub)", "https://codeql.github.com/", "tool", "",
+                  title_en="CodeQL (GitHub)", description_en=""),
+                m("SonarQube", "https://www.sonarsource.com/products/sonarqube/", "tool", "",
+                  title_en="SonarQube", description_en=""),
+                m("OWASP Top 10", "https://owasp.org/www-project-top-ten/", "docs", "Categorias guia para SAST.",
+                  title_en="OWASP Top 10", description_en="Guide categories for SAST."),
             ],
             "questions": [
                 q("SAST acrônimo significa:",
@@ -2589,61 +5092,121 @@ aparece constantemente; regra desatualizada para de pegar o que hoje já
                   ["System Audit Software Tool, um nome plausível mas incorreto.",
                    "Single Access Static Token, termo usado em outro contexto de autenticação.",
                    "Server Application Security Test, ordem de palavra trocada da sigla real."],
-                  "'Static' = sem rodar o app. Diferente de DAST (Dynamic) e IAST (Interactive)."),
+                  "'Static' = sem rodar o app. Diferente de DAST (Dynamic) e IAST (Interactive).",
+                  statement_en="The SAST acronym means:",
+                  correct_en="Static Application Security Testing.",
+                  wrong_en=["System Audit Software Tool — plausible but incorrect.",
+                            "Single Access Static Token — a term from another auth context.",
+                            "Server Application Security Test — words in the wrong order for the real acronym."],
+                  explanation_en="'Static' = without running the app. Different from DAST (Dynamic) and IAST (Interactive)."),
                 q("Diferença entre SAST e DAST:",
                   "SAST analisa o código sem rodar; DAST analisa app rodando.",
                   ["Os dois são exatamente a mesma coisa, só com nome diferente.",
                    "DAST analisa só o código-fonte, sem tocar na aplicação rodando.",
                    "SAST exige a aplicação já rodando em produção para funcionar."],
-                  "Use ambos: SAST no PR, DAST contra staging. Cada um pega coisas que o outro não vê."),
+                  "Use ambos: SAST no PR, DAST contra staging. Cada um pega coisas que o outro não vê.",
+                  statement_en="Difference between SAST and DAST:",
+                  correct_en="SAST analyzes code without running it; DAST analyzes a running app.",
+                  wrong_en=["Both are exactly the same thing under different names.",
+                            "DAST analyzes only source code, without touching the running app.",
+                            "SAST requires the app already running in production to work."],
+                  explanation_en="Use both: SAST on the PR, DAST against staging. Each catches what the other misses."),
                 q("Bandit detecta:",
                   "Padrões inseguros em Python.",
                   ["Só arquivo YAML, sem suporte a código Python de verdade.",
                    "Só código Java, sem suporte à linguagem Python.",
                    "Falha de resolução de DNS, algo fora do escopo do Bandit."],
-                  "Eval, hardcoded password, uso de tempfile inseguro etc. Roda fácil em pre-commit."),
+                  "Eval, hardcoded password, uso de tempfile inseguro etc. Roda fácil em pre-commit.",
+                  statement_en="Bandit detects:",
+                  correct_en="Insecure patterns in Python.",
+                  wrong_en=["Only YAML files, with no support for real Python code.",
+                            "Only Java code, with no support for Python.",
+                            "DNS resolution failures — outside Bandit's scope."],
+                  explanation_en="Eval, hardcoded passwords, insecure tempfile use, etc. Easy to run in pre-commit."),
                 q("Falso positivo em SAST:",
                   "Achado real do padrão, mas que não é vulnerabilidade no contexto.",
                   ["Um bug dentro da própria ferramenta que gerou o achado.",
                    "Uma garantia de que o achado será corrigido rapidamente sem falha.",
                    "Um simples log informativo, sem qualquer relação com vulnerabilidade."],
-                  "Ex.: SQL string concat onde input é constante interna. Suprima e documente."),
+                  "Ex.: SQL string concat onde input é constante interna. Suprima e documente.",
+                  statement_en="A false positive in SAST:",
+                  correct_en="A real pattern match that is not a vulnerability in context.",
+                  wrong_en=["A bug inside the tool that produced the finding.",
+                            "A guarantee the finding will be fixed quickly without failure.",
+                            "A simple info log, unrelated to any vulnerability."],
+                  explanation_en="E.g. SQL string concat where input is an internal constant. Suppress and document."),
                 q("Para trecho legado já mitigado:",
                   "Documente a exceção e suprima com comentário/regra.",
                   ["Reescreva a aplicação inteira só por causa desse achado pontual.",
                    "Ignore completamente o resultado do SAST daqui em diante.",
                    "Use só DAST, abandonando o SAST configurado até então."],
-                  "Comentário deve explicar a mitigação. Auditoria periódica re-avalia."),
+                  "Comentário deve explicar a mitigação. Auditoria periódica re-avalia.",
+                  statement_en="For legacy code that is already mitigated:",
+                  correct_en="Document the exception and suppress with a comment/rule.",
+                  wrong_en=["Rewrite the entire application just because of that one finding.",
+                            "Ignore all SAST results from now on.",
+                            "Use only DAST and abandon the SAST already configured."],
+                  explanation_en="The comment should explain the mitigation. Periodic audits re-evaluate."),
                 q("CodeQL roda:",
                   "Queries em representações de código (DBs).",
                   ["Só expressão regular, sem entender a estrutura real do código.",
                    "Só dentro de um servidor SQL, sem relação com análise de código.",
                    "Só em ambiente de produção, fora do próprio pipeline de CI."],
-                  "Constrói banco de fatos sobre o código; queries SQL-like buscam padrões. Free para repos públicos."),
+                  "Constrói banco de fatos sobre o código; queries SQL-like buscam padrões. Free para repos públicos.",
+                  statement_en="CodeQL runs:",
+                  correct_en="Queries over code representations (databases).",
+                  wrong_en=["Only regular expressions, without understanding real code structure.",
+                            "Only inside a SQL server, unrelated to code analysis.",
+                            "Only in production, outside the CI pipeline itself."],
+                  explanation_en="Builds a fact database about the code; SQL-like queries find patterns. Free for public repos."),
                 q("SAST no PR é eficaz porque:",
                   "Dá feedback antes do merge, com escopo pequeno.",
                   ["Só no final do pipeline, depois de tudo já ter sido feito.",
                    "Só quando já está em produção, tarde demais para corrigir fácil.",
                    "Não muda o resultado final do processo de forma alguma."],
-                  "Diff-only reduz ruído. Bloquear merge em High garante que não acumula dívida."),
+                  "Diff-only reduz ruído. Bloquear merge em High garante que não acumula dívida.",
+                  statement_en="SAST on the PR is effective because:",
+                  correct_en="It gives feedback before merge, with a small scope.",
+                  wrong_en=["Only at the end of the pipeline, after everything is already done.",
+                            "Only once it is already in production — too late to fix easily.",
+                            "It does not change the final outcome of the process at all."],
+                  explanation_en="Diff-only reduces noise and focuses on what the author just changed."),
                 q("Limitação de SAST:",
                   "Não enxerga problemas runtime/configuração.",
                   ["Não detecta SQL injection do jeito que o DAST detectaria.",
                    "Não roda em projeto escrito na linguagem Java.",
                    "Só analisa arquivo YAML, ignorando qualquer outra linguagem."],
-                  "Misconfig de servidor, falhas de auth em runtime, DoS, fora do escopo."),
+                  "Misconfig de servidor, falhas de auth em runtime, DoS, fora do escopo.",
+                  statement_en="A limitation of SAST:",
+                  correct_en="It does not see runtime issues (auth, config, infra).",
+                  wrong_en=["It never finds any vulnerability in any language.",
+                            "It only works when the application is already in production.",
+                            "It fully replaces the need for any other security testing."],
+                  explanation_en="Complement with DAST, SCA, secrets scanning, and reviews."),
                 q("Métrica útil para SAST:",
                   "MTTR (mean time to remediate) por severidade.",
                   ["A quantidade total de linha de código presente no projeto.",
                    "O tamanho em linha de cada PR aberto no repositório.",
                    "O número de desenvolvedor ativo contribuindo com o projeto."],
-                  "Mostra se time está realmente endereçando ou só ignorando."),
+                  "Mostra se time está realmente endereçando ou só ignorando.",
+                  statement_en="A useful SAST metric:",
+                  correct_en="Time-to-triage and true-positive rate.",
+                  wrong_en=["Number of lines of code alone, with no security context.",
+                            "Monthly cost of the CI runner used in the pipeline.",
+                            "Disk size of the repository clone on the developer laptop."],
+                  explanation_en="If findings pile up unread, the tool becomes noise. Track closure."),
                 q("Custom rules em Semgrep:",
                   "Permitem capturar padrões específicos do seu domínio.",
                   ["Só padrão relacionado a SQL, sem cobrir outro tipo de código.",
                    "Só arquivo YAML, sem capturar padrão de código de verdade.",
                    "Desabilitam completamente a ferramenta, impedindo qualquer execução."],
-                  "Sintaxe simples (YAML + pattern). Útil para exigir uso de função interna padrão."),
+                  "Sintaxe simples (YAML + pattern). Útil para exigir uso de função interna padrão.",
+                  statement_en="Custom rules in Semgrep:",
+                  correct_en="Encode project-specific anti-patterns as searchable rules.",
+                  wrong_en=["Replace the need to write any application code.",
+                            "Only work for Java, with no other language support.",
+                            "Disable every built-in rule automatically."],
+                  explanation_en="Great for house rules (no print in prod, no PII in logs)."),
             ],
         },
         # =====================================================================
@@ -2651,7 +5214,9 @@ aparece constantemente; regra desatualizada para de pegar o que hoje já
         # =====================================================================
         {
             "title": "SCA",
+            "title_en": 'SCA',
             "summary": "Verificar se as bibliotecas que seu código usa têm vírus ou falhas.",
+            "summary_en": 'Check whether libraries your code uses have viruses or flaws.',
             "lesson": {
                 "intro": (
                     "Em apps modernos, ~80% do código não é seu, vem de dependências. "
@@ -2663,6 +5228,17 @@ aparece constantemente; regra desatualizada para de pegar o que hoje já
                     "ficaram vulneráveis por dias/semanas até alguém perceber. Esta aula "
                     "cobre SBOM, CVE/CVSS, ferramentas e o que fazer quando aparece a "
                     "próxima Log4Shell."
+                ),
+                "intro_en": (
+                    "In modern apps, ~80% of the code is not yours — it comes from dependencies. "
+                    "React, Django, requests, lodash, openssl, glibc. You are responsible "
+                    "for all of it. SCA (Software Composition Analysis) maps what you "
+                    "use and cross-checks public CVE databases. Real case: Log4Shell "
+                    "(CVE-2021-44228) — one string in a log took down 30%+ of the internet. "
+                    "Companies with SCA detected it in hours and mitigated. Without SCA, "
+                    "they stayed vulnerable for days/weeks until someone noticed. This lesson "
+                    "covers SBOM, CVE/CVSS, tools, and what to do when the next "
+                    "Log4Shell appears."
                 ),
                 "body": (
                 """<h3>1. SBOM (Software Bill of Materials)</h3>
@@ -2877,6 +5453,214 @@ qualquer release. Combinar isso com Cosign e Rekor (o ecossistema
 Sigstore) permite gerar atestados verificáveis criptograficamente sobre
 qual nível cada artefato de fato atingiu.</p>"""
                 ),
+                "body_en": """<h3>1. SBOM (Software Bill of Materials)</h3>
+<p>An SBOM is the list of ALL dependencies — direct and transitive —
+with version and license for each. It is the basic ingredient without which
+no dependency security analysis works, because you cannot
+check CVEs in something you do not even know you use. In regulated
+environments (US government via Executive Order 14028, automotive,
+medical devices), SBOM is already a contractual obligation, not an optional
+best practice. Two formats dominate: <strong>CycloneDX</strong>, maintained
+by OWASP with a security focus, and <strong>SPDX</strong>,
+maintained by the Linux Foundation with more focus on compliance and
+licensing. Tools like <code>syft</code> (Anchore),
+<code>cdxgen</code> (OWASP), and <code>trivy</code> generate these formats from
+code or images:</p>
+<div class="mermaid">
+flowchart LR
+    A["Manifesto de dependências"] --> B["SCA lista cada dependência"]
+    B --> C["Cruza com base de CVE conhecida"]
+    C --> D{"Alguma dependência vulnerável?"}
+    D -- "Sim" --> E["Alerta com severidade"]
+    D -- "Não" --> F["Aprova"]
+</div>
+
+<pre><code>$ syft packages docker:nginx:latest -o cyclonedx-json &gt; sbom.json
+$ syft dir:. -o spdx-json &gt; sbom.spdx.json</code></pre>
+<p>Attaching the SBOM directly to the artifact — referenced in the
+OCI registry itself — creates an auditable trail: exactly what was
+shipped in each version is recorded, not an approximation reconstructed
+later.</p>
+
+<h3>2. CVE, CVSS, EPSS, KEV</h3>
+<p>Four acronyms organize how the security ecosystem talks about
+vulnerabilities. <strong>CVE</strong> (Common Vulnerabilities and
+Exposures) is only a unique identifier, like <code>CVE-2024-1234</code>
+— a name, not a severity measure. <strong>CVSS</strong> is the 0–10 score
+measuring technical severity, computed from a vector
+like <code>AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H</code>. But CVSS alone
+measures only POTENTIAL damage, not real exploitation risk — hence
+<strong>EPSS</strong> (Exploit Prediction Scoring System), which estimates the
+real probability that a specific CVE will be exploited in the next
+30 days based on observed attack data. And <strong>KEV</strong>
+(Known Exploited Vulnerabilities) is CISA's catalog of CVEs that HAVE
+already been exploited in real attacks — landing on KEV means immediate
+action, not just another priority in the queue. Mature prioritization
+combines CVSS ≥ 7 with KEV presence or high EPSS classified as critical;
+using CVSS alone leads to alert fatigue, with hundreds of technically
+high "7s" that are practically irrelevant competing for the same
+attention.</p>
+
+<h3>3. Tools</h3>
+<table>
+<tr><th>Tool</th><th>Strengths</th></tr>
+<tr><td>Trivy</td><td>Free CLI; scans FS, images, IaC, K8s. SBOM + CVEs. Good in CI.</td></tr>
+<tr><td>Grype</td><td>Paired with Syft (same owner). CVE-focused.</td></tr>
+<tr><td>Dependabot (GitHub)</td><td>Native. Automatic update PRs. Limited advanced config.</td></tr>
+<tr><td>Renovate</td><td>More configurable; groups updates, follows complex rules.</td></tr>
+<tr><td>Snyk</td><td>Commercial freemium; good UX, suggests fixes.</td></tr>
+<tr><td>OSV-Scanner</td><td>Google; uses OSV.dev; fast and free.</td></tr>
+<tr><td>npm audit / pip-audit</td><td>Native; basic.</td></tr>
+<tr><td>OWASP Dependency-Check</td><td>Java; good for legacy enterprises.</td></tr>
+</table>
+
+<h3>4. Trivy: a vital tool</h3>
+<pre><code>$ trivy fs .                     # escaneia diretório
+$ trivy image nginx:1.25.3        # escaneia imagem
+$ trivy config terraform/         # IaC
+$ trivy k8s --severity CRITICAL --all-namespaces
+
+# Falhar build em criticais
+$ trivy image --severity CRITICAL --exit-code 1 myapp:dev
+
+# Gerar SBOM
+$ trivy image --format cyclonedx --output sbom.json myapp:dev
+
+# Ignorar específicos (com motivo!)
+# .trivyignore:
+# CVE-2024-12345  # não-exploitable em nosso uso
+</code></pre>
+
+<h3>5. Remediation policy (SLA)</h3>
+<p>Without an explicit deadline, SCA findings become another item on a list
+nobody truly prioritizes. Documenting severity SLAs in
+SECURITY.md turns "fix when you can" into a measurable commitment:</p>
+<pre><code>| Severidade           | SLA Prod | SLA Staging |
+|----------------------|----------|-------------|
+| Critical em KEV      | 24-72h   | 7d          |
+| Critical             | 7d       | 14d         |
+| High + EPSS &gt;= 0.5    | 14d      | 30d         |
+| High                 | 30d      | 60d         |
+| Medium               | 90d      | 180d        |
+| Low                  | 180d     | best-effort |</code></pre>
+
+<h3>6. Lockfiles: the foundation of everything</h3>
+<p>A lockfile pins the exact version (and hash) of every resolved
+dependency — Python uses <code>poetry.lock</code>, <code>pdm.lock</code>,
+or <code>requirements.txt</code> with pinning and hashes; JavaScript uses
+<code>package-lock.json</code>, <code>yarn.lock</code>, or
+<code>pnpm-lock.yaml</code>; Go uses <code>go.sum</code>; Rust uses
+<code>Cargo.lock</code>; Ruby uses <code>Gemfile.lock</code>. Committing
+that file ALWAYS is non-negotiable for three concrete reasons: without it,
+builds stop being reproducible, and dev/prod can end up with different
+versions of the same declared dependency; SCA gets confused, reporting
+CVEs on versions that may not even be installed; and an attacker
+gains a window to silently swap a dependency for a
+malicious version — the known dependency-confusion attack. Using
+<code>--require-hashes</code> in pip validates integrity at install time:
+any mismatched hash fails installation immediately instead of silently
+installing a tampered package.</p>
+
+<h3>7. Supply chain: beyond CVEs</h3>
+<p>Traditional SCA answers "does this library have a known CVE" — but
+supply-chain attacks are a broader category that often involve no CVE
+at all. <strong>Typosquatting</strong> plants a malicious package with a name
+similar to the real one (<code>requests</code> vs <code>requets</code>), betting
+someone will mistype; the defense is reviewing every new dependency before
+adding it. A <strong>compromised maintainer account</strong> lets someone publish
+a malicious version under an already trusted, widely used name — the
+<em>event-stream</em>, <em>colors.js</em>, and <em>node-ipc</em> cases became
+famous for exactly that; the defense is hash pinning and an internal
+mirror that does not pull new versions automatically without review.
+<strong>Dependency confusion</strong> exploits when an internal package
+shares a name with a public one — if resolution config does not distinguish
+them correctly, the PUBLIC package gets pulled instead of the internal one,
+potentially controlled by an attacker who only needed to publish something
+with that name; the defense is explicit scoping on the internal registry.
+Compromising the <strong>build infrastructure</strong> itself to inject code
+directly into the pipeline — SolarWinds is the best-known example —
+requires defense at another level via the SLSA framework (section 11).
+And there is even <strong>"protestware"</strong>, where the maintainer
+deliberately sabotages their own library in political protest; version
+pinning protects against that the same way it protects against any unexpected
+update.</p>
+
+<h3>8. Dependabot configured properly</h3>
+<pre><code># .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 10
+    groups:
+      django:
+        patterns: ['django*']
+      dev-deps:
+        dependency-type: development
+    ignore:
+      - dependency-name: 'numpy'
+        versions: ['&gt;=2.0.0']  # major bump quebra; pin manual
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }</code></pre>
+<p>Without the <code>groups</code> field, Dependabot opens a separate PR
+for every dependency that changed — easily 50 PRs in a week on a
+project with many libs. With <code>groups</code>, related PRs
+consolidate into one, reducing to ~5 PRs that still cover exactly the
+same updates.</p>
+
+<h3>9. CVEs in transitives: the override nightmare</h3>
+<p>The most common real scenario: you depend on
+<code>django</code>; <code>django</code> depends on
+<code>asgiref</code>; and <code>asgiref</code> carries the CVE — a
+dependency you never declared directly. The response follows a
+preferred order: first evaluate whether the path is truly
+exploitable in your specific usage; then try updating the PARENT
+(<code>django</code>), which usually already resolved the transitive in a
+newer version — the cleanest fix because it introduces no manual override;
+if that is not yet possible, force the transitive version
+directly (<code>overrides</code> in npm, <code>--constraint</code> in
+pip, dependencyManagement in Maven); only then consider accepting the
+risk with documented justification; and replacing the entire parent
+library is the last resort when nothing else works.</p>
+
+<h3>10. Responding to a critical CVE in production</h3>
+<p>An incident like Log4Shell (CVE-2021-44228) — a string
+simply logged taking down more than 30% of the internet — follows a
+playbook that separates who reacts in hours from who reacts in weeks.
+First, <strong>inventory</strong>: SCA cross-checks the existing SBOM
+with the announced CVE, immediately answering "who uses this, and in
+which environments" — without a prior SBOM, that question alone can take
+days. Next, <strong>assessment</strong>: does an exploitable path really
+exist in your specific application? (In Log4Shell, logging unsanitized
+input was enough — a trivially common scenario, which explained the blast
+radius.) Then immediate <strong>mitigation</strong>
+via WAF rules or disabling the affected feature while the
+definitive patch is not out. Then the <strong>patch</strong> itself:
+version bump, test, deploy. In parallel, <strong>detection</strong>
+via logs or SIEM looking for exploitation attempts that already happened before
+the patch. Then transparent <strong>communication</strong> with customers,
+regulators, and the status page if applicable. And finally a real
+<strong>postmortem</strong>: how the vulnerability was discovered,
+which SLA was actually met, and what must improve for the next one —
+because there will be a next one.</p>
+
+<h3>11. SLSA: supply-chain framework</h3>
+<p>SLSA (Supply chain Levels for Software Artifacts) defines four
+increasing levels of assurance about an artifact's provenance — it is
+not binary "secure or not", it is a scale. Level 1 only requires
+automated, documented builds — something many teams already have without
+naming it. Level 2 requires versioned source and builds on a hosted
+service, not an individual developer machine. Level 3 requires
+non-falsifiable builds with real isolation between runs. And level 4,
+the most demanding, requires byte-for-byte reproducible builds and two-person
+review before any release. Combining that with Cosign and Rekor (the
+Sigstore ecosystem) lets you generate cryptographically verifiable attestations
+about which level each artifact actually reached.</p>""",
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
                     "<ol>"
@@ -2894,14 +5678,37 @@ qual nível cada artefato de fato atingiu.</p>"""
                     "imagens base.</li>"
                     "</ol>"
                 ),
+                "practical_en": (
+                    "<p><strong>Full hands-on exercise</strong>:</p>"
+                    "<ol>"
+                    "<li>Configure Dependabot/Renovate on the repo with groups.</li>"
+                    "<li>Run <code>trivy fs .</code> and <code>trivy image</code>; generate "
+                    "an SBOM with <code>syft</code>.</li>"
+                    "<li>Fail CI on critical CVEs (<code>--exit-code 1</code>).</li>"
+                    "<li>Document remediation SLAs in SECURITY.md.</li>"
+                    "<li>Configure hash pinning in <code>requirements.txt</code> "
+                    "(pip-tools).</li>"
+                    "<li>Simulate: find a known CVE in an old version, open an update PR, "
+                    "verify CI passes.</li>"
+                    "<li>Bonus: generate an SLSA L3 attestation with Sigstore.</li>"
+                    "<li>Bonus 2: configure a pull-through cache in an internal registry for "
+                    "base images.</li>"
+                    "</ol>"
+                ),
             },
             "materials": [
-                m("OWASP Dependency-Check", "https://owasp.org/www-project-dependency-check/", "tool", ""),
-                m("Trivy", "https://aquasecurity.github.io/trivy/", "tool", ""),
-                m("GitHub Dependabot", "https://docs.github.com/code-security/dependabot", "docs", ""),
-                m("Renovate", "https://docs.renovatebot.com/", "tool", ""),
-                m("CVE database", "https://www.cve.org/", "docs", ""),
-                m("OSV.dev", "https://osv.dev/", "docs", "Banco unificado de CVEs em open source."),
+                m("OWASP Dependency-Check", "https://owasp.org/www-project-dependency-check/", "tool", "",
+                  title_en="OWASP Dependency-Check", description_en=""),
+                m("Trivy", "https://aquasecurity.github.io/trivy/", "tool", "",
+                  title_en="Trivy", description_en=""),
+                m("GitHub Dependabot", "https://docs.github.com/code-security/dependabot", "docs", "",
+                  title_en="GitHub Dependabot", description_en=""),
+                m("Renovate", "https://docs.renovatebot.com/", "tool", "",
+                  title_en="Renovate", description_en=""),
+                m("CVE database", "https://www.cve.org/", "docs", "",
+                  title_en="CVE database", description_en=""),
+                m("OSV.dev", "https://osv.dev/", "docs", "Banco unificado de CVEs em open source.",
+                  title_en="OSV.dev", description_en="Unified database of open-source CVEs."),
             ],
             "questions": [
                 q("SCA significa:",
@@ -2909,61 +5716,121 @@ qual nível cada artefato de fato atingiu.</p>"""
                   ["System Check Authority, uma sigla parecida mas inventada.",
                    "Secure Code Algo, termo que não corresponde à sigla real.",
                    "Static Code Audit, quase certo mas não é o nome oficial."],
-                  "Foca em mapear e checar componentes (libs, frameworks)."),
+                  "Foca em mapear e checar componentes (libs, frameworks).",
+                  statement_en="SCA means:",
+                  correct_en="Software Composition Analysis.",
+                  wrong_en=["System Configuration Audit — a plausible but wrong expansion.",
+                            "Secure Code Automation — not what the acronym stands for.",
+                            "Source Control Access — a different concept entirely."],
+                  explanation_en="Maps dependencies and checks them against public CVE databases."),
                 q("CVE é:",
                   "Identificador único para uma vulnerabilidade conhecida.",
                   ["Um tipo de versão de release usado em algumas empresas.",
                    "Um comando de shell usado para verificar dependência instalada.",
                    "Parte do protocolo TLS responsável pelo handshake inicial."],
-                  "Mantido por MITRE. Cada CVE tem descrição, refs, scoring CVSS."),
+                  "Mantido por MITRE. Cada CVE tem descrição, refs, scoring CVSS.",
+                  statement_en="A CVE is:",
+                  correct_en="A public identifier for a known vulnerability.",
+                  wrong_en=["A private certificate used only inside the company.",
+                            "A type of immutable container image tag.",
+                            "A CI runner that executes security jobs."],
+                  explanation_en="Common Vulnerabilities and Exposures. CVSS scores severity."),
                 q("Dependabot abre:",
                   "PRs automáticos de atualização de dependências.",
                   ["Ticket de suporte aberto automaticamente para o time de infra.",
                    "Build canário rodando contra uma fração pequena de usuário.",
                    "Alerta de DNS disparado quando um domínio expira sem aviso."],
-                  "Configure agrupamento (group updates) para evitar 50 PRs por semana."),
+                  "Configure agrupamento (group updates) para evitar 50 PRs por semana.",
+                  statement_en="Dependabot opens:",
+                  correct_en="PRs that update vulnerable or outdated dependencies.",
+                  wrong_en=["A shell on the production server for the user.",
+                            "A DNS alert when a domain expires without notice.",
+                            "A merge commit that skips all required checks."],
+                  explanation_en="Configure grouping (group updates) to avoid 50 PRs per week."),
                 q("Trivy escaneia:",
                   "Imagens, IaC, e dependências em busca de CVEs e mis-configs.",
                   ["Só imagem de container, sem cobrir arquivo de IaC nem dependência alguma.",
                    "Só código escrito em Python, sem suporte a outra linguagem ou formato.",
                    "Só arquivo YAML de configuração, sem escanear imagem nem dependência real."],
-                  "Multi-tool ótimo para CI: roda em segundos, fácil de integrar."),
+                  "Multi-tool ótimo para CI: roda em segundos, fácil de integrar.",
+                  statement_en="Trivy scans:",
+                  correct_en="Images, IaC, and dependencies for CVEs and misconfigs.",
+                  wrong_en=["Only container images — no IaC files or dependencies.",
+                            "Only Python code — no other language or format.",
+                            "Only YAML config files — no images or real dependencies."],
+                  explanation_en="A strong multi-tool for CI: runs in seconds, easy to integrate."),
                 q("CVSS mede:",
                   "Severidade de vulnerabilidades (0-10).",
                   ["A latência medida ao baixar um pacote da internet.",
                    "O tamanho em byte do binário final compilado.",
                    "O custo mensal cobrado pela infraestrutura de nuvem usada."],
-                  "Vetor base inclui AV (vetor de ataque), C/I/A impactos. CVSS 9.0+ é Critical."),
+                  "Vetor base inclui AV (vetor de ataque), C/I/A impactos. CVSS 9.0+ é Critical.",
+                  statement_en="CVSS measures:",
+                  correct_en="Vulnerability severity (0–10).",
+                  wrong_en=["Latency when downloading a package from the internet.",
+                            "Byte size of the final compiled binary.",
+                            "Monthly cost of the cloud infrastructure in use."],
+                  explanation_en="Base vector includes AV (attack vector) and C/I/A impacts. CVSS 9.0+ is Critical."),
                 q("Lockfile (poetry.lock, package-lock):",
                   "Fixa versões exatas para reprodução.",
                   ["Apaga a dependência inteira do projeto sem aviso prévio.",
                    "Substitui a política de IAM aplicada à conta de deploy.",
                    "Ignora a dependência declarada, sem resolver versão alguma."],
-                  "Sem lockfile, atualizações silenciosas podem trazer bug, ou backdoor."),
+                  "Sem lockfile, atualizações silenciosas podem trazer bug, ou backdoor.",
+                  statement_en="A lockfile (poetry.lock, package-lock):",
+                  correct_en="Pins exact versions for reproducibility.",
+                  wrong_en=["Deletes the entire dependency from the project without warning.",
+                            "Replaces the IAM policy applied to the deploy account.",
+                            "Ignores declared dependencies without resolving any version."],
+                  explanation_en="Without a lockfile, silent updates can bring bugs — or a backdoor."),
                 q("Política de patching deve definir:",
                   "Prazos de remediação por severidade.",
                   ["Só o nome do time responsável, sem prazo definido de fato.",
                    "Só o custo estimado da correção, sem prazo associado.",
                    "Só a regra de lint aplicada, sem relação com prazo de patch."],
-                  "Sem SLA, nada vira prioridade. Documente no SECURITY.md."),
+                  "Sem SLA, nada vira prioridade. Documente no SECURITY.md.",
+                  statement_en="A patching policy should define:",
+                  correct_en="Remediation deadlines by severity.",
+                  wrong_en=["Only the owning team's name, with no real deadline.",
+                            "Only the estimated fix cost, with no associated deadline.",
+                            "Only the lint rule applied, unrelated to patch deadlines."],
+                  explanation_en="Without an SLA, nothing becomes a priority. Document it in SECURITY.md."),
                 q("Quando SCA aponta CVE em transitiva:",
                   "Avalie se há override possível ou alternativa.",
                   ["Force o merge do PR, ignorando o alerta apresentado.",
                    "Ignore o alerta de forma automática, pulando qualquer avaliação.",
                    "Apague o lockfile inteiro, esperando que o problema suma sozinho."],
-                  "Em alguns ecossistemas você pode forçar versão (npm overrides, Maven dependencyManagement)."),
+                  "Em alguns ecossistemas você pode forçar versão (npm overrides, Maven dependencyManagement).",
+                  statement_en="When SCA flags a CVE in a transitive dependency:",
+                  correct_en="Evaluate whether an override or alternative is possible.",
+                  wrong_en=["Force-merge the PR, ignoring the alert shown.",
+                            "Ignore the alert automatically, skipping any evaluation.",
+                            "Delete the entire lockfile and hope the problem disappears."],
+                  explanation_en="In some ecosystems you can force a version (npm overrides, Maven dependencyManagement)."),
                 q("OSV.dev é:",
                   "Banco aberto de vulnerabilidades de open source.",
                   ["Um registro de container usado para guardar imagem Docker.",
                    "Um linter que verifica estilo de código antes do commit.",
                    "Um banco de dado relacional hospedado na nuvem do Google."],
-                  "Mantido pelo Google. APIs gratuitas; integra com Trivy, OSV-Scanner."),
+                  "Mantido pelo Google. APIs gratuitas; integra com Trivy, OSV-Scanner.",
+                  statement_en="OSV.dev is:",
+                  correct_en="An open database of open-source vulnerabilities.",
+                  wrong_en=["A container registry used to store Docker images.",
+                            "A linter that checks code style before commit.",
+                            "A relational database hosted on Google Cloud."],
+                  explanation_en="Maintained by Google. Free APIs; integrates with Trivy and OSV-Scanner."),
                 q("PR de update sem testes pode:",
                   "Quebrar produção mesmo com 'fix de segurança'.",
                   ["Aumenta o volume de log gerado pela aplicação em produção.",
                    "É seguro aplicar na maioria dos casos, sem risco associado.",
                    "Reduz o custo mensal pago pela licença da dependência."],
-                  "Patch numa lib pode mudar API. Suite de testes razoável é pré-requisito."),
+                  "Patch numa lib pode mudar API. Suite de testes razoável é pré-requisito.",
+                  statement_en="An update PR without tests can:",
+                  correct_en="Break production even as a 'security fix'.",
+                  wrong_en=["Increase the volume of logs the app produces in production.",
+                            "Be safe to apply in most cases, with no associated risk.",
+                            "Reduce the monthly cost of the dependency license."],
+                  explanation_en="A patch in a library can change APIs. A reasonable test suite is a prerequisite."),
             ],
         },
         # =====================================================================
@@ -2971,7 +5838,9 @@ qual nível cada artefato de fato atingiu.</p>"""
         # =====================================================================
         {
             "title": "Code Review",
+            "title_en": 'Code Review',
             "summary": "O processo humano de revisar segurança antes do deploy.",
+            "summary_en": 'The human process of reviewing security before deploy.',
             "lesson": {
                 "intro": (
                     "Tooling captura o óbvio, linter, SAST, SCA, testes. Humano captura o "
@@ -2981,6 +5850,15 @@ qual nível cada artefato de fato atingiu.</p>"""
                     "passivo-agressivo, ou rubber stamp. Esta aula cobre como tornar review "
                     "rápido, útil e respeitoso, e quais checklists / práticas separam times "
                     "de alta performance."
+                ),
+                "intro_en": (
+                    "Tooling catches the obvious — linters, SAST, SCA, tests. Humans catch the "
+                    "subtle — business logic, design, edge cases, intent. Code review is "
+                    "where security becomes culture, and where the team learns together. Done well, "
+                    "it is one of the most valuable moments of the day. Done poorly, it is a bottleneck, "
+                    "passive-aggressive, or a rubber stamp. This lesson covers how to make review "
+                    "fast, useful, and respectful, and which checklists / practices separate "
+                    "high-performing teams."
                 ),
                 "body": (
                 """<h3>1. Princípios de PR/MR de qualidade</h3>
@@ -3189,6 +6067,211 @@ em partes menores (seção 1.1) em vez de aprovar sem ler tudo.</li>
 longo tende a gerar mal-entendido que só piora por escrito.</li>
 </ol>"""
                 ),
+                "body_en": """<h3>1. Principles of quality PRs/MRs</h3>
+<h4>1.1 Size matters</h4>
+<p>A statistic repeatedly confirmed by Google, Microsoft, and
+Meta: review quality drops dramatically above ~200 lines of
+diff. Human attention does not scale
+linearly with PR size — past a point, the reviewer
+starts "approving by eye" instead of tracking every real change. In
+practice, 1000+ line PRs get about 5% more quick approvals
+AND about 50% more bugs reaching production compared to 200-line
+PRs — the opposite of what quick approval would suggest. The fix is
+to split a large PR into a smaller, more digestible sequence: a neutral
+refactor PR (rename, move files), then a PR with the new
+still-empty interface, then a PR with the implementation itself, and
+finally an integration PR — each small enough to review for
+real.</p>
+<div class="mermaid">
+flowchart LR
+    A["Autor abre o PR"] --> B["Revisor lê o diff"]
+    B --> C{"Precisa de mudança?"}
+    C -- "Sim" --> D["Comenta, autor ajusta"]
+    D --> B
+    C -- "Não" --> E["Aprova e faz merge"]
+</div>
+
+<h4>1.2 Clear context</h4>
+<p>A reviewer should not have to guess "why this change
+exists" — a PR template forces that information to always appear:</p>
+<pre><code>## O que muda?
+Adiciona rate limiting no endpoint /login.
+
+## Por quê?
+Mitiga brute force. Issue: SEC-1234.
+
+## Como testar?
+1. POST /login com 6 senhas erradas em &lt;15min
+2. Próxima request deve retornar 429
+
+## Risco?
+Usuário legítimo errando senha repetidamente. Mensagem clara orienta
+esperar. WAF tem regra de bypass para IPs confiáveis.
+
+## Checklist
+- [x] Testes adicionados
+- [x] Logs sem PII
+- [x] Documentação
+- [ ] Verificar com SRE antes do deploy</code></pre>
+<h4>1.3 Respectful tone</h4>
+<p>The difference between "this is confusing — maybe X?" and "this is
+wrong" is not just courtesy — it changes whether the author reads the comment with
+their guard down or already defensive. Conventional Comments give a
+structure that makes intent explicit instead of implicit:</p>
+<pre><code>**suggestion**: poderia usar dataclass aqui, mais idiomático
+**nitpick**: comma no final
+**question**: por que não usar threadpool aqui?
+**issue (blocking)**: SQL injection, use parametrização
+**praise**: adorei essa abstração, simplifica muito</code></pre>
+<p>The <em>praise</em> label is underrated in practice, but recognizing
+a good decision explicitly teaches the team what to repeat — as
+important as pointing out what to avoid.</p>
+<h4>1.4 Reviewers respond quickly</h4>
+<p>A stalled PR is literally burning money: the author loses
+context every hour of waiting and must "reload" the problem in their
+head when feedback finally arrives. A healthy reference SLA is
+TTFR (Time to First Review) under 4h during working hours, dropping
+under 1h for urgent PRs.</p>
+
+<h3>2. Security checklist on PRs</h3>
+<p>For PRs touching sensitive code — authentication, personal data,
+payments — explicitly validate a specific list, because
+those are exactly where a subtle mistake becomes a serious incident:
+whether every user input is validated or sanitized before use; whether
+output to HTML, SQL, or shell has the correct escaping applied where
+needed; whether a new endpoint has the right authentication AND whether
+authorization checks the specific RESOURCE being accessed, not just whether the
+user is logged in (the difference between "you are authenticated" and "you
+may access THIS record"); whether sensitive data — tax IDs, email, tokens —
+is not leaking in logs, using <code>mask_pii()</code> where applicable;
+whether error messages do not leak stack traces to end users, with a
+generic message covering 500 errors; whether the cryptography used is
+correct (password hashing with bcrypt or argon2, never md5; random number
+generation with <code>secrets</code>, never <code>random</code>;
+TLS verified, not disabled "temporarily"); whether there is a race
+condition uncovered by a lock or transaction where the scenario requires it; whether
+a new dependency already passed SCA and is actually actively maintained, with a
+compatible license (MIT/Apache, not viral GPL where that
+matters); whether new paths have tests covering edge cases and negative
+scenarios, not only the happy path; and whether the existing API still
+works without breakage, with any database migration having a defined
+rollback path.</p>
+
+<h3>3. CODEOWNERS: who reviews what</h3>
+<pre><code># .github/CODEOWNERS
+# Pessoas/equipes que reviewam por path
+*                 @empresa/dev-platform
+/security/        @empresa/sec-team
+/payment/         @empresa/payments-squad @empresa/sec-team
+/iac/terraform/   @empresa/sre @empresa/sec-team
+*.md              @empresa/docs
+**/migrations/    @empresa/dba</code></pre>
+<p>Combined with branch protection, GitHub starts REQUIRING approval
+from the declared owner of that path — a PR under <code>/payment/</code>
+simply will not merge without approval from
+<code>@empresa/payments-squad</code> AND <code>@empresa/sec-team</code>.
+That ensures the right person looks at the right change, without depending on
+someone remembering to ping them manually.</p>
+
+<h3>4. Tools on the PR save time</h3>
+<p>Before any human reviewer opens the diff, CI should already have
+answered a set of mechanical questions: did the build pass? is lint
+clean? did SAST/SCA find nothing high or critical? did test coverage
+not drop (codecov/coveralls)? are performance benchmarks still within
+expectations (Bencher)? did the visual diff introduce no
+regression (Chromatic, Percy)? Delegating all of that to automation frees the
+human reviewer to focus exactly where they add the most value —
+design and logic — instead of spending attention on "missing a space here".</p>
+
+<h3>5. Classic anti-patterns</h3>
+<ul>
+<li><strong>Rubber stamp</strong>: approving without really reading, common
+especially on a senior's PR ("who am I to disagree?"). The
+alert metric is the percentage of PRs approved with zero comments —
+above 50% is already suspicious.</li>
+<li><strong>Bikeshedding</strong>: debating button color for days
+while a SQL injection slips through — Parkinson's Law describes
+exactly this: time spent debating a decision tends to be
+inversely proportional to its real importance.</li>
+<li><strong>3000-line PRs</strong>: nobody truly reviews that
+(section 1.1) — the right response is to ask for a split, not try to review
+anyway.</li>
+<li><strong>Single reviewer</strong>: if only one person reviews
+a given area, they become a single point of failure — and burn out, because
+they carry the weight alone indefinitely.</li>
+<li><strong>"Approve and ask for tests later"</strong>: "later" almost
+never arrives, because the pressure that motivated the fix already passed with
+the merge.</li>
+<li><strong>Adversarial comments</strong> ("this is horrible"): toxic
+and ineffective — they do not change the code faster, only the team climate.</li>
+<li><strong>Silent rewrites</strong>: the reviewer rewrites the
+code instead of asking for the change — the author learns nothing and
+resents a decision made without them.</li>
+<li><strong>Approving without green CI</strong>: nullifies the purpose of having
+CI (section 4).</li>
+<li><strong>Blocking merge over personal preference</strong>: blocking
+should be reserved for real bugs or security risk — style is a
+nitpick, not a reason to stall the PR.</li>
+</ul>
+
+<h3>6. Healthy metrics</h3>
+<p>Five numbers show whether the review process is truly working.
+<strong>TTFR</strong> (Time to First Review) under 4h on
+normal PRs shows nobody is waiting unnecessarily.
+<strong>Time to Merge</strong> under 24h in most cases avoids
+work piling up in limbo. The number of
+<strong>comments per PR</strong> between 1 and 10 is the healthy range
+— zero suggests rubber stamp (section 5), and more than 50 suggests a PR that is too
+large or an author who did not review their own work before opening.
+<strong>Escaped defect rate</strong> measures how many bugs pass the
+entire review and reach production — if it is rising, review is getting
+shallow even if speed numbers look good. And
+<strong>review participation</strong> reveals bus factor: if only one
+or two people review most of the code, distribute via
+round-robin (section 7) to avoid risk concentration. As a general
+reference, a PR idle more than 3 days already degrades team morale — the goal
+should aim well under 24h.</p>
+
+<h3>7. Round-robin and distributed ownership</h3>
+<p>GitHub's round-robin auto-assignment stops every PR from always landing
+on the same available person — in a squad of 6 developers,
+each new PR is distributed randomly among them. Combined with
+CODEOWNERS (section 3) for the most critical areas, this mechanism
+spreads workload AND spreads code knowledge across the
+team, instead of concentrating everything on one person who "always reviews
+that part".</p>
+
+<h3>8. Pair review and mob review</h3>
+<p>For especially critical changes — authentication, infrastructure,
+data migration — three alternatives to standard async review
+make sense. <strong>Pair review</strong> sits reviewer and
+author together (in person or on a call) walking the PR in real time,
+producing richer discussion and faster decisions than trading
+comments for hours. <strong>Mob review</strong> gathers 3 to 5
+people reviewing together, useful specifically for design decisions
+that affect many people. And a hybrid <strong>async + sync</strong> keeps
+the normal async GitHub flow, reserving a quick sync session
+only to resolve a specific deadlock that got stuck in text.</p>
+
+<h3>9. Reviewer guide (reviewer cheat sheet)</h3>
+<ol>
+<li>Read the PR description before the code — context changes how you
+read the diff.</li>
+<li>Look at the whole-diff overview before going line by line,
+to understand the real scope of the change.</li>
+<li>Identify risk early: new endpoint? new library?
+auth change?</li>
+<li>Prioritize in this order: design, then correctness, then
+maintainability, and only last style.</li>
+<li>Comment as a question, not a command — leaves room for the author
+to explain a decision you did not see immediately.</li>
+<li>Approve quickly when everything is fine — do not "hold" the PR over
+pedantry.</li>
+<li>If the PR is too large to review for real, ask to split
+into smaller parts (section 1.1) instead of approving without reading it all.</li>
+<li>If disagreement is large, schedule a sync conversation — long text
+tends to create misunderstandings that only get worse in writing.</li>
+</ol>""",
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
                     "<ol>"
@@ -3207,14 +6290,38 @@ longo tende a gerar mal-entendido que só piora por escrito.</li>
                     "merge time.</li>"
                     "</ol>"
                 ),
+                "practical_en": (
+                    "<p><strong>Full hands-on exercise</strong>:</p>"
+                    "<ol>"
+                    "<li>Create a PR template in <code>.github/pull_request_template.md</code> "
+                    "with a checklist (auth, validation, logs without PII, tests, backward "
+                    "compat).</li>"
+                    "<li>Configure CODEOWNERS: <code>/security/</code> requires sec-team; "
+                    "migrations require a DBA; .md requires docs.</li>"
+                    "<li>Configure branch protection with 1 required review + signed "
+                    "commits + status checks.</li>"
+                    "<li>Configure round-robin auto-assignment to distribute load.</li>"
+                    "<li>Add a codecov bot that comments coverage on the PR.</li>"
+                    "<li>Create a test PR with a bad pattern (SQL concat, PII in logs) "
+                    "and see if SAST + the reviewer catch it.</li>"
+                    "<li>Bonus: configure GitHub Insights to track TTFR and "
+                    "merge time.</li>"
+                    "</ol>"
+                ),
             },
             "materials": [
-                m("Google: Code Review Developer Guide", "https://google.github.io/eng-practices/review/", "article", ""),
-                m("OWASP Code Review Guide", "https://owasp.org/www-project-code-review-guide/", "docs", ""),
-                m("Conventional comments", "https://conventionalcomments.org/", "article", ""),
-                m("PR template (GitHub)", "https://docs.github.com/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository", "docs", ""),
-                m("ThoughtWorks: code review", "https://www.thoughtworks.com/insights/blog/code-review", "article", ""),
-                m("CODEOWNERS docs", "https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners", "docs", ""),
+                m("Google: Code Review Developer Guide", "https://google.github.io/eng-practices/review/", "article", "",
+                  title_en="Google: Code Review Developer Guide", description_en=""),
+                m("OWASP Code Review Guide", "https://owasp.org/www-project-code-review-guide/", "docs", "",
+                  title_en="OWASP Code Review Guide", description_en=""),
+                m("Conventional comments", "https://conventionalcomments.org/", "article", "",
+                  title_en="Conventional comments", description_en=""),
+                m("PR template (GitHub)", "https://docs.github.com/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository", "docs", "",
+                  title_en="PR template (GitHub)", description_en=""),
+                m("ThoughtWorks: code review", "https://www.thoughtworks.com/insights/blog/code-review", "article", "",
+                  title_en="ThoughtWorks: code review", description_en=""),
+                m("CODEOWNERS docs", "https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners", "docs", "",
+                  title_en="CODEOWNERS docs", description_en=""),
             ],
             "questions": [
                 q("PR pequeno é melhor porque:",
@@ -3222,61 +6329,121 @@ longo tende a gerar mal-entendido que só piora por escrito.</li>
                   ["Passa despercebido em diffs grandes, o revisor lê por cima.",
                    "Cria a falsa impressão de qualidade mais alta no que foi entregue.",
                    "Costuma gerar mais conflito de merge entre branches diferentes."],
-                  "Estudos mostram que diffs grandes recebem revisão superficial."),
+                  "Estudos mostram que diffs grandes recebem revisão superficial.",
+                  statement_en="A small PR is better because:",
+                  correct_en="It reduces time and the chance bugs slip through.",
+                  wrong_en=["It goes unnoticed in large diffs where reviewers skim.",
+                            "It creates a false impression of higher quality in what was shipped.",
+                            "It usually causes more merge conflicts across branches."],
+                  explanation_en="Studies show large diffs get shallow reviews."),
                 q("Checklist em PR ajuda a:",
                   "Não esquecer de validar pontos críticos.",
                   ["Fica pronto rápido, mesmo sem rodar teste automatizado de verdade.",
                    "Torna o processo de aprovação mais lento e burocrático.",
                    "Reduz a cobertura de teste que aparece no relatório de CI."],
-                  "Bom em PRs sensíveis (auth, dados pessoais). Em PRs triviais, pode atrapalhar."),
+                  "Bom em PRs sensíveis (auth, dados pessoais). Em PRs triviais, pode atrapalhar.",
+                  statement_en="A PR checklist helps to:",
+                  correct_en="Avoid forgetting to validate critical points.",
+                  wrong_en=["Ship fast even without running real automated tests.",
+                            "Make the approval process slower and more bureaucratic.",
+                            "Reduce the test coverage shown in the CI report."],
+                  explanation_en="Good for sensitive PRs (auth, personal data). On trivial PRs it can get in the way."),
                 q("Reviewer deve:",
                   "Comentar com clareza, tom respeitoso e sugerir alternativa.",
                   ["Só aprovar o PR direto, pulando qualquer comentário no processo.",
                    "Só reprovar sem explicar o motivo da reprovação ao autor.",
                    "Reescrever o código do autor sem avisar ou discutir a mudança."],
-                  "'Aqui está confuso, talvez X?' > 'errado'. Conventional comments dão estrutura."),
+                  "'Aqui está confuso, talvez X?' > 'errado'. Conventional comments dão estrutura.",
+                  statement_en="A reviewer should:",
+                  correct_en="Comment clearly, respectfully, and suggest alternatives.",
+                  wrong_en=["Only approve the PR outright, skipping any comments.",
+                            "Only reject without explaining the reason to the author.",
+                            "Rewrite the author's code without notice or discussion."],
+                  explanation_en="'This is confusing — maybe X?' beats 'wrong'. Conventional comments give structure."),
                 q("Mudanças sensíveis precisam:",
                   "Revisão por alguém com perfil de segurança.",
                   ["Só uma IA analisando, sem revisor humano no processo.",
                    "Mesclar automaticamente sem esperar qualquer aprovação humana.",
                    "Pular a verificação obrigatória configurada no repositório."],
-                  "Use CODEOWNERS para garantir que sec-team é notificado."),
+                  "Use CODEOWNERS para garantir que sec-team é notificado.",
+                  statement_en="Sensitive changes need:",
+                  correct_en="Review by someone with a security profile.",
+                  wrong_en=["Only an AI analyzing, with no human reviewer.",
+                            "Automatic merge without waiting for any human approval.",
+                            "Skipping the required checks configured on the repository."],
+                  explanation_en="Use CODEOWNERS so the sec-team is notified."),
                 q("Revisão sem testes é:",
                   "Risco, pode aprovar bug que CI pegaria.",
                   ["Rápido de concluir, mas às custas da qualidade real do código.",
                    "Recomendado só para PR pequeno e de baixo risco.",
                    "Uma forma eficiente de economizar o tempo do revisor."],
-                  "Coverage bot ajuda a barrar code novo sem teste."),
+                  "Coverage bot ajuda a barrar code novo sem teste.",
+                  statement_en="Review without tests is:",
+                  correct_en="A risk — it can approve a bug CI would catch.",
+                  wrong_en=["Quick to finish, but at the cost of real code quality.",
+                            "Recommended only for small, low-risk PRs.",
+                            "An efficient way to save the reviewer's time."],
+                  explanation_en="A coverage bot helps block new code without tests."),
                 q("Conventional comments:",
                   "Padroniza tipos de comentário (suggestion, nitpick, blocking).",
                   ["Apagam qualquer comentário deixado por outro revisor no mesmo PR.",
                    "Substituem por completo a necessidade de rodar CI antes do merge.",
                    "Forçam a aprovação automática do PR, não importa o conteúdo revisado."],
-                  "Reviewer sinaliza intenção: 'nitpick' não bloqueia, 'blocking' bloqueia."),
+                  "Reviewer sinaliza intenção: 'nitpick' não bloqueia, 'blocking' bloqueia.",
+                  statement_en="Conventional comments:",
+                  correct_en="Standardize comment types (suggestion, nitpick, blocking).",
+                  wrong_en=["Delete any comment left by another reviewer on the same PR.",
+                            "Fully replace the need to run CI before merge.",
+                            "Force automatic PR approval regardless of review content."],
+                  explanation_en="The reviewer signals intent: 'nitpick' does not block; 'blocking' does."),
                 q("PR muito velho:",
                   "Junta merge conflicts e deveria ser refeito ou fragmentado.",
                   ["Fica com gosto melhor quanto mais tempo passa parado.",
                    "Consegue mergear sem esforço extra, não importa o tempo parado.",
                    "Substitui a necessidade de manter documentação do projeto."],
-                  "PRs > 1 semana parados raramente terminam bem. Quebre ou cancele."),
+                  "PRs > 1 semana parados raramente terminam bem. Quebre ou cancele.",
+                  statement_en="A very old PR:",
+                  correct_en="Accumulates merge conflicts and should be redone or split.",
+                  wrong_en=["Gets better the longer it sits untouched.",
+                            "Merges effortlessly no matter how long it sat.",
+                            "Replaces the need to maintain project documentation."],
+                  explanation_en="PRs idle for more than a week rarely end well. Split or cancel."),
                 q("Reviewer perceber dado sensível em log:",
                   "Pedir remoção/sanitização antes do merge.",
                   ["Aprovar o PR e deixar a correção para depois, como tarefa futura.",
                    "Ignorar, já que log em produção raramente é lido por alguém.",
                    "Adicionar mais dado sensível ao mesmo log, para comparação."],
-                  "Após log estar em produção, a chance de remover de SIEM/Datadog é zero."),
+                  "Após log estar em produção, a chance de remover de SIEM/Datadog é zero.",
+                  statement_en="If a reviewer spots sensitive data in a log:",
+                  correct_en="Ask for removal/sanitization before merge.",
+                  wrong_en=["Approve the PR and leave the fix for later as a future task.",
+                            "Ignore it, since production logs are rarely read by anyone.",
+                            "Add more sensitive data to the same log for comparison."],
+                  explanation_en="Once the log is in production, chance of removing it from SIEM/Datadog is near zero."),
                 q("Aprovação 'rubber stamp':",
                   "Aprovar sem ler, viola o propósito do review.",
                   ["Uma forma eficiente de economizar tempo do revisor no PR.",
                    "Uma prática aceitável quando o autor já tem muita experiência.",
                    "Um jeito rápido de manter o fluxo de entrega sem travar."],
-                  "Cria sensação de segurança falsa. Métricas (zero comments) podem revelar."),
+                  "Cria sensação de segurança falsa. Métricas (zero comments) podem revelar.",
+                  statement_en="'Rubber stamp' approval:",
+                  correct_en="Approving without reading — it violates the purpose of review.",
+                  wrong_en=["An efficient way to save the reviewer's time on the PR.",
+                            "Acceptable when the author already has a lot of experience.",
+                            "A quick way to keep delivery flowing without blocking."],
+                  explanation_en="Creates a false sense of safety. Metrics (zero comments) can expose it."),
                 q("Métrica saudável:",
                   "Time-to-first-review baixo, sem fila eterna.",
                   ["PR gigante acumulado, esperando revisão há semanas seguidas.",
                    "Grande volume de PR aprovado sem leitura de verdade pelo revisor.",
                    "Revisão feita só pelo CTO, sem outro revisor envolvido no time."],
-                  "TTFR < 4h para PRs urgentes; < 24h para o resto. Combine com round-robin."),
+                  "TTFR < 4h para PRs urgentes; < 24h para o resto. Combine com round-robin.",
+                  statement_en="A healthy metric:",
+                  correct_en="Low time-to-first-review, without an endless queue.",
+                  wrong_en=["Giant PRs piled up, waiting weeks for review.",
+                            "A high volume of PRs approved without a real read by the reviewer.",
+                            "Review done only by the CTO, with no other reviewer on the team."],
+                  explanation_en="TTFR < 4h for urgent PRs; < 24h for the rest. Combine with round-robin."),
             ],
         },
         # =====================================================================
@@ -3284,7 +6451,9 @@ longo tende a gerar mal-entendido que só piora por escrito.</li>
         # =====================================================================
         {
             "title": "Artifact Repositories",
+            "title_en": 'Artifact Repositories',
             "summary": "Guardar suas versões de software em locais seguros.",
+            "summary_en": 'Store your software versions in safe places.',
             "lesson": {
                 "intro": (
                     "Imagem Docker, jar, wheel, helm chart, binário Go, módulo Terraform. "
@@ -3294,6 +6463,15 @@ longo tende a gerar mal-entendido que só piora por escrito.</li>
                     "imagens não assinadas no cluster). Esta aula cobre tipos de registries, "
                     "padrões essenciais (tag imutável, assinatura, SBOM), e como integrar "
                     "tudo no pipeline."
+                ),
+                "intro_en": (
+                    "Docker images, jars, wheels, Helm charts, Go binaries, Terraform modules. "
+                    "Every build produces artifacts. Where you store them matters for reproducibility "
+                    "(rollback?), security (signing, vuln scan), governance (who can "
+                    "pull?), cost (Docker Hub rate limits, S3 egress), and supply chain (blocking "
+                    "unsigned images in the cluster). This lesson covers registry types, "
+                    "essential patterns (immutable tags, signing, SBOM), and how to integrate "
+                    "it all into the pipeline."
                 ),
                 "body": (
                 """<h3>1. Tipos de registries</h3>
@@ -3529,6 +6707,238 @@ produz exatamente a mesma saída) permite que múltiplas partes
 independentes verifiquem o resultado sem precisar confiar cegamente
 numa única infraestrutura de build.</p>"""
                 ),
+                "body_en": """<h3>1. Registry types</h3>
+<h4>1.1 Container registries</h4>
+<p>Each cloud offers its native registry: <strong>AWS ECR</strong> with
+IAM access control and integrated vulnerability scanning,
+<strong>GCP Artifact Registry</strong> (which replaced old GCR,
+with multi-format support for Docker, Maven, npm), and <strong>Azure
+Container Registry</strong>. <strong>GitHub Container Registry</strong>
+stands out for automatic GitHub Actions integration — the auth
+token comes ready, with no extra configuration. <strong>Docker
+Hub</strong> remains public and free with rate limits, paid for
+unlimited use. <strong>Harbor</strong>, open source and self-hosted, with
+native RBAC, vulnerability scanning, and replication, became the default in
+teams running on-prem Kubernetes. And <strong>Quay</strong> (Red
+Hat) is strong specifically in the OpenShift ecosystem.</p>
+<div class="mermaid">
+flowchart LR
+    Build["Pipeline de build"] --> Sign["Assina o artefato"]
+    Sign --> Push["Push pro registry"]
+    Push --> Pull["Ambiente puxa por digest"]
+</div>
+
+<h4>1.2 Generic / language registries</h4>
+<p>For artifacts that are not container images, <strong>JFrog
+Artifactory</strong> is the market veteran — multi-format (Docker,
+Maven, npm, NuGet, PyPI, RPM), expensive but robust. <strong>Sonatype
+Nexus</strong> covers similar ground, with a free open-source
+edition. <strong>GitHub Packages</strong> and <strong>GitLab Package
+Registry</strong> come natively integrated into their respective
+platforms. And <strong>Cloudsmith</strong> is a dedicated multi-format
+SaaS option.</p>
+<h4>1.3 Helm Charts</h4>
+<p>Starting with Helm 3, native OCI support means any
+common OCI registry (ECR, GHCR, Harbor) can already store a Helm
+chart directly, without dedicated infrastructure.
+<code>ChartMuseum</code> still exists for whoever keeps a legacy setup.</p>
+
+<h3>2. Essential patterns</h3>
+<h4>2.1 Immutable tags</h4>
+<p>Use the commit SHA or a semver version as the tag — never
+<code>latest</code>, <code>main</code>, <code>dev</code>, or any
+"moving" tag that can point at different content tomorrow without
+warning:</p>
+<pre><code># Bom
+ghcr.io/empresa/app:v1.4.2
+ghcr.io/empresa/app:abc1234   # commit SHA
+ghcr.io/empresa/app@sha256:f0a1b2...   # digest absoluto
+
+# Ruim em prod
+ghcr.io/empresa/app:latest
+ghcr.io/empresa/app:dev</code></pre>
+<p>Referencing by digest (<code>sha256:...</code>) is the gold standard:
+that identifier is immutable and unique by definition, even if someone
+republishes the SAME tag with different content later. Enabling
+<strong>tag immutability</strong> on the registry (available in ECR,
+Harbor, ACR) reinforces this structurally — the tag simply cannot
+be overwritten, even by accident.</p>
+<h4>2.2 Signing with Cosign (Sigstore)</h4>
+<p>Without a signature, an attacker who compromises the registry can swap the
+image for a malicious one without anyone noticing — name and tag
+stay the same, only the content changed. Cosign closes that gap:</p>
+<pre><code>$ cosign sign --yes ghcr.io/empresa/app:v1.4.2
+Generating ephemeral keys... [OIDC: 'ci@empresa.com']
+tlog entry written: rekor.sigstore.dev
+
+$ cosign verify ghcr.io/empresa/app:v1.4.2 \\
+    --certificate-identity ci@empresa.com \\
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+Verification for ghcr.io/empresa/app:v1.4.2 --
+The following checks were performed on each of these signatures:
+  - Signature was verified
+  - Identity matched expectation</code></pre>
+<p>Combining that with a Kubernetes admission controller (Sigstore
+Policy Controller, Kyverno) closes the full loop: the cluster rejects
+any image without a valid signature, making verification
+mandatory, not optional:</p>
+<pre><code>apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: require-signed-images }
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: check-signature
+      match:
+        any:
+          - resources: { kinds: [Pod] }
+      verifyImages:
+        - imageReferences: ['ghcr.io/empresa/*']
+          attestors:
+            - keyless:
+                subject: ci@empresa.com
+                issuer: https://token.actions.githubusercontent.com</code></pre>
+<h4>2.3 Attached SBOM</h4>
+<p>Attaching the SBOM directly as a referrer in the OCI registry itself
+keeps the dependency list with the artifact it describes, instead of
+in a separate document that can go stale:</p>
+<pre><code>$ syft ghcr.io/empresa/app:v1.4.2 -o cyclonedx-json &gt; sbom.json
+$ cosign attach sbom --sbom sbom.json ghcr.io/empresa/app:v1.4.2
+$ cosign attest --predicate sbom.json --type cyclonedx \\
+    ghcr.io/empresa/app:v1.4.2</code></pre>
+<p>When an incident requires answering quickly "who is using
+log4j 2.14?", having the SBOM attached to each specific image turns
+that question from a manual investigation into a direct query.</p>
+<h4>2.4 Provenance / SLSA</h4>
+<p>A provenance attestation documents HOW the artifact was
+built, not only what it contains — SLSA L3 or higher requires
+that attestation to come from a trusted builder, not from any
+arbitrary machine. GitHub Actions already has an official template to
+generate this automatically:</p>
+<pre><code>- uses: slsa-framework/slsa-github-generator/.github/workflows/builder_container_slsa3.yml@v1.10.0</code></pre>
+<p>The result is the image accompanied by a verifiable
+<code>provenance.intoto.jsonl</code>, proving exactly where
+it came from.</p>
+
+<h3>3. RBAC and segregation</h3>
+<p>Five access-control practices separate a well-governed registry
+from one at risk. Write (push) should be restricted
+exclusively to CI — no developer pushes directly, ideally using
+short-lived OIDC tokens instead of static credentials.
+Read should be scoped by team or product, with multi-tenant
+environments using a separate namespace per team. In production, pulls
+should use a cluster-specific pull-secret, never a
+reused human credential. Short-lived OIDC+STS tokens
+are preferable to static tokens whenever feasible. And a registry audit
+log — who pulled what and when — becomes essential in the middle of any
+incident investigation.</p>
+
+<h3>4. Retention and cost</h3>
+<p>Without a retention policy, a registry silently accumulates gigabyte after
+gigabyte: every PR generates its own test image, and
+old builds accumulate new CVEs every week that passes, even with
+nobody touching them — storage cost scales with that
+accumulation:</p>
+<pre><code># Exemplo ECR lifecycle
+{
+  "rules": [
+    {
+      "rulePriority": 1,
+      "description": "Manter últimas 30 imagens semver",
+      "selection": {
+        "tagStatus": "tagged",
+        "tagPrefixList": ["v"],
+        "countType": "imageCountMoreThan",
+        "countNumber": 30
+      },
+      "action": { "type": "expire" }
+    },
+    {
+      "rulePriority": 2,
+      "description": "Apagar untagged após 7d",
+      "selection": {
+        "tagStatus": "untagged",
+        "countType": "sinceImagePushed",
+        "countUnit": "days",
+        "countNumber": 7
+      },
+      "action": { "type": "expire" }
+    }
+  ]
+}</code></pre>
+<p>Beyond cutting the bill, that cleanup reduces the attack
+surface: an old image forgotten in the registry, with a known
+vulnerability, is exactly the easy target an attacker looks for
+before trying something more sophisticated.</p>
+
+<h3>5. Pull-through cache</h3>
+<p>Having every pipeline run pull straight from Docker Hub quickly hits
+the generous-but-finite free-plan rate limit — the
+alternative is using the internal registry as an intermediate cache
+layer via Harbor proxy cache, ECR pull-through (configurable
+for Docker Hub, Quay, GHCR), or an Artifactory remote repository.
+That speeds builds with a local cache, keeps the pipeline working
+even during upstream registry outages, produces
+audit of what actually comes from outside, and opens room for
+scanning or quarantine before any external image is actually
+used.</p>
+
+<h3>6. Continuous vulnerability scanning</h3>
+<p>Scanning only at push time is inherently insufficient —
+a new CVE can be discovered weeks later in an image that was already
+clean when published. The answer is configuring periodic re-scan
+(Harbor scheduling, Trivy Operator on Kubernetes, ECR
+Enhanced Scanning), automatic notification when an image already in
+production becomes considered vulnerable (webhook firing to
+Slack), and an admission policy that actively blocks any
+image with a critical CVE from running in production, even if it was
+approved in the past.</p>
+
+<h3>7. Multi-arch images</h3>
+<p>With ARM (Graviton on AWS, Apple Silicon locally) coexisting with
+AMD64 day to day, the build needs to produce both architectures at
+once:</p>
+<pre><code>docker buildx build --platform linux/amd64,linux/arm64 \\
+  --tag ghcr.io/empresa/app:v1.4.2 \\
+  --push .</code></pre>
+<p>The result is a manifest list — a single reference that points
+at both architecture variants at once — and the pull
+automatically selects the correct architecture for the machine that is
+pulling, with no extra client-side configuration.</p>
+
+<h3>8. Anti-patterns</h3>
+<ul>
+<li><strong>Using only <code>latest</code> in production</strong>: zero
+traceability of which code is actually running (section 2.1).</li>
+<li><strong>No retention policy</strong>: gigabytes accumulating
+uncontrolled (section 4).</li>
+<li><strong>Push without signing</strong>: leaves the supply chain
+vulnerable to silent image swaps (section 2.2).</li>
+<li><strong>Static registry tokens</strong>: if leaked, the attacker
+can pull everything with no time limit.</li>
+<li><strong>Images published to a public registry without scan or
+audit</strong>: anyone can pull unverified code.</li>
+<li><strong>Rebuild straight in production</strong>: "I just recompiled there"
+produces an artifact literally different from what passed
+tests.</li>
+<li><strong>Not using a pull-through cache</strong>: rate limits at
+peak hours stall the entire CI without warning (section 5).</li>
+</ul>
+
+<h3>9. Real case: SolarWinds (2020)</h3>
+<p>Attackers compromised SolarWinds' BUILD pipeline directly,
+injecting malicious code into the Orion product BEFORE the
+signing step happened — meaning the "official" signed
+image already left the factory compromised. Hundreds of companies,
+including US government agencies, downloaded that
+"official" backdoored version, trusting exactly the signature that
+should have guaranteed integrity. The central lesson: signing is not enough if the
+build PROCESS itself is untrusted — hence the requirement for SLSA level
+3 or higher (section 2.4), which validates the build chain, not only the
+final artifact. Ideally, a reproducible build (the same input always
+produces exactly the same output) lets multiple independent parties
+verify the result without blindly trusting a single build
+infrastructure.</p>""",
                 "practical": (
                     "<p><strong>Exercício prático completo</strong>:</p>"
                     "<ol>"
@@ -3546,14 +6956,37 @@ numa única infraestrutura de build.</p>"""
                     "<li>Bonus 2: build multi-arch (amd64 + arm64) e teste em ambos.</li>"
                     "</ol>"
                 ),
+                "practical_en": (
+                    "<p><strong>Full hands-on exercise</strong>:</p>"
+                    "<ol>"
+                    "<li>Push an image to GHCR with a commit-SHA tag + a semver tag.</li>"
+                    "<li>Enable tag immutability.</li>"
+                    "<li>Generate an SBOM with <code>syft</code>; attach it as a referrer with Cosign.</li>"
+                    "<li>Sign the image with <code>cosign sign</code> (GitHub keyless OIDC).</li>"
+                    "<li>Verify with <code>cosign verify</code> against the OIDC issuer.</li>"
+                    "<li>Configure the Trivy operator (or periodic rescan) on Harbor/ECR.</li>"
+                    "<li>Configure retention: keep 30 semver versions + delete untagged "
+                    "after 7d.</li>"
+                    "<li>On local K8s (kind), install Sigstore Policy Controller that "
+                    "rejects unsigned images.</li>"
+                    "<li>Bonus: generate an SLSA L3 attestation with <code>slsa-github-generator</code>.</li>"
+                    "<li>Bonus 2: multi-arch build (amd64 + arm64) and test on both.</li>"
+                    "</ol>"
+                ),
             },
             "materials": [
-                m("Sigstore Cosign", "https://docs.sigstore.dev/cosign/overview/", "tool", ""),
-                m("Harbor", "https://goharbor.io/docs/", "tool", ""),
-                m("GitHub Container Registry", "https://docs.github.com/packages/working-with-a-github-packages-registry/working-with-the-container-registry", "docs", ""),
-                m("Artifactory docs", "https://jfrog.com/help/r/jfrog-artifactory-documentation", "docs", ""),
-                m("OCI image spec", "https://github.com/opencontainers/image-spec", "docs", ""),
-                m("SLSA framework", "https://slsa.dev/", "docs", "Níveis de provenance para supply chain."),
+                m("Sigstore Cosign", "https://docs.sigstore.dev/cosign/overview/", "tool", "",
+                  title_en="Sigstore Cosign", description_en=""),
+                m("Harbor", "https://goharbor.io/docs/", "tool", "",
+                  title_en="Harbor", description_en=""),
+                m("GitHub Container Registry", "https://docs.github.com/packages/working-with-a-github-packages-registry/working-with-the-container-registry", "docs", "",
+                  title_en="GitHub Container Registry", description_en=""),
+                m("Artifactory docs", "https://jfrog.com/help/r/jfrog-artifactory-documentation", "docs", "",
+                  title_en="Artifactory docs", description_en=""),
+                m("OCI image spec", "https://github.com/opencontainers/image-spec", "docs", "",
+                  title_en="OCI image spec", description_en=""),
+                m("SLSA framework", "https://slsa.dev/", "docs", "Níveis de provenance para supply chain.",
+                  title_en="SLSA framework", description_en="Provenance levels for the supply chain."),
             ],
             "questions": [
                 q("Por que usar registry privado?",
@@ -3561,61 +6994,121 @@ numa única infraestrutura de build.</p>"""
                   ["Costuma ficar bem mais lento para fazer o pull dentro do pipeline de CI, com frequência.",
                    "Sai de graça na grande maioria dos planos gratuitos disponíveis hoje em dia.",
                    "Faz basicamente o mesmo papel que o próprio IAM sozinho já deveria cobrir."],
-                  "Também evita rate-limit (Docker Hub) e dá auditoria fina."),
+                  "Também evita rate-limit (Docker Hub) e dá auditoria fina.",
+                  statement_en="Why use a private registry?",
+                  correct_en="Access control, traceability, and independence from public vendors.",
+                  wrong_en=["It often makes pulls inside the CI pipeline much slower.",
+                            "It is free on most free plans available today.",
+                            "It basically does the same job IAM alone should already cover."],
+                  explanation_en="Also avoids rate limits (Docker Hub) and gives fine-grained audit."),
                 q("Tag mutável (latest) é problema porque:",
                   "Não há rastreabilidade, pode mudar a qualquer hora.",
                   ["Deixa o pull mais lento por causa do cache do registry.",
                    "Aumenta o custo de armazenamento guardado no registry.",
                    "Só funciona direito em ambiente rodando Linux."],
-                  "Em rollback, você não consegue voltar para 'qual latest era ontem?'."),
+                  "Em rollback, você não consegue voltar para 'qual latest era ontem?'.",
+                  statement_en="A mutable tag (latest) is a problem because:",
+                  correct_en="There is no traceability — it can change at any time.",
+                  wrong_en=["It makes pulls slower because of registry cache.",
+                            "It increases storage cost in the registry.",
+                            "It only works properly in Linux environments."],
+                  explanation_en="On rollback, you cannot go back to 'which latest was yesterday?'."),
                 q("Cosign serve para:",
                   "Assinar e verificar artefatos OCI.",
                   ["Comprimir o tamanho final da imagem antes do push.",
                    "Substituir por completo o registry usado no pipeline.",
                    "Compilar projeto Java dentro do processo de build."],
-                  "Combinado com policy controllers (Kyverno, Connaisseur), bloqueia imagens não assinadas."),
+                  "Combinado com policy controllers (Kyverno, Connaisseur), bloqueia imagens não assinadas.",
+                  statement_en="Cosign is used to:",
+                  correct_en="Sign and verify OCI artifacts.",
+                  wrong_en=["Compress the final image size before push.",
+                            "Fully replace the registry used in the pipeline.",
+                            "Compile a Java project inside the build process."],
+                  explanation_en="Combined with policy controllers (Kyverno, Connaisseur), it blocks unsigned images."),
                 q("Retenção de artefatos serve para:",
                   "Reduzir custos e poluição mantendo só o necessário.",
                   ["Aumentar a redundância de cópias guardadas do artefato.",
                    "Substituir o processo de backup usado pela equipe.",
                    "Melhorar o resultado do lint rodado no pipeline."],
-                  "Configure regras: 'manter últimas 50 tags + todas semver'."),
+                  "Configure regras: 'manter últimas 50 tags + todas semver'.",
+                  statement_en="Artifact retention is used to:",
+                  correct_en="Cut costs and clutter by keeping only what is needed.",
+                  wrong_en=["Increase redundancy of stored artifact copies.",
+                            "Replace the backup process used by the team.",
+                            "Improve lint results run in the pipeline."],
+                  explanation_en="Configure rules: 'keep last 50 tags + all semver'."),
                 q("OCI é:",
                   "Padrão aberto para imagens de container.",
                   ["Uma ferramenta específica de gestão de IAM.",
                    "Um backend usado para centralizar logs da aplicação.",
                    "Uma linguagem de programação para escrever backend."],
-                  "Open Container Initiative. Garante que imagem buildada pelo Docker roda no Podman, K8s etc."),
+                  "Open Container Initiative. Garante que imagem buildada pelo Docker roda no Podman, K8s etc.",
+                  statement_en="OCI is:",
+                  correct_en="An open standard for container images.",
+                  wrong_en=["A specific IAM management tool.",
+                            "A backend used to centralize application logs.",
+                            "A programming language for writing backends."],
+                  explanation_en="Open Container Initiative. Ensures an image built by Docker runs on Podman, K8s, etc."),
                 q("Registry como pull-through cache:",
                   "Faz cache local de imagens públicas, evitando rate-limits.",
                   ["Acelera o tempo de commit feito diretamente no repositório de código.",
                    "Substitui inteiramente o pipeline de CI usado para buildar a imagem.",
                    "Funciona como cache de resolução de DNS usado pelo cluster."],
-                  "Especialmente útil para imagens base (alpine, debian, python)."),
+                  "Especialmente útil para imagens base (alpine, debian, python).",
+                  statement_en="A registry as pull-through cache:",
+                  correct_en="Caches public images locally, avoiding rate limits.",
+                  wrong_en=["Speeds up commits made directly to the code repository.",
+                            "Fully replaces the CI pipeline used to build the image.",
+                            "Acts as a DNS resolution cache used by the cluster."],
+                  explanation_en="Especially useful for base images (alpine, debian, python)."),
                 q("RBAC em registry:",
                   "Controla quem pode ler/escrever em quais repositórios.",
                   ["Aumenta o tamanho final da imagem guardada no registry.",
                    "Acelera o scan de vulnerabilidade rodado no push.",
                    "Substitui a necessidade de usar TLS na conexão."],
-                  "Só CI faz push; devs leem; produção usa pull-secret específico."),
+                  "Só CI faz push; devs leem; produção usa pull-secret específico.",
+                  statement_en="RBAC on a registry:",
+                  correct_en="Controls who can read/write which repositories.",
+                  wrong_en=["Increases the final size of the image stored in the registry.",
+                            "Speeds up vulnerability scanning run on push.",
+                            "Replaces the need to use TLS on the connection."],
+                  explanation_en="Only CI pushes; developers read; production uses a specific pull-secret."),
                 q("Vulnerability scanning no registry:",
                   "Avisa quando uma imagem fica insegura mesmo após o push.",
                   ["Só verifica vulnerabilidade no exato momento em que ocorre o push.",
                    "Substitui completamente a etapa de SCA rodada no pipeline.",
                    "Substitui completamente a etapa de SAST rodada no código."],
-                  "Re-scan periódico cobre CVEs publicadas posteriormente."),
+                  "Re-scan periódico cobre CVEs publicadas posteriormente.",
+                  statement_en="Vulnerability scanning in the registry:",
+                  correct_en="Warns when an image becomes unsafe even after push.",
+                  wrong_en=["Only checks vulnerabilities at the exact moment of push.",
+                            "Fully replaces the SCA stage run in the pipeline.",
+                            "Fully replaces the SAST stage run on code."],
+                  explanation_en="Periodic re-scan covers CVEs published later."),
                 q("Imagem 'untagged' é:",
                   "Geralmente lixo de builds antigos, limpar com retenção.",
                   ["Pode parecer mais segura só por não ter tag visível.",
                    "Ocupa menos espaço por padrão no armazenamento do registry.",
                    "Não é garantia de ser a versão boa mais recente."],
-                  "Imagem perdeu a tag em rebuild; sem política, fica ocupando espaço."),
+                  "Imagem perdeu a tag em rebuild; sem política, fica ocupando espaço.",
+                  statement_en="An 'untagged' image is:",
+                  correct_en="Usually leftover from old builds — clean with retention.",
+                  wrong_en=["Seemingly safer just because it has no visible tag.",
+                            "Occupying less space by default in registry storage.",
+                            "Not a guarantee it is the good latest version."],
+                  explanation_en="The image lost its tag on rebuild; without a policy it keeps consuming space."),
                 q("Provenance (SLSA) é:",
                   "Atestado de como o artefato foi construído (origem, build).",
                   ["Um tipo específico de tag usada só para marcar a versão do build.",
                    "Uma forma de backup guardada fora do registry principal, redundante.",
                    "Só mais uma camada de RBAC aplicada em cima do repositório."],
-                  "SLSA tem níveis 1-4. L3+ exige builder confiável (sem injeção do dev)."),
+                  "SLSA tem níveis 1-4. L3+ exige builder confiável (sem injeção do dev).",
+                  statement_en="Provenance (SLSA) is:",
+                  correct_en="An attestation of how the artifact was built (origin, build).",
+                  wrong_en=["A specific tag type used only to mark the build version.",
+                            "A redundant backup stored outside the main registry.",
+                            "Just another RBAC layer on top of the repository."],
+                  explanation_en="SLSA has levels 1–4. L3+ requires a trusted builder (no developer injection)."),
             ],
         },
     ],

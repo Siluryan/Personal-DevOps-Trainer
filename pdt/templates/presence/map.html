@@ -239,10 +239,16 @@
 
   // ── Mapa ──────────────────────────────────────────────────────────────
   const leafMap = L.map('map', { worldCopyJump:true }).setView([-15.78,-47.93], 4);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom:19, subdomains:'abcd',
-    attribution:'© <a href="https://carto.com/">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(leafMap);
+  // Carto raster passou a exigir API key (watermark "API KEY REQUIRED").
+  // Esri Dark Gray Canvas: dark, sem chave, drop-in em L.tileLayer.
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    {
+      maxZoom: 16,
+      attribution:
+        'Tiles © <a href="https://www.esri.com/">Esri</a> — Esri, HERE, Garmin, FAO, NOAA, USGS',
+    }
+  ).addTo(leafMap);
 
   // ── Cluster ────────────────────────────────────────────────────────────
   const clusterGroup = L.markerClusterGroup({

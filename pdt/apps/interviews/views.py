@@ -105,8 +105,8 @@ class IndexView(LoginRequiredMixin, TemplateView):
         ctx["levels"] = [
             {
                 "key": LEVEL_JUNIOR,
-                "label": "Júnior",
-                "description": (
+                "label": _("Júnior"),
+                "description": _(
                     "Fundamentos: Linux, redes, Docker, Git, CI/CD, cloud "
                     "e segurança básica."
                 ),
@@ -114,8 +114,8 @@ class IndexView(LoginRequiredMixin, TemplateView):
             },
             {
                 "key": LEVEL_PLENO,
-                "label": "Pleno",
-                "description": (
+                "label": _("Pleno"),
+                "description": _(
                     "Operação real: Kubernetes, IaC, observability, "
                     "DevSecOps, troubleshooting e performance."
                 ),
@@ -123,8 +123,8 @@ class IndexView(LoginRequiredMixin, TemplateView):
             },
             {
                 "key": LEVEL_SENIOR,
-                "label": "Sênior",
-                "description": (
+                "label": _("Sênior"),
+                "description": _(
                     "Arquitetura: trade-offs, escalabilidade, multi-region, "
                     "SRE, segurança avançada e liderança técnica."
                 ),

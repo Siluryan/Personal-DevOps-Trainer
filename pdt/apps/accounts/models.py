@@ -9,6 +9,7 @@ from __future__ import annotations
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
 
 
 class UserManager(BaseUserManager):
@@ -49,10 +50,10 @@ class User(AbstractUser):
     PLENO = "pleno"
     SENIOR = "senior"
     CAREER_CHOICES = [
-        (INTERN, "Estagiário"),
-        (JUNIOR, "Júnior"),
-        (PLENO, "Pleno"),
-        (SENIOR, "Sênior"),
+        (INTERN, _("Estagiário")),
+        (JUNIOR, _("Júnior")),
+        (PLENO, _("Pleno")),
+        (SENIOR, _("Sênior")),
     ]
     CAREER_ORDER = [INTERN, JUNIOR, PLENO, SENIOR]
 

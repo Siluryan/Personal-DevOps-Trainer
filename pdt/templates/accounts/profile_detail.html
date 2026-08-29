@@ -101,6 +101,7 @@
 
   const radar = JSON.parse(document.getElementById('radar-data').textContent || '{}');
   const wrap  = document.getElementById('radar-wrap');
+  const radarPointsLabel = "{% filter escapejs %}{% trans 'Pontos' %}{% endfilter %}";
   if (wrap && radar.labels && radar.labels.length) {
     const isMobile = window.innerWidth < 640;
     const labelSz  = isMobile ? 6 : 8;
@@ -114,7 +115,7 @@
       data: {
         labels: radar.labels,
         datasets: [{
-          label: 'Pontos',
+          label: radarPointsLabel,
           data: radar.points,
           backgroundColor: 'rgba(14,165,233,.15)',
           borderColor:     'rgba(56,189,248,.85)',
