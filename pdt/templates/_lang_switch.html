@@ -1,8 +1,9 @@
 {% load i18n %}
 {% get_current_language as CURRENT_LANG %}
-<form action="{% url 'set_language' %}" method="post" class="flex items-center" style="font-size:.75rem;gap:2px">
+<form action="{% url 'set_language' %}" method="post" class="flex items-center" style="font-size:.75rem;gap:2px"
+      onsubmit="this.elements.next.value = location.pathname + location.search + location.hash">
   {% csrf_token %}
-  <input type="hidden" name="next" value="{{ request.path }}">
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
   <button type="submit" name="language" value="pt-br"
           style="padding:3px 6px;border-radius:5px;font-weight:{% if CURRENT_LANG == 'pt-br' %}700{% else %}400{% endif %};
                  color:{% if CURRENT_LANG == 'pt-br' %}#38bdf8{% else %}#5a7a9a{% endif %}"

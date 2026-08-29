@@ -107,6 +107,36 @@ class TestLanguageSwitcher:
         assert resp.status_code == 302
         assert client.cookies["django_language"].value == "en"
 
+    def test_set_language_preserva_querystring_do_next(self, client):
+        resp = client.post(
+            reverse("set_language"),
+            {"language": "en", "next": "/trilha/topico/fundamentos-de-linux/?p=3"},
+        )
+        assert resp.status_code == 302
+        assert resp["Location"].endswith("/trilha/topico/fundamentos-de-linux/?p=3")
+
+    def test_lang_switch_inclui_querystring_no_next(
+        self, client, admitted_user, seed_phases
+    ):
+        client.force_login(admitted_user)
+        url = reverse("courses:topic_detail", args=[seed_phases["topic"].slug])
+        resp = client.get(f"{url}?p=3")
+        assert resp.status_code == 200
+        assert f'name="next" value="{url}?p=3"'.encode() in resp.content
+
+    def test_trocar_idioma_volta_para_a_mesma_pagina_da_aula(
+        self, client, admitted_user, seed_phases
+    ):
+        client.force_login(admitted_user)
+        url = reverse("courses:topic_detail", args=[seed_phases["topic"].slug])
+        next_url = f"{url}?p=3"
+        resp = client.post(reverse("set_language"), {"language": "en", "next": next_url})
+        assert resp.status_code == 302
+        assert resp["Location"] == next_url
+        landed = client.get(resp["Location"])
+        assert landed.status_code == 200
+        assert f'name="next" value="{next_url}"'.encode() in landed.content
+
 
 class TestSeedDataIntegrity:
     """Garante que o conteúdo das 6 fases está bem-formado."""

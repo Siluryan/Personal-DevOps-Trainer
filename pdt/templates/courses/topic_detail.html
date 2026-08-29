@@ -112,8 +112,24 @@
              style="{% if topic.lesson.intro %}border-top:none;border-radius:0;{% else %}border-radius:12px 12px 0 0;{% endif %}
                     {% if not topic.lesson.practical and not labs %}border-radius:0 0 12px 12px;{% endif %}"
              x-data="{ page: 0, total: {{ pages|length }},
+                        init() {
+                          var raw = parseInt(new URLSearchParams(window.location.search).get('p'), 10);
+                          if (Number.isFinite(raw)) {
+                            this.page = Math.min(this.total - 1, Math.max(0, raw - 1));
+                          }
+                          this.syncUrl();
+                        },
+                        syncUrl() {
+                          var url = new URL(window.location.href);
+                          if (this.page <= 0) url.searchParams.delete('p');
+                          else url.searchParams.set('p', String(this.page + 1));
+                          var next = url.pathname + url.search + url.hash;
+                          var cur = window.location.pathname + window.location.search + window.location.hash;
+                          if (next !== cur) history.replaceState(null, '', next);
+                        },
                         goToPage(n) {
                           this.page = n;
+                          this.syncUrl();
                           this.$refs.lessonTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
                           this.$nextTick(() => {
                             if (window.reflowVisibleMermaid) window.reflowVisibleMermaid(this.$root);
