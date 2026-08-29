@@ -202,9 +202,6 @@ _ANTI_HINTS = (
     "o que pode dar errado",
 )
 
-_PATH_RE = re.compile(r"(?:(?<=\s)|(?<=`)|(?<=\()|(?<=/)|(?<=\A))(/[a-z0-9._\-/]+)")
-
-
 def _plain(html: str) -> str:
     text = _TAG_RE.sub("", html)
     return html_lib.unescape(re.sub(r"\s+", " ", text)).strip()
@@ -447,16 +444,16 @@ def _synthesize_blanks_path(paths: list[str], headings: list[str], page: int) ->
         "title": title,
         "title_en": title_en,
         "spec": {
-            "scenario": "A aula aponta um path específico nesta página. Complete:",
-            "template": "O path que esta seção destaca é ___PATH___.",
+            "scenario": "Você precisa abrir o path que esta página usa na prática.",
+            "template": "Abrir ___PATH___",
             "blanks": {"PATH": {"options": options, "correct": correct}},
-            "explanation": f"Nesta página o path que importa primeiro é `{correct}`.",
+            "explanation": f"Nesta página o path da operação é `{correct}`.",
         },
         "spec_en": {
-            "scenario": "This page highlights a specific path. Fill it in:",
-            "template": "The path this section highlights is ___PATH___.",
+            "scenario": "You need to open the path this page uses in practice.",
+            "template": "Open ___PATH___",
             "blanks": {"PATH": {"options": options, "correct": correct}},
-            "explanation": f"On this page the path that matters first is `{correct}`.",
+            "explanation": f"On this page the path for the operation is `{correct}`.",
         },
     }
 
@@ -470,22 +467,6 @@ def _strong_terms(page_html: str) -> list[str]:
     return terms[:4]
 
 
-def _concept_codes(page_html: str) -> list[str]:
-    codes: list[str] = []
-    for raw in _INLINE_CODE_RE.findall(page_html):
-        text = html_lib.unescape(raw).strip()
-        if not text or len(text) > 32:
-            continue
-        first = text.split()[0].split("=")[0]
-        if first in _SHELL_BINS or first.endswith("ctl"):
-            continue
-        if re.fullmatch(r"/[A-Za-z0-9._\-/]+", text):
-            continue
-        if text not in codes:
-            codes.append(text)
-    return codes[:6]
-
-
 def _table_rows(page_html: str) -> list[list[str]]:
     rows: list[list[str]] = []
     for tr in _TR_RE.findall(page_html):
@@ -496,36 +477,119 @@ def _table_rows(page_html: str) -> list[list[str]]:
     return rows
 
 
-def _synthesize_blanks_term(terms: list[str], headings: list[str], page: int) -> dict[str, Any] | None:
-    if len(terms) < 2:
+_CONSTRAINT_RE = re.compile(
+    r"não |nunca |exige|exigid|precisa|preciso|quando |garant|proibid|"
+    r"somente |só |apenas |em vez|ao custo|útil|imposs|deve |não pode",
+    re.I,
+)
+
+
+def _strong_clauses(page_html: str) -> list[tuple[str, str]]:
+    pairs: list[tuple[str, str]] = []
+    for match in _STRONG_RE.finditer(page_html):
+        term = _plain(match.group(1))
+        if not (2 <= len(term) <= 40):
+            continue
+        after = _plain(page_html[match.end() : match.end() + 500])
+        after = re.sub(r"^[\s,;:—\-–()]+", "", after)
+        clause = re.split(r"(?<=[.!?])\s", after, 1)[0].strip()
+        clause = re.sub(r"\s+", " ", clause)
+        if len(clause) > 180:
+            clause = clause[:177].rsplit(" ", 1)[0] + "…"
+        if len(clause) < 28:
+            continue
+        if ")" in clause[:40] and "(" not in clause[:40]:
+            continue
+        pairs.append((term, clause))
+    return pairs
+
+
+def _synthesize_strong_scenario(
+    page_html: str, headings: list[str], page: int
+) -> dict[str, Any] | None:
+    pairs = _strong_clauses(page_html)
+    if len(pairs) < 2:
         return None
-    correct = terms[0]
-    options = terms[:3]
-    while len(options) < 3:
-        for extra in ("SLA", "chmod 777", "latest"):
-            if extra not in options:
-                options.append(extra)
-                break
-        else:
-            break
-    title, title_en = _short_title(headings, page, "Complete o runbook", "Fill the runbook")
+    picked = next((p for p in pairs[1:] if _CONSTRAINT_RE.search(p[1])), None)
+    if picked is None:
+        picked = pairs[1]
+    term, clause = picked
+    wrongs = [name for name, _ in pairs if name != term][:2]
+    while len(wrongs) < 2:
+        extra = "chmod 777" if "chmod 777" not in wrongs else "0.0.0.0/0"
+        wrongs.append(extra)
+    title, title_en = _short_title(headings, page, "Escolha na prática", "Pick in practice")
     return {
-        "kind": "blanks",
+        "kind": "scenario",
         "title": title,
         "title_en": title_en,
         "spec": {
-            "scenario": "Você está escrevendo o runbook desta página. Qual termo entra no campo?",
-            "template": "No runbook desta seção o termo que entra primeiro é ___TERM___.",
-            "blanks": {"TERM": {"options": options, "correct": correct}},
-            "explanation": f"Nesta página o termo que a aula destaca primeiro é `{correct}`.",
+            "situation": f"Requisito: {clause} Qual opção desta página atende?",
+            "choices": [
+                {
+                    "text": term,
+                    "outcome": "Certo: é o que a aula associa a esse requisito.",
+                    "good": True,
+                },
+                {
+                    "text": wrongs[0],
+                    "outcome": "Esse termo é de outro caso desta página — não atende o requisito.",
+                    "good": False,
+                },
+                {
+                    "text": wrongs[1],
+                    "outcome": "Não é a opção para esse requisito.",
+                    "good": False,
+                },
+            ],
+            "explanation": f"Para esse requisito a aula aponta `{term}`.",
         },
         "spec_en": {
-            "scenario": "You are writing this page's runbook. Which term goes in the field?",
-            "template": "In this section's runbook the first term is ___TERM___.",
-            "blanks": {"TERM": {"options": options, "correct": correct}},
-            "explanation": f"On this page the term the lesson highlights first is `{correct}`.",
+            "situation": f"Requirement: {clause} Which option from this page meets it?",
+            "choices": [
+                {
+                    "text": term,
+                    "outcome": "Right: that is what the lesson maps to this requirement.",
+                    "good": True,
+                },
+                {
+                    "text": wrongs[0],
+                    "outcome": "That term belongs to another case on this page — it does not meet the requirement.",
+                    "good": False,
+                },
+                {
+                    "text": wrongs[1],
+                    "outcome": "That is not the option for this requirement.",
+                    "good": False,
+                },
+            ],
+            "explanation": f"For this requirement the lesson points to `{term}`.",
         },
     }
+
+
+_MATRIX_ROW_LABELS = frozenset(
+    {
+        "você controla",
+        "provedor controla",
+        "exemplos",
+        "esforço operacional",
+        "lock-in",
+        "granularidade",
+        "computação",
+        "identidade",
+        "rede",
+        "object storage",
+        "sql gerenciado",
+        "nosql",
+        "serverless function",
+        "container managed",
+    }
+)
+_WHEN_RE = re.compile(
+    r"^(apps |quando |se |para |desenvolvimento|baseline|tráfego )",
+    re.I,
+)
 
 
 def _synthesize_table_decision(
@@ -534,27 +598,34 @@ def _synthesize_table_decision(
     if len(rows) < 2:
         return None
     first, last = rows[0], rows[-1]
-    strategy, use_case = first[0], first[-1]
-    wrong_strategy = last[0]
-    if not strategy or not use_case or strategy == wrong_strategy:
+    if first[0].lower() in _MATRIX_ROW_LABELS:
         return None
-    if len(use_case) > 56:
-        use_case = use_case[:53].rstrip() + "…"
+    subject, action = first[0], first[-1]
+    wrong = last[-1]
+    if _WHEN_RE.match(action) or len(action) > len(subject) + 12:
+        subject, action = action, subject
+        wrong = last[0]
+    if not subject or not action or action == wrong:
+        return None
+    if len(subject) < 4 or len(action) < 4:
+        return None
+    if len(subject) > 56:
+        subject = subject[:53].rstrip() + "…"
     title, title_en = _short_title(headings, page, "Escolha a estratégia", "Pick the strategy")
     return {
         "kind": "scenario",
         "title": title,
         "title_en": title_en,
         "spec": {
-            "situation": f"O caso na sua mesa é `{use_case}`. Qual linha da tabela desta página você aplica?",
+            "situation": f"Para `{subject}`, o que a tabela desta página manda aplicar?",
             "choices": [
                 {
-                    "text": f"Aplicar `{strategy}`.",
+                    "text": f"Aplicar `{action}`.",
                     "outcome": "Certo: é a linha que a tabela associa a esse caso.",
                     "good": True,
                 },
                 {
-                    "text": f"Aplicar `{wrong_strategy}`.",
+                    "text": f"Aplicar `{wrong}`.",
                     "outcome": "Essa linha é de outro caso da tabela — custo e risco não batem.",
                     "good": False,
                 },
@@ -564,18 +635,18 @@ def _synthesize_table_decision(
                     "good": False,
                 },
             ],
-            "explanation": f"Na tabela desta página, `{use_case}` combina com `{strategy}`.",
+            "explanation": f"Na tabela desta página, `{subject}` combina com `{action}`.",
         },
         "spec_en": {
-            "situation": f"The case on your desk is `{use_case}`. Which row from this page's table do you apply?",
+            "situation": f"For `{subject}`, what does this page's table tell you to apply?",
             "choices": [
                 {
-                    "text": f"Apply `{strategy}`.",
+                    "text": f"Apply `{action}`.",
                     "outcome": "Right: that is the row the table maps to this case.",
                     "good": True,
                 },
                 {
-                    "text": f"Apply `{wrong_strategy}`.",
+                    "text": f"Apply `{wrong}`.",
                     "outcome": "That row belongs to a different case — cost and risk do not match.",
                     "good": False,
                 },
@@ -585,7 +656,7 @@ def _synthesize_table_decision(
                     "good": False,
                 },
             ],
-            "explanation": f"In this page's table, `{use_case}` maps to `{strategy}`.",
+            "explanation": f"In this page's table, `{subject}` maps to `{action}`.",
         },
     }
 
@@ -624,7 +695,7 @@ def _synthesize_decision(page_html: str, headings: list[str], page: int) -> dict
             },
             {
                 "text": f"Trocar `{primary}` por `{other}` sem olhar o contexto.",
-                "outcome": "A página distingue os dois — misturar os termos quebra o runbook.",
+                "outcome": "A página distingue os dois — misturar os termos quebra a operação.",
                 "good": False,
             },
             {
@@ -641,7 +712,7 @@ def _synthesize_decision(page_html: str, headings: list[str], page: int) -> dict
             },
             {
                 "text": f"Swap `{primary}` for `{other}` without checking context.",
-                "outcome": "The page distinguishes the two — mixing the terms breaks the runbook.",
+                "outcome": "The page distinguishes the two — mixing the terms breaks the operation.",
                 "good": False,
             },
             {
@@ -748,17 +819,13 @@ def synthesize_page_lab(page_html: str, headings: list[str], page: int) -> dict[
     if blanks:
         return blanks
 
-    terms = list(_strong_terms(page_html))
-    for extra in _concept_codes(page_html):
-        if extra not in terms:
-            terms.append(extra)
-    term_blanks = _synthesize_blanks_term(terms, headings, page)
-    if term_blanks:
-        return term_blanks
-
     table = _synthesize_table_decision(_table_rows(page_html), headings, page)
     if table:
         return table
+
+    strong = _synthesize_strong_scenario(page_html, headings, page)
+    if strong:
+        return strong
 
     return _synthesize_decision(page_html, headings, page)
 

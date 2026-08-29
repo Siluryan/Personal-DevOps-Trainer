@@ -325,8 +325,14 @@ class TestLabDataIntegrity:
                 sit = spec.get("situation", "")
                 assert "tema central" not in sit.lower()
                 assert "central topic" not in sit.lower()
+                assert "termo que entra primeiro" not in sit.lower()
+                assert "escrevendo o runbook" not in sit.lower()
+                assert "você controla" not in sit.lower()
                 boas = sum(1 for c in spec["choices"] if c["good"])
                 assert boas == 1, lab["title"]
+            assert "Complete o runbook" not in lab["title"]
+            if lab["kind"] == "blanks":
+                assert "termo que entra primeiro" not in spec.get("template", "")
             if lab["kind"] == "terminal":
                 pool = spec["correct_command"] + spec["distractor_tokens"]
                 assert len(set(pool)) == len(pool), lab["title"]
