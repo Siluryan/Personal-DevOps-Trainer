@@ -59,13 +59,13 @@ class TestTopicScoreModel:
 
     def test_sync_lab_bonus_conta_labs_concluidos(self, admitted_user, two_topics):
         _, t1, _ = two_topics
-        lab1 = Lab.objects.create(topic=t1, kind="terminal", title="L1", spec={})
-        lab2 = Lab.objects.create(topic=t1, kind="order", title="L2", spec={})
+        lab1 = Lab.objects.create(topic=t1, kind="terminal", title="L1", spec={}, lesson_page=1)
+        lab2 = Lab.objects.create(topic=t1, kind="order", title="L2", spec={}, lesson_page=2)
         LabCompletion.objects.create(user=admitted_user, lab=lab1)
         LabCompletion.objects.create(user=admitted_user, lab=lab2)
         score = TopicScore.sync_lab_bonus(user=admitted_user, topic=t1)
-        assert score.lab_bonus == 10  # 2 labs x LAB_POINTS (5)
-        assert score.points == 10
+        assert score.lab_bonus == 2  # 2 labs x LAB_POINTS (1)
+        assert score.points == 2
 
     def test_sync_lab_bonus_ignora_lab_de_outro_topico(self, admitted_user, two_topics):
         _, t1, t2 = two_topics
@@ -87,7 +87,7 @@ class TestTopicScoreModel:
         LabCompletion.objects.create(user=admitted_user, lab=lab)
         TopicScore.sync_lab_bonus(user=admitted_user, topic=t1)
         score = TopicScore.sync_lab_bonus(user=admitted_user, topic=t1)  # roda 2x
-        assert score.lab_bonus == 5  # não dobra por rodar de novo
+        assert score.lab_bonus == 1  # não dobra por rodar de novo
 
     def test_pontos_combinam_quiz_help_e_lab(self, admitted_user, two_topics):
         _, t1, _ = two_topics
@@ -97,7 +97,7 @@ class TestTopicScoreModel:
         lab = Lab.objects.create(topic=t1, kind="terminal", title="L", spec={})
         LabCompletion.objects.create(user=admitted_user, lab=lab)
         score = TopicScore.sync_lab_bonus(user=admitted_user, topic=t1)
-        assert score.points == 8 + 2 + 5
+        assert score.points == 8 + 2 + 1
 
 
 @pytest.mark.django_db

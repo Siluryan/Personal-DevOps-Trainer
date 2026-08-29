@@ -244,6 +244,21 @@ class TestLabDataIntegrity:
             pool = spec["correct_command"] + spec["distractor_tokens"]
             assert len(set(pool)) == len(pool), f"{lab['title']}: token duplicado no pool"
 
+    def test_accepted_commands_sao_o_mesmo_conjunto_de_tokens(self):
+        for lab in LABS:
+            if lab["kind"] != "terminal":
+                continue
+            for key in ("spec", "spec_en"):
+                spec = lab.get(key) or {}
+                if "accepted_commands" not in spec:
+                    continue
+                canon = spec["correct_command"]
+                for alt in spec["accepted_commands"]:
+                    assert sorted(alt) == sorted(canon), (
+                        f"{lab['title']} {key}: {alt} ≠ tokens de {canon}"
+                    )
+                    assert alt != canon, f"{lab['title']} {key}: accepted duplica o gabarito"
+
     def test_spec_find_flaw_indice_dentro_do_range(self):
         for lab in LABS:
             if lab["kind"] != "find_flaw":
@@ -275,6 +290,26 @@ class TestLabDataIntegrity:
             boas = sum(1 for c in spec["choices"] if c["good"])
             assert boas == 1, f"{lab['title']}: {boas} choices boas (esperava 1)"
 
+    def test_expand_labs_um_por_pagina_de_cada_topico(self):
+        from apps.core.pagination import paginate_html_sections
+        from apps.courses.seed_data import PHASES
+        from apps.courses.seed_data.page_labs import expand_labs
+
+        expanded = expand_labs()
+        by_topic: dict[str, list[int]] = {}
+        for lab in expanded:
+            by_topic.setdefault(lab["topic_title"], []).append(lab["lesson_page"])
+            assert lab["lesson_page"] >= 1
+            assert lab["kind"] in {k for k, _ in Lab.Kind.choices}
+
+        assert len(by_topic) == 60
+        for phase in PHASES:
+            for topic in phase["topics"]:
+                body = (topic.get("lesson") or {}).get("body") or ""
+                n = len(paginate_html_sections(body) or [body])
+                pages = sorted(by_topic[topic["title"]])
+                assert pages == list(range(1, n + 1)), topic["title"]
+
 
 @pytest.mark.django_db
 class TestSeedLabsCommand:
@@ -285,8 +320,11 @@ class TestSeedLabsCommand:
 
         call_command("seed_topics", verbosity=0)
         call_command("seed_labs", verbosity=0)
-        assert Lab.objects.count() == 60
+        from apps.courses.seed_data.page_labs import expand_labs
+
+        assert Lab.objects.count() == len(expand_labs())
         assert Topic.objects.filter(labs__isnull=True).count() == 0
+        assert Lab.objects.filter(is_active=True).count() == Lab.objects.count()
 
     def test_seed_labs_idempotente(self):
         from django.core.management import call_command
@@ -338,11 +376,11 @@ class TestLabCompleteView:
         url = reverse("courses:lab_complete", args=[lab.id])
         resp = client.post(url)
         assert resp.status_code == 200
-        assert resp.json()["lab_bonus"] == 5
+        assert resp.json()["lab_bonus"] == 1
         assert LabCompletion.objects.filter(user=admitted_user, lab=lab).count() == 1
 
         resp2 = client.post(url)  # refazer não deve dobrar o bônus
-        assert resp2.json()["lab_bonus"] == 5
+        assert resp2.json()["lab_bonus"] == 1
         assert LabCompletion.objects.filter(user=admitted_user, lab=lab).count() == 1
 
     def test_completar_lab_exige_login(self, client, seed_phases):
@@ -577,3 +615,30 @@ class TestTopicViews:
         resp = client.get(url)
         assert resp.status_code == 200
         assert b"T\xc3\xb3pico de Teste" in resp.content
+
+    def test_lab_fica_dentro_da_pagina_correspondente(self, client, admitted_user, seed_phases):
+        topic = seed_phases["topic"]
+        lesson = topic.lesson
+        lesson.body = "".join(f"<h3>{i}. Seção</h3><p>{'x' * 1600}</p>" for i in range(1, 6))
+        lesson.save(update_fields=["body"])
+        Lab.objects.filter(topic=topic).delete()
+        Lab.objects.create(
+            topic=topic,
+            kind="terminal",
+            title="Lab só na página 2",
+            spec={
+                "scenario": "s",
+                "correct_command": ["echo", "ok"],
+                "distractor_tokens": ["no"],
+                "explanation": "e",
+            },
+            lesson_page=2,
+        )
+        client.force_login(admitted_user)
+        html = client.get(reverse("courses:topic_detail", args=[topic.slug])).content.decode()
+        pages = html.split('class="lesson-page"')
+        assert len(pages) >= 3
+        assert "Lab só na página 2" not in pages[1]  # página 1
+        assert "Lab só na página 2" in pages[2]  # página 2
+        assert "Lab só na página 2" not in pages[3]  # página 3
+        assert html.count("lab-card") == 1

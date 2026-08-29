@@ -63,7 +63,11 @@ function labState(labId, kind, spec, alreadyDone, completeUrl) {
       },
       check() {
         this.checked = true;
-        this.correct = this.chosen.join(" ") === spec.correct_command.join(" ");
+        var answers = [spec.correct_command].concat(spec.accepted_commands || []);
+        var got = this.chosen.join(" ");
+        this.correct = answers.some(function (cmd) {
+          return cmd.join(" ") === got;
+        });
         if (this.correct) this.markComplete();
       },
     };

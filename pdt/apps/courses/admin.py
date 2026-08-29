@@ -100,6 +100,6 @@ class QuestionAdmin(SeedLockingAdminMixin, admin.ModelAdmin):
 
 @admin.register(Lab)
 class LabAdmin(SeedLockingAdminMixin, admin.ModelAdmin):
-    list_display = ("topic", "title", "kind", "order", "is_active", "seed_managed")
+    list_display = ("topic", "lesson_page", "title", "kind", "is_active", "seed_managed")
     list_filter = ("kind", "is_active", "seed_managed", "topic__phase")
     search_fields = ("title", "topic__title")

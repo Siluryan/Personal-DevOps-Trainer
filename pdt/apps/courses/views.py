@@ -50,7 +50,7 @@ class TopicDetailView(LoginRequiredMixin, DetailView):
         ctx["recent_attempts"] = TopicAttempt.objects.filter(
             user=self.request.user, topic=self.object
         )[:5]
-        labs = list(self.object.labs.filter(is_active=True))
+        labs = list(self.object.labs.filter(is_active=True).order_by("lesson_page", "order"))
         completed_ids = set(
             LabCompletion.objects.filter(
                 user=self.request.user, lab__topic=self.object

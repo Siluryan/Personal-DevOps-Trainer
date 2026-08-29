@@ -550,8 +550,8 @@ msgstr ""
 "      passing by can join, help you out, and earn points for it."
 
 #: templates/courses/_lab.html:14
-msgid "Concluído (+5 pts)"
-msgstr "Completed (+5 pts)"
+msgid "Concluído (+1 pt)"
+msgstr "Completed (+1 pt)"
 
 #: templates/courses/_lab.html:24
 msgid "toque nos blocos abaixo para montar o comando…"

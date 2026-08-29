@@ -137,7 +137,14 @@
                         } }">
           <h2 x-ref="lessonTop">{% trans "Aula" %}</h2>
           {% for section in pages %}
-            <div class="lesson-page" x-show="page === {{ forloop.counter0 }}" x-cloak>{{ section }}</div>
+            <div class="lesson-page" x-show="page === {{ forloop.counter0 }}" x-cloak>
+              {{ section }}
+              {% for lab in labs %}
+                {% if lab.lesson_page == forloop.parentloop.counter %}
+                  {% include "courses/_lab.html" %}
+                {% endif %}
+              {% endfor %}
+            </div>
           {% endfor %}
           {% if pages|length > 1 %}
             <div class="lesson-pagination">
@@ -155,10 +162,6 @@
         </div>
         {% endwith %}
       {% endif %}
-
-      {% for lab in labs %}
-        {% include "courses/_lab.html" %}
-      {% endfor %}
 
       {% if topic.lesson.practical %}
         <div class="lesson-body"
