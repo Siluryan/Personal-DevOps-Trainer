@@ -12,63 +12,55 @@
   {% endcomment %}
   <script src="{% static 'js/lab.js' %}"></script>
   {% if topic.lesson %}
-    {# Só carrega Mermaid (biblioteca pesada) na página de aula, não no site inteiro. #}
+    {% comment %}Mermaid sem defer + startOnLoad false: o UMD 11 auto-inicia se o DOM ja estiver parseado.{% endcomment %}
     <script src="{% static 'js/mermaid-zoom.js' %}"></script>
-    <script src="{% static 'vendor/mermaid/mermaid.min.js' %}" defer></script>
+    <script src="{% static 'vendor/mermaid/mermaid.min.js' %}"></script>
     <script>
-      // Registrado sem defer: garante que este listener existe ANTES do
-      // DOMContentLoaded disparar, então quando ele rodar o mermaid.min.js
-      // (defer) já terá executado e window.mermaid já existe.
-      //
-      // startOnLoad:false + mermaid.run(...) manual (em vez do scan automático
-      // do mermaid.js) de propósito: precisamos saber quando o render termina
-      // para só então ligar o zoom/lightbox (enhanceMermaidDiagrams), senão
-      // ele rodaria antes do <svg> existir no DOM.
-      document.addEventListener('DOMContentLoaded', function () {
-        if (window.mermaid) {
-          // mermaid.run lê o innerHTML do <div>, onde o browser já serializou
-          // `-->` como `--&gt;` e `"` como `&quot;` — o lexer 11.x então
-          // explode com "Syntax error in text". Reescreve o nó como texto
-          // puro (textContent) e normaliza a aresta antiga `-- "rótulo" -->`
-          // para `|rótulo|`, que o parser atual aceita.
-          document.querySelectorAll('.mermaid').forEach(function (el) {
-            var src = el.textContent
-              .replace(/&quot;/g, '"')
-              .replace(/&#34;/g, '"')
-              .replace(/&gt;/g, '>')
-              .replace(/&lt;/g, '<')
-              .replace(/&amp;/g, '&')
-              .replace(/--\s*"([^"]+)"\s*-->/g, '-->|$1|')
-              .replace(/--\s*'([^']+)'\s*-->/g, '-->|$1|');
-            el.textContent = src;
-          });
-          mermaid.initialize({
-            startOnLoad: false,
-            theme: 'dark',
-            securityLevel: 'loose',
-            themeVariables: {
-              darkMode: true,
-              background: '#07122a',
-              primaryColor: '#0c1d3a',
-              primaryTextColor: '#ddeeff',
-              primaryBorderColor: '#0ea5e9',
-              lineColor: '#38bdf8',
-              secondaryColor: '#122444',
-              secondaryTextColor: '#ddeeff',
-              secondaryBorderColor: '#253d5e',
-              tertiaryColor: '#1a2f50',
-              tertiaryTextColor: '#ddeeff',
-              tertiaryBorderColor: '#253d5e',
-              fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
-              noteBkgColor: '#122444',
-              noteTextColor: '#ddeeff',
-              noteBorderColor: '#253d5e'
-            }
-          });
-          mermaid.run({ querySelector: '.mermaid' }).then(function () {
-            if (window.enhanceMermaidDiagrams) enhanceMermaidDiagrams();
-          });
+      function pdtMermaidSource(el) {
+        return (el.getAttribute('data-src') || el.textContent || '')
+          .replace(/&quot;/g, '"')
+          .replace(/&#34;/g, '"')
+          .replace(/&gt;/g, '>')
+          .replace(/&lt;/g, '<')
+          .replace(/&amp;/g, '&')
+          .replace(/--\s*"([^"]+)"\s*-->/g, '-->|$1|')
+          .replace(/--\s*'([^']+)'\s*-->/g, '-->|$1|');
+      }
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'dark',
+        securityLevel: 'loose',
+        themeVariables: {
+          darkMode: true,
+          background: '#07122a',
+          primaryColor: '#0c1d3a',
+          primaryTextColor: '#ddeeff',
+          primaryBorderColor: '#0ea5e9',
+          lineColor: '#38bdf8',
+          secondaryColor: '#122444',
+          secondaryTextColor: '#ddeeff',
+          secondaryBorderColor: '#253d5e',
+          tertiaryColor: '#1a2f50',
+          tertiaryTextColor: '#ddeeff',
+          tertiaryBorderColor: '#253d5e',
+          fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+          noteBkgColor: '#122444',
+          noteTextColor: '#ddeeff',
+          noteBorderColor: '#253d5e'
         }
+      });
+      document.addEventListener('DOMContentLoaded', function () {
+        var nodes = Array.prototype.slice.call(document.querySelectorAll('.mermaid'));
+        nodes.forEach(function (el, i) {
+          var src = pdtMermaidSource(el);
+          el.setAttribute('data-src', src);
+          mermaid.render('pdt-mmd-' + i, src).then(function (out) {
+            el.innerHTML = out.svg;
+            if (window.enhanceMermaidDiagrams) enhanceMermaidDiagrams();
+          }).catch(function (err) {
+            console.error('mermaid', err, src);
+          });
+        });
       });
     </script>
   {% endif %}
