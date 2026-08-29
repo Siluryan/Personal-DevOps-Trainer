@@ -53,16 +53,11 @@ PHASE3 = {
                     "gera mesmo hash.</p>"
                     """
 <div class="mermaid">
-gitGraph
-   commit id: "commit A"
-   commit id: "commit B"
-   branch feature
-   checkout feature
-   commit id: "commit C"
-   commit id: "commit D"
-   checkout main
-   commit id: "commit E"
-   merge feature
+flowchart TD
+    Blob["blob: conteúdo do arquivo"] --> Tree["tree: diretório + nomes"]
+    Tree --> Commit["commit: tree + pais + autor"]
+    Commit --> Ref["ref: branch/tag aponta pro hash"]
+    Ref --> Head["HEAD: onde você está agora"]
 </div>
 """
                     "<p>Internamente, o <code>.git/objects/</code> contém quatro tipos:</p>"
@@ -212,6 +207,16 @@ gitGraph
                     "não mergeia.</p>"
 
                     "<h3>5. Merge, rebase e cherry-pick: quando usar cada um</h3>"
+                    """
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Merge</strong><p>Preserva histórico do branch; cria commit com 2 pais. Ideal para manter contexto da feature.</p></div>
+    <div class="lesson-viz-card"><strong>Rebase</strong><p>Reescreve commits em cima da base nova; histórico linear. Só em branches ainda não compartilhados.</p></div>
+  </div>
+  <figcaption>Merge vs rebase: escolha pelo contexto do time, não por dogma.</figcaption>
+</figure>
+"""
+
                     "<h4>5.1 Merge</h4>"
                     "<p>Cria um commit com 2+ pais. Preserva a história intocada.</p>"
                     "<pre><code>$ git checkout main\n"
@@ -298,6 +303,18 @@ gitGraph
                     "Linux), bisect é como mantenedores caçam regressões.</p>"
 
                     "<h3>7. Anti-patterns comuns (e como evitar)</h3>"
+                    """
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Nunca force-push em main/protegida</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>PR pequeno e focado (não 3000 linhas)</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Assine commits e exija checks verdes</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Use reflog antes de panicar após reset</p></div>
+  </div>
+  <figcaption>Checklist anti-caos em Git de produção.</figcaption>
+</figure>
+"""
+
                     "<ul>"
                     "<li><strong>'PR de 3000 linhas'</strong>: ninguém revisa de verdade. "
                     "Quebre em PRs menores, ou aceite que será rubber stamp.</li>"
@@ -340,16 +357,11 @@ is addressed by a SHA-1 hash (or SHA-256 in modern repos). That hash
 is deterministic: same content + same parent + same author produces
 the same hash.</p>
 <div class="mermaid">
-gitGraph
-   commit id: "commit A"
-   commit id: "commit B"
-   branch feature
-   checkout feature
-   commit id: "commit C"
-   commit id: "commit D"
-   checkout main
-   commit id: "commit E"
-   merge feature
+flowchart TD
+    Blob["blob: file contents"] --> Tree["tree: directory + names"]
+    Tree --> Commit["commit: tree + parents + author"]
+    Commit --> Ref["ref: branch/tag points to hash"]
+    Ref --> Head["HEAD: where you are now"]
 </div>
 <p>Internally, <code>.git/objects/</code> contains four types:</p>
 <ul>
@@ -499,6 +511,14 @@ In branch protection, check 'Require signed commits'. Whoever doesn't
 sign doesn't merge.</p>
 
 <h3>5. Merge, rebase and cherry-pick: when to use each one</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Merge</strong><p>Keeps branch history; creates a commit with 2 parents. Ideal to preserve feature context.</p></div>
+    <div class="lesson-viz-card"><strong>Rebase</strong><p>Replays commits on a new base; linear history. Only on branches not yet shared.</p></div>
+  </div>
+  <figcaption>Merge vs rebase: choose by team context, not dogma.</figcaption>
+</figure>
+
 <h4>5.1 Merge</h4>
 <p>Creates a commit with 2+ parents. Preserves history untouched.</p>
 <pre><code>$ git checkout main
@@ -588,6 +608,16 @@ projects (the Linux kernel), bisect is how maintainers hunt down
 regressions.</p>
 
 <h3>7. Common anti-patterns (and how to avoid them)</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Never force-push to main/protected branches</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Keep PRs small and focused (not 3000 lines)</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Sign commits and require green checks</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Use reflog before panicking after a reset</p></div>
+  </div>
+  <figcaption>Anti-chaos checklist for production Git.</figcaption>
+</figure>
+
 <ul>
 <li><strong>'The 3000-line PR'</strong>: nobody really reviews it.
 Break it into smaller PRs, or accept that it will be a rubber stamp.</li>
@@ -860,12 +890,10 @@ ter encryption" deixa de ser um lembrete em wiki e vira regra executável
 (Sentinel, OPA, tfsec) que barra o `apply` se violada.</p>
 <div class="mermaid">
 flowchart LR
-    A["main.tf"] --> B["terraform plan"]
-    B --> C["Mostra o diff: o que vai mudar"]
-    C --> D{"Aprovado?"}
-    D -- "Sim" --> E["terraform apply"]
-    E --> F["Infraestrutura real atualizada"]
-    D -- "Não" --> A
+    Manual["Clique no console"] --> Drift["Ambientes divergem"]
+    IaC["Código versionado"] --> Same["dev = staging = prod"]
+    IaC --> PR["Mudança revisada em PR"]
+    IaC --> Blame["git blame no recurso"]
 </div>
 
 
@@ -968,6 +996,14 @@ terraform graph | dot -Tpng &gt; deps.png
 terraform console   # REPL para testar expressões</code></pre>
 
 <h3>4. State é crítico, trate com paranoia</h3>
+<div class="mermaid">
+flowchart TD
+    Plan["terraform plan"] --> Lock["State lock no backend"]
+    Lock --> Apply["terraform apply"]
+    Apply --> State["Atualiza state remoto"]
+    State --> Next["Próximo plan parte do state"]
+</div>
+
 <p>O <code>terraform.tfstate</code> é um JSON que mapeia cada
 <em>resource do código</em> ao <em>ID real</em> na nuvem. Sem ele, o
 Terraform simplesmente "esquece" o que gerencia e não tem como calcular
@@ -1191,6 +1227,14 @@ do próprio Kubernetes, encaixando bem em times que já são K8s-first e
 preferem manter tudo dentro do mesmo control plane.</p>
 
 <h3>11. Anti-patterns comuns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Evite</strong><p>State local, secrets no .tf, apply sem plan, módulos gigantes sem versão.</p></div>
+    <div class="lesson-viz-card"><strong>Prefira</strong><p>Backend remoto + lock, variáveis sensíveis fora do código, plan no CI, módulos versionados.</p></div>
+  </div>
+  <figcaption>Anti-patterns de Terraform em produção.</figcaption>
+</figure>
+
 <ul>
 <li><strong>tfstate no Git</strong>: vazamento de senha garantido, dado
 que o state guarda segredo em texto puro (seção 4).</li>
@@ -1230,12 +1274,10 @@ reminder and becomes an enforceable rule (Sentinel, OPA, tfsec) that
 blocks the `apply` if violated.</p>
 <div class="mermaid">
 flowchart LR
-    A["main.tf"] --> B["terraform plan"]
-    B --> C["Mostra o diff: o que vai mudar"]
-    C --> D{"Aprovado?"}
-    D -- "Sim" --> E["terraform apply"]
-    E --> F["Infraestrutura real atualizada"]
-    D -- "Não" --> A
+    Manual["Click in the console"] --> Drift["Environments diverge"]
+    IaC["Versioned code"] --> Same["dev = staging = prod"]
+    IaC --> PR["Change reviewed in a PR"]
+    IaC --> Blame["git blame on the resource"]
 </div>
 
 
@@ -1339,6 +1381,14 @@ terraform graph | dot -Tpng &gt; deps.png
 terraform console   # REPL para testar expressões</code></pre>
 
 <h3>4. State is critical, treat it with paranoia</h3>
+<div class="mermaid">
+flowchart TD
+    Plan["terraform plan"] --> Lock["State lock in backend"]
+    Lock --> Apply["terraform apply"]
+    Apply --> State["Updates remote state"]
+    State --> Next["Next plan starts from state"]
+</div>
+
 <p>The <code>terraform.tfstate</code> is a JSON file that maps each
 <em>resource in the code</em> to its <em>real ID</em> in the cloud.
 Without it, Terraform simply "forgets" what it manages and has no way
@@ -1569,6 +1619,14 @@ teams that are already Kubernetes-first and prefer to keep everything
 inside the same control plane.</p>
 
 <h3>11. Common anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Avoid</strong><p>Local state, secrets in .tf, apply without plan, giant unversioned modules.</p></div>
+    <div class="lesson-viz-card"><strong>Prefer</strong><p>Remote backend + lock, sensitive vars outside code, plan in CI, versioned modules.</p></div>
+  </div>
+  <figcaption>Terraform anti-patterns in production.</figcaption>
+</figure>
+
 <ul>
 <li><strong>tfstate in Git</strong>: guaranteed password leak, given
 that state stores secrets in plain text (section 4).</li>
@@ -1810,12 +1868,13 @@ precisa existir lá, ao contrário de Chef e Puppet que exigem um agente
 rodando permanentemente), YAML legível mesmo por quem não escreve
 Ansible no dia a dia, uma comunidade enorme via Galaxy, e integração
 nativa com as principais nuvens.</p>
-<div class="mermaid">
-flowchart LR
-    Control["Nó de controle"] -- "SSH, sem agente" --> H1["Servidor 1"]
-    Control -- "SSH, sem agente" --> H2["Servidor 2"]
-    Control -- "SSH, sem agente" --> H3["Servidor 3"]
-</div>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Ansible</strong><p>Agentless via SSH/WinRM. YAML. Push. Baixa fricção para começar.</p></div>
+    <div class="lesson-viz-card"><strong>Puppet/Chef</strong><p>Agente no host. Modelo pull. Bom em fleets enormes já maduros.</p></div>
+  </div>
+  <figcaption>Ansible vs alternativas: escolha pelo modelo operacional, não pela moda.</figcaption>
+</figure>
 
 
 <h3>2. Anatomia: inventário, playbooks, módulos, roles</h3>
@@ -1930,6 +1989,13 @@ playbooks diferentes:</p>
         nginx_port: 8080</code></pre>
 
 <h3>3. Idempotência: o coração do Ansible</h3>
+<div class="mermaid">
+flowchart LR
+    Run1["Playbook 1ª vez"] --> Desired["Estado desejado"]
+    Run2["Playbook 2ª vez"] --> Desired
+    Desired --> Ok["Sem mudança se já ok"]
+</div>
+
 <p>Idempotência significa que aplicar a mesma configuração N vezes
 produz sempre o mesmo estado final, não N efeitos acumulados — essa
 propriedade é o que torna Ansible seguro de rodar repetidamente sem
@@ -2072,6 +2138,16 @@ configurado depois é uma decisão arquitetural com implicações reais em
 velocidade de deploy e superfície de drift.</p>
 
 <h3>10. Anti-patterns comuns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Não misture shell ad-hoc onde há módulo</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Separe inventário por ambiente</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Teste com Molecule + ansible-lint</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Segredos no Vault/ansible-vault, nunca plain</p></div>
+  </div>
+  <figcaption>Checklist para playbooks sustentáveis.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Task sem <code>name</code></strong>: o log da execução fica
 impossível de interpretar depois.</li>
@@ -2105,12 +2181,13 @@ beyond SSH and Python needs to exist there, unlike Chef and Puppet
 which require a permanently running agent), YAML readable even by
 someone who doesn't write Ansible every day, a huge community via
 Galaxy, and native integration with the major clouds.</p>
-<div class="mermaid">
-flowchart LR
-    Control["Nó de controle"] -- "SSH, sem agente" --> H1["Servidor 1"]
-    Control -- "SSH, sem agente" --> H2["Servidor 2"]
-    Control -- "SSH, sem agente" --> H3["Servidor 3"]
-</div>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Ansible</strong><p>Agentless over SSH/WinRM. YAML. Push. Low friction to start.</p></div>
+    <div class="lesson-viz-card"><strong>Puppet/Chef</strong><p>Agent on the host. Pull model. Good for huge mature fleets.</p></div>
+  </div>
+  <figcaption>Ansible vs alternatives: choose by operating model, not hype.</figcaption>
+</figure>
 
 
 <h3>2. Anatomy: inventory, playbooks, modules, roles</h3>
@@ -2228,6 +2305,13 @@ different playbooks:</p>
         nginx_port: 8080</code></pre>
 
 <h3>3. Idempotency: the heart of Ansible</h3>
+<div class="mermaid">
+flowchart LR
+    Run1["Playbook 1st run"] --> Desired["Desired state"]
+    Run2["Playbook 2nd run"] --> Desired
+    Desired --> Ok["No change if already ok"]
+</div>
+
 <p>Idempotency means applying the same configuration N times always
 produces the same final state, not N accumulated effects — this
 property is what makes Ansible safe to run repeatedly without fear,
@@ -2374,6 +2458,16 @@ configured afterward is an architectural decision with real
 implications for deploy speed and drift surface.</p>
 
 <h3>10. Common anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Do not use ad-hoc shell where a module exists</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Split inventory by environment</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Test with Molecule + ansible-lint</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Secrets in Vault/ansible-vault, never plain</p></div>
+  </div>
+  <figcaption>Checklist for sustainable playbooks.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Task with no <code>name</code></strong>: makes the
 execution log impossible to interpret afterward.</li>
@@ -2613,10 +2707,12 @@ tipicamente vivem de 7 a 90 dias e são renovados automaticamente via
 ACME ou ferramenta equivalente (Vault PKI, smallstep, cert-manager).</p>
 <div class="mermaid">
 flowchart TD
-    App["Aplicação"] -- "Pede segredo em runtime" --> Vault["Cofre de segredos"]
-    Vault --> Auth{"Identidade autorizada?"}
-    Auth -- "Sim" --> Return["Retorna segredo de curta duração"]
-    Auth -- "Não" --> Deny["Nega o acesso"]
+    S["Segredos"] --> Static["Estáticos: senha, API key"]
+    S --> Dyn["Dinâmicos: gerados sob demanda"]
+    S --> Eph["Efêmeros: TTL curto / one-shot"]
+    Static --> Vault["Cofre + rotação"]
+    Dyn --> Vault
+    Eph --> Vault
 </div>
 
 
@@ -2654,6 +2750,17 @@ perceba.</p>
 </table>
 
 <h3>4. Padrão: nunca leia o cofre direto da app (se possível)</h3>
+<div class="mermaid">
+sequenceDiagram
+    participant App
+    participant Platform as Plataforma
+    participant Vault as Cofre
+    App->>Platform: Sobe com identidade
+    Platform->>Vault: Busca segredo
+    Vault-->>Platform: Segredo de curta duração
+    Platform-->>App: Injeta em runtime
+</div>
+
 <p>Fazer a aplicação acessar o cofre diretamente parece simples, mas
 exige cliente dedicado, retry, cache, autenticação própria e tratamento
 de erro específico — e num incidente do próprio cofre, a aplicação cai
@@ -2739,6 +2846,16 @@ repos:
       - id: gitleaks</code></pre>
 
 <h3>7. SE um segredo vazou: o que fazer</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Revogue o segredo imediatamente</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Rotacione tudo que compartilhava o mesmo material</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Audite logs de uso no período</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Bloqueie novos commits com secret scan</p></div>
+  </div>
+  <figcaption>Ordem de resposta quando um segredo vaza.</figcaption>
+</figure>
+
 <ol>
 <li><strong>Rotacione imediatamente</strong>, mesmo que a resposta
 tenha sido só um <code>git rm --cached</code> — o histórico ainda
@@ -2827,10 +2944,12 @@ typically live 7 to 90 days and renew automatically via ACME or an
 equivalent tool (Vault PKI, smallstep, cert-manager).</p>
 <div class="mermaid">
 flowchart TD
-    App["Aplicação"] -- "Pede segredo em runtime" --> Vault["Cofre de segredos"]
-    Vault --> Auth{"Identidade autorizada?"}
-    Auth -- "Sim" --> Return["Retorna segredo de curta duração"]
-    Auth -- "Não" --> Deny["Nega o acesso"]
+    S["Secrets"] --> Static["Static: password, API key"]
+    S --> Dyn["Dynamic: generated on demand"]
+    S --> Eph["Ephemeral: short TTL / one-shot"]
+    Static --> Vault["Vault + rotation"]
+    Dyn --> Vault
+    Eph --> Vault
 </div>
 
 
@@ -2866,6 +2985,17 @@ outside company control without anyone noticing.</p>
 </table>
 
 <h3>4. Pattern: never read the vault directly from the app (if possible)</h3>
+<div class="mermaid">
+sequenceDiagram
+    participant App
+    participant Platform as Platform
+    participant Vault as Vault
+    App->>Platform: Starts with identity
+    Platform->>Vault: Fetches secret
+    Vault-->>Platform: Short-lived secret
+    Platform-->>App: Injects at runtime
+</div>
+
 <p>Having the application talk to the vault directly looks simple, but
 it needs a dedicated client, retries, cache, its own auth, and specific
 error handling — and if the vault itself has an incident, the app falls
@@ -2948,6 +3078,16 @@ repos:
     hooks:
       - id: gitleaks</code></pre>
 <h3>7. IF a secret leaked: what to do</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Revoke the secret immediately</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Rotate anything that shared the same material</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Audit usage logs for the window</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Block new commits with secret scanning</p></div>
+  </div>
+  <figcaption>Response order when a secret leaks.</figcaption>
+</figure>
+
 <ol>
 <li><strong>Rotate immediately</strong>, even if the first response was
 only a <code>git rm --cached</code> — history still carries the original
@@ -3227,11 +3367,10 @@ um nível de maturidade que exige teste e telemetria muito robustos antes
 de fazer sentido.</p>
 <div class="mermaid">
 flowchart LR
-    A["Commit"] --> B["Build"]
-    B --> C["Testes automatizados"]
-    C --> D{"Passou?"}
-    D -- "Sim" --> E["Deploy"]
-    D -- "Não" --> F["Notifica o time"]
+    CI["CI: build + test a cada push"] --> CD1["CD: entrega contínua pronta"]
+    CD1 --> CD2["CD: deploy contínuo automático"]
+    CI --> Gate["Gate humano opcional"]
+    Gate --> CD2
 </div>
 
 
@@ -3356,6 +3495,14 @@ build permite que um admission controller no Kubernetes verifique a
 integridade da imagem antes de rodá-la.</p>
 
 <h3>4. Estratégias de deploy</h3>
+<div class="mermaid">
+flowchart TD
+    Blue["Blue estável"] --> Switch{"Troca tráfego?"}
+    Green["Green nova versão"] --> Switch
+    Switch -- Sim --> Live["Green vira live"]
+    Switch -- Rollback --> Blue
+</div>
+
 <h4>4.1 Recriação (recreate)</h4>
 <p>A estratégia mais simples: mata todos os pods antigos e sobe os
 novos em seguida. Causa downtime real durante a transição — aceitável
@@ -3459,6 +3606,14 @@ build pesado ou que exige hardware específico, como GPU, que o runner
 padrão hospedado não oferece.</p>
 
 <h3>9. Anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Anti-pattern</strong><p>Deploy manual fora do pipeline, artefato mutável, secrets no YAML do workflow.</p></div>
+    <div class="lesson-viz-card"><strong>Saudável</strong><p>Pipeline-as-code, artefato imutável por digest, approvals em environment.</p></div>
+  </div>
+  <figcaption>Sinais de pipeline maduro vs frágil.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Deploy manual em produção</strong>: abre espaço para erro
 humano recorrente, exatamente o que a automação existe para
@@ -3522,11 +3677,10 @@ a maturity level that needs very robust tests and telemetry before
 it makes sense.</p>
 <div class="mermaid">
 flowchart LR
-    A["Commit"] --> B["Build"]
-    B --> C["Testes automatizados"]
-    C --> D{"Passou?"}
-    D -- "Sim" --> E["Deploy"]
-    D -- "Não" --> F["Notifica o time"]
+    CI["CI: build + test on every push"] --> CD1["CD: continuous delivery ready"]
+    CD1 --> CD2["CD: continuous deploy automatic"]
+    CI --> Gate["Optional human gate"]
+    Gate --> CD2
 </div>
 
 
@@ -3651,6 +3805,14 @@ build stage lets a Kubernetes admission controller verify
 image integrity before running it.</p>
 
 <h3>4. Deploy strategies</h3>
+<div class="mermaid">
+flowchart TD
+    Blue["Blue stable"] --> Switch{"Shift traffic?"}
+    Green["Green new version"] --> Switch
+    Switch -- Yes --> Live["Green becomes live"]
+    Switch -- Rollback --> Blue
+</div>
+
 <h4>4.1 Recreate</h4>
 <p>The simplest strategy: kill all old pods and bring the
 new ones up next. Causes real downtime during the transition — acceptable
@@ -3754,6 +3916,14 @@ heavy builds or hardware-specific needs, like GPUs, that hosted
 runners do not offer.</p>
 
 <h3>9. Anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Anti-pattern</strong><p>Manual deploy outside the pipeline, mutable artifact, secrets in workflow YAML.</p></div>
+    <div class="lesson-viz-card"><strong>Healthy</strong><p>Pipeline-as-code, immutable artifact by digest, environment approvals.</p></div>
+  </div>
+  <figcaption>Signs of a mature vs fragile pipeline.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Manual production deploy</strong>: opens the door to recurring human
 error — exactly what automation exists to
@@ -4019,9 +4189,9 @@ ao mesmo tempo.</p>
 <div class="mermaid">
 flowchart LR
     A["Código escrito"] --> B["Linter roda"]
-    B --> C{"Viola alguma regra?"}
-    C -- "Sim" --> D["Bloqueia commit ou PR"]
-    C -- "Não" --> E["Segue pro CI"]
+    B --> C{"Viola regra?"}
+    C -- Sim --> D["Bloqueia commit ou PR"]
+    C -- Não --> E["Segue no CI"]
 </div>
 
 
@@ -4112,6 +4282,13 @@ debugar output de playbook), uso de <code>shell</code> sem
 <code>become</code> redundante onde já não é necessário.</p>
 
 <h3>4. Pre-commit + CI: defesa em camadas</h3>
+<div class="mermaid">
+flowchart TD
+    Local["Pre-commit no laptop"] --> PR["Checks no PR"]
+    PR --> CI["Job de lint no CI"]
+    CI --> Merge["Só então merge"]
+</div>
+
 <p>O padrão moderno é rodar tudo LOCALMENTE antes mesmo do commit — via
 o framework <strong>pre-commit</strong> — e rodar de novo no CI como
 segunda camada, porque nem todo desenvolvedor lembra de instalar o hook
@@ -4180,6 +4357,14 @@ Vim/Neovim e Emacs suportam isso nativamente via LSP, com integrações
 específicas como ruff-lsp, ESLint e tflint.</p>
 
 <h3>8. Anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Evite</strong><p>Desligar regra globalmente, lint só local, configs divergentes por dev.</p></div>
+    <div class="lesson-viz-card"><strong>Prefira</strong><p>Baseline versionada, auto-fix no CI, exceções locais documentadas.</p></div>
+  </div>
+  <figcaption>Anti-patterns de linting.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Desativar todas as regras</strong>: o linter deixa de ter
 qualquer utilidade — em legado, migre ativando regra por regra
@@ -4217,10 +4402,10 @@ between them has blurred: Bandit and Semgrep now cover both roles
 at once.</p>
 <div class="mermaid">
 flowchart LR
-    A["Código escrito"] --> B["Linter roda"]
-    B --> C{"Viola alguma regra?"}
-    C -- "Sim" --> D["Bloqueia commit ou PR"]
-    C -- "Não" --> E["Segue pro CI"]
+    A["Code written"] --> B["Linter runs"]
+    B --> C{"Rule violated?"}
+    C -- Yes --> D["Blocks commit or PR"]
+    C -- No --> E["Continues in CI"]
 </div>
 
 
@@ -4311,6 +4496,13 @@ debug playbook output), <code>shell</code> without
 redundant <code>become</code> where it is no longer needed.</p>
 
 <h3>4. Pre-commit + CI: defense in depth</h3>
+<div class="mermaid">
+flowchart TD
+    Local["Pre-commit on laptop"] --> PR["Checks on PR"]
+    PR --> CI["Lint job in CI"]
+    CI --> Merge["Only then merge"]
+</div>
+
 <p>The modern pattern is to run everything LOCALLY before the commit — via
 the <strong>pre-commit</strong> framework — and run again in CI as a
 second layer, because not every developer remembers to install the local
@@ -4379,6 +4571,14 @@ Vim/Neovim, and Emacs support this natively via LSP, with integrations
 like ruff-lsp, ESLint, and tflint.</p>
 
 <h3>8. Anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Avoid</strong><p>Disabling a rule globally, lint only locally, configs diverge per developer.</p></div>
+    <div class="lesson-viz-card"><strong>Prefer</strong><p>Versioned baseline, auto-fix in CI, documented local exceptions.</p></div>
+  </div>
+  <figcaption>Linting anti-patterns.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Disabling every rule</strong>: the linter stops being
 useful at all — on legacy code, migrate by enabling rules
@@ -4616,9 +4816,9 @@ mesmo sem nunca ter executado o código de verdade:</p>
 <div class="mermaid">
 flowchart LR
     A["Código-fonte"] --> B["SAST analisa sem executar"]
-    B --> C{"Encontrou padrão vulnerável?"}
-    C -- "Sim" --> D["Reporta linha e tipo de falha"]
-    C -- "Não" --> E["Aprova o build"]
+    B --> C{"Padrão vulnerável?"}
+    C -- Sim --> D["Reporta linha e tipo"]
+    C -- Não --> E["Aprova o build"]
 </div>
 
 <pre><code>def view(request):
@@ -4695,6 +4895,14 @@ combina SAST com métricas gerais de qualidade de código na mesma
 ferramenta.</p>
 
 <h3>4. Integração no pipeline</h3>
+<div class="mermaid">
+flowchart TD
+    Push["Push / PR"] --> SAST["Job SAST"]
+    SAST --> Gate{"Severidade alta?"}
+    Gate -- Sim --> Block["Bloqueia merge"]
+    Gate -- Não --> Ok["Segue pipeline"]
+</div>
+
 <p>O ponto ideal de integração é como check obrigatório no próprio PR,
 não como relatório separado que alguém consulta depois:</p>
 <pre><code># GitHub Actions
@@ -4729,6 +4937,14 @@ mais caro aqui é suprimir "em massa" sem analisar cada caso — isso vira
 um tapa-buraco que esconde achado real junto com os falsos.</p>
 
 <h3>6. SAST vs DAST vs IAST vs SCA, complementares</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>SAST</strong><p>Achados no código parado: injection, secrets hard-coded, APIs inseguras.</p></div>
+    <div class="lesson-viz-card"><strong>DAST</strong><p>Achados em runtime: auth bypass, XSS refletido, misconfig exposta.</p></div>
+  </div>
+  <figcaption>SAST e DAST se complementam — um não substitui o outro.</figcaption>
+</figure>
+
 <table>
 <tr><th>Tipo</th><th>O que olha</th><th>Quando</th><th>Exemplo</th></tr>
 <tr><td>SAST</td><td>Código (white box)</td><td>Pré-deploy/PR</td><td>Semgrep, CodeQL</td></tr>
@@ -4837,10 +5053,10 @@ sanitization in between, the tool reports a vulnerability —
 even without ever executing the real code:</p>
 <div class="mermaid">
 flowchart LR
-    A["Código-fonte"] --> B["SAST analisa sem executar"]
-    B --> C{"Encontrou padrão vulnerável?"}
-    C -- "Sim" --> D["Reporta linha e tipo de falha"]
-    C -- "Não" --> E["Aprova o build"]
+    A["Source code"] --> B["SAST analyzes without running"]
+    B --> C{"Vulnerable pattern?"}
+    C -- Yes --> D["Reports line and type"]
+    C -- No --> E["Approves the build"]
 </div>
 
 <pre><code>def view(request):
@@ -4917,6 +5133,14 @@ combines SAST with general code-quality metrics in the same
 tool.</p>
 
 <h3>4. Pipeline integration</h3>
+<div class="mermaid">
+flowchart TD
+    Push["Push / PR"] --> SAST["SAST job"]
+    SAST --> Gate{"High severity?"}
+    Gate -- Yes --> Block["Blocks merge"]
+    Gate -- No --> Ok["Pipeline continues"]
+</div>
+
 <p>The ideal integration point is as a required check on the PR itself,
 not as a separate report someone consults later:</p>
 <pre><code># GitHub Actions
@@ -4951,6 +5175,14 @@ mistake here is suppressing "in bulk" without analyzing each case — that
 becomes a cover-up that hides real findings along with the false ones.</p>
 
 <h3>6. SAST vs DAST vs IAST vs SCA — complementary</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>SAST</strong><p>Findings in static code: injection, hard-coded secrets, unsafe APIs.</p></div>
+    <div class="lesson-viz-card"><strong>DAST</strong><p>Findings at runtime: auth bypass, reflected XSS, exposed misconfig.</p></div>
+  </div>
+  <figcaption>SAST and DAST complement each other — neither replaces the other.</figcaption>
+</figure>
+
 <table>
 <tr><th>Type</th><th>What it looks at</th><th>When</th><th>Example</th></tr>
 <tr><td>SAST</td><td>Code (white box)</td><td>Pre-deploy/PR</td><td>Semgrep, CodeQL</td></tr>
@@ -5256,11 +5488,9 @@ licenciamento. Ferramentas como <code>syft</code> (Anchore),
 partir de código ou imagem:</p>
 <div class="mermaid">
 flowchart LR
-    A["Manifesto de dependências"] --> B["SCA lista cada dependência"]
-    B --> C["Cruza com base de CVE conhecida"]
-    C --> D{"Alguma dependência vulnerável?"}
-    D -- "Sim" --> E["Alerta com severidade"]
-    D -- "Não" --> F["Aprova"]
+    Manifest["package-lock / go.sum"] --> SBOM["Gera SBOM"]
+    SBOM --> Inv["Inventário de componentes"]
+    Inv --> Share["Compartilha com auditoria / clientes"]
 </div>
 
 <pre><code>$ syft packages docker:nginx:latest -o cyclonedx-json &gt; sbom.json
@@ -5303,6 +5533,15 @@ competindo pela mesma atenção.</p>
 </table>
 
 <h3>4. Trivy: ferramenta vital</h3>
+<div class="mermaid">
+flowchart TD
+    Img["Imagem / FS / repo"] --> Trivy["Trivy scan"]
+    Trivy --> CVE["CVEs + severidade"]
+    CVE --> Policy{"Dentro do SLA?"}
+    Policy -- Não --> Ticket["Abre remediação"]
+    Policy -- Sim --> Pass["Aceito com prazo"]
+</div>
+
 <pre><code>$ trivy fs .                     # escaneia diretório
 $ trivy image nginx:1.25.3        # escaneia imagem
 $ trivy config terraform/         # IaC
@@ -5419,6 +5658,16 @@ risco com justificativa documentada; e substituir a biblioteca pai
 inteira fica como último recurso, quando nada mais resolve.</p>
 
 <h3>10. Resposta a CVE crítica em produção</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Confirme explotabilidade (KEV/EPSS)</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Atualize lockfile / imagem base</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Reconstrua e redeploy por digest</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Verifique scan limpo no registry</p></div>
+  </div>
+  <figcaption>Resposta a CVE crítica em produção.</figcaption>
+</figure>
+
 <p>Um incidente como o Log4Shell (CVE-2021-44228) — uma string
 simplesmente logada derrubando mais de 30% da internet — segue um
 roteiro que separa quem reage em horas de quem reage em semanas.
@@ -5468,11 +5717,9 @@ licensing. Tools like <code>syft</code> (Anchore),
 code or images:</p>
 <div class="mermaid">
 flowchart LR
-    A["Manifesto de dependências"] --> B["SCA lista cada dependência"]
-    B --> C["Cruza com base de CVE conhecida"]
-    C --> D{"Alguma dependência vulnerável?"}
-    D -- "Sim" --> E["Alerta com severidade"]
-    D -- "Não" --> F["Aprova"]
+    Manifest["package-lock / go.sum"] --> SBOM["Generate SBOM"]
+    SBOM --> Inv["Component inventory"]
+    Inv --> Share["Share with audit / customers"]
 </div>
 
 <pre><code>$ syft packages docker:nginx:latest -o cyclonedx-json &gt; sbom.json
@@ -5515,6 +5762,15 @@ attention.</p>
 </table>
 
 <h3>4. Trivy: a vital tool</h3>
+<div class="mermaid">
+flowchart TD
+    Img["Image / FS / repo"] --> Trivy["Trivy scan"]
+    Trivy --> CVE["CVEs + severity"]
+    CVE --> Policy{"Within SLA?"}
+    Policy -- No --> Ticket["Open remediation"]
+    Policy -- Yes --> Pass["Accepted with deadline"]
+</div>
+
 <pre><code>$ trivy fs .                     # escaneia diretório
 $ trivy image nginx:1.25.3        # escaneia imagem
 $ trivy config terraform/         # IaC
@@ -5629,6 +5885,16 @@ risk with documented justification; and replacing the entire parent
 library is the last resort when nothing else works.</p>
 
 <h3>10. Responding to a critical CVE in production</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Confirm exploitability (KEV/EPSS)</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Update lockfile / base image</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Rebuild and redeploy by digest</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Verify clean scan in the registry</p></div>
+  </div>
+  <figcaption>Responding to a critical CVE in production.</figcaption>
+</figure>
+
 <p>An incident like Log4Shell (CVE-2021-44228) — a string
 simply logged taking down more than 30% of the internet — follows a
 playbook that separates who reacts in hours from who reacts in weeks.
@@ -5876,14 +6142,15 @@ refactor neutro (rename, mover arquivo), seguido de um PR com a nova
 interface ainda vazia, depois um PR com a implementação em si, e por
 fim um PR de integração — cada um pequeno o bastante para ser revisado
 de verdade.</p>
-<div class="mermaid">
-flowchart LR
-    A["Autor abre o PR"] --> B["Revisor lê o diff"]
-    B --> C{"Precisa de mudança?"}
-    C -- "Sim" --> D["Comenta, autor ajusta"]
-    D --> B
-    C -- "Não" --> E["Aprova e faz merge"]
-</div>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>PR pequeno, uma intenção clara</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Descrição com contexto e risco</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Testes / evidência de que funciona</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Revisor foca em correção, não em ego</p></div>
+  </div>
+  <figcaption>Princípios de um PR que dá para revisar de verdade.</figcaption>
+</figure>
 
 <h4>1.2 Contexto claro</h4>
 <p>Um reviewer não deveria precisar adivinhar "por que esta mudança
@@ -5952,6 +6219,13 @@ funcionando sem quebra, com qualquer migração de banco tendo caminho de
 rollback definido.</p>
 
 <h3>3. CODEOWNERS: quem revisa o quê</h3>
+<div class="mermaid">
+flowchart LR
+    Path["path no CODEOWNERS"] --> Owners["Owners obrigatórios"]
+    Owners --> Review["Review aprovado"]
+    Review --> Merge["Merge liberado"]
+</div>
+
 <pre><code># .github/CODEOWNERS
 # Pessoas/equipes que reviewam por path
 *                 @empresa/dev-platform
@@ -5978,6 +6252,14 @@ reviewer humano para focar exatamente onde ele agrega mais valor —
 design e lógica — em vez de gastar atenção em "falta um espaço aqui".</p>
 
 <h3>5. Anti-patterns clássicos</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Evite</strong><p>LGTM sem ler, bikeshedding de estilo, PR gigante de sexta à noite.</p></div>
+    <div class="lesson-viz-card"><strong>Prefira</strong><p>Comentários acionáveis, checagem de segurança, SLA de review do time.</p></div>
+  </div>
+  <figcaption>Anti-patterns clássicos de code review.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Rubber stamp</strong>: aprovar sem realmente ler, comum
 especialmente em PR de alguém sênior ("quem sou eu para discordar?"). A
@@ -6082,14 +6364,15 @@ refactor PR (rename, move files), then a PR with the new
 still-empty interface, then a PR with the implementation itself, and
 finally an integration PR — each small enough to review for
 real.</p>
-<div class="mermaid">
-flowchart LR
-    A["Autor abre o PR"] --> B["Revisor lê o diff"]
-    B --> C{"Precisa de mudança?"}
-    C -- "Sim" --> D["Comenta, autor ajusta"]
-    D --> B
-    C -- "Não" --> E["Aprova e faz merge"]
-</div>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Small PR, one clear intent</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Description with context and risk</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Tests / evidence it works</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Reviewer focuses on correctness, not ego</p></div>
+  </div>
+  <figcaption>Principles of a PR that can actually be reviewed.</figcaption>
+</figure>
 
 <h4>1.2 Clear context</h4>
 <p>A reviewer should not have to guess "why this change
@@ -6158,6 +6441,13 @@ works without breakage, with any database migration having a defined
 rollback path.</p>
 
 <h3>3. CODEOWNERS: who reviews what</h3>
+<div class="mermaid">
+flowchart LR
+    Path["path in CODEOWNERS"] --> Owners["Required owners"]
+    Owners --> Review["Approved review"]
+    Review --> Merge["Merge allowed"]
+</div>
+
 <pre><code># .github/CODEOWNERS
 # Pessoas/equipes que reviewam por path
 *                 @empresa/dev-platform
@@ -6184,6 +6474,14 @@ human reviewer to focus exactly where they add the most value —
 design and logic — instead of spending attention on "missing a space here".</p>
 
 <h3>5. Classic anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Avoid</strong><p>LGTM without reading, style bikeshedding, giant Friday-night PRs.</p></div>
+    <div class="lesson-viz-card"><strong>Prefer</strong><p>Actionable comments, security checks, team review SLA.</p></div>
+  </div>
+  <figcaption>Classic code-review anti-patterns.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Rubber stamp</strong>: approving without really reading, common
 especially on a senior's PR ("who am I to disagree?"). The
@@ -6489,10 +6787,10 @@ RBAC, scan de vulnerabilidade e replicação nativos, virou o padrão em
 times que rodam Kubernetes on-premise. E o <strong>Quay</strong> (Red
 Hat) é forte especificamente no ecossistema OpenShift.</p>
 <div class="mermaid">
-flowchart LR
-    Build["Pipeline de build"] --> Sign["Assina o artefato"]
-    Sign --> Push["Push pro registry"]
-    Push --> Pull["Ambiente puxa por digest"]
+flowchart TD
+    Reg["Registries"] --> Cont["Containers: ECR, GHCR, Harbor"]
+    Reg --> Lang["Linguagem: npm, Maven, PyPI proxy"]
+    Reg --> Helm["Charts / OCI generico"]
 </div>
 
 <h4>1.2 Generic / linguagens</h4>
@@ -6511,6 +6809,13 @@ chart diretamente, sem precisar de infraestrutura dedicada. O
 <code>ChartMuseum</code> ainda existe para quem mantém setup legado.</p>
 
 <h3>2. Padrões essenciais</h3>
+<div class="mermaid">
+flowchart LR
+    Build["Build"] --> Sign["Assina cosign/notation"]
+    Sign --> Push["Push por digest"]
+    Push --> Pull["Deploy puxa digest"]
+</div>
+
 <h4>2.1 Tags imutáveis</h4>
 <p>Use SHA do commit ou versão semver como tag — nunca
 <code>latest</code>, <code>main</code>, <code>dev</code> ou qualquer
@@ -6674,6 +6979,16 @@ seleciona automaticamente a arquitetura correta para a máquina que está
 puxando, sem nenhuma configuração adicional do lado do cliente.</p>
 
 <h3>8. Anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Imagens sempre por digest, não por tag mutável</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Assinatura + policy de admissão</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Scan contínuo no registry</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Segregação prod vs não-prod</p></div>
+  </div>
+  <figcaption>Lições do caso SolarWinds aplicadas a artifacts.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Usar apenas <code>latest</code> em produção</strong>: zero
 rastreabilidade sobre qual código está de fato rodando (seção 2.1).</li>
@@ -6722,10 +7037,10 @@ native RBAC, vulnerability scanning, and replication, became the default in
 teams running on-prem Kubernetes. And <strong>Quay</strong> (Red
 Hat) is strong specifically in the OpenShift ecosystem.</p>
 <div class="mermaid">
-flowchart LR
-    Build["Pipeline de build"] --> Sign["Assina o artefato"]
-    Sign --> Push["Push pro registry"]
-    Push --> Pull["Ambiente puxa por digest"]
+flowchart TD
+    Reg["Registries"] --> Cont["Containers: ECR, GHCR, Harbor"]
+    Reg --> Lang["Language: npm, Maven, PyPI proxy"]
+    Reg --> Helm["Charts / generic OCI"]
 </div>
 
 <h4>1.2 Generic / language registries</h4>
@@ -6744,6 +7059,13 @@ chart directly, without dedicated infrastructure.
 <code>ChartMuseum</code> still exists for whoever keeps a legacy setup.</p>
 
 <h3>2. Essential patterns</h3>
+<div class="mermaid">
+flowchart LR
+    Build["Build"] --> Sign["Sign with cosign/notation"]
+    Sign --> Push["Push by digest"]
+    Push --> Pull["Deploy pulls digest"]
+</div>
+
 <h4>2.1 Immutable tags</h4>
 <p>Use the commit SHA or a semver version as the tag — never
 <code>latest</code>, <code>main</code>, <code>dev</code>, or any
@@ -6907,6 +7229,16 @@ automatically selects the correct architecture for the machine that is
 pulling, with no extra client-side configuration.</p>
 
 <h3>8. Anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Images always by digest, not mutable tag</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Signature + admission policy</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Continuous scanning in the registry</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Segregate prod vs non-prod</p></div>
+  </div>
+  <figcaption>SolarWinds lessons applied to artifacts.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Using only <code>latest</code> in production</strong>: zero
 traceability of which code is actually running (section 2.1).</li>

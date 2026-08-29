@@ -104,10 +104,16 @@
              style="{% if topic.lesson.intro %}border-top:none;border-radius:0;{% else %}border-radius:12px 12px 0 0;{% endif %}
                     {% if not topic.lesson.practical and not labs %}border-radius:0 0 12px 12px;{% endif %}"
              x-data="{ page: 0, total: {{ pages|length }},
-                        goToPage(n) { this.page = n; this.$refs.lessonTop.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }">
+                        goToPage(n) {
+                          this.page = n;
+                          this.$refs.lessonTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          this.$nextTick(() => {
+                            if (window.reflowVisibleMermaid) window.reflowVisibleMermaid(this.$root);
+                          });
+                        } }">
           <h2 x-ref="lessonTop">{% trans "Aula" %}</h2>
           {% for section in pages %}
-            <div x-show="page === {{ forloop.counter0 }}" x-cloak>{{ section }}</div>
+            <div class="lesson-page" x-show="page === {{ forloop.counter0 }}" x-cloak>{{ section }}</div>
           {% endfor %}
           {% if pages|length > 1 %}
             <div class="lesson-pagination">

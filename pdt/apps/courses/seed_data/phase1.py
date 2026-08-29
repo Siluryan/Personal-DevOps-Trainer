@@ -56,17 +56,12 @@ mecanismo diferente. Aprender Linux a fundo é, em boa medida, aprender
 quais arquivos específicos importam e quem deveria ter permissão de ler
 ou escrever em cada um.</p>
 <div class="mermaid">
-flowchart TD
-    A["Processo pede acesso a um arquivo"] --> B{"UID do processo é o dono do arquivo?"}
-    B -- "Sim" --> C["Aplica permissão do DONO (primeiros 3 bits)"]
-    B -- "Não" --> D{"GID do processo está no grupo do arquivo?"}
-    D -- "Sim" --> E["Aplica permissão do GRUPO (bits do meio)"]
-    D -- "Não" --> F["Aplica permissão de OUTROS (últimos 3 bits)"]
-    C --> G{"Bit pedido (r/w/x) está setado?"}
-    E --> G
-    F --> G
-    G -- "Sim" --> H["Acesso permitido"]
-    G -- "Não" --> I["Acesso negado (EACCES)"]
+flowchart LR
+    Disk["/dev/sda"] --> Model["Tudo é arquivo"]
+    Sock["/proc/net/tcp"] --> Model
+    Proc["/proc/PID"] --> Model
+    Sys["/sys"] --> Model
+    Model --> Perm["Mesmo modelo rwx"]
 </div>
 
 
@@ -139,6 +134,15 @@ cria arquivo ali livremente, mas só quem criou consegue apagar o
 próprio arquivo depois.</p>
 <pre><code>find / -perm -4000 -type f 2&gt;/dev/null   # binários setuid
 find / -perm -2000 -type f 2&gt;/dev/null   # binários setgid</code></pre>
+<div class="mermaid">
+flowchart TD
+    A["Usuário comum executa binário"] --> B{"setuid setado?"}
+    B -- "Sim" --> C["Roda com UID do DONO"]
+    B -- "Não" --> D["Roda com UID do invocador"]
+    C --> E["Ex: passwd altera /etc/shadow"]
+    D --> F["Privilégio normal"]
+</div>
+
 
 <h3>5. Para além de rwx: ACLs e capabilities</h3>
 <p>O modelo rwx tem apenas três classes fixas de permissão — quando
@@ -202,6 +206,14 @@ dispositivo. E <code>/run</code> e <code>/tmp</code> são efêmeros,
 zerados a cada reboot.</p>
 
 <h3>8. Anti-patterns clássicos</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Evite</strong><p>chmod 777, rodar serviço como root, chave SSH com 644, sticky bit ausente em /tmp compartilhado.</p></div>
+    <div class="lesson-viz-card"><strong>Prefira</strong><p>750/640, usuário dedicado, 600 na chave privada, 1777 em /tmp, capabilities em vez de root.</p></div>
+  </div>
+  <figcaption>Anti-patterns de permissão versus o mínimo necessário.</figcaption>
+</figure>
+
 <ul>
 <li><strong><code>chmod 777 /srv/app</code></strong>: qualquer usuário
 do mesmo sistema ganha permissão de escrita — um atacante com QUALQUER
@@ -282,17 +294,12 @@ different mechanism. Learning Linux deeply is, to a large extent,
 learning which specific files matter and who should be allowed to
 read or write to each one.</p>
 <div class="mermaid">
-flowchart TD
-    A["Processo pede acesso a um arquivo"] --> B{"UID do processo é o dono do arquivo?"}
-    B -- "Sim" --> C["Aplica permissão do DONO (primeiros 3 bits)"]
-    B -- "Não" --> D{"GID do processo está no grupo do arquivo?"}
-    D -- "Sim" --> E["Aplica permissão do GRUPO (bits do meio)"]
-    D -- "Não" --> F["Aplica permissão de OUTROS (últimos 3 bits)"]
-    C --> G{"Bit pedido (r/w/x) está setado?"}
-    E --> G
-    F --> G
-    G -- "Sim" --> H["Acesso permitido"]
-    G -- "Não" --> I["Acesso negado (EACCES)"]
+flowchart LR
+    Disk["/dev/sda"] --> Model["Everything is a file"]
+    Sock["/proc/net/tcp"] --> Model
+    Proc["/proc/PID"] --> Model
+    Sys["/sys"] --> Model
+    Model --> Perm["Same rwx model"]
 </div>
 
 
@@ -365,6 +372,15 @@ a file there freely, but only whoever created it can delete their
 own file afterward.</p>
 <pre><code>find / -perm -4000 -type f 2&gt;/dev/null   # binários setuid
 find / -perm -2000 -type f 2&gt;/dev/null   # binários setgid</code></pre>
+<div class="mermaid">
+flowchart TD
+    A["Ordinary user runs a binary"] --> B{"setuid set?"}
+    B -- "Yes" --> C["Runs as file OWNER UID"]
+    B -- "No" --> D["Runs as caller UID"]
+    C --> E["e.g. passwd edits /etc/shadow"]
+    D --> F["Normal privilege"]
+</div>
+
 
 <h3>5. Beyond rwx: ACLs and capabilities</h3>
 <p>The rwx model has only three fixed permission classes — when that
@@ -429,6 +445,14 @@ exposed directly by the kernel, without physically existing on disk.
 <code>/tmp</code> are ephemeral, wiped on every reboot.</p>
 
 <h3>8. Classic anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Avoid</strong><p>chmod 777, services as root, SSH key mode 644, missing sticky bit on shared /tmp.</p></div>
+    <div class="lesson-viz-card"><strong>Prefer</strong><p>750/640, dedicated user, 600 on private key, 1777 on /tmp, capabilities instead of root.</p></div>
+  </div>
+  <figcaption>Permission anti-patterns versus least privilege.</figcaption>
+</figure>
+
 <ul>
 <li><strong><code>chmod 777 /srv/app</code></strong>: any user on
 the same system gains write permission — an attacker with ANY other
@@ -702,380 +726,148 @@ dig further.</p>"""
                     "mistakes I've seen people make."
                 ),
                 "body": (
-                    "<h3>1. As quatro camadas que importam (modelo TCP/IP)</h3>"
-                    "<p>Esqueça as 7 camadas do OSI por enquanto. O modelo prático é o "
-                    "TCP/IP de quatro camadas:</p>"
-                    """
+                """<h3>1. As quatro camadas que importam (modelo TCP/IP)</h3><p>Esqueça as 7 camadas do OSI por enquanto. O modelo prático é o TCP/IP de quatro camadas:</p>
+<div class="mermaid">
+flowchart TB
+    App["Aplicação: HTTP DNS SSH"] --> Trans["Transporte: TCP / UDP"]
+    Trans --> Net["Rede: IP roteamento"]
+    Net --> Link["Enlace: Ethernet Wi-Fi"]
+</div>
+<ol><li><strong>Link</strong>: Ethernet, Wi-Fi. Endereçamento por MAC. Você lida com isso só em datacenter ou debug profundo.</li><li><strong>Internet</strong>: IP. Endereçamento e roteamento entre redes. IPv4 e IPv6.</li><li><strong>Transporte</strong>: TCP (confiável, ordenado) e UDP (rápido, sem garantia). Multiplexa por porta.</li><li><strong>Aplicação</strong>: HTTP, DNS, SSH, gRPC, AMQP, onde a sua app vive.</li></ol><p>Cada pacote é encapsulado de cima para baixo na saída e desencapsulado na entrada. Saber em qual camada o problema mora é o que faz o diagnóstico ser de minutos em vez de horas.</p><h3>2. Endereçamento, CIDR e RFC 1918</h3><p>Endereços IPv4 são 32 bits (~4 bilhões, esgotado em 2011); IPv6 é 128 bits. Usamos <strong>CIDR</strong> para falar de blocos:</p><pre><code>10.0.0.0/8       # 16M endereços (privada, RFC 1918)
+172.16.0.0/12    # 1M endereços (privada, RFC 1918)
+192.168.0.0/16   # 65k endereços (privada, RFC 1918)
+169.254.0.0/16   # link-local (auto-configurado)
+127.0.0.0/8      # loopback
+0.0.0.0/0        # 'qualquer' (rota default, bind em todas as interfaces)</code></pre><p>O número após a barra é a <em>máscara</em> de rede em bits. <code>/24</code> = 256 endereços; <code>/16</code> = 65 536; <code>/8</code> = 16 milhões. Em cada bloco, dois endereços não são utilizáveis (rede e broadcast), então <code>/24</code> dá 254 hosts.</p><h3>3. TCP vs UDP, quando usar cada um</h3><p>TCP estabelece conexão com <strong>three-way handshake</strong> (SYN → SYN-ACK → ACK), depois transmite dados garantindo:</p><ul><li>Ordem (numera segmentos);</li><li>Entrega (retransmite o que perde);</li><li>Controle de fluxo (ajusta a janela de envio à capacidade do receptor);</li><li>Controle de congestão (ajusta-se à rede, Reno, Cubic, BBR).</li></ul><p>Tudo isso tem custo: handshake cobra um RTT antes do primeiro byte útil e o head-of-line blocking faz uma perda travar todo o stream. Por isso <strong>HTTP/3</strong> abandonou TCP e foi para QUIC sobre UDP.</p><p>UDP é stateless: só envia o datagrama. Sem retransmissão, sem ordem. Use quando latência &gt; confiabilidade: DNS, voz/vídeo em tempo real, QUIC, WireGuard, jogos online.</p><h3>4. Portas: quem fala com quem</h3><p>Portas são números de 16 bits que multiplexam serviços em um mesmo IP:</p><ul><li><strong>0-1023</strong>, <em>well-known</em>. Bind precisa de root (ou <code>CAP_NET_BIND_SERVICE</code>). HTTP=80, HTTPS=443, SSH=22, DNS=53, SMTP=25.</li><li><strong>1024-49151</strong>, registradas. PostgreSQL=5432, MySQL=3306, Redis=6379, MongoDB=27017.</li><li><strong>49152-65535</strong>, efêmeras. O kernel tira daqui a porta de origem de cada conexão de saída.</li></ul><p>A exaustão de portas efêmeras é uma das causas mais sub-diagnosticadas de outage: load balancer fechando conexão por timeout enquanto a <code>net.ipv4.ip_local_port_range</code> está em default.</p><h3>5. DNS, o telefone da internet (e o melhor lugar pra causar outage)</h3><p>DNS resolve nomes em IPs com cache em vários níveis: resolver da app, stub do SO (<code>/etc/nsswitch</code> + <code>systemd-resolved</code>), resolver do ISP/cloud, autoritativos. Tipos de registro essenciais:</p>
 <div class="mermaid">
 sequenceDiagram
     participant C as Cliente
-    participant R as Resolver do SO
-    participant Root as Servidor raiz
-    participant TLD as Servidor .com
-    participant Auth as Servidor autoritativo
-    C->>R: Resolver exemplo.com
+    participant R as Resolver
+    participant Root as Raiz
+    participant TLD as TLD
+    participant Auth as Autoritativo
+    C->>R: Resolve exemplo.com
     R->>Root: Quem responde por .com?
-    Root-->>R: Endereço do servidor TLD
+    Root-->>R: Servidor TLD
     R->>TLD: Quem responde por exemplo.com?
-    TLD-->>R: Endereço do autoritativo
-    R->>Auth: Qual o IP de exemplo.com?
+    TLD-->>R: Autoritativo
+    R->>Auth: Qual o IP?
     Auth-->>R: 93.184.216.34
-    R-->>C: 93.184.216.34, cacheado até o TTL expirar
+    R-->>C: IP cacheado até o TTL
 </div>
-"""
-                    "<ol>"
-                    "<li><strong>Link</strong>: Ethernet, Wi-Fi. Endereçamento por MAC. Você "
-                    "lida com isso só em datacenter ou debug profundo.</li>"
-                    "<li><strong>Internet</strong>: IP. Endereçamento e roteamento entre redes. "
-                    "IPv4 e IPv6.</li>"
-                    "<li><strong>Transporte</strong>: TCP (confiável, ordenado) e UDP (rápido, "
-                    "sem garantia). Multiplexa por porta.</li>"
-                    "<li><strong>Aplicação</strong>: HTTP, DNS, SSH, gRPC, AMQP, onde a sua "
-                    "app vive.</li>"
-                    "</ol>"
-                    "<p>Cada pacote é encapsulado de cima para baixo na saída e desencapsulado "
-                    "na entrada. Saber em qual camada o problema mora é o que faz o "
-                    "diagnóstico ser de minutos em vez de horas.</p>"
+<table style='border-collapse:collapse'><tr><td><code>A</code></td><td>nome → IPv4</td></tr><tr><td><code>AAAA</code></td><td>nome → IPv6</td></tr><tr><td><code>CNAME</code></td><td>nome → outro nome</td></tr><tr><td><code>MX</code></td><td>servidor de e-mail</td></tr><tr><td><code>TXT</code></td><td>texto livre, SPF, DKIM, validações</td></tr><tr><td><code>NS</code></td><td>delegação de zona</td></tr><tr><td><code>SRV</code></td><td>serviço + porta (LDAP, XMPP, Kerberos)</td></tr><tr><td><code>CAA</code></td><td>quais CAs podem emitir cert para o domínio</td></tr></table><p>O <strong>TTL</strong> diz por quanto tempo um resolver pode cachear. Em produção: TTL alto (3600s) é eficiente mas migração leva horas. TTL baixo (30s) acelera failover mas multiplica custo de queries. Padrão <em>health-checked</em>: TTL baixo + autoridade que retira IPs unhealthy (Route 53, Cloudflare).</p><h3>6. Toolbox: as ferramentas que resolvem 95% dos problemas</h3><pre><code># Conectividade básica
+ping -c 3 1.1.1.1               # ICMP, alguns firewalls bloqueiam
+mtr 1.1.1.1                     # traceroute contínuo, mostra perdas
 
-                    "<h3>2. Endereçamento, CIDR e RFC 1918</h3>"
-                    "<p>Endereços IPv4 são 32 bits (~4 bilhões, esgotado em 2011); IPv6 é "
-                    "128 bits. Usamos <strong>CIDR</strong> para falar de blocos:</p>"
-                    "<pre><code>10.0.0.0/8       # 16M endereços (privada, RFC 1918)\n"
-                    "172.16.0.0/12    # 1M endereços (privada, RFC 1918)\n"
-                    "192.168.0.0/16   # 65k endereços (privada, RFC 1918)\n"
-                    "169.254.0.0/16   # link-local (auto-configurado)\n"
-                    "127.0.0.0/8      # loopback\n"
-                    "0.0.0.0/0        # 'qualquer' (rota default, bind em todas as interfaces)</code></pre>"
-                    "<p>O número após a barra é a <em>máscara</em> de rede em bits. <code>/24</code> "
-                    "= 256 endereços; <code>/16</code> = 65 536; <code>/8</code> = 16 milhões. "
-                    "Em cada bloco, dois endereços não são utilizáveis (rede e broadcast), então "
-                    "<code>/24</code> dá 254 hosts.</p>"
+# DNS
+dig +short example.com
+dig +trace example.com          # resolução completa, root → autoritativo
+dig @8.8.8.8 example.com        # forçando resolver
+drill -T example.com            # alternativa moderna
 
-                    "<h3>3. TCP vs UDP, quando usar cada um</h3>"
-                    "<p>TCP estabelece conexão com <strong>three-way handshake</strong> "
-                    "(SYN → SYN-ACK → ACK), depois transmite dados garantindo:</p>"
-                    "<ul>"
-                    "<li>Ordem (numera segmentos);</li>"
-                    "<li>Entrega (retransmite o que perde);</li>"
-                    "<li>Controle de fluxo (ajusta a janela de envio à capacidade do receptor);</li>"
-                    "<li>Controle de congestão (ajusta-se à rede, Reno, Cubic, BBR).</li>"
-                    "</ul>"
-                    "<p>Tudo isso tem custo: handshake cobra um RTT antes do primeiro byte útil "
-                    "e o head-of-line blocking faz uma perda travar todo o stream. Por isso "
-                    "<strong>HTTP/3</strong> abandonou TCP e foi para QUIC sobre UDP.</p>"
-                    "<p>UDP é stateless: só envia o datagrama. Sem retransmissão, sem ordem. "
-                    "Use quando latência &gt; confiabilidade: DNS, voz/vídeo em tempo real, "
-                    "QUIC, WireGuard, jogos online.</p>"
+# Sockets locais
+ss -tulpn                       # tcp+udp listening, processo, numérico
+ss -tan state established       # conexões estabelecidas
+lsof -i :443                    # quem usa a porta 443
 
-                    "<h3>4. Portas: quem fala com quem</h3>"
-                    "<p>Portas são números de 16 bits que multiplexam serviços em um mesmo IP:</p>"
-                    "<ul>"
-                    "<li><strong>0-1023</strong>, <em>well-known</em>. Bind precisa de root "
-                    "(ou <code>CAP_NET_BIND_SERVICE</code>). HTTP=80, HTTPS=443, SSH=22, "
-                    "DNS=53, SMTP=25.</li>"
-                    "<li><strong>1024-49151</strong>, registradas. PostgreSQL=5432, "
-                    "MySQL=3306, Redis=6379, MongoDB=27017.</li>"
-                    "<li><strong>49152-65535</strong>, efêmeras. O kernel tira daqui a porta de "
-                    "origem de cada conexão de saída.</li>"
-                    "</ul>"
-                    "<p>A exaustão de portas efêmeras é uma das causas mais sub-diagnosticadas "
-                    "de outage: load balancer fechando conexão por timeout enquanto a "
-                    "<code>net.ipv4.ip_local_port_range</code> está em default.</p>"
+# Captura de pacotes
+sudo tcpdump -i any -nn 'tcp port 443 and host api.example.com' -w /tmp/d.pcap
+wireshark /tmp/d.pcap           # análise visual
 
-                    "<h3>5. DNS, o telefone da internet (e o melhor lugar pra causar outage)</h3>"
-                    "<p>DNS resolve nomes em IPs com cache em vários níveis: resolver da app, "
-                    "stub do SO (<code>/etc/nsswitch</code> + <code>systemd-resolved</code>), "
-                    "resolver do ISP/cloud, autoritativos. Tipos de registro essenciais:</p>"
-                    "<table style='border-collapse:collapse'>"
-                    "<tr><td><code>A</code></td><td>nome → IPv4</td></tr>"
-                    "<tr><td><code>AAAA</code></td><td>nome → IPv6</td></tr>"
-                    "<tr><td><code>CNAME</code></td><td>nome → outro nome</td></tr>"
-                    "<tr><td><code>MX</code></td><td>servidor de e-mail</td></tr>"
-                    "<tr><td><code>TXT</code></td><td>texto livre, SPF, DKIM, validações</td></tr>"
-                    "<tr><td><code>NS</code></td><td>delegação de zona</td></tr>"
-                    "<tr><td><code>SRV</code></td><td>serviço + porta (LDAP, XMPP, Kerberos)</td></tr>"
-                    "<tr><td><code>CAA</code></td><td>quais CAs podem emitir cert para o domínio</td></tr>"
-                    "</table>"
-                    "<p>O <strong>TTL</strong> diz por quanto tempo um resolver pode cachear. "
-                    "Em produção: TTL alto (3600s) é eficiente mas migração leva horas. TTL "
-                    "baixo (30s) acelera failover mas multiplica custo de queries. Padrão "
-                    "<em>health-checked</em>: TTL baixo + autoridade que retira IPs unhealthy "
-                    "(Route 53, Cloudflare).</p>"
+# HTTP
+curl -v --resolve api.example.com:443:10.0.1.5 https://api.example.com/health
+curl -w '@curl-format.txt' -o /dev/null -s https://example.com
+                                # dns_time, connect, ssl, ttfb, total
 
-                    "<h3>6. Toolbox: as ferramentas que resolvem 95% dos problemas</h3>"
-                    "<pre><code># Conectividade básica\n"
-                    "ping -c 3 1.1.1.1               # ICMP, alguns firewalls bloqueiam\n"
-                    "mtr 1.1.1.1                     # traceroute contínuo, mostra perdas\n"
-                    "\n"
-                    "# DNS\n"
-                    "dig +short example.com\n"
-                    "dig +trace example.com          # resolução completa, root → autoritativo\n"
-                    "dig @8.8.8.8 example.com        # forçando resolver\n"
-                    "drill -T example.com            # alternativa moderna\n"
-                    "\n"
-                    "# Sockets locais\n"
-                    "ss -tulpn                       # tcp+udp listening, processo, numérico\n"
-                    "ss -tan state established       # conexões estabelecidas\n"
-                    "lsof -i :443                    # quem usa a porta 443\n"
-                    "\n"
-                    "# Captura de pacotes\n"
-                    "sudo tcpdump -i any -nn 'tcp port 443 and host api.example.com' -w /tmp/d.pcap\n"
-                    "wireshark /tmp/d.pcap           # análise visual\n"
-                    "\n"
-                    "# HTTP\n"
-                    "curl -v --resolve api.example.com:443:10.0.1.5 https://api.example.com/health\n"
-                    "curl -w '@curl-format.txt' -o /dev/null -s https://example.com\n"
-                    "                                # dns_time, connect, ssl, ttfb, total\n"
-                    "\n"
-                    "# IP / rotas\n"
-                    "ip a                            # interfaces e endereços\n"
-                    "ip r                            # tabela de roteamento\n"
-                    "ip neigh                        # cache ARP\n"
-                    "\n"
-                    "# Stress / load (cuidado!)\n"
-                    "hey -n 1000 -c 50 https://api.example.com/  # carga simples\n"
-                    "iperf3 -c host                              # banda</code></pre>"
+# IP / rotas
+ip a                            # interfaces e endereços
+ip r                            # tabela de roteamento
+ip neigh                        # cache ARP
 
-                    "<h3>7. Anatomia de uma requisição HTTPS</h3>"
-                    "<p>O que <em>realmente</em> acontece quando você faz "
-                    "<code>curl https://api.example.com</code>:</p>"
-                    "<ol>"
-                    "<li><strong>DNS</strong>: resolve <code>api.example.com</code> → IP (cache "
-                    "miss = ~5-50ms; hit = sub-ms).</li>"
-                    "<li><strong>TCP handshake</strong>: SYN/SYN-ACK/ACK = 1 RTT.</li>"
-                    "<li><strong>TLS handshake</strong>: 1-2 RTTs em TLS 1.3 (1 RTT no caso "
-                    "comum, 0-RTT em sessão retomada). Aqui certificado é validado.</li>"
-                    "<li><strong>HTTP request</strong>: envia headers e (se POST) body.</li>"
-                    "<li><strong>Server processing</strong>: app processa.</li>"
-                    "<li><strong>HTTP response</strong>: chega ao cliente.</li>"
-                    "</ol>"
-                    "<p>Quando alguém diz 'a API está lenta', você precisa saber em qual desses "
-                    "passos. <code>curl -w</code> com formato customizado revela cada um.</p>"
-
-                    "<h3>8. NAT, proxy, load balancer e o problema do IP real</h3>"
-                    "<p>Em produção quase ninguém fala com o servidor diretamente. Há sempre "
-                    "uma cadeia: Cloudflare → ALB → NLB → Pod K8s → app. Cada salto pode "
-                    "(a) trocar o IP de origem (NAT) ou (b) preservá-lo via "
-                    "<code>X-Forwarded-For</code>/<code>Forwarded</code>/Proxy Protocol.</p>"
-                    "<p>Anti-pattern clássico: confiar cegamente em "
-                    "<code>X-Forwarded-For</code> do request sem checar quantos proxies de "
-                    "confiança você tem na frente. Atacante manda <code>X-Forwarded-For: "
-                    "127.0.0.1</code> e bypassa rate limit. Mitigação: configure no proxy "
-                    "(Nginx <code>set_real_ip_from</code>, ALB com "
-                    "<code>X-Forwarded-For</code> trust hops) e nunca confie no header "
-                    "vindo direto do cliente.</p>"
-
-                    "<h3>9. Segurança em rede: o que pode dar errado</h3>"
-                    "<ul>"
-                    "<li><strong>Portas abertas demais</strong>: cada porta em "
-                    "<code>0.0.0.0</code> é superfície de ataque. Default-deny no firewall.</li>"
-                    "<li><strong>DNS sem DNSSEC + cache poisoning</strong>: caso clássico "
-                    "Kaminsky 2008.</li>"
-                    "<li><strong>TLS mal configurado</strong>: TLS 1.0/1.1, cipher suites "
-                    "fracas, certificado curinga vazado. Use SSL Labs e Mozilla SSL Generator.</li>"
-                    "<li><strong>BGP hijacking</strong>: prefixo seu sequestrado por outro AS. "
-                    "Solução: RPKI, MANRS.</li>"
-                    "<li><strong>SSRF</strong>: app fala com URL controlada pelo usuário sem "
-                    "validar, bate em <code>169.254.169.254</code> (metadata) e exfiltra "
-                    "credencial IAM. <em>Veja Capital One 2019</em>.</li>"
-                    "</ul>"
-
-                    "<h3>10. Caso real: Cloudflare 2020, o BGP outage</h3>"
-                    "<p>Em julho de 2020, Cloudflare ficou fora 27 minutos porque um update de "
-                    "config de roteamento BGP retirou anúncios para um conjunto de prefixos. "
-                    "Sites que dependiam de Cloudflare ficaram inalcançáveis. Lição: roteamento "
-                    "é frágil; tenha plano B (multi-CDN ou DNS com health-check direto a "
-                    "origem).</p>"
+# Stress / load (cuidado!)
+hey -n 1000 -c 50 https://api.example.com/  # carga simples
+iperf3 -c host                              # banda</code></pre><h3>7. Anatomia de uma requisição HTTPS</h3><p>O que <em>realmente</em> acontece quando você faz <code>curl https://api.example.com</code>:</p><ol><li><strong>DNS</strong>: resolve <code>api.example.com</code> → IP (cache miss = ~5-50ms; hit = sub-ms).</li><li><strong>TCP handshake</strong>: SYN/SYN-ACK/ACK = 1 RTT.</li><li><strong>TLS handshake</strong>: 1-2 RTTs em TLS 1.3 (1 RTT no caso comum, 0-RTT em sessão retomada). Aqui certificado é validado.</li><li><strong>HTTP request</strong>: envia headers e (se POST) body.</li><li><strong>Server processing</strong>: app processa.</li><li><strong>HTTP response</strong>: chega ao cliente.</li></ol><p>Quando alguém diz 'a API está lenta', você precisa saber em qual desses passos. <code>curl -w</code> com formato customizado revela cada um.</p><h3>8. NAT, proxy, load balancer e o problema do IP real</h3><p>Em produção quase ninguém fala com o servidor diretamente. Há sempre uma cadeia: Cloudflare → ALB → NLB → Pod K8s → app. Cada salto pode (a) trocar o IP de origem (NAT) ou (b) preservá-lo via <code>X-Forwarded-For</code>/<code>Forwarded</code>/Proxy Protocol.</p><p>Anti-pattern clássico: confiar cegamente em <code>X-Forwarded-For</code> do request sem checar quantos proxies de confiança você tem na frente. Atacante manda <code>X-Forwarded-For: 127.0.0.1</code> e bypassa rate limit. Mitigação: configure no proxy (Nginx <code>set_real_ip_from</code>, ALB com <code>X-Forwarded-For</code> trust hops) e nunca confie no header vindo direto do cliente.</p><h3>9. Segurança em rede: o que pode dar errado</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>MITM: tráfego interceptado sem TLS ou com cert inválido aceito.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Exaustão de portas efêmeras / NAT: conexões de saída falham sob carga.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>SSRF: app alcança metadata 169.254.169.254 e vaza credenciais.</p></div>
+  </div>
+  <figcaption>Três falhas de rede que viram incidente em produção.</figcaption>
+</figure>
+<ul><li><strong>Portas abertas demais</strong>: cada porta em <code>0.0.0.0</code> é superfície de ataque. Default-deny no firewall.</li><li><strong>DNS sem DNSSEC + cache poisoning</strong>: caso clássico Kaminsky 2008.</li><li><strong>TLS mal configurado</strong>: TLS 1.0/1.1, cipher suites fracas, certificado curinga vazado. Use SSL Labs e Mozilla SSL Generator.</li><li><strong>BGP hijacking</strong>: prefixo seu sequestrado por outro AS. Solução: RPKI, MANRS.</li><li><strong>SSRF</strong>: app fala com URL controlada pelo usuário sem validar, bate em <code>169.254.169.254</code> (metadata) e exfiltra credencial IAM. <em>Veja Capital One 2019</em>.</li></ul><h3>10. Caso real: Cloudflare 2020, o BGP outage</h3><p>Em julho de 2020, Cloudflare ficou fora 27 minutos porque um update de config de roteamento BGP retirou anúncios para um conjunto de prefixos. Sites que dependiam de Cloudflare ficaram inalcançáveis. Lição: roteamento é frágil; tenha plano B (multi-CDN ou DNS com health-check direto a origem).</p>"""
                 ),
                 "body_en": (
-                    "<h3>1. The four layers that matter (TCP/IP model)</h3>"
-                    "<p>Forget the 7 OSI layers for now. The practical model is the "
-                    "four-layer TCP/IP:</p>"
-                    """
+                """<h3>1. The four layers that matter (TCP/IP model)</h3><p>Forget the 7 OSI layers for now. The practical model is the four-layer TCP/IP:</p>
+<div class="mermaid">
+flowchart TB
+    App["Application: HTTP DNS SSH"] --> Trans["Transport: TCP / UDP"]
+    Trans --> Net["Network: IP routing"]
+    Net --> Link["Link: Ethernet Wi-Fi"]
+</div>
+<ol><li><strong>Link</strong>: Ethernet, Wi-Fi. Addressing by MAC. You only deal with this in a datacenter or deep debugging.</li><li><strong>Internet</strong>: IP. Addressing and routing between networks. IPv4 and IPv6.</li><li><strong>Transport</strong>: TCP (reliable, ordered) and UDP (fast, no guarantee). Multiplexes by port.</li><li><strong>Application</strong>: HTTP, DNS, SSH, gRPC, AMQP, where your app lives.</li></ol><p>Each packet is encapsulated top-down on the way out and decapsulated on the way in. Knowing which layer the problem lives in is what makes diagnosis take minutes instead of hours.</p><h3>2. Addressing, CIDR, and RFC 1918</h3><p>IPv4 addresses are 32 bits (~4 billion, exhausted in 2011); IPv6 is 128 bits. We use <strong>CIDR</strong> to talk about blocks:</p><pre><code>10.0.0.0/8       # 16M endereços (privada, RFC 1918)
+172.16.0.0/12    # 1M endereços (privada, RFC 1918)
+192.168.0.0/16   # 65k endereços (privada, RFC 1918)
+169.254.0.0/16   # link-local (auto-configurado)
+127.0.0.0/8      # loopback
+0.0.0.0/0        # 'qualquer' (rota default, bind em todas as interfaces)</code></pre><p>The number after the slash is the network <em>mask</em> in bits. <code>/24</code> = 256 addresses; <code>/16</code> = 65,536; <code>/8</code> = 16 million. In each block, two addresses aren't usable (network and broadcast), so <code>/24</code> gives you 254 hosts.</p><h3>3. TCP vs UDP, when to use each</h3><p>TCP establishes a connection with a <strong>three-way handshake</strong> (SYN → SYN-ACK → ACK), then transmits data guaranteeing:</p><ul><li>Order (numbers segments);</li><li>Delivery (retransmits what's lost);</li><li>Flow control (adjusts the send window to the receiver's capacity);</li><li>Congestion control (adapts to the network, Reno, Cubic, BBR).</li></ul><p>All of this has a cost: the handshake charges one RTT before the first useful byte, and head-of-line blocking makes a single loss stall the whole stream. That's why <strong>HTTP/3</strong> abandoned TCP and moved to QUIC over UDP.</p><p>UDP is stateless: it just sends the datagram. No retransmission, no order. Use it when latency &gt; reliability: DNS, real-time voice/video, QUIC, WireGuard, online games.</p><h3>4. Ports: who talks to whom</h3><p>Ports are 16-bit numbers that multiplex services on the same IP:</p><ul><li><strong>0-1023</strong>, <em>well-known</em>. Binding requires root (or <code>CAP_NET_BIND_SERVICE</code>). HTTP=80, HTTPS=443, SSH=22, DNS=53, SMTP=25.</li><li><strong>1024-49151</strong>, registered. PostgreSQL=5432, MySQL=3306, Redis=6379, MongoDB=27017.</li><li><strong>49152-65535</strong>, ephemeral. The kernel picks the source port for each outgoing connection from here.</li></ul><p>Ephemeral port exhaustion is one of the most under-diagnosed causes of outages: the load balancer closing connections on timeout while <code>net.ipv4.ip_local_port_range</code> is left at default.</p><h3>5. DNS, the internet's phone book (and the best place to cause an outage)</h3><p>DNS resolves names into IPs with caching at several levels: the app's resolver, the OS stub (<code>/etc/nsswitch</code> + <code>systemd-resolved</code>), the ISP/cloud resolver, the authoritatives. Essential record types:</p>
 <div class="mermaid">
 sequenceDiagram
-    participant C as Cliente
-    participant R as Resolver do SO
-    participant Root as Servidor raiz
-    participant TLD as Servidor .com
-    participant Auth as Servidor autoritativo
-    C->>R: Resolver exemplo.com
-    R->>Root: Quem responde por .com?
-    Root-->>R: Endereço do servidor TLD
-    R->>TLD: Quem responde por exemplo.com?
-    TLD-->>R: Endereço do autoritativo
-    R->>Auth: Qual o IP de exemplo.com?
+    participant C as Client
+    participant R as Resolver
+    participant Root as Root
+    participant TLD as TLD
+    participant Auth as Authoritative
+    C->>R: Resolve example.com
+    R->>Root: Who serves .com?
+    Root-->>R: TLD server
+    R->>TLD: Who serves example.com?
+    TLD-->>R: Authoritative
+    R->>Auth: What is the IP?
     Auth-->>R: 93.184.216.34
-    R-->>C: 93.184.216.34, cacheado até o TTL expirar
+    R-->>C: IP cached until TTL
 </div>
-"""
-                    "<ol>"
-                    "<li><strong>Link</strong>: Ethernet, Wi-Fi. Addressing by MAC. You "
-                    "only deal with this in a datacenter or deep debugging.</li>"
-                    "<li><strong>Internet</strong>: IP. Addressing and routing between "
-                    "networks. IPv4 and IPv6.</li>"
-                    "<li><strong>Transport</strong>: TCP (reliable, ordered) and UDP (fast, "
-                    "no guarantee). Multiplexes by port.</li>"
-                    "<li><strong>Application</strong>: HTTP, DNS, SSH, gRPC, AMQP, where your "
-                    "app lives.</li>"
-                    "</ol>"
-                    "<p>Each packet is encapsulated top-down on the way out and decapsulated "
-                    "on the way in. Knowing which layer the problem lives in is what makes "
-                    "diagnosis take minutes instead of hours.</p>"
+<table style='border-collapse:collapse'><tr><td><code>A</code></td><td>name → IPv4</td></tr><tr><td><code>AAAA</code></td><td>name → IPv6</td></tr><tr><td><code>CNAME</code></td><td>name → another name</td></tr><tr><td><code>MX</code></td><td>mail server</td></tr><tr><td><code>TXT</code></td><td>free text, SPF, DKIM, verifications</td></tr><tr><td><code>NS</code></td><td>zone delegation</td></tr><tr><td><code>SRV</code></td><td>service + port (LDAP, XMPP, Kerberos)</td></tr><tr><td><code>CAA</code></td><td>which CAs may issue a cert for the domain</td></tr></table><p>The <strong>TTL</strong> says how long a resolver may cache a result. In production: a high TTL (3600s) is efficient but migrations take hours. A low TTL (30s) speeds up failover but multiplies query cost. The <em>health-checked</em> standard: low TTL + an authority that removes unhealthy IPs (Route 53, Cloudflare).</p><h3>6. Toolbox: the tools that solve 95% of problems</h3><pre><code># Conectividade básica
+ping -c 3 1.1.1.1               # ICMP, alguns firewalls bloqueiam
+mtr 1.1.1.1                     # traceroute contínuo, mostra perdas
 
-                    "<h3>2. Addressing, CIDR, and RFC 1918</h3>"
-                    "<p>IPv4 addresses are 32 bits (~4 billion, exhausted in 2011); IPv6 is "
-                    "128 bits. We use <strong>CIDR</strong> to talk about blocks:</p>"
-                    "<pre><code>10.0.0.0/8       # 16M endereços (privada, RFC 1918)\n"
-                    "172.16.0.0/12    # 1M endereços (privada, RFC 1918)\n"
-                    "192.168.0.0/16   # 65k endereços (privada, RFC 1918)\n"
-                    "169.254.0.0/16   # link-local (auto-configurado)\n"
-                    "127.0.0.0/8      # loopback\n"
-                    "0.0.0.0/0        # 'qualquer' (rota default, bind em todas as interfaces)</code></pre>"
-                    "<p>The number after the slash is the network <em>mask</em> in bits. "
-                    "<code>/24</code> = 256 addresses; <code>/16</code> = 65,536; "
-                    "<code>/8</code> = 16 million. In each block, two addresses aren't usable "
-                    "(network and broadcast), so <code>/24</code> gives you 254 hosts.</p>"
+# DNS
+dig +short example.com
+dig +trace example.com          # resolução completa, root → autoritativo
+dig @8.8.8.8 example.com        # forçando resolver
+drill -T example.com            # alternativa moderna
 
-                    "<h3>3. TCP vs UDP, when to use each</h3>"
-                    "<p>TCP establishes a connection with a <strong>three-way handshake</strong> "
-                    "(SYN → SYN-ACK → ACK), then transmits data guaranteeing:</p>"
-                    "<ul>"
-                    "<li>Order (numbers segments);</li>"
-                    "<li>Delivery (retransmits what's lost);</li>"
-                    "<li>Flow control (adjusts the send window to the receiver's capacity);</li>"
-                    "<li>Congestion control (adapts to the network, Reno, Cubic, BBR).</li>"
-                    "</ul>"
-                    "<p>All of this has a cost: the handshake charges one RTT before the "
-                    "first useful byte, and head-of-line blocking makes a single loss stall "
-                    "the whole stream. That's why <strong>HTTP/3</strong> abandoned TCP and "
-                    "moved to QUIC over UDP.</p>"
-                    "<p>UDP is stateless: it just sends the datagram. No retransmission, no "
-                    "order. Use it when latency &gt; reliability: DNS, real-time voice/video, "
-                    "QUIC, WireGuard, online games.</p>"
+# Sockets locais
+ss -tulpn                       # tcp+udp listening, processo, numérico
+ss -tan state established       # conexões estabelecidas
+lsof -i :443                    # quem usa a porta 443
 
-                    "<h3>4. Ports: who talks to whom</h3>"
-                    "<p>Ports are 16-bit numbers that multiplex services on the same IP:</p>"
-                    "<ul>"
-                    "<li><strong>0-1023</strong>, <em>well-known</em>. Binding requires root "
-                    "(or <code>CAP_NET_BIND_SERVICE</code>). HTTP=80, HTTPS=443, SSH=22, "
-                    "DNS=53, SMTP=25.</li>"
-                    "<li><strong>1024-49151</strong>, registered. PostgreSQL=5432, "
-                    "MySQL=3306, Redis=6379, MongoDB=27017.</li>"
-                    "<li><strong>49152-65535</strong>, ephemeral. The kernel picks the "
-                    "source port for each outgoing connection from here.</li>"
-                    "</ul>"
-                    "<p>Ephemeral port exhaustion is one of the most under-diagnosed causes "
-                    "of outages: the load balancer closing connections on timeout while "
-                    "<code>net.ipv4.ip_local_port_range</code> is left at default.</p>"
+# Captura de pacotes
+sudo tcpdump -i any -nn 'tcp port 443 and host api.example.com' -w /tmp/d.pcap
+wireshark /tmp/d.pcap           # análise visual
 
-                    "<h3>5. DNS, the internet's phone book (and the best place to cause an outage)</h3>"
-                    "<p>DNS resolves names into IPs with caching at several levels: the app's "
-                    "resolver, the OS stub (<code>/etc/nsswitch</code> + "
-                    "<code>systemd-resolved</code>), the ISP/cloud resolver, the "
-                    "authoritatives. Essential record types:</p>"
-                    "<table style='border-collapse:collapse'>"
-                    "<tr><td><code>A</code></td><td>name → IPv4</td></tr>"
-                    "<tr><td><code>AAAA</code></td><td>name → IPv6</td></tr>"
-                    "<tr><td><code>CNAME</code></td><td>name → another name</td></tr>"
-                    "<tr><td><code>MX</code></td><td>mail server</td></tr>"
-                    "<tr><td><code>TXT</code></td><td>free text, SPF, DKIM, verifications</td></tr>"
-                    "<tr><td><code>NS</code></td><td>zone delegation</td></tr>"
-                    "<tr><td><code>SRV</code></td><td>service + port (LDAP, XMPP, Kerberos)</td></tr>"
-                    "<tr><td><code>CAA</code></td><td>which CAs may issue a cert for the domain</td></tr>"
-                    "</table>"
-                    "<p>The <strong>TTL</strong> says how long a resolver may cache a result. "
-                    "In production: a high TTL (3600s) is efficient but migrations take hours. "
-                    "A low TTL (30s) speeds up failover but multiplies query cost. The "
-                    "<em>health-checked</em> standard: low TTL + an authority that removes "
-                    "unhealthy IPs (Route 53, Cloudflare).</p>"
+# HTTP
+curl -v --resolve api.example.com:443:10.0.1.5 https://api.example.com/health
+curl -w '@curl-format.txt' -o /dev/null -s https://example.com
+                                # dns_time, connect, ssl, ttfb, total
 
-                    "<h3>6. Toolbox: the tools that solve 95% of problems</h3>"
-                    "<pre><code># Conectividade básica\n"
-                    "ping -c 3 1.1.1.1               # ICMP, alguns firewalls bloqueiam\n"
-                    "mtr 1.1.1.1                     # traceroute contínuo, mostra perdas\n"
-                    "\n"
-                    "# DNS\n"
-                    "dig +short example.com\n"
-                    "dig +trace example.com          # resolução completa, root → autoritativo\n"
-                    "dig @8.8.8.8 example.com        # forçando resolver\n"
-                    "drill -T example.com            # alternativa moderna\n"
-                    "\n"
-                    "# Sockets locais\n"
-                    "ss -tulpn                       # tcp+udp listening, processo, numérico\n"
-                    "ss -tan state established       # conexões estabelecidas\n"
-                    "lsof -i :443                    # quem usa a porta 443\n"
-                    "\n"
-                    "# Captura de pacotes\n"
-                    "sudo tcpdump -i any -nn 'tcp port 443 and host api.example.com' -w /tmp/d.pcap\n"
-                    "wireshark /tmp/d.pcap           # análise visual\n"
-                    "\n"
-                    "# HTTP\n"
-                    "curl -v --resolve api.example.com:443:10.0.1.5 https://api.example.com/health\n"
-                    "curl -w '@curl-format.txt' -o /dev/null -s https://example.com\n"
-                    "                                # dns_time, connect, ssl, ttfb, total\n"
-                    "\n"
-                    "# IP / rotas\n"
-                    "ip a                            # interfaces e endereços\n"
-                    "ip r                            # tabela de roteamento\n"
-                    "ip neigh                        # cache ARP\n"
-                    "\n"
-                    "# Stress / load (cuidado!)\n"
-                    "hey -n 1000 -c 50 https://api.example.com/  # carga simples\n"
-                    "iperf3 -c host                              # banda</code></pre>"
+# IP / rotas
+ip a                            # interfaces e endereços
+ip r                            # tabela de roteamento
+ip neigh                        # cache ARP
 
-                    "<h3>7. Anatomy of an HTTPS request</h3>"
-                    "<p>What <em>actually</em> happens when you run "
-                    "<code>curl https://api.example.com</code>:</p>"
-                    "<ol>"
-                    "<li><strong>DNS</strong>: resolves <code>api.example.com</code> → IP "
-                    "(cache miss = ~5-50ms; hit = sub-ms).</li>"
-                    "<li><strong>TCP handshake</strong>: SYN/SYN-ACK/ACK = 1 RTT.</li>"
-                    "<li><strong>TLS handshake</strong>: 1-2 RTTs on TLS 1.3 (1 RTT in the "
-                    "common case, 0-RTT on a resumed session). This is where the certificate "
-                    "is validated.</li>"
-                    "<li><strong>HTTP request</strong>: sends headers and (if POST) a body.</li>"
-                    "<li><strong>Server processing</strong>: the app processes it.</li>"
-                    "<li><strong>HTTP response</strong>: reaches the client.</li>"
-                    "</ol>"
-                    "<p>When someone says 'the API is slow', you need to know which of these "
-                    "steps it's in. <code>curl -w</code> with a custom format reveals each "
-                    "one.</p>"
-
-                    "<h3>8. NAT, proxy, load balancer, and the real-IP problem</h3>"
-                    "<p>In production almost nobody talks to the server directly. There's "
-                    "always a chain: Cloudflare → ALB → NLB → K8s Pod → app. Each hop can "
-                    "(a) swap the source IP (NAT) or (b) preserve it via "
-                    "<code>X-Forwarded-For</code>/<code>Forwarded</code>/Proxy Protocol.</p>"
-                    "<p>Classic anti-pattern: blindly trusting the request's "
-                    "<code>X-Forwarded-For</code> without checking how many trusted proxies "
-                    "you have in front. An attacker sends <code>X-Forwarded-For: "
-                    "127.0.0.1</code> and bypasses rate limiting. Mitigation: configure it on "
-                    "the proxy (Nginx <code>set_real_ip_from</code>, ALB with "
-                    "<code>X-Forwarded-For</code> trust hops) and never trust the header "
-                    "coming straight from the client.</p>"
-
-                    "<h3>9. Network security: what can go wrong</h3>"
-                    "<ul>"
-                    "<li><strong>Too many open ports</strong>: every port on "
-                    "<code>0.0.0.0</code> is attack surface. Default-deny on the firewall.</li>"
-                    "<li><strong>DNS without DNSSEC + cache poisoning</strong>: the classic "
-                    "Kaminsky 2008 case.</li>"
-                    "<li><strong>Misconfigured TLS</strong>: TLS 1.0/1.1, weak cipher suites, "
-                    "leaked wildcard certificate. Use SSL Labs and the Mozilla SSL Generator.</li>"
-                    "<li><strong>BGP hijacking</strong>: your prefix hijacked by another AS. "
-                    "Solution: RPKI, MANRS.</li>"
-                    "<li><strong>SSRF</strong>: the app talks to a user-controlled URL without "
-                    "validating it, hits <code>169.254.169.254</code> (metadata) and "
-                    "exfiltrates an IAM credential. <em>See Capital One 2019</em>.</li>"
-                    "</ul>"
-
-                    "<h3>10. Real case: Cloudflare 2020, the BGP outage</h3>"
-                    "<p>In July 2020, Cloudflare went down for 27 minutes because a BGP "
-                    "routing config update withdrew announcements for a set of prefixes. "
-                    "Sites depending on Cloudflare became unreachable. Lesson: routing is "
-                    "fragile; have a plan B (multi-CDN or DNS with a direct health-check to "
-                    "origin).</p>"
+# Stress / load (cuidado!)
+hey -n 1000 -c 50 https://api.example.com/  # carga simples
+iperf3 -c host                              # banda</code></pre><h3>7. Anatomy of an HTTPS request</h3><p>What <em>actually</em> happens when you run <code>curl https://api.example.com</code>:</p><ol><li><strong>DNS</strong>: resolves <code>api.example.com</code> → IP (cache miss = ~5-50ms; hit = sub-ms).</li><li><strong>TCP handshake</strong>: SYN/SYN-ACK/ACK = 1 RTT.</li><li><strong>TLS handshake</strong>: 1-2 RTTs on TLS 1.3 (1 RTT in the common case, 0-RTT on a resumed session). This is where the certificate is validated.</li><li><strong>HTTP request</strong>: sends headers and (if POST) a body.</li><li><strong>Server processing</strong>: the app processes it.</li><li><strong>HTTP response</strong>: reaches the client.</li></ol><p>When someone says 'the API is slow', you need to know which of these steps it's in. <code>curl -w</code> with a custom format reveals each one.</p><h3>8. NAT, proxy, load balancer, and the real-IP problem</h3><p>In production almost nobody talks to the server directly. There's always a chain: Cloudflare → ALB → NLB → K8s Pod → app. Each hop can (a) swap the source IP (NAT) or (b) preserve it via <code>X-Forwarded-For</code>/<code>Forwarded</code>/Proxy Protocol.</p><p>Classic anti-pattern: blindly trusting the request's <code>X-Forwarded-For</code> without checking how many trusted proxies you have in front. An attacker sends <code>X-Forwarded-For: 127.0.0.1</code> and bypasses rate limiting. Mitigation: configure it on the proxy (Nginx <code>set_real_ip_from</code>, ALB with <code>X-Forwarded-For</code> trust hops) and never trust the header coming straight from the client.</p><h3>9. Network security: what can go wrong</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>MITM: traffic intercepted without TLS or with an accepted invalid cert.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Ephemeral port / NAT exhaustion: outbound connections fail under load.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>SSRF: the app reaches metadata 169.254.169.254 and leaks credentials.</p></div>
+  </div>
+  <figcaption>Three network failures that become production incidents.</figcaption>
+</figure>
+<ul><li><strong>Too many open ports</strong>: every port on <code>0.0.0.0</code> is attack surface. Default-deny on the firewall.</li><li><strong>DNS without DNSSEC + cache poisoning</strong>: the classic Kaminsky 2008 case.</li><li><strong>Misconfigured TLS</strong>: TLS 1.0/1.1, weak cipher suites, leaked wildcard certificate. Use SSL Labs and the Mozilla SSL Generator.</li><li><strong>BGP hijacking</strong>: your prefix hijacked by another AS. Solution: RPKI, MANRS.</li><li><strong>SSRF</strong>: the app talks to a user-controlled URL without validating it, hits <code>169.254.169.254</code> (metadata) and exfiltrates an IAM credential. <em>See Capital One 2019</em>.</li></ul><h3>10. Real case: Cloudflare 2020, the BGP outage</h3><p>In July 2020, Cloudflare went down for 27 minutes because a BGP routing config update withdrew announcements for a set of prefixes. Sites depending on Cloudflare became unreachable. Lesson: routing is fragile; have a plan B (multi-CDN or DNS with a direct health-check to origin).</p>"""
                 ),
                 "practical": (
                     "(1) <code>dig +trace seudominio.com</code>: identifique cada delegação até "
@@ -1271,11 +1063,11 @@ sequenceDiagram
                 """<h3>1. Cabeçalho seguro: o 'unsafe at any speed' do bash</h3>
 <p>Todo script sério começa com a mesma combinação de três configurações:</p>
 <div class="mermaid">
-flowchart LR
-    A["comando1"] -- "stdout, fd 1" --> B["comando2"]
-    A -- "stderr, fd 2" --> T["terminal"]
-    B -- "stdout, fd 1" --> F["arquivo.txt"]
-    B -- "stderr, fd 2" --> T
+flowchart TD
+    A["Script inicia"] --> B["set -e: erro aborta"]
+    B --> C["set -u: var indefinida aborta"]
+    C --> D["set -o pipefail: falha no pipe conta"]
+    D --> E["IFS seguro: sem split surpresa"]
 </div>
 
 <pre><code>#!/usr/bin/env bash
@@ -1393,6 +1185,18 @@ checar dinamicamente qualquer nome de variável passado como
 argumento.</p>
 
 <h3>6. Trap para cleanup determinístico</h3>
+<div class="mermaid">
+sequenceDiagram
+    participant S as Script
+    participant T as Trap EXIT
+    participant F as /tmp/workdir
+    S->>F: Cria arquivos temporários
+    S->>T: Registra cleanup
+    Note over S: Erro ou Ctrl+C
+    S->>T: Dispara EXIT
+    T->>F: Remove lixo
+</div>
+
 <pre><code>tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
@@ -1441,6 +1245,14 @@ log e saída útil no mesmo stream quebra qualquer composição posterior
 do script com outra ferramenta via pipe.</p>
 
 <h3>9. Anti-patterns que custam caro</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Perigoso</strong><p>rm -rf $VAR/*, eval em input, for f in $(ls), cat file | grep.</p></div>
+    <div class="lesson-viz-card"><strong>Seguro</strong><p>Checar var não vazia, validar input, find -print0, grep &lt; file, shellcheck.</p></div>
+  </div>
+  <figcaption>Anti-patterns de bash versus práticas que evitam desastre.</figcaption>
+</figure>
+
 <table style='border-collapse:collapse'>
 <tr><td><code>eval "$input"</code></td>
 <td>RCE garantido se input vier de fora.</td></tr>
@@ -1492,11 +1304,11 @@ checar manualmente em cada script novo.</p>"""
                 """<h3>1. Safe header: bash's 'unsafe at any speed'</h3>
 <p>Every serious script starts with the same combination of three settings:</p>
 <div class="mermaid">
-flowchart LR
-    A["comando1"] -- "stdout, fd 1" --> B["comando2"]
-    A -- "stderr, fd 2" --> T["terminal"]
-    B -- "stdout, fd 1" --> F["arquivo.txt"]
-    B -- "stderr, fd 2" --> T
+flowchart TD
+    A["Script starts"] --> B["set -e: error aborts"]
+    B --> C["set -u: unset var aborts"]
+    C --> D["set -o pipefail: pipe failure counts"]
+    D --> E["Safe IFS: no surprise splitting"]
 </div>
 
 <pre><code>#!/usr/bin/env bash
@@ -1613,6 +1425,18 @@ indirection — it references the variable whose NAME is stored inside
 dynamically check any variable name passed as an argument.</p>
 
 <h3>6. Trap for deterministic cleanup</h3>
+<div class="mermaid">
+sequenceDiagram
+    participant S as Script
+    participant T as Trap EXIT
+    participant F as /tmp/workdir
+    S->>F: Create temp files
+    S->>T: Register cleanup
+    Note over S: Error or Ctrl+C
+    S->>T: EXIT fires
+    T->>F: Remove leftovers
+</div>
+
 <pre><code>tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
@@ -1662,6 +1486,14 @@ useful output in the same stream breaks any later composition of
 the script with another tool via pipe.</p>
 
 <h3>9. Anti-patterns that cost dearly</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Dangerous</strong><p>rm -rf $VAR/*, eval on input, for f in $(ls), cat file | grep.</p></div>
+    <div class="lesson-viz-card"><strong>Safe</strong><p>Check non-empty vars, validate input, find -print0, grep &lt; file, shellcheck.</p></div>
+  </div>
+  <figcaption>Bash anti-patterns versus practices that prevent disasters.</figcaption>
+</figure>
+
 <table style='border-collapse:collapse'>
 <tr><td><code>eval "$input"</code></td>
 <td>RCE garantido se input vier de fora.</td></tr>
@@ -1909,416 +1741,174 @@ check manually in every new script.</p>"""
                     "toward an SSH CA in any serious environment."
                 ),
                 "body": (
-                    "<h3>1. Modelo mental de criptografia assimétrica</h3>"
-                    "<p>Cada lado tem um par de chaves matemáticamente ligadas:</p>"
-                    """
+                """<h3>1. Modelo mental de criptografia assimétrica</h3><p>Cada lado tem um par de chaves matemáticamente ligadas:</p>
 <div class="mermaid">
-sequenceDiagram
-    participant Cliente
-    participant Servidor
-    Cliente->>Servidor: Pedido de conexão
-    Servidor-->>Cliente: Desafio com nonce aleatório
-    Cliente->>Cliente: Assina o nonce com a chave privada
-    Cliente->>Servidor: Envia a assinatura
-    Servidor->>Servidor: Verifica com a chave pública em authorized_keys
-    Servidor-->>Cliente: Acesso concedido, senha nunca trafegou
+flowchart LR
+    Priv["Chave privada"] -. "nunca sai" .-> Client["Cliente"]
+    Pub["Chave pública"] --> Server["authorized_keys"]
+    Client -->|"assina desafio"| Server
+    Server -->|"verifica assinatura"| OK["Acesso"]
 </div>
-"""
-                    "<ul>"
-                    "<li>A <strong>chave privada</strong> nunca sai do dono. É secreta.</li>"
-                    "<li>A <strong>chave pública</strong> pode ser distribuída livremente.</li>"
-                    "</ul>"
-                    "<p>O que uma cripta, a outra decifra (e vice-versa). Em SSH:</p>"
-                    "<ol>"
-                    "<li>Cliente prova posse da privada assinando um desafio enviado pelo "
-                    "servidor.</li>"
-                    "<li>Servidor verifica a assinatura com a pública (que está em "
-                    "<code>~/.ssh/authorized_keys</code> do usuário).</li>"
-                    "<li>Após autenticação, ambos derivam chaves <strong>simétricas</strong> "
-                    "(AES, ChaCha20) para criptografar a sessão, assimétrico só é usado para "
-                    "estabelecer a sessão, não para o tráfego em si (seria lento demais).</li>"
-                    "</ol>"
-                    "<p>O servidor também tem seu par: a chave pública do servidor (host key) "
-                    "vai para o seu <code>~/.ssh/known_hosts</code> na primeira conexão. "
-                    "Se na próxima vez for diferente, o cliente <em>recusa</em> com "
-                    "<code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, pode ser "
-                    "MITM ou rebuild legítimo do servidor.</p>"
+<ul><li>A <strong>chave privada</strong> nunca sai do dono. É secreta.</li><li>A <strong>chave pública</strong> pode ser distribuída livremente.</li></ul><p>O que uma cripta, a outra decifra (e vice-versa). Em SSH:</p><ol><li>Cliente prova posse da privada assinando um desafio enviado pelo servidor.</li><li>Servidor verifica a assinatura com a pública (que está em <code>~/.ssh/authorized_keys</code> do usuário).</li><li>Após autenticação, ambos derivam chaves <strong>simétricas</strong> (AES, ChaCha20) para criptografar a sessão, assimétrico só é usado para estabelecer a sessão, não para o tráfego em si (seria lento demais).</li></ol><p>O servidor também tem seu par: a chave pública do servidor (host key) vai para o seu <code>~/.ssh/known_hosts</code> na primeira conexão. Se na próxima vez for diferente, o cliente <em>recusa</em> com <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, pode ser MITM ou rebuild legítimo do servidor.</p><h3>2. Gerando chaves modernas, Ed25519</h3><p>Em 2025+ o padrão é <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: curva elíptica moderna; chave pública de ~68 bytes.</li><li><code>-a 100</code>: 100 rounds de KDF para a passphrase (mais lento para força bruta).</li><li><code>-C</code>: comentário (apenas marcador, usado para identificar a chave em <code>authorized_keys</code>).</li></ul><p>Sempre proteja com passphrase. Sem ela, qualquer um que tenha acesso ao seu disco tem acesso a todos os seus servidores.</p><p>RSA-2048 está sendo aposentado; se precisar de RSA por compatibilidade, use ≥ 3072 bits. ECDSA tem ressalvas (NIST curves), prefira Ed25519.</p><h3>3. ssh-agent: digitar passphrase uma vez por sessão</h3><pre><code>eval $(ssh-agent -s)
+ssh-add -t 4h ~/.ssh/id_ed25519     # libera por 4 horas
+ssh-add -l                           # lista chaves carregadas
+ssh-add -D                           # remove todas (logout)</code></pre><p>O agent guarda a chave decifrada em memória e fala com o cliente SSH via socket Unix (<code>$SSH_AUTH_SOCK</code>). Em desktops modernos (macOS, GNOME), há agents nativos integrados.</p><p><strong>Cuidado com agent forwarding</strong> (<code>ssh -A host</code>): o servidor de destino pode usar suas chaves para se conectar a outros lugares enquanto a sessão estiver aberta. Se ele estiver comprometido, vira pivô. Use <code>ProxyJump</code> em vez de <code>-A</code> sempre que possível:</p><pre><code>ssh -J bastion.example.com app-01.internal</code></pre><h3>4. ~/.ssh/config, configuração que economiza horas</h3><pre><code># ~/.ssh/config
+Host bastion
+  HostName bastion.example.com
+  User deploy
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
+  ServerAliveInterval 60
 
-                    "<h3>2. Gerando chaves modernas, Ed25519</h3>"
-                    "<p>Em 2025+ o padrão é <strong>Ed25519</strong>:</p>"
-                    "<pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre>"
-                    "<ul>"
-                    "<li><code>-t ed25519</code>: curva elíptica moderna; chave pública de "
-                    "~68 bytes.</li>"
-                    "<li><code>-a 100</code>: 100 rounds de KDF para a passphrase (mais lento "
-                    "para força bruta).</li>"
-                    "<li><code>-C</code>: comentário (apenas marcador, usado para identificar "
-                    "a chave em <code>authorized_keys</code>).</li>"
-                    "</ul>"
-                    "<p>Sempre proteja com passphrase. Sem ela, qualquer um que tenha acesso "
-                    "ao seu disco tem acesso a todos os seus servidores.</p>"
-                    "<p>RSA-2048 está sendo aposentado; se precisar de RSA por compatibilidade, "
-                    "use ≥ 3072 bits. ECDSA tem ressalvas (NIST curves), prefira Ed25519.</p>"
+Host app-*
+  ProxyJump bastion
+  User deploy
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
 
-                    "<h3>3. ssh-agent: digitar passphrase uma vez por sessão</h3>"
-                    "<pre><code>eval $(ssh-agent -s)\n"
-                    "ssh-add -t 4h ~/.ssh/id_ed25519     # libera por 4 horas\n"
-                    "ssh-add -l                           # lista chaves carregadas\n"
-                    "ssh-add -D                           # remove todas (logout)</code></pre>"
-                    "<p>O agent guarda a chave decifrada em memória e fala com o cliente SSH "
-                    "via socket Unix (<code>$SSH_AUTH_SOCK</code>). Em desktops modernos "
-                    "(macOS, GNOME), há agents nativos integrados.</p>"
-                    "<p><strong>Cuidado com agent forwarding</strong> "
-                    "(<code>ssh -A host</code>): o servidor de destino pode usar suas chaves "
-                    "para se conectar a outros lugares enquanto a sessão estiver aberta. Se "
-                    "ele estiver comprometido, vira pivô. Use <code>ProxyJump</code> em vez de "
-                    "<code>-A</code> sempre que possível:</p>"
-                    "<pre><code>ssh -J bastion.example.com app-01.internal</code></pre>"
+Host github.com
+  IdentityFile ~/.ssh/id_ed25519_github
+  IdentitiesOnly yes
+  AddKeysToAgent yes</code></pre><p><code>IdentitiesOnly yes</code> é obrigatório se você tem várias chaves: caso contrário, o cliente tenta todas e dispara <code>MaxAuthTries</code> antes de chegar na correta.</p><h3>5. Endurecendo o servidor: sshd_config</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Desabilitar senha e root login interativo.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Restringir usuários/grupos e algoritmos fracos.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Validar com sshd -t e testar em segunda sessão.</p></div>
+  </div>
+  <figcaption>Ordem segura para endurecer o sshd sem se trancar fora.</figcaption>
+</figure>
+<p>Em <code>/etc/ssh/sshd_config</code> (ou drop em <code>/etc/ssh/sshd_config.d/</code>):</p><pre><code># Autenticação
+PasswordAuthentication no
+PermitRootLogin no
+PubkeyAuthentication yes
+ChallengeResponseAuthentication no
+UsePAM yes              # mantém integração com pam_faillock
+AuthenticationMethods publickey
 
-                    "<h3>4. ~/.ssh/config, configuração que economiza horas</h3>"
-                    "<pre><code># ~/.ssh/config\n"
-                    "Host bastion\n"
-                    "  HostName bastion.example.com\n"
-                    "  User deploy\n"
-                    "  IdentityFile ~/.ssh/id_ed25519\n"
-                    "  IdentitiesOnly yes\n"
-                    "  ServerAliveInterval 60\n"
-                    "\n"
-                    "Host app-*\n"
-                    "  ProxyJump bastion\n"
-                    "  User deploy\n"
-                    "  IdentityFile ~/.ssh/id_ed25519\n"
-                    "  IdentitiesOnly yes\n"
-                    "\n"
-                    "Host github.com\n"
-                    "  IdentityFile ~/.ssh/id_ed25519_github\n"
-                    "  IdentitiesOnly yes\n"
-                    "  AddKeysToAgent yes</code></pre>"
-                    "<p><code>IdentitiesOnly yes</code> é obrigatório se você tem várias "
-                    "chaves: caso contrário, o cliente tenta todas e dispara "
-                    "<code>MaxAuthTries</code> antes de chegar na correta.</p>"
+# Limites
+MaxAuthTries 3
+MaxSessions 4
+LoginGraceTime 20
+ClientAliveInterval 300
+ClientAliveCountMax 2
 
-                    "<h3>5. Endurecendo o servidor: sshd_config</h3>"
-                    "<p>Em <code>/etc/ssh/sshd_config</code> (ou drop em "
-                    "<code>/etc/ssh/sshd_config.d/</code>):</p>"
-                    "<pre><code># Autenticação\n"
-                    "PasswordAuthentication no\n"
-                    "PermitRootLogin no\n"
-                    "PubkeyAuthentication yes\n"
-                    "ChallengeResponseAuthentication no\n"
-                    "UsePAM yes              # mantém integração com pam_faillock\n"
-                    "AuthenticationMethods publickey\n"
-                    "\n"
-                    "# Limites\n"
-                    "MaxAuthTries 3\n"
-                    "MaxSessions 4\n"
-                    "LoginGraceTime 20\n"
-                    "ClientAliveInterval 300\n"
-                    "ClientAliveCountMax 2\n"
-                    "\n"
-                    "# Lista branca de quem pode logar\n"
-                    "AllowUsers deploy ops\n"
-                    "AllowGroups ssh-users\n"
-                    "\n"
-                    "# Cripto moderna (Mozilla 'modern')\n"
-                    "KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org\n"
-                    "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com\n"
-                    "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com\n"
-                    "\n"
-                    "# Forwarding restritivo\n"
-                    "AllowAgentForwarding no\n"
-                    "AllowTcpForwarding no\n"
-                    "X11Forwarding no\n"
-                    "PermitTunnel no\n"
-                    "\n"
-                    "# Banner para deixar claro o que vai acontecer (legal em muitos países)\n"
-                    "Banner /etc/issue.net</code></pre>"
-                    "<p>Sempre teste antes de aplicar:</p>"
-                    "<pre><code>sudo sshd -t                              # valida sintaxe\n"
-                    "sudo systemctl reload sshd                 # recarrega sem dropar conexões\n"
-                    "# em outra janela já aberta, tente novo login antes de fechar a primeira</code></pre>"
+# Lista branca de quem pode logar
+AllowUsers deploy ops
+AllowGroups ssh-users
 
-                    "<h3>6. Pegadinhas de permissão</h3>"
-                    "<p>O OpenSSH é exigente:</p>"
-                    "<pre><code>chmod 700 ~/.ssh\n"
-                    "chmod 600 ~/.ssh/authorized_keys\n"
-                    "chmod 600 ~/.ssh/id_ed25519\n"
-                    "chmod 644 ~/.ssh/id_ed25519.pub\n"
-                    "chown -R $USER:$USER ~/.ssh</code></pre>"
-                    "<p>Se algo está mais aberto que isso, o sshd <em>silenciosamente</em> "
-                    "ignora a chave, você só descobre olhando "
-                    "<code>journalctl -u sshd</code>. É a fonte de bug mais frustrante de SSH.</p>"
+# Cripto moderna (Mozilla 'modern')
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
 
-                    "<h3>7. SSH com certificados (CA SSH), escala de verdade</h3>"
-                    "<p>Em frota grande, distribuir <code>authorized_keys</code> manualmente "
-                    "vira pesadelo: nova chave de funcionário precisa entrar em N hosts; "
-                    "saída precisa remover de N hosts; rotação é prática raríssima. Solução: "
-                    "<strong>certificados SSH</strong>.</p>"
-                    "<p>Como funciona:</p>"
-                    "<ol>"
-                    "<li>Você tem uma <strong>CA</strong> (par de chaves dedicadas) com chave "
-                    "privada bem guardada (Vault, HSM).</li>"
-                    "<li>O servidor é configurado com "
-                    "<code>TrustedUserCAKeys /etc/ssh/ca.pub</code>, confia em qualquer "
-                    "chave assinada pela CA.</li>"
-                    "<li>Funcionário pede um certificado para a CA (autenticando via SSO/MFA); "
-                    "recebe um certificado com TTL curto (1h-8h) e principal "
-                    "<code>deploy</code> ou <code>ops</code>.</li>"
-                    "<li>SSH apresenta certificado, servidor valida assinatura da CA e "
-                    "extrai principal.</li>"
-                    "</ol>"
-                    "<p>Vantagens: revogação central instantânea (CRL), zero gestão de "
-                    "<code>authorized_keys</code> no servidor, log forensicamente útil "
-                    "(<code>certificate ID</code> do funcionário), TTL curto (chave vazada "
-                    "expira sozinha).</p>"
-                    "<p>Ferramentas: <strong>HashiCorp Vault</strong> (SSH secrets engine), "
-                    "<strong>Smallstep step-ca</strong>, <strong>Teleport</strong>, "
-                    "<strong>BastionZero</strong>.</p>"
+# Forwarding restritivo
+AllowAgentForwarding no
+AllowTcpForwarding no
+X11Forwarding no
+PermitTunnel no
 
-                    "<h3>8. SSH e CI/CD</h3>"
-                    "<p>Anti-pattern clássico: chave SSH longa armazenada em segredo do "
-                    "GitHub Actions/GitLab e usada para <code>scp</code> ao servidor. Chave "
-                    "vaza, atacante tem acesso permanente. Padrões melhores:</p>"
-                    "<ul>"
-                    "<li><strong>OIDC + CA SSH</strong>: o pipeline troca um token JWT (com "
-                    "claim do repo, branch e SHA) por um certificado SSH efêmero. Vault e "
-                    "step-ca suportam.</li>"
-                    "<li><strong>Self-hosted runner dentro da VPC</strong>: pipeline fala com "
-                    "host privado, sem expor SSH na internet.</li>"
-                    "<li><strong>Pull-based deploy</strong>: ArgoCD/Flux puxa do Git em vez "
-                    "de o pipeline empurrar.</li>"
-                    "</ul>"
-
-                    "<h3>9. Caso real: o ataque GitHub.com de 2023 (RSA host key)</h3>"
-                    "<p>Em março/2023, GitHub anunciou ter exposto sua chave RSA privada de "
-                    "host por engano em um repositório público, por horas, qualquer um podia "
-                    "fazer MITM em conexões SSH para <code>github.com</code> via RSA. O fix "
-                    "foi rotacionar a host key e pedir para milhões de usuários atualizarem "
-                    "<code>known_hosts</code>. Lições: (a) host key importa muito; "
-                    "(b) tenha plano de rotação; (c) Ed25519 estava intacto, diversidade de "
-                    "algoritmos ajudou.</p>"
-
-                    "<h3>10. Anti-patterns recorrentes</h3>"
-                    "<ul>"
-                    "<li>Compartilhar chaves entre humanos ('chave do time').</li>"
-                    "<li>Não usar passphrase 'porque é incômodo', agente resolve.</li>"
-                    "<li>Aceitar host key cegamente em scripts "
-                    "(<code>StrictHostKeyChecking=no</code>) sem registrar via "
-                    "<code>ssh-keyscan</code> + verificação out-of-band.</li>"
-                    "<li>Habilitar <code>PermitRootLogin yes</code> 'temporariamente' e "
-                    "esquecer.</li>"
-                    "<li>Deixar <code>AllowAgentForwarding yes</code> default em servidor "
-                    "exposto.</li>"
-                    "<li>Não rotacionar nunca, chave de 2017 ainda em "
-                    "<code>authorized_keys</code> de 2025.</li>"
-                    "</ul>"
+# Banner para deixar claro o que vai acontecer (legal em muitos países)
+Banner /etc/issue.net</code></pre><p>Sempre teste antes de aplicar:</p><pre><code>sudo sshd -t                              # valida sintaxe
+sudo systemctl reload sshd                 # recarrega sem dropar conexões
+# em outra janela já aberta, tente novo login antes de fechar a primeira</code></pre><h3>6. Pegadinhas de permissão</h3><p>O OpenSSH é exigente:</p><pre><code>chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/id_ed25519
+chmod 644 ~/.ssh/id_ed25519.pub
+chown -R $USER:$USER ~/.ssh</code></pre><p>Se algo está mais aberto que isso, o sshd <em>silenciosamente</em> ignora a chave, você só descobre olhando <code>journalctl -u sshd</code>. É a fonte de bug mais frustrante de SSH.</p><h3>7. SSH com certificados (CA SSH), escala de verdade</h3><p>Em frota grande, distribuir <code>authorized_keys</code> manualmente vira pesadelo: nova chave de funcionário precisa entrar em N hosts; saída precisa remover de N hosts; rotação é prática raríssima. Solução: <strong>certificados SSH</strong>.</p><p>Como funciona:</p><ol><li>Você tem uma <strong>CA</strong> (par de chaves dedicadas) com chave privada bem guardada (Vault, HSM).</li><li>O servidor é configurado com <code>TrustedUserCAKeys /etc/ssh/ca.pub</code>, confia em qualquer chave assinada pela CA.</li><li>Funcionário pede um certificado para a CA (autenticando via SSO/MFA); recebe um certificado com TTL curto (1h-8h) e principal <code>deploy</code> ou <code>ops</code>.</li><li>SSH apresenta certificado, servidor valida assinatura da CA e extrai principal.</li></ol><p>Vantagens: revogação central instantânea (CRL), zero gestão de <code>authorized_keys</code> no servidor, log forensicamente útil (<code>certificate ID</code> do funcionário), TTL curto (chave vazada expira sozinha).</p><p>Ferramentas: <strong>HashiCorp Vault</strong> (SSH secrets engine), <strong>Smallstep step-ca</strong>, <strong>Teleport</strong>, <strong>BastionZero</strong>.</p><h3>8. SSH e CI/CD</h3><p>Anti-pattern clássico: chave SSH longa armazenada em segredo do GitHub Actions/GitLab e usada para <code>scp</code> ao servidor. Chave vaza, atacante tem acesso permanente. Padrões melhores:</p><ul><li><strong>OIDC + CA SSH</strong>: o pipeline troca um token JWT (com claim do repo, branch e SHA) por um certificado SSH efêmero. Vault e step-ca suportam.</li><li><strong>Self-hosted runner dentro da VPC</strong>: pipeline fala com host privado, sem expor SSH na internet.</li><li><strong>Pull-based deploy</strong>: ArgoCD/Flux puxa do Git em vez de o pipeline empurrar.</li></ul><h3>9. Caso real: o ataque GitHub.com de 2023 (RSA host key)</h3><p>Em março/2023, GitHub anunciou ter exposto sua chave RSA privada de host por engano em um repositório público, por horas, qualquer um podia fazer MITM em conexões SSH para <code>github.com</code> via RSA. O fix foi rotacionar a host key e pedir para milhões de usuários atualizarem <code>known_hosts</code>. Lições: (a) host key importa muito; (b) tenha plano de rotação; (c) Ed25519 estava intacto, diversidade de algoritmos ajudou.</p><h3>10. Anti-patterns recorrentes</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Evite</strong><p>Chave sem passphrase, PermitRootLogin yes, agent forwarding aberto, chave de 2017 ainda ativa.</p></div>
+    <div class="lesson-viz-card"><strong>Prefira</strong><p>Ed25519 + agent, CA SSH efêmero, AllowUsers, rotação e known_hosts revisado.</p></div>
+  </div>
+  <figcaption>Hábitos de SSH que viram incidente versus endurecimento básico.</figcaption>
+</figure>
+<ul><li>Compartilhar chaves entre humanos ('chave do time').</li><li>Não usar passphrase 'porque é incômodo', agente resolve.</li><li>Aceitar host key cegamente em scripts (<code>StrictHostKeyChecking=no</code>) sem registrar via <code>ssh-keyscan</code> + verificação out-of-band.</li><li>Habilitar <code>PermitRootLogin yes</code> 'temporariamente' e esquecer.</li><li>Deixar <code>AllowAgentForwarding yes</code> default em servidor exposto.</li><li>Não rotacionar nunca, chave de 2017 ainda em <code>authorized_keys</code> de 2025.</li></ul>"""
                 ),
                 "body_en": (
-                    "<h3>1. Mental model of asymmetric cryptography</h3>"
-                    "<p>Each side has a pair of mathematically linked keys:</p>"
-                    """
+                """<h3>1. Mental model of asymmetric cryptography</h3><p>Each side has a pair of mathematically linked keys:</p>
 <div class="mermaid">
-sequenceDiagram
-    participant Cliente
-    participant Servidor
-    Cliente->>Servidor: Pedido de conexão
-    Servidor-->>Cliente: Desafio com nonce aleatório
-    Cliente->>Cliente: Assina o nonce com a chave privada
-    Cliente->>Servidor: Envia a assinatura
-    Servidor->>Servidor: Verifica com a chave pública em authorized_keys
-    Servidor-->>Cliente: Acesso concedido, senha nunca trafegou
+flowchart LR
+    Priv["Private key"] -. "never leaves" .-> Client["Client"]
+    Pub["Public key"] --> Server["authorized_keys"]
+    Client -->|"signs challenge"| Server
+    Server -->|"verifies signature"| OK["Access"]
 </div>
-"""
-                    "<ul>"
-                    "<li>The <strong>private key</strong> never leaves its owner. It's secret.</li>"
-                    "<li>The <strong>public key</strong> can be freely distributed.</li>"
-                    "</ul>"
-                    "<p>What one encrypts, the other decrypts (and vice versa). In SSH:</p>"
-                    "<ol>"
-                    "<li>The client proves possession of the private key by signing a "
-                    "challenge sent by the server.</li>"
-                    "<li>The server verifies the signature with the public key (which is in "
-                    "the user's <code>~/.ssh/authorized_keys</code>).</li>"
-                    "<li>After authentication, both sides derive <strong>symmetric</strong> "
-                    "keys (AES, ChaCha20) to encrypt the session, asymmetric crypto is only "
-                    "used to establish the session, not for the traffic itself (it would be "
-                    "too slow).</li>"
-                    "</ol>"
-                    "<p>The server also has its own pair: the server's public key (host key) "
-                    "goes into your <code>~/.ssh/known_hosts</code> on first connection. If "
-                    "next time it's different, the client <em>refuses</em> with "
-                    "<code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, it could be "
-                    "a MITM or a legitimate server rebuild.</p>"
+<ul><li>The <strong>private key</strong> never leaves its owner. It's secret.</li><li>The <strong>public key</strong> can be freely distributed.</li></ul><p>What one encrypts, the other decrypts (and vice versa). In SSH:</p><ol><li>The client proves possession of the private key by signing a challenge sent by the server.</li><li>The server verifies the signature with the public key (which is in the user's <code>~/.ssh/authorized_keys</code>).</li><li>After authentication, both sides derive <strong>symmetric</strong> keys (AES, ChaCha20) to encrypt the session, asymmetric crypto is only used to establish the session, not for the traffic itself (it would be too slow).</li></ol><p>The server also has its own pair: the server's public key (host key) goes into your <code>~/.ssh/known_hosts</code> on first connection. If next time it's different, the client <em>refuses</em> with <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, it could be a MITM or a legitimate server rebuild.</p><h3>2. Generating modern keys, Ed25519</h3><p>In 2025+ the standard is <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: modern elliptic curve; public key of ~68 bytes.</li><li><code>-a 100</code>: 100 rounds of KDF for the passphrase (slower against brute force).</li><li><code>-C</code>: comment (just a marker, used to identify the key in <code>authorized_keys</code>).</li></ul><p>Always protect it with a passphrase. Without one, anyone with access to your disk has access to all your servers.</p><p>RSA-2048 is being retired; if you need RSA for compatibility, use ≥ 3072 bits. ECDSA has caveats (NIST curves), prefer Ed25519.</p><h3>3. ssh-agent: type the passphrase once per session</h3><pre><code>eval $(ssh-agent -s)
+ssh-add -t 4h ~/.ssh/id_ed25519     # libera por 4 horas
+ssh-add -l                           # lista chaves carregadas
+ssh-add -D                           # remove todas (logout)</code></pre><p>The agent holds the decrypted key in memory and talks to the SSH client over a Unix socket (<code>$SSH_AUTH_SOCK</code>). On modern desktops (macOS, GNOME), there are integrated native agents.</p><p><strong>Be careful with agent forwarding</strong> (<code>ssh -A host</code>): the destination server can use your keys to connect elsewhere while the session is open. If it's compromised, it becomes a pivot. Use <code>ProxyJump</code> instead of <code>-A</code> whenever possible:</p><pre><code>ssh -J bastion.example.com app-01.internal</code></pre><h3>4. ~/.ssh/config, configuration that saves hours</h3><pre><code># ~/.ssh/config
+Host bastion
+  HostName bastion.example.com
+  User deploy
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
+  ServerAliveInterval 60
 
-                    "<h3>2. Generating modern keys, Ed25519</h3>"
-                    "<p>In 2025+ the standard is <strong>Ed25519</strong>:</p>"
-                    "<pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre>"
-                    "<ul>"
-                    "<li><code>-t ed25519</code>: modern elliptic curve; public key of "
-                    "~68 bytes.</li>"
-                    "<li><code>-a 100</code>: 100 rounds of KDF for the passphrase (slower "
-                    "against brute force).</li>"
-                    "<li><code>-C</code>: comment (just a marker, used to identify the key in "
-                    "<code>authorized_keys</code>).</li>"
-                    "</ul>"
-                    "<p>Always protect it with a passphrase. Without one, anyone with access "
-                    "to your disk has access to all your servers.</p>"
-                    "<p>RSA-2048 is being retired; if you need RSA for compatibility, use "
-                    "≥ 3072 bits. ECDSA has caveats (NIST curves), prefer Ed25519.</p>"
+Host app-*
+  ProxyJump bastion
+  User deploy
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
 
-                    "<h3>3. ssh-agent: type the passphrase once per session</h3>"
-                    "<pre><code>eval $(ssh-agent -s)\n"
-                    "ssh-add -t 4h ~/.ssh/id_ed25519     # libera por 4 horas\n"
-                    "ssh-add -l                           # lista chaves carregadas\n"
-                    "ssh-add -D                           # remove todas (logout)</code></pre>"
-                    "<p>The agent holds the decrypted key in memory and talks to the SSH "
-                    "client over a Unix socket (<code>$SSH_AUTH_SOCK</code>). On modern "
-                    "desktops (macOS, GNOME), there are integrated native agents.</p>"
-                    "<p><strong>Be careful with agent forwarding</strong> "
-                    "(<code>ssh -A host</code>): the destination server can use your keys to "
-                    "connect elsewhere while the session is open. If it's compromised, it "
-                    "becomes a pivot. Use <code>ProxyJump</code> instead of <code>-A</code> "
-                    "whenever possible:</p>"
-                    "<pre><code>ssh -J bastion.example.com app-01.internal</code></pre>"
+Host github.com
+  IdentityFile ~/.ssh/id_ed25519_github
+  IdentitiesOnly yes
+  AddKeysToAgent yes</code></pre><p><code>IdentitiesOnly yes</code> is mandatory if you have several keys: otherwise, the client tries all of them and triggers <code>MaxAuthTries</code> before reaching the correct one.</p><h3>5. Hardening the server: sshd_config</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Disable password and interactive root login.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Restrict users/groups and weak algorithms.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Validate with sshd -t and test in a second session.</p></div>
+  </div>
+  <figcaption>Safe order to harden sshd without locking yourself out.</figcaption>
+</figure>
+<p>In <code>/etc/ssh/sshd_config</code> (or a drop-in under <code>/etc/ssh/sshd_config.d/</code>):</p><pre><code># Autenticação
+PasswordAuthentication no
+PermitRootLogin no
+PubkeyAuthentication yes
+ChallengeResponseAuthentication no
+UsePAM yes              # mantém integração com pam_faillock
+AuthenticationMethods publickey
 
-                    "<h3>4. ~/.ssh/config, configuration that saves hours</h3>"
-                    "<pre><code># ~/.ssh/config\n"
-                    "Host bastion\n"
-                    "  HostName bastion.example.com\n"
-                    "  User deploy\n"
-                    "  IdentityFile ~/.ssh/id_ed25519\n"
-                    "  IdentitiesOnly yes\n"
-                    "  ServerAliveInterval 60\n"
-                    "\n"
-                    "Host app-*\n"
-                    "  ProxyJump bastion\n"
-                    "  User deploy\n"
-                    "  IdentityFile ~/.ssh/id_ed25519\n"
-                    "  IdentitiesOnly yes\n"
-                    "\n"
-                    "Host github.com\n"
-                    "  IdentityFile ~/.ssh/id_ed25519_github\n"
-                    "  IdentitiesOnly yes\n"
-                    "  AddKeysToAgent yes</code></pre>"
-                    "<p><code>IdentitiesOnly yes</code> is mandatory if you have several keys: "
-                    "otherwise, the client tries all of them and triggers "
-                    "<code>MaxAuthTries</code> before reaching the correct one.</p>"
+# Limites
+MaxAuthTries 3
+MaxSessions 4
+LoginGraceTime 20
+ClientAliveInterval 300
+ClientAliveCountMax 2
 
-                    "<h3>5. Hardening the server: sshd_config</h3>"
-                    "<p>In <code>/etc/ssh/sshd_config</code> (or a drop-in under "
-                    "<code>/etc/ssh/sshd_config.d/</code>):</p>"
-                    "<pre><code># Autenticação\n"
-                    "PasswordAuthentication no\n"
-                    "PermitRootLogin no\n"
-                    "PubkeyAuthentication yes\n"
-                    "ChallengeResponseAuthentication no\n"
-                    "UsePAM yes              # mantém integração com pam_faillock\n"
-                    "AuthenticationMethods publickey\n"
-                    "\n"
-                    "# Limites\n"
-                    "MaxAuthTries 3\n"
-                    "MaxSessions 4\n"
-                    "LoginGraceTime 20\n"
-                    "ClientAliveInterval 300\n"
-                    "ClientAliveCountMax 2\n"
-                    "\n"
-                    "# Lista branca de quem pode logar\n"
-                    "AllowUsers deploy ops\n"
-                    "AllowGroups ssh-users\n"
-                    "\n"
-                    "# Cripto moderna (Mozilla 'modern')\n"
-                    "KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org\n"
-                    "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com\n"
-                    "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com\n"
-                    "\n"
-                    "# Forwarding restritivo\n"
-                    "AllowAgentForwarding no\n"
-                    "AllowTcpForwarding no\n"
-                    "X11Forwarding no\n"
-                    "PermitTunnel no\n"
-                    "\n"
-                    "# Banner para deixar claro o que vai acontecer (legal em muitos países)\n"
-                    "Banner /etc/issue.net</code></pre>"
-                    "<p>Always test before applying:</p>"
-                    "<pre><code>sudo sshd -t                              # valida sintaxe\n"
-                    "sudo systemctl reload sshd                 # recarrega sem dropar conexões\n"
-                    "# em outra janela já aberta, tente novo login antes de fechar a primeira</code></pre>"
+# Lista branca de quem pode logar
+AllowUsers deploy ops
+AllowGroups ssh-users
 
-                    "<h3>6. Permission pitfalls</h3>"
-                    "<p>OpenSSH is strict:</p>"
-                    "<pre><code>chmod 700 ~/.ssh\n"
-                    "chmod 600 ~/.ssh/authorized_keys\n"
-                    "chmod 600 ~/.ssh/id_ed25519\n"
-                    "chmod 644 ~/.ssh/id_ed25519.pub\n"
-                    "chown -R $USER:$USER ~/.ssh</code></pre>"
-                    "<p>If anything is more open than that, sshd <em>silently</em> ignores the "
-                    "key, and you only find out by checking "
-                    "<code>journalctl -u sshd</code>. It's the most frustrating source of SSH "
-                    "bugs.</p>"
+# Cripto moderna (Mozilla 'modern')
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
 
-                    "<h3>7. SSH with certificates (SSH CA), real scale</h3>"
-                    "<p>At large fleet scale, distributing <code>authorized_keys</code> "
-                    "manually becomes a nightmare: a new employee's key needs to go into N "
-                    "hosts; departure needs it removed from N hosts; rotation is a very rare "
-                    "practice. Solution: <strong>SSH certificates</strong>.</p>"
-                    "<p>How it works:</p>"
-                    "<ol>"
-                    "<li>You have a <strong>CA</strong> (a dedicated key pair) with the private "
-                    "key well guarded (Vault, HSM).</li>"
-                    "<li>The server is configured with "
-                    "<code>TrustedUserCAKeys /etc/ssh/ca.pub</code>, trusting any key signed "
-                    "by the CA.</li>"
-                    "<li>The employee requests a certificate from the CA (authenticating via "
-                    "SSO/MFA); receives a certificate with a short TTL (1h-8h) and a principal "
-                    "of <code>deploy</code> or <code>ops</code>.</li>"
-                    "<li>SSH presents the certificate, the server validates the CA's signature "
-                    "and extracts the principal.</li>"
-                    "</ol>"
-                    "<p>Advantages: instant central revocation (CRL), zero "
-                    "<code>authorized_keys</code> management on the server, forensically "
-                    "useful logging (the employee's <code>certificate ID</code>), short TTL "
-                    "(a leaked key expires on its own).</p>"
-                    "<p>Tools: <strong>HashiCorp Vault</strong> (SSH secrets engine), "
-                    "<strong>Smallstep step-ca</strong>, <strong>Teleport</strong>, "
-                    "<strong>BastionZero</strong>.</p>"
+# Forwarding restritivo
+AllowAgentForwarding no
+AllowTcpForwarding no
+X11Forwarding no
+PermitTunnel no
 
-                    "<h3>8. SSH and CI/CD</h3>"
-                    "<p>Classic anti-pattern: a long-lived SSH key stored as a GitHub "
-                    "Actions/GitLab secret and used to <code>scp</code> to the server. The "
-                    "key leaks, the attacker gets permanent access. Better patterns:</p>"
-                    "<ul>"
-                    "<li><strong>OIDC + SSH CA</strong>: the pipeline exchanges a JWT token "
-                    "(with claims for repo, branch, and SHA) for an ephemeral SSH certificate. "
-                    "Vault and step-ca support this.</li>"
-                    "<li><strong>Self-hosted runner inside the VPC</strong>: the pipeline "
-                    "talks to a private host, without exposing SSH to the internet.</li>"
-                    "<li><strong>Pull-based deploy</strong>: ArgoCD/Flux pulls from Git "
-                    "instead of the pipeline pushing.</li>"
-                    "</ul>"
-
-                    "<h3>9. Real case: the GitHub.com 2023 incident (RSA host key)</h3>"
-                    "<p>In March 2023, GitHub announced it had accidentally exposed its "
-                    "private RSA host key in a public repository for hours, anyone could "
-                    "MITM SSH connections to <code>github.com</code> via RSA. The fix was to "
-                    "rotate the host key and ask millions of users to update "
-                    "<code>known_hosts</code>. Lessons: (a) the host key matters a great deal; "
-                    "(b) have a rotation plan; (c) Ed25519 remained intact, algorithm "
-                    "diversity helped.</p>"
-
-                    "<h3>10. Recurring anti-patterns</h3>"
-                    "<ul>"
-                    "<li>Sharing keys between humans ('the team's key').</li>"
-                    "<li>Not using a passphrase 'because it's annoying', the agent solves it.</li>"
-                    "<li>Blindly accepting a host key in scripts "
-                    "(<code>StrictHostKeyChecking=no</code>) without registering it via "
-                    "<code>ssh-keyscan</code> + out-of-band verification.</li>"
-                    "<li>Enabling <code>PermitRootLogin yes</code> 'temporarily' and "
-                    "forgetting about it.</li>"
-                    "<li>Leaving <code>AllowAgentForwarding yes</code> as the default on an "
-                    "exposed server.</li>"
-                    "<li>Never rotating, a 2017 key still in the 2025 "
-                    "<code>authorized_keys</code>.</li>"
-                    "</ul>"
+# Banner para deixar claro o que vai acontecer (legal em muitos países)
+Banner /etc/issue.net</code></pre><p>Always test before applying:</p><pre><code>sudo sshd -t                              # valida sintaxe
+sudo systemctl reload sshd                 # recarrega sem dropar conexões
+# em outra janela já aberta, tente novo login antes de fechar a primeira</code></pre><h3>6. Permission pitfalls</h3><p>OpenSSH is strict:</p><pre><code>chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/id_ed25519
+chmod 644 ~/.ssh/id_ed25519.pub
+chown -R $USER:$USER ~/.ssh</code></pre><p>If anything is more open than that, sshd <em>silently</em> ignores the key, and you only find out by checking <code>journalctl -u sshd</code>. It's the most frustrating source of SSH bugs.</p><h3>7. SSH with certificates (SSH CA), real scale</h3><p>At large fleet scale, distributing <code>authorized_keys</code> manually becomes a nightmare: a new employee's key needs to go into N hosts; departure needs it removed from N hosts; rotation is a very rare practice. Solution: <strong>SSH certificates</strong>.</p><p>How it works:</p><ol><li>You have a <strong>CA</strong> (a dedicated key pair) with the private key well guarded (Vault, HSM).</li><li>The server is configured with <code>TrustedUserCAKeys /etc/ssh/ca.pub</code>, trusting any key signed by the CA.</li><li>The employee requests a certificate from the CA (authenticating via SSO/MFA); receives a certificate with a short TTL (1h-8h) and a principal of <code>deploy</code> or <code>ops</code>.</li><li>SSH presents the certificate, the server validates the CA's signature and extracts the principal.</li></ol><p>Advantages: instant central revocation (CRL), zero <code>authorized_keys</code> management on the server, forensically useful logging (the employee's <code>certificate ID</code>), short TTL (a leaked key expires on its own).</p><p>Tools: <strong>HashiCorp Vault</strong> (SSH secrets engine), <strong>Smallstep step-ca</strong>, <strong>Teleport</strong>, <strong>BastionZero</strong>.</p><h3>8. SSH and CI/CD</h3><p>Classic anti-pattern: a long-lived SSH key stored as a GitHub Actions/GitLab secret and used to <code>scp</code> to the server. The key leaks, the attacker gets permanent access. Better patterns:</p><ul><li><strong>OIDC + SSH CA</strong>: the pipeline exchanges a JWT token (with claims for repo, branch, and SHA) for an ephemeral SSH certificate. Vault and step-ca support this.</li><li><strong>Self-hosted runner inside the VPC</strong>: the pipeline talks to a private host, without exposing SSH to the internet.</li><li><strong>Pull-based deploy</strong>: ArgoCD/Flux pulls from Git instead of the pipeline pushing.</li></ul><h3>9. Real case: the GitHub.com 2023 incident (RSA host key)</h3><p>In March 2023, GitHub announced it had accidentally exposed its private RSA host key in a public repository for hours, anyone could MITM SSH connections to <code>github.com</code> via RSA. The fix was to rotate the host key and ask millions of users to update <code>known_hosts</code>. Lessons: (a) the host key matters a great deal; (b) have a rotation plan; (c) Ed25519 remained intact, algorithm diversity helped.</p><h3>10. Recurring anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Avoid</strong><p>Key without passphrase, PermitRootLogin yes, open agent forwarding, a 2017 key still active.</p></div>
+    <div class="lesson-viz-card"><strong>Prefer</strong><p>Ed25519 + agent, ephemeral SSH CA, AllowUsers, rotation and reviewed known_hosts.</p></div>
+  </div>
+  <figcaption>SSH habits that become incidents versus basic hardening.</figcaption>
+</figure>
+<ul><li>Sharing keys between humans ('the team's key').</li><li>Not using a passphrase 'because it's annoying', the agent solves it.</li><li>Blindly accepting a host key in scripts (<code>StrictHostKeyChecking=no</code>) without registering it via <code>ssh-keyscan</code> + out-of-band verification.</li><li>Enabling <code>PermitRootLogin yes</code> 'temporarily' and forgetting about it.</li><li>Leaving <code>AllowAgentForwarding yes</code> as the default on an exposed server.</li><li>Never rotating, a 2017 key still in the 2025 <code>authorized_keys</code>.</li></ul>"""
                 ),
                 "practical": (
                     "Em duas VMs:<br>"
@@ -2640,6 +2230,13 @@ inteiro sem ninguém conseguindo usar sudo até alguém corrigir via
 acesso físico ou console de emergência.</p>
 
 <h3>5. PoLP em containers Docker</h3>
+<div class="mermaid">
+flowchart TD
+    Bad["USER root + --privileged"] --> Risk["Blast radius total"]
+    Good["USER app + drop caps"] --> Ok["Só o necessário"]
+    Good --> Cap["CAP_NET_BIND_SERVICE"]
+</div>
+
 <pre><code># Dockerfile
 FROM python:3.12-slim
 RUN useradd --uid 10001 --system --no-create-home app
@@ -2756,6 +2353,14 @@ mínima do que de fato aconteceu — o incidente inteiro é, no fundo, um
 caso de PoLP violado desde o desenho original da permissão.</p>
 
 <h3>10. Anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Anti-pattern</strong><p>AdminAccess em tudo, um role gigante compartilhado, privilege creep sem revisão.</p></div>
+    <div class="lesson-viz-card"><strong>PoLP</strong><p>Role por serviço, deny-by-default, revisão periódica de IAM e sudoers.</p></div>
+  </div>
+  <figcaption>Privilégio amplo versus escopo mínimo por identidade.</figcaption>
+</figure>
+
 <ul>
 <li><strong><code>chmod 777</code> "porque tava dando erro"</strong>:
 resolve o sintoma imediato abrindo uma porta permanente que qualquer
@@ -2799,13 +2404,13 @@ anyway. That is exactly what separates an embarrassing incident from a
 full-blown reputation crisis.</p>
 <div class="mermaid">
 flowchart TD
-    subgraph SemPoLP ["Sem PoLP"]
-        U1["Credencial única"] --> A1["Lê e escreve no banco inteiro"]
-        U1 --> A2["Administra toda a infraestrutura"]
-        U1 --> A3["Lê todos os segredos do cofre"]
+    subgraph NoPoLP ["Without PoLP"]
+        U1["Single credential"] --> A1["Reads and writes whole DB"]
+        U1 --> A2["Administers all infrastructure"]
+        U1 --> A3["Reads every vault secret"]
     end
-    subgraph ComPoLP ["Com PoLP"]
-        U2["Credencial do serviço de billing"] --> B1["Só lê a tabela de faturas"]
+    subgraph WithPoLP ["With PoLP"]
+        U2["Billing service credential"] --> B1["Reads invoices table only"]
     end
 </div>
 
@@ -2888,6 +2493,13 @@ system with nobody able to use sudo until someone fixes it via physical
 access or an emergency console.</p>
 
 <h3>5. PoLP in Docker containers</h3>
+<div class="mermaid">
+flowchart TD
+    Bad["USER root + --privileged"] --> Risk["Full blast radius"]
+    Good["USER app + drop caps"] --> Ok["Only what is needed"]
+    Good --> Cap["CAP_NET_BIND_SERVICE"]
+</div>
+
 <pre><code># Dockerfile
 FROM python:3.12-slim
 RUN useradd --uid 10001 --system --no-create-home app
@@ -3003,6 +2615,14 @@ entire incident is, at bottom, a PoLP violation from the original
 permission design.</p>
 
 <h3>10. Anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Anti-pattern</strong><p>AdminAccess everywhere, one huge shared role, privilege creep without review.</p></div>
+    <div class="lesson-viz-card"><strong>PoLP</strong><p>Role per service, deny-by-default, periodic IAM and sudoers review.</p></div>
+  </div>
+  <figcaption>Broad privilege versus minimum scope per identity.</figcaption>
+</figure>
+
 <ul>
 <li><strong><code>chmod 777</code> "because it was throwing an error"</strong>:
 fixes the immediate symptom while opening a permanent door that any
@@ -3269,12 +2889,15 @@ motor por baixo. Trocar de <code>iptables</code> para
 <code>nftables</code> muda a sintaxe, não o comportamento fundamental
 do kernel.</p>
 <div class="mermaid">
-flowchart TD
-    A["Pacote chega na interface"] --> B{"Bate com alguma regra?"}
-    B -- "Sim, ACCEPT" --> C["Segue para o destino"]
-    B -- "Sim, DROP" --> D["Descartado em silêncio"]
-    B -- "Sim, REJECT" --> E["Recusado, ICMP de erro enviado"]
-    B -- "Não bate com nenhuma" --> F["Política padrão do firewall"]
+flowchart LR
+    In["Pacote entra"] --> PR["PREROUTING"]
+    PR --> InDec{"Para mim?"}
+    InDec -- "Sim" --> IN["INPUT"]
+    InDec -- "Não" --> FW["FORWARD"]
+    Local["Processo local"] --> OUT["OUTPUT"]
+    IN --> App["Socket local"]
+    FW --> Post["POSTROUTING"]
+    OUT --> Post
 </div>
 
 
@@ -3350,6 +2973,15 @@ table inet filter {
 enable nftables</code>.</p>
 
 <h3>5. DROP vs REJECT vs ACCEPT</h3>
+<div class="mermaid">
+flowchart TD
+    A["Pacote chega na interface"] --> B{"Bate com alguma regra?"}
+    B -- "Sim, ACCEPT" --> C["Segue para o destino"]
+    B -- "Sim, DROP" --> D["Descartado em silêncio"]
+    B -- "Sim, REJECT" --> E["Recusado, ICMP de erro enviado"]
+    B -- "Não bate com nenhuma" --> F["Política padrão do firewall"]
+</div>
+
 <table>
 <tr><td><code>ACCEPT</code></td><td>passa</td></tr>
 <tr><td><code>DROP</code></td><td>descarta silenciosamente. Atacante vê
@@ -3438,6 +3070,15 @@ lembrar manualmente de duplicar cada regra nas duas stacks
 separadas.</p>
 
 <h3>10. Checklist de hardening</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Default deny na entrada; liberar só o necessário.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Não se trancar: regra SSH antes de ativar, sessão de teste aberta.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>IPv4 e IPv6 juntos; persistir regras após reboot.</p></div>
+  </div>
+  <figcaption>Checklist mínimo antes de considerar o firewall 'pronto'.</figcaption>
+</figure>
+
 <ol>
 <li>Default-deny no inbound; default-allow no outbound, com revisão
 periódica mesmo assim.</li>
@@ -3477,12 +3118,15 @@ those existing hooks; they do not swap the engine underneath.
 Switching from <code>iptables</code> to <code>nftables</code> changes
 the syntax, not the kernel's fundamental behavior.</p>
 <div class="mermaid">
-flowchart TD
-    A["Pacote chega na interface"] --> B{"Bate com alguma regra?"}
-    B -- "Sim, ACCEPT" --> C["Segue para o destino"]
-    B -- "Sim, DROP" --> D["Descartado em silêncio"]
-    B -- "Sim, REJECT" --> E["Recusado, ICMP de erro enviado"]
-    B -- "Não bate com nenhuma" --> F["Política padrão do firewall"]
+flowchart LR
+    In["Packet in"] --> PR["PREROUTING"]
+    PR --> InDec{"For me?"}
+    InDec -- "Yes" --> IN["INPUT"]
+    InDec -- "No" --> FW["FORWARD"]
+    Local["Local process"] --> OUT["OUTPUT"]
+    IN --> App["Local socket"]
+    FW --> Post["POSTROUTING"]
+    OUT --> Post
 </div>
 
 
@@ -3556,6 +3200,15 @@ single command: <code>nft -f /etc/nftables.conf &amp;&amp; systemctl
 enable nftables</code>.</p>
 
 <h3>5. DROP vs REJECT vs ACCEPT</h3>
+<div class="mermaid">
+flowchart TD
+    A["Packet hits the interface"] --> B{"Matches a rule?"}
+    B -- "Yes, ACCEPT" --> C["Forwarded to destination"]
+    B -- "Yes, DROP" --> D["Silently discarded"]
+    B -- "Yes, REJECT" --> E["Refused, ICMP error sent"]
+    B -- "No match" --> F["Firewall default policy"]
+</div>
+
 <table>
 <tr><td><code>ACCEPT</code></td><td>lets it through</td></tr>
 <tr><td><code>DROP</code></td><td>discards silently. The attacker sees
@@ -3641,6 +3294,15 @@ structurally eliminates that kind of oversight, instead of depending on
 manually remembering to duplicate every rule on both stacks.</p>
 
 <h3>10. Hardening checklist</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Default deny on ingress; allow only what is needed.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Do not lock yourself out: SSH rule first, keep a test session open.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>IPv4 and IPv6 together; persist rules across reboot.</p></div>
+  </div>
+  <figcaption>Minimum checklist before calling the firewall 'done'.</figcaption>
+</figure>
+
 <ol>
 <li>Default-deny on inbound; default-allow on outbound, with periodic
 review even so.</li>
@@ -3881,9 +3543,9 @@ duplicada. O padrão clássico é o Nginx escutando em 80/443, e fazendo
 daphne — ou, quando disponível, um socket Unix diretamente.</p>
 <div class="mermaid">
 flowchart LR
-    Client["Cliente"] -- "HTTPS, porta 443" --> Nginx["Nginx, reverse proxy"]
-    Nginx -- "HTTP, porta 8000" --> App1["App server 1"]
-    Nginx -- "HTTP, porta 8001" --> App2["App server 2"]
+    Client["Cliente"] -->|"HTTPS 443"| Edge["Nginx: TLS termina aqui"]
+    Edge -->|"HTTP interno"| App["App :8000"]
+    Edge --> Cert["Certificado e headers"]
 </div>
 
 
@@ -4004,6 +3666,13 @@ bloqueio de verdade, já calibrado contra falso positivo do próprio
 tráfego legítimo.</p>
 
 <h3>5. Rate limiting, o ABC contra credential stuffing</h3>
+<div class="mermaid">
+flowchart TD
+    Req["Requisição"] --> Z{"Zona rate limit"}
+    Z -- "Dentro da cota" --> OK["Proxy para app"]
+    Z -- "Estourou" --> Block["429 / delay"]
+</div>
+
 <p>Rotas como <code>/login</code>, <code>/register</code> e
 <code>/forgot-password</code> são alvo óbvio de tentativa automatizada
 de login em massa. No Nginx, isso vira uma zona de rate limit
@@ -4115,6 +3784,14 @@ api.example.com {
 }</code></pre>
 
 <h3>10. Anti-patterns + caso real</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Frágil</strong><p>TLS só na app, sem headers, sem rate limit, confiar em X-Forwarded-For cru.</p></div>
+    <div class="lesson-viz-card"><strong>Resiliente</strong><p>TLS na borda, HSTS/CSP, limit_req, real_ip só de hops confiáveis.</p></div>
+  </div>
+  <figcaption>Borda web mal configurada versus hardening mínimo.</figcaption>
+</figure>
+
 <ul>
 <li><strong><code>autoindex on</code> em produção</strong>: lista o
 conteúdo do diretório inteiro, um vazamento trivial de estrutura interna
@@ -4153,9 +3830,9 @@ duplicated. The classic pattern is Nginx listening on 80/443 and doing
 daphne — or, when available, a Unix socket directly.</p>
 <div class="mermaid">
 flowchart LR
-    Client["Cliente"] -- "HTTPS, porta 443" --> Nginx["Nginx, reverse proxy"]
-    Nginx -- "HTTP, porta 8000" --> App1["App server 1"]
-    Nginx -- "HTTP, porta 8001" --> App2["App server 2"]
+    Client["Client"] -->|"HTTPS 443"| Edge["Nginx: TLS ends here"]
+    Edge -->|"Internal HTTP"| App["App :8000"]
+    Edge --> Cert["Certificate and headers"]
 </div>
 
 
@@ -4275,6 +3952,13 @@ real blocking, already calibrated against false positives from
 legitimate traffic itself.</p>
 
 <h3>5. Rate limiting, the ABC against credential stuffing</h3>
+<div class="mermaid">
+flowchart TD
+    Req["Request"] --> Z{"Rate-limit zone"}
+    Z -- "Within quota" --> OK["Proxy to app"]
+    Z -- "Exceeded" --> Block["429 / delay"]
+</div>
+
 <p>Routes like <code>/login</code>, <code>/register</code>, and
 <code>/forgot-password</code> are obvious targets for automated mass
 login attempts. In Nginx, that becomes a dedicated rate-limit zone:</p>
@@ -4381,6 +4065,14 @@ api.example.com {
 }</code></pre>
 
 <h3>10. Anti-patterns + real case</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Fragile</strong><p>TLS only on the app, no headers, no rate limit, trust raw X-Forwarded-For.</p></div>
+    <div class="lesson-viz-card"><strong>Resilient</strong><p>TLS at the edge, HSTS/CSP, limit_req, real_ip only from trusted hops.</p></div>
+  </div>
+  <figcaption>Weak web edge versus minimum hardening.</figcaption>
+</figure>
+
 <ul>
 <li><strong><code>autoindex on</code> in production</strong>: lists the
 entire directory contents, a trivial leak of internal structure with no
@@ -4633,13 +4325,10 @@ GPG do mantenedor, algo que a criptografia por trás torna
 inviável.</p>
 <div class="mermaid">
 flowchart TD
-    A["apt install pacote-x"] --> B["Consulta o repositório configurado"]
-    B --> C["Resolve a árvore de dependências"]
-    C --> D{"Dependência já instalada em versão compatível?"}
-    D -- "Sim" --> E["Reaproveita a já instalada"]
-    D -- "Não" --> F["Baixa e instala a versão exigida"]
-    E --> G["Instala pacote-x"]
-    F --> G
+    Repo["Espelho APT"] --> Idx["InRelease assinado"]
+    Idx --> Key["Chave GPG do mantenedor"]
+    Key --> Pkg["Pacote .deb"]
+    Pkg --> Apt["apt confia e instala"]
 </div>
 
 
@@ -4737,6 +4426,15 @@ e dependency review direto no PR, já nativo tanto no GitHub quanto no
 GitLab.</p>
 
 <h3>6. SBOM, Software Bill of Materials</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Gerar SBOM no build (Syft, cyclonedx).</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Cruzar com CVE (Grype, Trivy).</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Bloquear merge se critical sem waiver.</p></div>
+  </div>
+  <figcaption>SBOM como inventário vivo, não PDF esquecido.</figcaption>
+</figure>
+
 <p>Um SBOM é literalmente a lista de "ingredientes" de um software —
 quando uma CVE nova aparece numa biblioteca comum (como libxml, por
 exemplo), consultar o SBOM revela em segundos exatamente quais imagens
@@ -4797,6 +4495,14 @@ ainda depende de revisão humana real acontecendo de fato, não apenas
 presumida por estar "aberto ao público".</p>
 
 <h3>9. Anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Evite</strong><p>curl | bash de repo desconhecido, latest sem pin, mirror sem assinatura.</p></div>
+    <div class="lesson-viz-card"><strong>Prefira</strong><p>Chave verificada, pinning, registry interno, SBOM + scan no CI.</p></div>
+  </div>
+  <figcaption>Confiança cega em pacotes versus cadeia de suprimento auditável.</figcaption>
+</figure>
+
 <ul>
 <li><strong><code>curl ... | bash</code></strong>: vira RCE completo
 se o servidor de origem for comprometido em qualquer momento entre a
@@ -4855,13 +4561,10 @@ maintainer's GPG signature, which the cryptography behind it makes
 infeasible.</p>
 <div class="mermaid">
 flowchart TD
-    A["apt install pacote-x"] --> B["Consulta o repositório configurado"]
-    B --> C["Resolve a árvore de dependências"]
-    C --> D{"Dependência já instalada em versão compatível?"}
-    D -- "Sim" --> E["Reaproveita a já instalada"]
-    D -- "Não" --> F["Baixa e instala a versão exigida"]
-    E --> G["Instala pacote-x"]
-    F --> G
+    Repo["APT mirror"] --> Idx["Signed InRelease"]
+    Idx --> Key["Maintainer GPG key"]
+    Key --> Pkg[".deb package"]
+    Pkg --> Apt["apt trusts and installs"]
 </div>
 
 
@@ -4959,6 +4662,15 @@ and dependency review directly on the PR, already native on both GitHub
 and GitLab.</p>
 
 <h3>6. SBOM, Software Bill of Materials</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Generate an SBOM at build time (Syft, cyclonedx).</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Cross-check CVEs (Grype, Trivy).</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Block merge on critical findings without a waiver.</p></div>
+  </div>
+  <figcaption>SBOM as a living inventory, not a forgotten PDF.</figcaption>
+</figure>
+
 <p>An SBOM is literally the "ingredient list" of a piece of software —
 when a new CVE appears in a common library (such as libxml, for
 example), querying the SBOM reveals in seconds exactly which images or
@@ -5021,6 +4733,14 @@ human review actually happening, not merely presumed because it is
 "open to the public".</p>
 
 <h3>9. Anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Avoid</strong><p>curl | bash from unknown repos, unpinned latest, unsigned mirrors.</p></div>
+    <div class="lesson-viz-card"><strong>Prefer</strong><p>Verified keys, pinning, internal registry, SBOM + CI scanning.</p></div>
+  </div>
+  <figcaption>Blind package trust versus an auditable supply chain.</figcaption>
+</figure>
+
 <ul>
 <li><strong><code>curl ... | bash</code></strong>: becomes full RCE if
 the origin server is compromised at any moment between publication and
@@ -5272,189 +4992,94 @@ cycle running without depending on someone remembering manually.</li>
                     "observability."
                 ),
                 "body": (
-                    "<h3>1. Logs do SO via systemd-journald</h3>"
-                    "<p>Distros modernas centralizam tudo no <code>journald</code>:</p>"
-                    """
+                """<h3>1. Logs do SO via systemd-journald</h3><p>Distros modernas centralizam tudo no <code>journald</code>:</p>
 <div class="mermaid">
 flowchart LR
-    App["Aplicação"] --> Agent["Agente de coleta"]
-    Agent --> Buffer["Fila / buffer local"]
-    Buffer --> Storage["Armazenamento centralizado"]
-    Storage --> Query["Consulta e alerta"]
+    Svc["Serviço systemd"] --> J["journald"]
+    J --> Ram["/run/log RAM"]
+    J --> Disk["Storage=persistent"]
+    Disk --> Q["journalctl -u app"]
 </div>
-"""
-                    "<pre><code>journalctl -u nginx                    # serviço específico\n"
-                    "journalctl -u nginx -f                 # follow (tail -f)\n"
-                    "journalctl -u nginx -p err -S today    # erros de hoje\n"
-                    "journalctl -k -p crit                  # kernel, criticais\n"
-                    "journalctl _UID=1000                   # de um usuário\n"
-                    "journalctl --since '1 hour ago' --until '5 min ago'\n"
-                    "journalctl -o json-pretty -u nginx | jq .   # JSON estruturado\n"
-                    "journalctl --disk-usage                # quanto está ocupando</code></pre>"
-                    "<p>Persistência: por padrão journald guarda só em RAM (<code>/run/log</code>). "
-                    "Para sobreviver a reboot:</p>"
-                    "<pre><code># /etc/systemd/journald.conf\n"
-                    "[Journal]\n"
-                    "Storage=persistent\n"
-                    "SystemMaxUse=2G\n"
-                    "MaxRetentionSec=30day</code></pre>"
+<pre><code>journalctl -u nginx                    # serviço específico
+journalctl -u nginx -f                 # follow (tail -f)
+journalctl -u nginx -p err -S today    # erros de hoje
+journalctl -k -p crit                  # kernel, criticais
+journalctl _UID=1000                   # de um usuário
+journalctl --since '1 hour ago' --until '5 min ago'
+journalctl -o json-pretty -u nginx | jq .   # JSON estruturado
+journalctl --disk-usage                # quanto está ocupando</code></pre><p>Persistência: por padrão journald guarda só em RAM (<code>/run/log</code>). Para sobreviver a reboot:</p><pre><code># /etc/systemd/journald.conf
+[Journal]
+Storage=persistent
+SystemMaxUse=2G
+MaxRetentionSec=30day</code></pre><h3>2. Logs estruturados na sua app</h3><p>Texto livre vira regex doloroso na hora de buscar. JSON é o caminho. Em Python:</p><pre><code>import structlog
+import logging
 
-                    "<h3>2. Logs estruturados na sua app</h3>"
-                    "<p>Texto livre vira regex doloroso na hora de buscar. JSON é o caminho. "
-                    "Em Python:</p>"
-                    "<pre><code>import structlog\n"
-                    "import logging\n"
-                    "\n"
-                    "structlog.configure(\n"
-                    "    processors=[\n"
-                    "        structlog.contextvars.merge_contextvars,\n"
-                    "        structlog.processors.add_log_level,\n"
-                    "        structlog.processors.TimeStamper(fmt='iso'),\n"
-                    "        structlog.processors.JSONRenderer(),\n"
-                    "    ],\n"
-                    "    wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),\n"
-                    ")\n"
-                    "\n"
-                    "log = structlog.get_logger()\n"
-                    "\n"
-                    "structlog.contextvars.bind_contextvars(\n"
-                    "    request_id='req-123',\n"
-                    "    user_id=42,\n"
-                    ")\n"
-                    "\n"
-                    "log.info('user.login', method='password', mfa=True)\n"
-                    "# {\"event\":\"user.login\",\"method\":\"password\",\"mfa\":true,\n"
-                    "#  \"request_id\":\"req-123\",\"user_id\":42,\"level\":\"info\",\n"
-                    "#  \"timestamp\":\"2026-04-25T16:23:11.452123Z\"}</code></pre>"
-                    "<p>Equivalentes: <code>pino</code> (Node), <code>zap</code> (Go), "
-                    "<code>logback-json</code> (Java), <code>slog</code> (Go 1.21+).</p>"
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt='iso'),
+        structlog.processors.JSONRenderer(),
+    ],
+    wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+)
 
-                    "<h3>3. Correlation/trace ID, colando logs entre serviços</h3>"
-                    "<p>Microservices têm um problema: o log de uma request fica espalhado em "
-                    "5 serviços diferentes. Solução: propague um <strong>trace ID</strong> em "
-                    "todo request (header HTTP <code>traceparent</code>, padrão W3C). "
-                    "Cada serviço inclui esse ID em todo log que emite.</p>"
-                    "<p>OpenTelemetry SDK faz isso transparentemente:</p>"
-                    "<pre><code>from opentelemetry import trace\n"
-                    "from opentelemetry.instrumentation.django import DjangoInstrumentor\n"
-                    "DjangoInstrumentor().instrument()\n"
-                    "\n"
-                    "# Em qualquer log emitido durante a request, trace_id estará presente\n"
-                    "log.info('order.created', order_id=order.id, total=order.total)</code></pre>"
-                    "<p>Em incidente: pega o trace_id do log de erro, busca em todos os "
-                    "serviços, vê a request inteira em ordem.</p>"
+log = structlog.get_logger()
 
-                    "<h3>4. O que NÃO logar (LGPD, GDPR, PCI-DSS)</h3>"
-                    "<table>"
-                    "<tr><td>Senhas, hashes, tokens</td><td>Mesmo em headers.</td></tr>"
-                    "<tr><td>CPF, RG, dados de cartão</td><td>LGPD/PCI proíbem.</td></tr>"
-                    "<tr><td>Dados de saúde</td><td>HIPAA, LGPD.</td></tr>"
-                    "<tr><td>Cookies de sessão</td><td>Permitem session hijacking.</td></tr>"
-                    "<tr><td>Conteúdo de uploads</td><td>Pode ter PII.</td></tr>"
-                    "<tr><td>Endereços de email completos</td><td>Pseudonimize.</td></tr>"
-                    "</table>"
-                    "<p>Mitigações:</p>"
-                    "<pre><code># Redaction com structlog\n"
-                    "REDACT_KEYS = {'password', 'token', 'authorization', 'cookie', 'cpf'}\n"
-                    "\n"
-                    "def redact(_, __, event):\n"
-                    "    for key in list(event):\n"
-                    "        if key.lower() in REDACT_KEYS:\n"
-                    "            event[key] = '***REDACTED***'\n"
-                    "    return event\n"
-                    "\n"
-                    "structlog.configure(processors=[redact, ...])</code></pre>"
-                    "<p>Auditoria periódica: pegue 1000 linhas aleatórias dos logs de prod e "
-                    "veja se algo sensível escapou. Repita trimestralmente.</p>"
+structlog.contextvars.bind_contextvars(
+    request_id='req-123',
+    user_id=42,
+)
 
-                    "<h3>5. Centralização: ELK, Loki, Cloud-native</h3>"
-                    "<p>Opções:</p>"
-                    "<ul>"
-                    "<li><strong>Elastic Stack (ELK)</strong>: indexa tudo full-text. "
-                    "Buscas poderosas. Caro em armazenamento e operação.</li>"
-                    "<li><strong>OpenSearch</strong>: fork do Elastic (Apache 2.0).</li>"
-                    "<li><strong>Grafana Loki</strong>: indexa só labels (não o conteúdo). "
-                    "Storage barato (S3). Buscas via LogQL similar a PromQL. <em>Recomendado "
-                    "para a maioria.</em></li>"
-                    "<li><strong>CloudWatch Logs</strong> / <strong>Azure Monitor</strong> / "
-                    "<strong>Cloud Logging</strong>: gerenciados, ótimos para começar, "
-                    "podem ficar caros em escala.</li>"
-                    "<li><strong>Datadog</strong>, <strong>New Relic</strong>, "
-                    "<strong>Splunk</strong>: comerciais, completos, premium.</li>"
-                    "</ul>"
-                    "<p>Coletor (agente) recomendado: "
-                    "<strong>OpenTelemetry Collector</strong>, vendor neutral, suporta "
-                    "todos os destinos. Alternativas: <strong>Vector</strong> (rust, "
-                    "rápido), <strong>Fluent Bit</strong>, <strong>Promtail</strong> (Loki).</p>"
+log.info('user.login', method='password', mfa=True)
+# {"event":"user.login","method":"password","mfa":true,
+#  "request_id":"req-123","user_id":42,"level":"info",
+#  "timestamp":"2026-04-25T16:23:11.452123Z"}</code></pre><p>Equivalentes: <code>pino</code> (Node), <code>zap</code> (Go), <code>logback-json</code> (Java), <code>slog</code> (Go 1.21+).</p><h3>3. Correlation/trace ID, colando logs entre serviços</h3><p>Microservices têm um problema: o log de uma request fica espalhado em 5 serviços diferentes. Solução: propague um <strong>trace ID</strong> em todo request (header HTTP <code>traceparent</code>, padrão W3C). Cada serviço inclui esse ID em todo log que emite.</p><p>OpenTelemetry SDK faz isso transparentemente:</p><pre><code>from opentelemetry import trace
+from opentelemetry.instrumentation.django import DjangoInstrumentor
+DjangoInstrumentor().instrument()
 
-                    "<h3>6. Stack típica em K8s</h3>"
-                    "<pre><code># App emite JSON em stdout/stderr\n"
-                    "# Promtail (DaemonSet) lê do filesystem do node\n"
-                    "# Loki guarda em S3\n"
-                    "# Grafana faz dashboards e queries\n"
-                    "\n"
-                    "{namespace=\"prod\", app=\"api\"} |= \"error\" | json | level=\"ERROR\" \\\n"
-                    "  | line_format \"{{.timestamp}} {{.user_id}} {{.event}}\"</code></pre>"
+# Em qualquer log emitido durante a request, trace_id estará presente
+log.info('order.created', order_id=order.id, total=order.total)</code></pre><p>Em incidente: pega o trace_id do log de erro, busca em todos os serviços, vê a request inteira em ordem.</p><h3>4. O que NÃO logar (LGPD, GDPR, PCI-DSS)</h3><table><tr><td>Senhas, hashes, tokens</td><td>Mesmo em headers.</td></tr><tr><td>CPF, RG, dados de cartão</td><td>LGPD/PCI proíbem.</td></tr><tr><td>Dados de saúde</td><td>HIPAA, LGPD.</td></tr><tr><td>Cookies de sessão</td><td>Permitem session hijacking.</td></tr><tr><td>Conteúdo de uploads</td><td>Pode ter PII.</td></tr><tr><td>Endereços de email completos</td><td>Pseudonimize.</td></tr></table><p>Mitigações:</p><pre><code># Redaction com structlog
+REDACT_KEYS = {'password', 'token', 'authorization', 'cookie', 'cpf'}
 
-                    "<h3>7. Retenção e custo</h3>"
-                    "<p>Logs crescem rápido. Política típica:</p>"
-                    "<ul>"
-                    "<li><strong>Quente</strong> (busca rápida, indexado): 7-30 dias. "
-                    "Loki/ES no SSD.</li>"
-                    "<li><strong>Frio</strong> (busca lenta mas barato): 90-365 dias. "
-                    "S3/Glacier.</li>"
-                    "<li><strong>Auditoria</strong> (compliance): 1-7+ anos em bucket WORM "
-                    "com object-lock. Imutável.</li>"
-                    "</ul>"
-                    "<p>Em SOC 2 Type II você costuma precisar provar 12 meses de logs de "
-                    "auth. PCI-DSS exige 12 meses (3 imediatos). LGPD não tem mínimo legal "
-                    "mas tem máximo (apague o que não precisa mais).</p>"
+def redact(_, __, event):
+    for key in list(event):
+        if key.lower() in REDACT_KEYS:
+            event[key] = '***REDACTED***'
+    return event
 
-                    "<h3>8. Logs em incident response</h3>"
-                    "<p>Em incidente, hostagent comprometido pode ter logs <em>locais</em> "
-                    "alterados pelo atacante para esconder rastros. Por isso:</p>"
-                    "<ul>"
-                    "<li>Centralize antes do host ser comprometido.</li>"
-                    "<li>Use bucket/sistema imutável para logs forensicamente relevantes "
-                    "(auth, audit).</li>"
-                    "<li>Tenha replication offsite (cross-region, ou cloud diferente).</li>"
-                    "</ul>"
-                    "<p>Logs que importam em incidente: auth (login, sudo, ssh), audit "
-                    "(comandos privilegiados), network (firewall drops, DNS queries), "
-                    "aplicação (errors, anomalias).</p>"
+structlog.configure(processors=[redact, ...])</code></pre><p>Auditoria periódica: pegue 1000 linhas aleatórias dos logs de prod e veja se algo sensível escapou. Repita trimestralmente.</p><h3>5. Centralização: ELK, Loki, Cloud-native</h3>
+<div class="mermaid">
+flowchart LR
+    App["Aplicação"] --> Agent["Agente"]
+    Agent --> Buf["Buffer local"]
+    Buf --> Store["Storage central"]
+    Store --> Alert["Consulta e alerta"]
+</div>
+<p>Opções:</p><ul><li><strong>Elastic Stack (ELK)</strong>: indexa tudo full-text. Buscas poderosas. Caro em armazenamento e operação.</li><li><strong>OpenSearch</strong>: fork do Elastic (Apache 2.0).</li><li><strong>Grafana Loki</strong>: indexa só labels (não o conteúdo). Storage barato (S3). Buscas via LogQL similar a PromQL. <em>Recomendado para a maioria.</em></li><li><strong>CloudWatch Logs</strong> / <strong>Azure Monitor</strong> / <strong>Cloud Logging</strong>: gerenciados, ótimos para começar, podem ficar caros em escala.</li><li><strong>Datadog</strong>, <strong>New Relic</strong>, <strong>Splunk</strong>: comerciais, completos, premium.</li></ul><p>Coletor (agente) recomendado: <strong>OpenTelemetry Collector</strong>, vendor neutral, suporta todos os destinos. Alternativas: <strong>Vector</strong> (rust, rápido), <strong>Fluent Bit</strong>, <strong>Promtail</strong> (Loki).</p><h3>6. Stack típica em K8s</h3><pre><code># App emite JSON em stdout/stderr
+# Promtail (DaemonSet) lê do filesystem do node
+# Loki guarda em S3
+# Grafana faz dashboards e queries
 
-                    "<h3>9. Métricas vs logs vs traces</h3>"
-                    "<p>Os três pilares da observabilidade:</p>"
-                    "<table>"
-                    "<tr><th>Sinal</th><th>Cardinalidade</th><th>Custo</th><th>Uso típico</th></tr>"
-                    "<tr><td>Métricas</td><td>baixa</td><td>baixo</td>"
-                    "<td>'Quantas requests por segundo? Latência p99?'</td></tr>"
-                    "<tr><td>Logs</td><td>alta</td><td>médio-alto</td>"
-                    "<td>'O que aconteceu naquela requisição específica?'</td></tr>"
-                    "<tr><td>Traces</td><td>muito alta</td><td>alto</td>"
-                    "<td>'Por onde passou e quanto demorou cada salto?'</td></tr>"
-                    "</table>"
-                    "<p>OpenTelemetry padroniza coleta dos três; armazenamento ainda é "
-                    "separado (Prometheus para métricas, Loki para logs, Tempo para "
-                    "traces).</p>"
-
-                    "<h3>10. Caso real: o log que custou US$ 1B</h3>"
-                    "<p>Em 2017, a Equifax foi violada (147M de americanos). Investigação "
-                    "mostrou que o atacante esteve dentro da rede por 76 dias. Os logs "
-                    "tinham os indícios, incluindo tráfego enorme saindo para um IP "
-                    "estrangeiro, mas o sistema de monitoramento estava configurado para "
-                    "ignorar uma certa categoria, e o time não revisava os logs "
-                    "manualmente. Resultado: US$ 1.4B em multas, settlement e perdas. "
-                    "Lição: log sem alerta+revisão é só armazenamento caro.</p>"
+{namespace="prod", app="api"} |= "error" | json | level="ERROR" \\
+  | line_format "{{.timestamp}} {{.user_id}} {{.event}}"</code></pre><h3>7. Retenção e custo</h3><p>Logs crescem rápido. Política típica:</p><ul><li><strong>Quente</strong> (busca rápida, indexado): 7-30 dias. Loki/ES no SSD.</li><li><strong>Frio</strong> (busca lenta mas barato): 90-365 dias. S3/Glacier.</li><li><strong>Auditoria</strong> (compliance): 1-7+ anos em bucket WORM com object-lock. Imutável.</li></ul><p>Em SOC 2 Type II você costuma precisar provar 12 meses de logs de auth. PCI-DSS exige 12 meses (3 imediatos). LGPD não tem mínimo legal mas tem máximo (apague o que não precisa mais).</p><h3>8. Logs em incident response</h3><p>Em incidente, hostagent comprometido pode ter logs <em>locais</em> alterados pelo atacante para esconder rastros. Por isso:</p><ul><li>Centralize antes do host ser comprometido.</li><li>Use bucket/sistema imutável para logs forensicamente relevantes (auth, audit).</li><li>Tenha replication offsite (cross-region, ou cloud diferente).</li></ul><p>Logs que importam em incidente: auth (login, sudo, ssh), audit (comandos privilegiados), network (firewall drops, DNS queries), aplicação (errors, anomalias).</p><h3>9. Métricas vs logs vs traces</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Logs</strong><p>Eventos ricos para debug e auditoria; caros em volume.</p></div>
+    <div class="lesson-viz-card"><strong>Métricas / traces</strong><p>Métricas: saúde agregada. Traces: caminho e latência por salto.</p></div>
+  </div>
+  <figcaption>Escolha o sinal certo: os três se complementam no OpenTelemetry.</figcaption>
+</figure>
+<p>Os três pilares da observabilidade:</p><table><tr><th>Sinal</th><th>Cardinalidade</th><th>Custo</th><th>Uso típico</th></tr><tr><td>Métricas</td><td>baixa</td><td>baixo</td><td>'Quantas requests por segundo? Latência p99?'</td></tr><tr><td>Logs</td><td>alta</td><td>médio-alto</td><td>'O que aconteceu naquela requisição específica?'</td></tr><tr><td>Traces</td><td>muito alta</td><td>alto</td><td>'Por onde passou e quanto demorou cada salto?'</td></tr></table><p>OpenTelemetry padroniza coleta dos três; armazenamento ainda é separado (Prometheus para métricas, Loki para logs, Tempo para traces).</p><h3>10. Caso real: o log que custou US$ 1B</h3><p>Em 2017, a Equifax foi violada (147M de americanos). Investigação mostrou que o atacante esteve dentro da rede por 76 dias. Os logs tinham os indícios, incluindo tráfego enorme saindo para um IP estrangeiro, mas o sistema de monitoramento estava configurado para ignorar uma certa categoria, e o time não revisava os logs manualmente. Resultado: US$ 1.4B em multas, settlement e perdas. Lição: log sem alerta+revisão é só armazenamento caro.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. OS logs via systemd-journald</h3><p>Modern distros centralize everything in <code>journald</code>:</p>
 <div class="mermaid">
 flowchart LR
-    App["Aplicação"] --> Agent["Agente de coleta"]
-    Agent --> Buffer["Fila / buffer local"]
-    Buffer --> Storage["Armazenamento centralizado"]
-    Storage --> Query["Consulta e alerta"]
+    Svc["systemd service"] --> J["journald"]
+    J --> Ram["/run/log RAM"]
+    J --> Disk["Storage=persistent"]
+    Disk --> Q["journalctl -u app"]
 </div>
 <pre><code>journalctl -u nginx                    # serviço específico
 journalctl -u nginx -f                 # follow (tail -f)
@@ -5504,13 +5129,29 @@ def redact(_, __, event):
             event[key] = '***REDACTED***'
     return event
 
-structlog.configure(processors=[redact, ...])</code></pre><p>Periodic audit: take 1000 random lines from prod logs and check whether anything sensitive escaped. Repeat quarterly.</p><h3>5. Centralization: ELK, Loki, cloud-native</h3><p>Options:</p><ul><li><strong>Elastic Stack (ELK)</strong>: indexes everything full-text. Powerful searches. Expensive in storage and operations.</li><li><strong>OpenSearch</strong>: Elastic fork (Apache 2.0).</li><li><strong>Grafana Loki</strong>: indexes only labels (not content). Cheap storage (S3). Searches via LogQL similar to PromQL. <em>Recommended for most teams.</em></li><li><strong>CloudWatch Logs</strong> / <strong>Azure Monitor</strong> / <strong>Cloud Logging</strong>: managed, great to start, can get expensive at scale.</li><li><strong>Datadog</strong>, <strong>New Relic</strong>, <strong>Splunk</strong>: commercial, complete, premium.</li></ul><p>Recommended collector (agent): <strong>OpenTelemetry Collector</strong>, vendor-neutral, supports all destinations. Alternatives: <strong>Vector</strong> (rust, fast), <strong>Fluent Bit</strong>, <strong>Promtail</strong> (Loki).</p><h3>6. Typical stack on K8s</h3><pre><code># App emite JSON em stdout/stderr
+structlog.configure(processors=[redact, ...])</code></pre><p>Periodic audit: take 1000 random lines from prod logs and check whether anything sensitive escaped. Repeat quarterly.</p><h3>5. Centralization: ELK, Loki, cloud-native</h3>
+<div class="mermaid">
+flowchart LR
+    App["Application"] --> Agent["Agent"]
+    Agent --> Buf["Local buffer"]
+    Buf --> Store["Central storage"]
+    Store --> Alert["Query and alert"]
+</div>
+<p>Options:</p><ul><li><strong>Elastic Stack (ELK)</strong>: indexes everything full-text. Powerful searches. Expensive in storage and operations.</li><li><strong>OpenSearch</strong>: Elastic fork (Apache 2.0).</li><li><strong>Grafana Loki</strong>: indexes only labels (not content). Cheap storage (S3). Searches via LogQL similar to PromQL. <em>Recommended for most teams.</em></li><li><strong>CloudWatch Logs</strong> / <strong>Azure Monitor</strong> / <strong>Cloud Logging</strong>: managed, great to start, can get expensive at scale.</li><li><strong>Datadog</strong>, <strong>New Relic</strong>, <strong>Splunk</strong>: commercial, complete, premium.</li></ul><p>Recommended collector (agent): <strong>OpenTelemetry Collector</strong>, vendor-neutral, supports all destinations. Alternatives: <strong>Vector</strong> (rust, fast), <strong>Fluent Bit</strong>, <strong>Promtail</strong> (Loki).</p><h3>6. Typical stack on K8s</h3><pre><code># App emite JSON em stdout/stderr
 # Promtail (DaemonSet) lê do filesystem do node
 # Loki guarda em S3
 # Grafana faz dashboards e queries
 
 {namespace="prod", app="api"} |= "error" | json | level="ERROR" \\
-  | line_format "{{.timestamp}} {{.user_id}} {{.event}}"</code></pre><h3>7. Retention and cost</h3><p>Logs grow fast. A typical policy:</p><ul><li><strong>Hot</strong> (fast search, indexed): 7-30 days. Loki/ES on SSD.</li><li><strong>Cold</strong> (slow search but cheap): 90-365 days. S3/Glacier.</li><li><strong>Audit</strong> (compliance): 1-7+ years in a WORM bucket with object-lock. Immutable.</li></ul><p>Under SOC 2 Type II you usually need to prove 12 months of auth logs. PCI-DSS requires 12 months (3 immediate). LGPD has no legal minimum but does have a maximum (delete what you no longer need).</p><h3>8. Logs in incident response</h3><p>In an incident, a compromised host agent may have had <em>local</em> logs altered by the attacker to hide tracks. That is why:</p><ul><li>Centralize before the host is compromised.</li><li>Use an immutable bucket/system for forensically relevant logs (auth, audit).</li><li>Have offsite replication (cross-region, or a different cloud).</li></ul><p>Logs that matter in an incident: auth (login, sudo, ssh), audit (privileged commands), network (firewall drops, DNS queries), application (errors, anomalies).</p><h3>9. Metrics vs logs vs traces</h3><p>The three pillars of observability:</p><table><tr><th>Signal</th><th>Cardinality</th><th>Cost</th><th>Typical use</th></tr><tr><td>Metrics</td><td>low</td><td>low</td><td>'How many requests per second? p99 latency?'</td></tr><tr><td>Logs</td><td>high</td><td>medium-high</td><td>'What happened on that specific request?'</td></tr><tr><td>Traces</td><td>very high</td><td>high</td><td>'Where did it go and how long did each hop take?'</td></tr></table><p>OpenTelemetry standardizes collection of all three; storage is still separate (Prometheus for metrics, Loki for logs, Tempo for traces).</p><h3>10. Real case: the log that cost US$ 1B</h3><p>In 2017, Equifax was breached (147M Americans). Investigation showed the attacker was inside the network for 76 days. The logs had the indicators, including huge traffic leaving to a foreign IP, but the monitoring system was configured to ignore a certain category, and the team did not review logs manually. Result: US$ 1.4B in fines, settlement, and losses. Lesson: logs without alerting+review are just expensive storage.</p>
+  | line_format "{{.timestamp}} {{.user_id}} {{.event}}"</code></pre><h3>7. Retention and cost</h3><p>Logs grow fast. A typical policy:</p><ul><li><strong>Hot</strong> (fast search, indexed): 7-30 days. Loki/ES on SSD.</li><li><strong>Cold</strong> (slow search but cheap): 90-365 days. S3/Glacier.</li><li><strong>Audit</strong> (compliance): 1-7+ years in a WORM bucket with object-lock. Immutable.</li></ul><p>Under SOC 2 Type II you usually need to prove 12 months of auth logs. PCI-DSS requires 12 months (3 immediate). LGPD has no legal minimum but does have a maximum (delete what you no longer need).</p><h3>8. Logs in incident response</h3><p>In an incident, a compromised host agent may have had <em>local</em> logs altered by the attacker to hide tracks. That is why:</p><ul><li>Centralize before the host is compromised.</li><li>Use an immutable bucket/system for forensically relevant logs (auth, audit).</li><li>Have offsite replication (cross-region, or a different cloud).</li></ul><p>Logs that matter in an incident: auth (login, sudo, ssh), audit (privileged commands), network (firewall drops, DNS queries), application (errors, anomalies).</p><h3>9. Metrics vs logs vs traces</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Logs</strong><p>Rich events for debug and audit; expensive at volume.</p></div>
+    <div class="lesson-viz-card"><strong>Metrics / traces</strong><p>Metrics: aggregate health. Traces: path and latency per hop.</p></div>
+  </div>
+  <figcaption>Pick the right signal: all three complement each other in OpenTelemetry.</figcaption>
+</figure>
+<p>The three pillars of observability:</p><table><tr><th>Signal</th><th>Cardinality</th><th>Cost</th><th>Typical use</th></tr><tr><td>Metrics</td><td>low</td><td>low</td><td>'How many requests per second? p99 latency?'</td></tr><tr><td>Logs</td><td>high</td><td>medium-high</td><td>'What happened on that specific request?'</td></tr><tr><td>Traces</td><td>very high</td><td>high</td><td>'Where did it go and how long did each hop take?'</td></tr></table><p>OpenTelemetry standardizes collection of all three; storage is still separate (Prometheus for metrics, Loki for logs, Tempo for traces).</p><h3>10. Real case: the log that cost US$ 1B</h3><p>In 2017, Equifax was breached (147M Americans). Investigation showed the attacker was inside the network for 76 days. The logs had the indicators, including huge traffic leaving to a foreign IP, but the monitoring system was configured to ignore a certain category, and the team did not review logs manually. Result: US$ 1.4B in fines, settlement, and losses. Lesson: logs without alerting+review are just expensive storage.</p>
 """
                 ),
                 "practical": (
@@ -5732,198 +5373,58 @@ structlog.configure(processors=[redact, ...])</code></pre><p>Periodic audit: tak
                     "organizational anti-patterns that kill security programs."
                 ),
                 "body": (
-                    "<h3>1. O que é DevSecOps de verdade</h3>"
-                    "<p>DevOps tirou paredes entre dev e ops. DevSecOps faz o mesmo com "
-                    "segurança. Em prática:</p>"
-                    """
+                """<h3>1. O que é DevSecOps de verdade</h3><p>DevOps tirou paredes entre dev e ops. DevSecOps faz o mesmo com segurança. Em prática:</p>
 <div class="mermaid">
 flowchart LR
-    A["Código"] --> B["Commit"]
-    B --> C["CI: SAST + SCA"]
-    C --> D["Build"]
-    D --> E["CD: DAST + Policy as Code"]
-    E --> F["Produção: runtime security"]
+    Dev["Dev"] --> Sec["Sec embutido"]
+    Ops["Ops"] --> Sec
+    Sec --> Share["Responsabilidade compartilhada"]
 </div>
-"""
-                    "<ul>"
-                    "<li>Segurança é responsabilidade <em>de todos</em>, não 'do time de "
-                    "segurança'.</li>"
-                    "<li>Controles automatizados &gt; gate humano em pull request.</li>"
-                    "<li>Feedback rápido (segundos no editor, minutos no PR) "
-                    "&gt; relatório de auditoria 6 meses depois.</li>"
-                    "<li>Erros são oportunidade de aprendizado, não cassação.</li>"
-                    "</ul>"
-                    "<p>O time de segurança vira <em>enabler</em>: ferramentas, treinamento, "
-                    "padrões. As decisões ficam com quem está mais perto do código.</p>"
-
-                    "<h3>2. Shift-left que funciona vs shift-left teatro</h3>"
-                    "<p>Shift-left é trazer segurança para fases iniciais. Mas existe versão "
-                    "boa e versão ruim:</p>"
-                    "<table>"
-                    "<tr><th>Funciona</th><th>É teatro</th></tr>"
-                    "<tr><td>Linter no editor</td>"
-                    "<td>Relatório PDF mensal</td></tr>"
-                    "<tr><td>SAST no PR (3-min)</td>"
-                    "<td>Pentest anual no fim do release</td></tr>"
-                    "<tr><td>Threat model em design review</td>"
-                    "<td>Reunião de aprovação 3h antes do deploy</td></tr>"
-                    "<tr><td>SBOM gerado em todo build</td>"
-                    "<td>Planilha que ninguém atualiza</td></tr>"
-                    "<tr><td>Runbook executável (PIR)</td>"
-                    "<td>Wiki que ninguém abre</td></tr>"
-                    "</table>"
-                    "<p>Critério: <em>o engenheiro recebe feedback enquanto ainda está "
-                    "trabalhando no problema</em>.</p>"
-
-                    "<h3>3. Threat modeling, STRIDE em 1 página</h3>"
-                    "<p>STRIDE são as 6 categorias de ameaça:</p>"
-                    "<ul>"
-                    "<li><strong>S</strong>poofing, alguém finge ser outro.</li>"
-                    "<li><strong>T</strong>ampering, alguém altera dados em trânsito ou "
-                    "repouso.</li>"
-                    "<li><strong>R</strong>epudiation, alguém nega ter feito algo, sem "
-                    "rastro.</li>"
-                    "<li><strong>I</strong>nformation Disclosure, vazamento.</li>"
-                    "<li><strong>D</strong>enial of Service, sistema cai sob carga ou "
-                    "ataque.</li>"
-                    "<li><strong>E</strong>levation of Privilege, usuário comum vira admin.</li>"
-                    "</ul>"
-                    "<p>Em design review de feature relevante, escreva uma página "
-                    "respondendo:</p>"
-                    "<ol>"
-                    "<li><strong>O que estamos construindo?</strong> (1 parágrafo + "
-                    "diagrama)</li>"
-                    "<li><strong>Quais são os ativos?</strong> (dados, contas, etc.)</li>"
-                    "<li><strong>Quem são os atores?</strong> (legítimos e hostis)</li>"
-                    "<li><strong>Para cada componente, 1 ameaça por categoria STRIDE</strong></li>"
-                    "<li><strong>Mitigação para cada ameaça</strong> (e o que aceitamos como "
-                    "risco residual)</li>"
-                    "</ol>"
-                    "<p>Mudar arquitetura pré-código é barato. Pós-deploy é caro e político.</p>"
-
-                    "<h3>4. Postmortems blameless</h3>"
-                    "<p>O timing do incidente é o de menor capacidade emocional. Em vez de "
-                    "'quem aprovou aquilo?', faça:</p>"
-                    "<ul>"
-                    "<li><strong>Timeline factual</strong>: que aconteceu quando, baseado em "
-                    "logs.</li>"
-                    "<li><strong>Causas contributivas</strong> (não 'a causa'): que decisões/"
-                    "lacunas/condições levaram aqui?</li>"
-                    "<li><strong>O que funcionou bem</strong>: detecção, comunicação, "
-                    "rollback.</li>"
-                    "<li><strong>Action items</strong> com dono e prazo. Nem tudo precisa ser "
-                    "corrigido, algumas coisas são <em>aceito como risco</em> com "
-                    "justificativa.</li>"
-                    "</ul>"
-                    "<p>Compartilhe internamente sem censura. Falhas são professores caros, "
-                    "aproveite. Cultura blameless dá segurança psicológica para o time "
-                    "<em>relatar</em>, sem ela, próximos incidentes serão escondidos.</p>"
-
-                    "<h3>5. Métricas DORA + DevSecOps</h3>"
-                    "<p>O <a href='https://dora.dev/'>relatório DORA</a> identifica 4 métricas "
-                    "que separam times de elite:</p>"
-                    "<ul>"
-                    "<li><strong>Lead time</strong>: do commit ao prod.</li>"
-                    "<li><strong>Deployment frequency</strong>: quantas vezes por dia/semana.</li>"
-                    "<li><strong>Change failure rate</strong>: % de deploys que dão problema.</li>"
-                    "<li><strong>MTTR</strong>: tempo médio para recuperar.</li>"
-                    "</ul>"
-                    "<p>Métricas de segurança que se acoplam bem:</p>"
-                    "<ul>"
-                    "<li><strong>SLA de patching</strong>: critical em 72h, high em 7 dias, "
-                    "medium em 30 dias. Mede % dentro do SLA.</li>"
-                    "<li><strong>MTTD</strong>: tempo médio para detectar incidente.</li>"
-                    "<li><strong>Cobertura de SAST/SCA</strong>: % de repos com pipeline ativo.</li>"
-                    "<li><strong>Falsos positivos suprimidos com justificativa</strong> "
-                    "(qualidade do programa).</li>"
-                    "<li><strong>Threat models por release</strong>.</li>"
-                    "<li><strong>Tempo médio do quiz CTF interno</strong> (se você roda).</li>"
-                    "</ul>"
-                    "<p>Cuidado: métrica vira competição perversa. Se você mede 'CVEs "
-                    "fechadas', as pessoas vão fechar trivialidades e ignorar high. Mire em "
-                    "métricas de <em>comportamento</em>, não de output.</p>"
-
-                    "<h3>6. Security champions</h3>"
-                    "<p>Modelo de escala: em vez de centralizar tudo no time de segurança "
-                    "(que vira gargalo), plante 'campeões' dentro de cada squad, devs com "
-                    "interesse no tema.</p>"
-                    "<p>Como rodar:</p>"
-                    "<ol>"
-                    "<li>Cada squad escolhe (não impõe) um champion.</li>"
-                    "<li>Encontro mensal de champions com o time de segurança: brief de "
-                    "novidades, casos recentes, ferramentas.</li>"
-                    "<li>Trilha de capacitação: cursos, CTFs internos, conferências.</li>"
-                    "<li>Reconhecimento real: prêmio anual, menção em performance review.</li>"
-                    "<li>Champions são <em>ponto focal</em>, não responsáveis sozinhos.</li>"
-                    "</ol>"
-                    "<p>Resultado: time de segurança escala 5-10x sem aumentar headcount.</p>"
-
-                    "<h3>7. OWASP SAMM, modelo de maturidade</h3>"
-                    "<p>SAMM (Software Assurance Maturity Model) avalia 5 funções:</p>"
-                    "<ol>"
-                    "<li><strong>Governance</strong> (estratégia, política, educação)</li>"
-                    "<li><strong>Design</strong> (threat modeling, requisitos)</li>"
-                    "<li><strong>Implementation</strong> (build seguro, hardening)</li>"
-                    "<li><strong>Verification</strong> (test/SAST/DAST, code review)</li>"
-                    "<li><strong>Operations</strong> (incident, vulnerability mgmt, env "
-                    "hardening)</li>"
-                    "</ol>"
-                    "<p>Cada uma em 4 níveis (0=ausente, 3=otimizado). Use como mapa de "
-                    "investimento, pegue as duas funções mais fracas e priorize.</p>"
-
-                    "<h3>8. Anti-patterns organizacionais</h3>"
-                    "<table>"
-                    "<tr><td><strong>Time de seg como gate</strong></td>"
-                    "<td>Aprovação manual de cada deploy. Vira gargalo, gera atrito, "
-                    "force times a contornar.</td></tr>"
-                    "<tr><td><strong>Compras-lideradas</strong></td>"
-                    "<td>Contratam ferramenta de US$ 200k/ano sem definir como vai ser usada. "
-                    "Shelfware caro.</td></tr>"
-                    "<tr><td><strong>Métricas vaidade</strong></td>"
-                    "<td>'Bloqueamos 1M de ataques!' sem dizer quais eram bots vs humanos.</td></tr>"
-                    "<tr><td><strong>Empurrar débito</strong></td>"
-                    "<td>'Resolve depois do release' indefinidamente. Juros chegam em "
-                    "incidente.</td></tr>"
-                    "<tr><td><strong>Heroísmo</strong></td>"
-                    "<td>Uma pessoa carrega tudo. Quando ela sai, programa cai.</td></tr>"
-                    "<tr><td><strong>Compliance teatro</strong></td>"
-                    "<td>Performar para auditor sem proteger nada de fato.</td></tr>"
-                    "</table>"
-
-                    "<h3>9. Caso real: a transformação da Microsoft</h3>"
-                    "<p>Após anos de ataques (Slammer, Blaster, etc.), Bill Gates mandou em "
-                    "2002 um email para toda a empresa: 'Trustworthy Computing'. Em pouco "
-                    "tempo:</p>"
-                    "<ul>"
-                    "<li>Treinamento obrigatório em SDL para 8000+ engenheiros.</li>"
-                    "<li>Threat modeling obrigatório para qualquer feature relevante.</li>"
-                    "<li>SDL (Security Development Lifecycle) virou parte do processo "
-                    "padrão.</li>"
-                    "<li>Internalização de fuzzing, code analysis, pentest.</li>"
-                    "</ul>"
-                    "<p>Resultado: 5 anos depois, a Microsoft saiu de 'piada de segurança' "
-                    "para referência da indústria, e abriu o playbook para todo mundo. "
-                    "Isso é cultura.</p>"
-
-                    "<h3>10. Resumo: o que sobrar quando processos falham</h3>"
-                    "<p>Cultura é o que sobra quando processos falham. Quando o engenheiro vê "
-                    "uma vulnerabilidade no código do colega e abre PR consertando, cultura. "
-                    "Quando o PM aceita atrasar uma feature para fechar débito de segurança, "
-                    "cultura. Quando o CEO reage a incidente com 'o que precisamos para isso "
-                    "não acontecer de novo?' em vez de 'quem demitimos?', cultura.</p>"
-                    "<p>Ferramenta ajuda. Processo organiza. Cultura sustenta.</p>"
+<ul><li>Segurança é responsabilidade <em>de todos</em>, não 'do time de segurança'.</li><li>Controles automatizados &gt; gate humano em pull request.</li><li>Feedback rápido (segundos no editor, minutos no PR) &gt; relatório de auditoria 6 meses depois.</li><li>Erros são oportunidade de aprendizado, não cassação.</li></ul><p>O time de segurança vira <em>enabler</em>: ferramentas, treinamento, padrões. As decisões ficam com quem está mais perto do código.</p><h3>2. Shift-left que funciona vs shift-left teatro</h3><p>Shift-left é trazer segurança para fases iniciais. Mas existe versão boa e versão ruim:</p><table><tr><th>Funciona</th><th>É teatro</th></tr><tr><td>Linter no editor</td><td>Relatório PDF mensal</td></tr><tr><td>SAST no PR (3-min)</td><td>Pentest anual no fim do release</td></tr><tr><td>Threat model em design review</td><td>Reunião de aprovação 3h antes do deploy</td></tr><tr><td>SBOM gerado em todo build</td><td>Planilha que ninguém atualiza</td></tr><tr><td>Runbook executável (PIR)</td><td>Wiki que ninguém abre</td></tr></table><p>Critério: <em>o engenheiro recebe feedback enquanto ainda está trabalhando no problema</em>.</p><h3>3. Threat modeling, STRIDE em 1 página</h3><p>STRIDE são as 6 categorias de ameaça:</p><ul><li><strong>S</strong>poofing, alguém finge ser outro.</li><li><strong>T</strong>ampering, alguém altera dados em trânsito ou repouso.</li><li><strong>R</strong>epudiation, alguém nega ter feito algo, sem rastro.</li><li><strong>I</strong>nformation Disclosure, vazamento.</li><li><strong>D</strong>enial of Service, sistema cai sob carga ou ataque.</li><li><strong>E</strong>levation of Privilege, usuário comum vira admin.</li></ul><p>Em design review de feature relevante, escreva uma página respondendo:</p><ol><li><strong>O que estamos construindo?</strong> (1 parágrafo + diagrama)</li><li><strong>Quais são os ativos?</strong> (dados, contas, etc.)</li><li><strong>Quem são os atores?</strong> (legítimos e hostis)</li><li><strong>Para cada componente, 1 ameaça por categoria STRIDE</strong></li><li><strong>Mitigação para cada ameaça</strong> (e o que aceitamos como risco residual)</li></ol><p>Mudar arquitetura pré-código é barato. Pós-deploy é caro e político.</p><h3>4. Postmortems blameless</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Timeline factual sem caça às bruxas.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Causas sistêmicas e ações com dono/data.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Compartilhar aprendizado; risco aceito com justificativa.</p></div>
+  </div>
+  <figcaption>Postmortem blameless: aprender sem esconder o próximo incidente.</figcaption>
+</figure>
+<p>O timing do incidente é o de menor capacidade emocional. Em vez de 'quem aprovou aquilo?', faça:</p><ul><li><strong>Timeline factual</strong>: que aconteceu quando, baseado em logs.</li><li><strong>Causas contributivas</strong> (não 'a causa'): que decisões/lacunas/condições levaram aqui?</li><li><strong>O que funcionou bem</strong>: detecção, comunicação, rollback.</li><li><strong>Action items</strong> com dono e prazo. Nem tudo precisa ser corrigido, algumas coisas são <em>aceito como risco</em> com justificativa.</li></ul><p>Compartilhe internamente sem censura. Falhas são professores caros, aproveite. Cultura blameless dá segurança psicológica para o time <em>relatar</em>, sem ela, próximos incidentes serão escondidos.</p><h3>5. Métricas DORA + DevSecOps</h3><p>O <a href='https://dora.dev/'>relatório DORA</a> identifica 4 métricas que separam times de elite:</p><ul><li><strong>Lead time</strong>: do commit ao prod.</li><li><strong>Deployment frequency</strong>: quantas vezes por dia/semana.</li><li><strong>Change failure rate</strong>: % de deploys que dão problema.</li><li><strong>MTTR</strong>: tempo médio para recuperar.</li></ul><p>Métricas de segurança que se acoplam bem:</p><ul><li><strong>SLA de patching</strong>: critical em 72h, high em 7 dias, medium em 30 dias. Mede % dentro do SLA.</li><li><strong>MTTD</strong>: tempo médio para detectar incidente.</li><li><strong>Cobertura de SAST/SCA</strong>: % de repos com pipeline ativo.</li><li><strong>Falsos positivos suprimidos com justificativa</strong> (qualidade do programa).</li><li><strong>Threat models por release</strong>.</li><li><strong>Tempo médio do quiz CTF interno</strong> (se você roda).</li></ul><p>Cuidado: métrica vira competição perversa. Se você mede 'CVEs fechadas', as pessoas vão fechar trivialidades e ignorar high. Mire em métricas de <em>comportamento</em>, não de output.</p><h3>6. Security champions</h3><p>Modelo de escala: em vez de centralizar tudo no time de segurança (que vira gargalo), plante 'campeões' dentro de cada squad, devs com interesse no tema.</p><p>Como rodar:</p><ol><li>Cada squad escolhe (não impõe) um champion.</li><li>Encontro mensal de champions com o time de segurança: brief de novidades, casos recentes, ferramentas.</li><li>Trilha de capacitação: cursos, CTFs internos, conferências.</li><li>Reconhecimento real: prêmio anual, menção em performance review.</li><li>Champions são <em>ponto focal</em>, não responsáveis sozinhos.</li></ol><p>Resultado: time de segurança escala 5-10x sem aumentar headcount.</p><h3>7. OWASP SAMM, modelo de maturidade</h3><p>SAMM (Software Assurance Maturity Model) avalia 5 funções:</p><ol><li><strong>Governance</strong> (estratégia, política, educação)</li><li><strong>Design</strong> (threat modeling, requisitos)</li><li><strong>Implementation</strong> (build seguro, hardening)</li><li><strong>Verification</strong> (test/SAST/DAST, code review)</li><li><strong>Operations</strong> (incident, vulnerability mgmt, env hardening)</li></ol><p>Cada uma em 4 níveis (0=ausente, 3=otimizado). Use como mapa de investimento, pegue as duas funções mais fracas e priorize.</p><h3>8. Anti-patterns organizacionais</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Teatro</strong><p>Scan só no fim, security como gatekeeper, métrica de CVE fechada sem contexto.</p></div>
+    <div class="lesson-viz-card"><strong>Cultura</strong><p>Shift-left real, champions, blameless, DORA + risco tratado cedo.</p></div>
+  </div>
+  <figcaption>DevSecOps de fachada versus hábitos que sustentam segurança.</figcaption>
+</figure>
+<table><tr><td><strong>Time de seg como gate</strong></td><td>Aprovação manual de cada deploy. Vira gargalo, gera atrito, force times a contornar.</td></tr><tr><td><strong>Compras-lideradas</strong></td><td>Contratam ferramenta de US$ 200k/ano sem definir como vai ser usada. Shelfware caro.</td></tr><tr><td><strong>Métricas vaidade</strong></td><td>'Bloqueamos 1M de ataques!' sem dizer quais eram bots vs humanos.</td></tr><tr><td><strong>Empurrar débito</strong></td><td>'Resolve depois do release' indefinidamente. Juros chegam em incidente.</td></tr><tr><td><strong>Heroísmo</strong></td><td>Uma pessoa carrega tudo. Quando ela sai, programa cai.</td></tr><tr><td><strong>Compliance teatro</strong></td><td>Performar para auditor sem proteger nada de fato.</td></tr></table><h3>9. Caso real: a transformação da Microsoft</h3><p>Após anos de ataques (Slammer, Blaster, etc.), Bill Gates mandou em 2002 um email para toda a empresa: 'Trustworthy Computing'. Em pouco tempo:</p><ul><li>Treinamento obrigatório em SDL para 8000+ engenheiros.</li><li>Threat modeling obrigatório para qualquer feature relevante.</li><li>SDL (Security Development Lifecycle) virou parte do processo padrão.</li><li>Internalização de fuzzing, code analysis, pentest.</li></ul><p>Resultado: 5 anos depois, a Microsoft saiu de 'piada de segurança' para referência da indústria, e abriu o playbook para todo mundo. Isso é cultura.</p><h3>10. Resumo: o que sobrar quando processos falham</h3><p>Cultura é o que sobra quando processos falham. Quando o engenheiro vê uma vulnerabilidade no código do colega e abre PR consertando, cultura. Quando o PM aceita atrasar uma feature para fechar débito de segurança, cultura. Quando o CEO reage a incidente com 'o que precisamos para isso não acontecer de novo?' em vez de 'quem demitimos?', cultura.</p><p>Ferramenta ajuda. Processo organiza. Cultura sustenta.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. What DevSecOps really is</h3><p>DevOps tore down walls between dev and ops. DevSecOps does the same with security. In practice:</p>
 <div class="mermaid">
 flowchart LR
-    A["Código"] --> B["Commit"]
-    B --> C["CI: SAST + SCA"]
-    C --> D["Build"]
-    D --> E["CD: DAST + Policy as Code"]
-    E --> F["Produção: runtime security"]
+    Dev["Dev"] --> Sec["Sec embedded"]
+    Ops["Ops"] --> Sec
+    Sec --> Share["Shared responsibility"]
 </div>
-<ul><li>Security is <em>everyone's</em> responsibility, not 'the security team's'.</li><li>Automated controls &gt; a human gate on every pull request.</li><li>Fast feedback (seconds in the editor, minutes on the PR) &gt; an audit report 6 months later.</li><li>Mistakes are learning opportunities, not firings.</li></ul><p>The security team becomes an <em>enabler</em>: tools, training, standards. Decisions stay with whoever is closest to the code.</p><h3>2. Shift-left that works vs shift-left theater</h3><p>Shift-left means bringing security into earlier phases. But there is a good version and a bad version:</p><table><tr><th>Works</th><th>Is theater</th></tr><tr><td>Linter in the editor</td><td>Monthly PDF report</td></tr><tr><td>SAST on the PR (3-min)</td><td>Annual pentest at the end of the release</td></tr><tr><td>Threat model in design review</td><td>3-hour approval meeting before deploy</td></tr><tr><td>SBOM generated on every build</td><td>Spreadsheet nobody updates</td></tr><tr><td>Executable runbook (PIR)</td><td>Wiki nobody opens</td></tr></table><p>Criterion: <em>the engineer gets feedback while still working on the problem</em>.</p><h3>3. Threat modeling, STRIDE on 1 page</h3><p>STRIDE is the 6 threat categories:</p><ul><li><strong>S</strong>poofing — someone pretends to be someone else.</li><li><strong>T</strong>ampering — someone alters data in transit or at rest.</li><li><strong>R</strong>epudiation — someone denies having done something, with no trail.</li><li><strong>I</strong>nformation Disclosure — a leak.</li><li><strong>D</strong>enial of Service — the system falls under load or attack.</li><li><strong>E</strong>levation of Privilege — a normal user becomes admin.</li></ul><p>In a design review for a relevant feature, write one page answering:</p><ol><li><strong>What are we building?</strong> (1 paragraph + diagram)</li><li><strong>What are the assets?</strong> (data, accounts, etc.)</li><li><strong>Who are the actors?</strong> (legitimate and hostile)</li><li><strong>For each component, 1 threat per STRIDE category</strong></li><li><strong>Mitigation for each threat</strong> (and what we accept as residual risk)</li></ol><p>Changing architecture pre-code is cheap. Post-deploy is expensive and political.</p><h3>4. Blameless postmortems</h3><p>Incident timing is when emotional capacity is lowest. Instead of 'who approved that?', do:</p><ul><li><strong>Factual timeline</strong>: what happened when, based on logs.</li><li><strong>Contributing causes</strong> (not 'the cause'): which decisions/gaps/conditions led here?</li><li><strong>What worked well</strong>: detection, communication, rollback.</li><li><strong>Action items</strong> with an owner and a deadline. Not everything needs to be fixed; some things are <em>accepted as risk</em> with justification.</li></ul><p>Share internally without censorship. Failures are expensive teachers — use them. Blameless culture gives the team psychological safety to <em>report</em>; without it, the next incidents will be hidden.</p><h3>5. DORA metrics + DevSecOps</h3><p>The <a href='https://dora.dev/'>DORA report</a> identifies 4 metrics that separate elite teams:</p><ul><li><strong>Lead time</strong>: from commit to prod.</li><li><strong>Deployment frequency</strong>: how many times per day/week.</li><li><strong>Change failure rate</strong>: % of deploys that cause problems.</li><li><strong>MTTR</strong>: mean time to recover.</li></ul><p>Security metrics that couple well:</p><ul><li><strong>Patching SLA</strong>: critical in 72h, high in 7 days, medium in 30 days. Measure % within SLA.</li><li><strong>MTTD</strong>: mean time to detect an incident.</li><li><strong>SAST/SCA coverage</strong>: % of repos with an active pipeline.</li><li><strong>False positives suppressed with justification</strong> (program quality).</li><li><strong>Threat models per release</strong>.</li><li><strong>Average time on an internal CTF quiz</strong> (if you run one).</li></ul><p>Caution: metrics become perverse competition. If you measure 'CVEs closed', people will close trivia and ignore highs. Aim for <em>behavior</em> metrics, not output metrics.</p><h3>6. Security champions</h3><p>Scaling model: instead of centralizing everything in the security team (which becomes a bottleneck), plant 'champions' inside each squad — developers interested in the topic.</p><p>How to run it:</p><ol><li>Each squad chooses (does not impose) a champion.</li><li>Monthly champions meetup with the security team: news brief, recent cases, tools.</li><li>Enablement track: courses, internal CTFs, conferences.</li><li>Real recognition: annual award, mention in performance review.</li><li>Champions are a <em>focal point</em>, not sole owners.</li></ol><p>Result: the security team scales 5-10x without increasing headcount.</p><h3>7. OWASP SAMM, maturity model</h3><p>SAMM (Software Assurance Maturity Model) evaluates 5 functions:</p><ol><li><strong>Governance</strong> (strategy, policy, education)</li><li><strong>Design</strong> (threat modeling, requirements)</li><li><strong>Implementation</strong> (secure build, hardening)</li><li><strong>Verification</strong> (test/SAST/DAST, code review)</li><li><strong>Operations</strong> (incident, vulnerability mgmt, env hardening)</li></ol><p>Each one on 4 levels (0=absent, 3=optimized). Use it as an investment map — take the two weakest functions and prioritize them.</p><h3>8. Organizational anti-patterns</h3><table><tr><td><strong>Security team as a gate</strong></td><td>Manual approval of every deploy. Becomes a bottleneck, creates friction, forces teams to work around it.</td></tr><tr><td><strong>Purchase-led</strong></td><td>Buy a US$ 200k/year tool without defining how it will be used. Expensive shelfware.</td></tr><tr><td><strong>Vanity metrics</strong></td><td>'We blocked 1M attacks!' without saying which were bots vs humans.</td></tr><tr><td><strong>Pushing debt</strong></td><td>'Fix it after the release' indefinitely. Interest arrives as an incident.</td></tr><tr><td><strong>Heroism</strong></td><td>One person carries everything. When they leave, the program collapses.</td></tr><tr><td><strong>Compliance theater</strong></td><td>Performing for the auditor without protecting anything in practice.</td></tr></table><h3>9. Real case: Microsoft's transformation</h3><p>After years of attacks (Slammer, Blaster, etc.), Bill Gates sent a 2002 email to the entire company: 'Trustworthy Computing'. Before long:</p><ul><li>Mandatory SDL training for 8000+ engineers.</li><li>Mandatory threat modeling for any relevant feature.</li><li>SDL (Security Development Lifecycle) became part of the standard process.</li><li>Internalization of fuzzing, code analysis, pentest.</li></ul><p>Result: 5 years later, Microsoft went from 'security punchline' to an industry reference, and opened the playbook for everyone. That is culture.</p><h3>10. Summary: what remains when processes fail</h3><p>Culture is what remains when processes fail. When an engineer sees a vulnerability in a colleague's code and opens a PR fixing it — culture. When a PM accepts delaying a feature to close security debt — culture. When the CEO reacts to an incident with 'what do we need so this does not happen again?' instead of 'who do we fire?' — culture.</p><p>Tools help. Process organizes. Culture sustains.</p>
+<ul><li>Security is <em>everyone's</em> responsibility, not 'the security team's'.</li><li>Automated controls &gt; a human gate on every pull request.</li><li>Fast feedback (seconds in the editor, minutes on the PR) &gt; an audit report 6 months later.</li><li>Mistakes are learning opportunities, not firings.</li></ul><p>The security team becomes an <em>enabler</em>: tools, training, standards. Decisions stay with whoever is closest to the code.</p><h3>2. Shift-left that works vs shift-left theater</h3><p>Shift-left means bringing security into earlier phases. But there is a good version and a bad version:</p><table><tr><th>Works</th><th>Is theater</th></tr><tr><td>Linter in the editor</td><td>Monthly PDF report</td></tr><tr><td>SAST on the PR (3-min)</td><td>Annual pentest at the end of the release</td></tr><tr><td>Threat model in design review</td><td>3-hour approval meeting before deploy</td></tr><tr><td>SBOM generated on every build</td><td>Spreadsheet nobody updates</td></tr><tr><td>Executable runbook (PIR)</td><td>Wiki nobody opens</td></tr></table><p>Criterion: <em>the engineer gets feedback while still working on the problem</em>.</p><h3>3. Threat modeling, STRIDE on 1 page</h3><p>STRIDE is the 6 threat categories:</p><ul><li><strong>S</strong>poofing — someone pretends to be someone else.</li><li><strong>T</strong>ampering — someone alters data in transit or at rest.</li><li><strong>R</strong>epudiation — someone denies having done something, with no trail.</li><li><strong>I</strong>nformation Disclosure — a leak.</li><li><strong>D</strong>enial of Service — the system falls under load or attack.</li><li><strong>E</strong>levation of Privilege — a normal user becomes admin.</li></ul><p>In a design review for a relevant feature, write one page answering:</p><ol><li><strong>What are we building?</strong> (1 paragraph + diagram)</li><li><strong>What are the assets?</strong> (data, accounts, etc.)</li><li><strong>Who are the actors?</strong> (legitimate and hostile)</li><li><strong>For each component, 1 threat per STRIDE category</strong></li><li><strong>Mitigation for each threat</strong> (and what we accept as residual risk)</li></ol><p>Changing architecture pre-code is cheap. Post-deploy is expensive and political.</p><h3>4. Blameless postmortems</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Factual timeline with no witch hunt.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Systemic causes and actions with owner/date.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Share learning; accepted risk with justification.</p></div>
+  </div>
+  <figcaption>Blameless postmortem: learn without hiding the next incident.</figcaption>
+</figure>
+<p>Incident timing is when emotional capacity is lowest. Instead of 'who approved that?', do:</p><ul><li><strong>Factual timeline</strong>: what happened when, based on logs.</li><li><strong>Contributing causes</strong> (not 'the cause'): which decisions/gaps/conditions led here?</li><li><strong>What worked well</strong>: detection, communication, rollback.</li><li><strong>Action items</strong> with an owner and a deadline. Not everything needs to be fixed; some things are <em>accepted as risk</em> with justification.</li></ul><p>Share internally without censorship. Failures are expensive teachers — use them. Blameless culture gives the team psychological safety to <em>report</em>; without it, the next incidents will be hidden.</p><h3>5. DORA metrics + DevSecOps</h3><p>The <a href='https://dora.dev/'>DORA report</a> identifies 4 metrics that separate elite teams:</p><ul><li><strong>Lead time</strong>: from commit to prod.</li><li><strong>Deployment frequency</strong>: how many times per day/week.</li><li><strong>Change failure rate</strong>: % of deploys that cause problems.</li><li><strong>MTTR</strong>: mean time to recover.</li></ul><p>Security metrics that couple well:</p><ul><li><strong>Patching SLA</strong>: critical in 72h, high in 7 days, medium in 30 days. Measure % within SLA.</li><li><strong>MTTD</strong>: mean time to detect an incident.</li><li><strong>SAST/SCA coverage</strong>: % of repos with an active pipeline.</li><li><strong>False positives suppressed with justification</strong> (program quality).</li><li><strong>Threat models per release</strong>.</li><li><strong>Average time on an internal CTF quiz</strong> (if you run one).</li></ul><p>Caution: metrics become perverse competition. If you measure 'CVEs closed', people will close trivia and ignore highs. Aim for <em>behavior</em> metrics, not output metrics.</p><h3>6. Security champions</h3><p>Scaling model: instead of centralizing everything in the security team (which becomes a bottleneck), plant 'champions' inside each squad — developers interested in the topic.</p><p>How to run it:</p><ol><li>Each squad chooses (does not impose) a champion.</li><li>Monthly champions meetup with the security team: news brief, recent cases, tools.</li><li>Enablement track: courses, internal CTFs, conferences.</li><li>Real recognition: annual award, mention in performance review.</li><li>Champions are a <em>focal point</em>, not sole owners.</li></ol><p>Result: the security team scales 5-10x without increasing headcount.</p><h3>7. OWASP SAMM, maturity model</h3><p>SAMM (Software Assurance Maturity Model) evaluates 5 functions:</p><ol><li><strong>Governance</strong> (strategy, policy, education)</li><li><strong>Design</strong> (threat modeling, requirements)</li><li><strong>Implementation</strong> (secure build, hardening)</li><li><strong>Verification</strong> (test/SAST/DAST, code review)</li><li><strong>Operations</strong> (incident, vulnerability mgmt, env hardening)</li></ol><p>Each one on 4 levels (0=absent, 3=optimized). Use it as an investment map — take the two weakest functions and prioritize them.</p><h3>8. Organizational anti-patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Theater</strong><p>Scan only at the end, security as gatekeeper, CVE-closed metrics without context.</p></div>
+    <div class="lesson-viz-card"><strong>Culture</strong><p>Real shift-left, champions, blameless, DORA plus risk handled early.</p></div>
+  </div>
+  <figcaption>DevSecOps theater versus habits that sustain security.</figcaption>
+</figure>
+<table><tr><td><strong>Security team as a gate</strong></td><td>Manual approval of every deploy. Becomes a bottleneck, creates friction, forces teams to work around it.</td></tr><tr><td><strong>Purchase-led</strong></td><td>Buy a US$ 200k/year tool without defining how it will be used. Expensive shelfware.</td></tr><tr><td><strong>Vanity metrics</strong></td><td>'We blocked 1M attacks!' without saying which were bots vs humans.</td></tr><tr><td><strong>Pushing debt</strong></td><td>'Fix it after the release' indefinitely. Interest arrives as an incident.</td></tr><tr><td><strong>Heroism</strong></td><td>One person carries everything. When they leave, the program collapses.</td></tr><tr><td><strong>Compliance theater</strong></td><td>Performing for the auditor without protecting anything in practice.</td></tr></table><h3>9. Real case: Microsoft's transformation</h3><p>After years of attacks (Slammer, Blaster, etc.), Bill Gates sent a 2002 email to the entire company: 'Trustworthy Computing'. Before long:</p><ul><li>Mandatory SDL training for 8000+ engineers.</li><li>Mandatory threat modeling for any relevant feature.</li><li>SDL (Security Development Lifecycle) became part of the standard process.</li><li>Internalization of fuzzing, code analysis, pentest.</li></ul><p>Result: 5 years later, Microsoft went from 'security punchline' to an industry reference, and opened the playbook for everyone. That is culture.</p><h3>10. Summary: what remains when processes fail</h3><p>Culture is what remains when processes fail. When an engineer sees a vulnerability in a colleague's code and opens a PR fixing it — culture. When a PM accepts delaying a feature to close security debt — culture. When the CEO reacts to an incident with 'what do we need so this does not happen again?' instead of 'who do we fire?' — culture.</p><p>Tools help. Process organizes. Culture sustains.</p>
 """
                 ),
                 "practical": (

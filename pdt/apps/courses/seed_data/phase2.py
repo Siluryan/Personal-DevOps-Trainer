@@ -62,16 +62,12 @@ que permite rodar Windows, Linux e BSD lado a lado, isolados, no mesmo
 host físico.</p>
 <div class="mermaid">
 flowchart TD
-    subgraph VM ["Máquina virtual"]
-        H1["Hardware físico"] --> HV["Hypervisor"]
-        HV --> G1["SO convidado 1"] --> A1["App"]
-        HV --> G2["SO convidado 2"] --> A2["App"]
-    end
-    subgraph CT ["Container"]
-        H2["Hardware físico"] --> SO["SO único, kernel compartilhado"]
-        SO --> C1["Container 1"] --> B1["App"]
-        SO --> C2["Container 2"] --> B2["App"]
-    end
+    HW["Hardware físico"] --> T1["Hypervisor tipo 1 bare-metal"]
+    HW --> Host["SO hospedeiro"]
+    T1 --> G1["VM 1: SO convidado + App"]
+    T1 --> G2["VM 2: SO convidado + App"]
+    Host --> T2["Hypervisor tipo 2 hosted"]
+    T2 --> G3["VM guest"]
 </div>
 
 
@@ -142,6 +138,13 @@ Duas tendências recentes ficam num meio-termo deliberado:
 <strong>containers as a service</strong> (Fargate, Cloud Run) — você
 entrega uma imagem ou uma função, e o provedor cuida de tudo entre isso
 e o hardware, sem virar PaaS completo nem exigir gerenciar servidor.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>IaaS</strong><p>Você opera SO, runtime e app. Provedor entrega só a VM.</p></div>
+    <div class="lesson-viz-card"><strong>SaaS</strong><p>Provedor opera quase tudo. Você configura e cuida do dado.</p></div>
+  </div>
+  <figcaption>Quanto mais alto o serviço, menos controle e mais lock-in.</figcaption>
+</figure>
 
 <h3>5. Anatomia de uma região AWS (e equivalentes)</h3>
 <pre><code>Region (ex.: us-east-1, sa-east-1, eu-west-3)
@@ -237,6 +240,12 @@ ficam diretas: configurar budget e alerta ANTES do primeiro deploy,
 nunca depois; aplicar rate-limit em TUDO que aceita escrita repetida; e
 preferir soft-delete a um loop de write que pode escapar de controle
 silenciosamente.</p>
+<div class="mermaid">
+flowchart LR
+    Bug["Bug sem rate-limit"] --> Loop["Milhões de writes/min"]
+    Loop --> Bill["Fatura de US$ 14k em 24h"]
+    Bill --> Fix["Budget + alerta + rate-limit"]
+</div>
 
 <h3>10. Quando cloud não é a resposta</h3>
 <p>Quatro cenários específicos ainda favorecem infraestrutura
@@ -274,16 +283,12 @@ allows Windows, Linux, and BSD to run side by side, isolated, on the same
 physical host.</p>
 <div class="mermaid">
 flowchart TD
-    subgraph VM ["Máquina virtual"]
-        H1["Hardware físico"] --> HV["Hypervisor"]
-        HV --> G1["SO convidado 1"] --> A1["App"]
-        HV --> G2["SO convidado 2"] --> A2["App"]
-    end
-    subgraph CT ["Container"]
-        H2["Hardware físico"] --> SO["SO único, kernel compartilhado"]
-        SO --> C1["Container 1"] --> B1["App"]
-        SO --> C2["Container 2"] --> B2["App"]
-    end
+    HW["Physical hardware"] --> T1["Type 1 bare-metal hypervisor"]
+    HW --> Host["Host OS"]
+    T1 --> G1["VM 1: guest OS + App"]
+    T1 --> G2["VM 2: guest OS + App"]
+    Host --> T2["Type 2 hosted hypervisor"]
+    T2 --> G3["Guest VM"]
 </div>
 
 
@@ -356,6 +361,13 @@ Two recent trends sit in a deliberate middle ground:
 hand over an image or a function, and the provider handles everything between
 that and the hardware, without becoming full PaaS or requiring you to
 manage a server.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>IaaS</strong><p>You run the OS, runtime, and app. The provider only delivers the VM.</p></div>
+    <div class="lesson-viz-card"><strong>SaaS</strong><p>The provider runs almost everything. You configure and own the data.</p></div>
+  </div>
+  <figcaption>The higher the service tier, the less control and the more lock-in.</figcaption>
+</figure>
 
 <h3>5. Anatomy of an AWS region (and equivalents)</h3>
 <pre><code>Region (ex.: us-east-1, sa-east-1, eu-west-3)
@@ -451,6 +463,12 @@ thousand. The lessons are direct: set up budget and alerts BEFORE
 the first deploy, never after; apply rate-limiting on EVERYTHING that accepts
 repeated writes; and prefer soft-delete over a write loop that can spiral
 out of control silently.</p>
+<div class="mermaid">
+flowchart LR
+    Bug["Bug with no rate limit"] --> Loop["Millions of writes/min"]
+    Loop --> Bill["US$ 14k bill in 24h"]
+    Bill --> Fix["Budget + alert + rate limit"]
+</div>
 
 <h3>10. When cloud isn't the answer</h3>
 <p>Four specific scenarios still favor on-premise
@@ -682,18 +700,10 @@ cases.</p>"""
 <p>A divisão de responsabilidade muda de acordo com o nível de
 abstração escolhido:</p>
 <div class="mermaid">
-flowchart TD
-    subgraph Provedor ["Responsabilidade do provedor"]
-        P1["Datacenter físico"]
-        P2["Hardware e rede"]
-        P3["Hypervisor"]
-    end
-    subgraph Cliente ["Responsabilidade do cliente"]
-        C1["Configuração de IAM"]
-        C2["Dado armazenado"]
-        C3["Patch do sistema operacional"]
-        C4["Configuração de security group"]
-    end
+flowchart LR
+    OnPrem["On-prem: você quase tudo"] --> IaaS["IaaS: provedor até hypervisor"]
+    IaaS --> PaaS["PaaS: provedor até runtime"]
+    PaaS --> SaaS["SaaS: provedor quase tudo"]
 </div>
 
 <table>
@@ -766,6 +776,15 @@ habilitá-los e mandar o output para um lugar seguro e monitorado. E
 compliance dos SEUS controles específicos não se resolve pela
 certificação do provedor — o SOC 2 da AWS não certifica automaticamente
 a sua própria configuração dentro dela.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Identidade e MFA — sempre seus.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Classificação e proteção do dado.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Configuração de segurança (SG, bucket, encryption).</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Backup, logs e compliance dos seus controles.</p></div>
+  </div>
+  <figcaption>O que nunca migra para o provedor, do IaaS ao SaaS.</figcaption>
+</figure>
 
 <h3>5. Misconfiguration é a causa #1, dados</h3>
 <p>O Verizon DBIR de 2024 aponta que 31% das violações em cloud
@@ -878,25 +897,25 @@ RDS?</li>
 <li>Access key do IAM com mais de 90 dias já foi rotacionada?</li>
 <li>Todo recurso está tagueado com <code>Owner</code> e
 <code>Environment</code>?</li>
-</ol>"""
+</ol>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Checklist vivo</strong><p>Revisão mensal com dono e evidência.</p></div>
+    <div class="lesson-viz-card"><strong>Checklist fantasma</strong><p>Lista no wiki que ninguém abre há meses.</p></div>
+  </div>
+  <figcaption>Shared Responsibility sem rotina vira responsabilidade de ninguém.</figcaption>
+</figure>
+"""
                 ),
                 "body_en": (
                 """<h3>1. The moving line: the higher the service, the more the provider covers</h3>
 <p>The division of responsibility changes depending on the level of
 abstraction chosen:</p>
 <div class="mermaid">
-flowchart TD
-    subgraph Provedor ["Responsabilidade do provedor"]
-        P1["Datacenter físico"]
-        P2["Hardware e rede"]
-        P3["Hypervisor"]
-    end
-    subgraph Cliente ["Responsabilidade do cliente"]
-        C1["Configuração de IAM"]
-        C2["Dado armazenado"]
-        C3["Patch do sistema operacional"]
-        C4["Configuração de security group"]
-    end
+flowchart LR
+    OnPrem["On-prem: you own almost everything"] --> IaaS["IaaS: provider up to hypervisor"]
+    IaaS --> PaaS["PaaS: provider up to runtime"]
+    PaaS --> SaaS["SaaS: provider owns almost everything"]
 </div>
 
 <table>
@@ -969,6 +988,15 @@ to turn them on and route the output somewhere secure and monitored. And
 compliance for YOUR specific controls isn't solved by the provider's
 certification — AWS's SOC 2 doesn't automatically certify
 your own configuration inside it.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Identity and MFA — always yours.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Data classification and protection.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Security config (SG, bucket, encryption).</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Backup, logs, and your own control compliance.</p></div>
+  </div>
+  <figcaption>What never moves to the provider, from IaaS to SaaS.</figcaption>
+</figure>
 
 <h3>5. Misconfiguration is cause #1, by the data</h3>
 <p>The 2024 Verizon DBIR points out that 31% of cloud breaches
@@ -1081,7 +1109,15 @@ RDS instance?</li>
 <li>Has any IAM access key older than 90 days been rotated?</li>
 <li>Is every resource tagged with <code>Owner</code> and
 <code>Environment</code>?</li>
-</ol>"""
+</ol>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Living checklist</strong><p>Monthly review with an owner and evidence.</p></div>
+    <div class="lesson-viz-card"><strong>Ghost checklist</strong><p>A wiki list nobody has opened in months.</p></div>
+  </div>
+  <figcaption>Shared Responsibility without a routine becomes nobody's responsibility.</figcaption>
+</figure>
+"""
                 ),
                 "practical": (
                     "Crie um spreadsheet 3x10:<br>"
@@ -1309,11 +1345,10 @@ inverter os dois papéis — um humano usando credencial de máquina
 identidade precisa do fluxo desenhado para o seu próprio tipo.</p>
 <div class="mermaid">
 flowchart TD
-    A["Requisição chega"] --> B{"Identidade autenticada?"}
-    B -- "Não" --> C["Nega acesso, 401"]
-    B -- "Sim" --> D{"Política permite a ação no recurso?"}
-    D -- "Não" --> E["Nega acesso, 403"]
-    D -- "Sim" --> F["Permite a ação"]
+    Hum["Identidade humana"] --> SSO["SSO + MFA FIDO2"]
+    SSO --> Console["Console / CLI"]
+    Maq["Identidade de máquina"] --> Temp["Credencial temporária"]
+    Temp --> STS["STS / IRSA / OIDC"]
 </div>
 
 
@@ -1438,6 +1473,13 @@ assumir essa mesma role — sem essa condição, qualquer PR de qualquer
 pessoa com acesso ao repositório poderia obter a mesma credencial.
 Sem chave estática, não há rotação para esquecer e não há vazamento
 crítico possível — o JWT em si vive apenas minutos.</p>
+<div class="mermaid">
+flowchart LR
+    CI["GitHub Actions"] --> JWT["JWT OIDC"]
+    JWT --> AWS["AWS valida claims"]
+    AWS --> STS["Credencial STS temporária"]
+    STS --> Deploy["Deploy sem access key"]
+</div>
 
 <h3>6. Hierarquia organizacional, guard-rails</h3>
 <p>Em organização séria, conta AWS (ou subscription Azure, ou project
@@ -1541,6 +1583,13 @@ abre a porta mais óbvia de força bruta.</li>
 <li><strong>Compartilhamento de credencial entre humanos</strong> ("o
 login do time"): elimina toda rastreabilidade de quem fez o quê.</li>
 </ul>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Bom</strong><p>SSO + MFA FIDO2, roles temporárias, least privilege.</p></div>
+    <div class="lesson-viz-card"><strong>Ruim</strong><p>Root no dia a dia, access key no git, AdminAccess na app.</p></div>
+  </div>
+  <figcaption>Anti-patterns clássicos de IAM em um olhar.</figcaption>
+</figure>
 
 <h3>11. Caso real: Uber 2022</h3>
 <p>Um atacante comprou credencial de funcionário da Uber vazada na
@@ -1574,11 +1623,10 @@ dev's personal key running directly in production) — each identity
 needs the flow designed for its own type.</p>
 <div class="mermaid">
 flowchart TD
-    A["Requisição chega"] --> B{"Identidade autenticada?"}
-    B -- "Não" --> C["Nega acesso, 401"]
-    B -- "Sim" --> D{"Política permite a ação no recurso?"}
-    D -- "Não" --> E["Nega acesso, 403"]
-    D -- "Sim" --> F["Permite a ação"]
+    Hum["Human identity"] --> SSO["SSO + FIDO2 MFA"]
+    SSO --> Console["Console / CLI"]
+    Maq["Machine identity"] --> Temp["Temporary credential"]
+    Temp --> STS["STS / IRSA / OIDC"]
 </div>
 
 
@@ -1702,6 +1750,13 @@ assuming this same role — without that condition, any PR from anyone
 with repository access could obtain the same credential. With no
 static key, there's no rotation to forget and no critical leak
 possible — the JWT itself lives only for minutes.</p>
+<div class="mermaid">
+flowchart LR
+    CI["GitHub Actions"] --> JWT["OIDC JWT"]
+    JWT --> AWS["AWS validates claims"]
+    AWS --> STS["Temporary STS credential"]
+    STS --> Deploy["Deploy with no access key"]
+</div>
 
 <h3>6. Organizational hierarchy, guard-rails</h3>
 <p>In a serious organization, the AWS account (or Azure subscription,
@@ -1807,6 +1862,13 @@ opens the most obvious brute-force door.</li>
 <li><strong>Sharing a credential between humans</strong> ("the team's
 login"): eliminates all traceability of who did what.</li>
 </ul>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Good</strong><p>SSO + FIDO2 MFA, temporary roles, least privilege.</p></div>
+    <div class="lesson-viz-card"><strong>Bad</strong><p>Root day-to-day, access key in git, AdminAccess on the app.</p></div>
+  </div>
+  <figcaption>Classic IAM anti-patterns at a glance.</figcaption>
+</figure>
 
 <h3>11. Real case: Uber 2022</h3>
 <p>An attacker bought a leaked Uber employee credential on the dark
@@ -2129,6 +2191,12 @@ de fora; NAT instances customizadas podem sair mais baratas em volume
 muito alto; e um único NAT Gateway compartilhado em ambiente não-prod
 troca alta disponibilidade por economia, aceitável fora de
 produção.</p>
+<div class="mermaid">
+flowchart LR
+    Priv["Subnet privada"] --> NAT["NAT Gateway"]
+    NAT --> IGW["Internet Gateway"]
+    Priv -.->|melhor| EP["VPC Endpoint S3/DynamoDB"]
+</div>
 
 <h3>5. Conectividade VPC ↔ VPC ↔ on-prem</h3>
 <table>
@@ -2236,7 +2304,15 @@ longo. A solução combinou cache local com um VPC Endpoint para S3
 a conta caiu para cerca de US$ 200 por mês. A lição prática direta da
 seção 4: cada gigabyte de egress via NAT Gateway custa US$ 0,045 — em
 escala, isso soma rápido o suficiente para virar a maior linha da
-fatura sem que ninguém perceba a tempo.</p>"""
+fatura sem que ninguém perceba a tempo.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Via NAT</strong><p>Egress caro: US$ 0,045/GB + US$ 32/mês por AZ.</p></div>
+    <div class="lesson-viz-card"><strong>Via Endpoint</strong><p>Tráfego S3/DynamoDB fica na rede AWS, sem NAT.</p></div>
+  </div>
+  <figcaption>O caso dos US$ 80k: cache + VPC Endpoint derrubou a conta para ~US$ 200.</figcaption>
+</figure>
+"""
                 ),
                 "body_en": (
                 """<h3>1. Anatomy of a VPC</h3>
@@ -2325,6 +2401,12 @@ downloading the same artifact from outside; custom NAT instances can
 work out cheaper at very high volume; and a single shared NAT Gateway
 in a non-prod environment trades high availability for savings,
 acceptable outside of production.</p>
+<div class="mermaid">
+flowchart LR
+    Priv["Private subnet"] --> NAT["NAT Gateway"]
+    NAT --> IGW["Internet Gateway"]
+    Priv -.->|better| EP["VPC Endpoint S3/DynamoDB"]
+</div>
 
 <h3>5. Connectivity VPC ↔ VPC ↔ on-prem</h3>
 <table>
@@ -2436,7 +2518,15 @@ hosted there), and the bill dropped to about $200 a month. The
 practical lesson straight from section 4: every gigabyte of egress
 through a NAT Gateway costs $0.045 — at scale, that adds up fast
 enough to become the biggest line item on the invoice before anyone
-notices in time.</p>"""
+notices in time.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Via NAT</strong><p>Expensive egress: $0.045/GB + $32/month per AZ.</p></div>
+    <div class="lesson-viz-card"><strong>Via Endpoint</strong><p>S3/DynamoDB traffic stays on the AWS network, no NAT.</p></div>
+  </div>
+  <figcaption>The $80k case: cache + VPC Endpoint dropped the bill to ~$200.</figcaption>
+</figure>
+"""
                 ),
                 "practical": (
                     "Construa via Terraform (ou console) uma VPC <code>10.10.0.0/16</code> "
@@ -2668,13 +2758,9 @@ carregar até 5 SGs simultaneamente (limite ajustável). E qualquer regra
 nova entra em vigor em segundos, sem nenhum delay de propagação
 perceptível.</p>
 <div class="mermaid">
-flowchart TB
-    subgraph SG ["Security Group, stateful"]
-        SGIn["Regra de entrada permite porta 443"] --> SGOut["Resposta sai sozinha, sem regra extra"]
-    end
-    subgraph NACL ["Network ACL, stateless"]
-        NIn["Regra de entrada permite porta 443"] --> NOut["Resposta de saída precisa de regra própria"]
-    end
+flowchart LR
+    In["Inbound 443 Allow"] --> Conn["Conexão estabelecida"]
+    Conn --> Out["Resposta outbound automática"]
 </div>
 
 
@@ -2755,6 +2841,13 @@ de chave SSH:</p>
 aws ssm start-session --target i-0abc123 \\
   --document-name AWS-StartPortForwardingSessionToRemoteHost \\
   --parameters host=mydb.cluster.us-east-1.rds.amazonaws.com,portNumber=5432,localPortNumber=5432</code></pre>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Bastion</strong><p>Porta SSH exposta; chaves espalhadas; patch contínuo.</p></div>
+    <div class="lesson-viz-card"><strong>SSM</strong><p>Sem porta aberta; IAM; auditoria no CloudTrail.</p></div>
+  </div>
+  <figcaption>Preferir Session Manager elimina a superfície de ataque do bastion.</figcaption>
+</figure>
 
 <h3>5. Outbound, restringir é boa prática</h3>
 <p>O default de um SG é outbound completamente aberto — em ambiente
@@ -2832,7 +2925,16 @@ corporativa quando um bastion ainda for necessário; e manter Network
 Level Authentication (NLA) sempre ativado como camada adicional. O
 custo de tirar RDP da internet é de aproximadamente um dia de
 configuração — o custo de não tirar é, com frequência crescente,
-ransomware.</p>"""
+ransomware.</p>
+<div class="mermaid">
+flowchart TD
+    Net["Internet"] --> RDP["RDP 3389 aberto"]
+    RDP --> Bot["Bot brute-force 24/7"]
+    Bot --> Risk["Ransomware"]
+    Net --> SSM["SSM / Bastion com MFA"]
+    SSM --> Safe["Sem porta exposta"]
+</div>
+"""
                 ),
                 "body_en": (
                 """<h3>1. Security Group (SG): stateful, per interface</h3>
@@ -2851,13 +2953,9 @@ underused good practice (section 5). Each interface can carry up to 5
 SGs at once (adjustable limit). And any new rule takes effect within
 seconds, with no noticeable propagation delay.</p>
 <div class="mermaid">
-flowchart TB
-    subgraph SG ["Security Group, stateful"]
-        SGIn["Regra de entrada permite porta 443"] --> SGOut["Resposta sai sozinha, sem regra extra"]
-    end
-    subgraph NACL ["Network ACL, stateless"]
-        NIn["Regra de entrada permite porta 443"] --> NOut["Resposta de saída precisa de regra própria"]
-    end
+flowchart LR
+    In["Inbound 443 Allow"] --> Conn["Connection established"]
+    Conn --> Out["Automatic outbound reply"]
 </div>
 
 
@@ -2937,6 +3035,13 @@ of an SSH key:</p>
 aws ssm start-session --target i-0abc123 \\
   --document-name AWS-StartPortForwardingSessionToRemoteHost \\
   --parameters host=mydb.cluster.us-east-1.rds.amazonaws.com,portNumber=5432,localPortNumber=5432</code></pre>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Bastion</strong><p>Exposed SSH port; scattered keys; endless patching.</p></div>
+    <div class="lesson-viz-card"><strong>SSM</strong><p>No open port; IAM; CloudTrail audit trail.</p></div>
+  </div>
+  <figcaption>Prefer Session Manager — it removes the bastion attack surface.</figcaption>
+</figure>
 
 <h3>5. Outbound, restricting is a good practice</h3>
 <p>The default for an SG is fully open outbound — in a sensitive
@@ -3013,7 +3118,16 @@ exposed port entirely; restrict the source IP to the corporate VPN
 when a bastion is still needed; and keep Network Level Authentication
 (NLA) always enabled as an extra layer. The cost of taking RDP off the
 internet is roughly one day of configuration — the cost of not doing
-so is, with increasing frequency, ransomware.</p>"""
+so is, with increasing frequency, ransomware.</p>
+<div class="mermaid">
+flowchart TD
+    Net["Internet"] --> RDP["RDP 3389 open"]
+    RDP --> Bot["Brute-force bot 24/7"]
+    Bot --> Risk["Ransomware"]
+    Net --> SSM["SSM / Bastion with MFA"]
+    SSM --> Safe["No exposed port"]
+</div>
+"""
                 ),
                 "practical": (
                     "(1) Crie um SG <code>web</code> permitindo 443 de 0.0.0.0/0 e 22 "
@@ -3338,6 +3452,13 @@ url = s3.generate_presigned_url(
 restrição baseada em policy — limite de tamanho, whitelist de
 content-type — que o cliente não consegue burlar mesmo manipulando a
 requisição diretamente.</p>
+<div class="mermaid">
+flowchart LR
+    Client["Cliente"] --> API["Backend gera URL"]
+    API --> URL["Presigned URL TTL curto"]
+    Client --> S3["PUT direto no S3"]
+    URL -.-> S3
+</div>
 
 <h3>5. Encryption: SSE-S3, SSE-KMS, SSE-C, client-side</h3>
 <table>
@@ -3487,7 +3608,15 @@ impossível responder depois "quem acessou o quê e quando".</li>
 <li><strong>Object ACL em vez de bucket policy</strong>: usa o
 mecanismo legado da seção 2 quando a alternativa moderna já resolve
 melhor o mesmo problema.</li>
-</ul>"""
+</ul>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Seguro</strong><p>Block Public Access, versionamento, SSE-KMS, lifecycle.</p></div>
+    <div class="lesson-viz-card"><strong>Arriscado</strong><p>Bucket público, sem versioning, ACL legada, sem log.</p></div>
+  </div>
+  <figcaption>Anti-patterns de object storage em uma vista.</figcaption>
+</figure>
+"""
                 ),
                 "body_en": (
                 """<h3>1. Data model: object storage is not a filesystem</h3>
@@ -3593,6 +3722,13 @@ url = s3.generate_presigned_url(
 <p>For extra security, a presigned POST goes further, allowing
 policy-based restrictions — size limit, content-type whitelist — that
 the client can't bypass even by tampering with the request directly.</p>
+<div class="mermaid">
+flowchart LR
+    Client["Client"] --> API["Backend mints URL"]
+    API --> URL["Short-TTL presigned URL"]
+    Client --> S3["Direct PUT to S3"]
+    URL -.-> S3
+</div>
 
 <h3>5. Encryption: SSE-S3, SSE-KMS, SSE-C, client-side</h3>
 <table>
@@ -3744,7 +3880,15 @@ impossible to later answer "who accessed what and when."</li>
 <li><strong>Object ACL instead of bucket policy</strong>: uses the
 legacy mechanism from section 2 when the modern alternative already
 solves the same problem better.</li>
-</ul>"""
+</ul>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Secure</strong><p>Block Public Access, versioning, SSE-KMS, lifecycle.</p></div>
+    <div class="lesson-viz-card"><strong>Risky</strong><p>Public bucket, no versioning, legacy ACL, no logging.</p></div>
+  </div>
+  <figcaption>Object storage anti-patterns at a glance.</figcaption>
+</figure>
+"""
                 ),
                 "practical": (
                     "(1) Crie um bucket privado, ative Block Public Access (todas as 4 "
@@ -3988,13 +4132,12 @@ metadado (timestamp, tamanho de arquivo, padrão de acesso continuam
 visíveis mesmo com o conteúdo cifrado); e sem gestão de chave correta,
 vira apenas caro e inútil ao mesmo tempo.</p>
 <div class="mermaid">
-flowchart LR
-    subgraph Transito ["Em trânsito"]
-        A["Cliente"] -- "TLS" --> B["Servidor"]
-    end
-    subgraph Repouso ["Em repouso"]
-        C["Dado gravado em disco"] --> D["Criptografado com chave do KMS"]
-    end
+flowchart TD
+    D["Dado sensível"] --> Rest["Em repouso: KMS no disco"]
+    D --> Transit["Em trânsito: TLS"]
+    D --> Use["Em uso: enclaves"]
+    AttR["Disco/snapshot roubado"] -. bloqueado .-> Rest
+    AttT["MITM / Wi-Fi público"] -. bloqueado .-> Transit
 </div>
 
 
@@ -4084,6 +4227,15 @@ ciphertext = aes.encrypt(nonce, b'dados sensiveis', associated_data=b'tenant-x')
 # Para decifrar:
 plaintext_key = kms.decrypt(CiphertextBlob=encrypted_key)['Plaintext']
 data = AESGCM(plaintext_key).decrypt(nonce, ciphertext, b'tenant-x')</code></pre>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>KMS gera data key (plain + cifrada).</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>App cifra o dado com a chave plain.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Guarda ciphertext + data key cifrada.</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>CMK nunca sai do HSM.</p></div>
+  </div>
+  <figcaption>Envelope encryption: performance local, chave mestre no KMS.</figcaption>
+</figure>
 
 <h3>6. TLS 1.3, o melhor jeito de fazer</h3>
 <p>O TLS 1.3 resolveu quatro problemas estruturais das versões
@@ -4199,7 +4351,15 @@ momento em que trafega pela rede.</li>
 <li><strong>"Encriptamos os dados" mas a chave fica no mesmo
 disco</strong>: anula completamente o propósito da criptografia — quem
 rouba o disco rouba a chave junto.</li>
-</ul>"""
+</ul>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Bom</strong><p>TLS 1.3, KMS/CMK, Argon2id, chave fora do disco.</p></div>
+    <div class="lesson-viz-card"><strong>Ruim</strong><p>SHA-256 sem salt, chave no código, cert auto-assinado.</p></div>
+  </div>
+  <figcaption>Anti-patterns de criptografia que falham auditoria moderna.</figcaption>
+</figure>
+"""
                 ),
                 "body_en": (
                 """<h3>1. Threat model: what encryption protects against</h3>
@@ -4224,13 +4384,12 @@ metadata (timestamp, file size, access pattern remain visible even
 with the content encrypted); and without correct key management, it
 becomes merely expensive and useless at the same time.</p>
 <div class="mermaid">
-flowchart LR
-    subgraph Transito ["Em trânsito"]
-        A["Cliente"] -- "TLS" --> B["Servidor"]
-    end
-    subgraph Repouso ["Em repouso"]
-        C["Dado gravado em disco"] --> D["Criptografado com chave do KMS"]
-    end
+flowchart TD
+    D["Sensitive data"] --> Rest["At rest: KMS on disk"]
+    D --> Transit["In transit: TLS"]
+    D --> Use["In use: enclaves"]
+    AttR["Stolen disk/snapshot"] -. blocked .-> Rest
+    AttT["MITM / public Wi-Fi"] -. blocked .-> Transit
 </div>
 
 
@@ -4319,6 +4478,15 @@ ciphertext = aes.encrypt(nonce, b'dados sensiveis', associated_data=b'tenant-x')
 # Para decifrar:
 plaintext_key = kms.decrypt(CiphertextBlob=encrypted_key)['Plaintext']
 data = AESGCM(plaintext_key).decrypt(nonce, ciphertext, b'tenant-x')</code></pre>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>KMS issues a data key (plain + wrapped).</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>App encrypts data with the plain key.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Store ciphertext + wrapped data key.</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>CMK never leaves the HSM.</p></div>
+  </div>
+  <figcaption>Envelope encryption: local speed, master key in KMS.</figcaption>
+</figure>
 
 <h3>6. TLS 1.3, the best way to do it</h3>
 <p>TLS 1.3 solved four structural problems from earlier versions: the
@@ -4436,7 +4604,15 @@ exactly when it travels over the network.</li>
 <li><strong>"We encrypted the data" but the key sits on the same
 disk</strong>: completely negates the purpose of encryption — whoever
 steals the disk steals the key along with it.</li>
-</ul>"""
+</ul>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Good</strong><p>TLS 1.3, KMS/CMK, Argon2id, key off the disk.</p></div>
+    <div class="lesson-viz-card"><strong>Bad</strong><p>SHA-256 without salt, key in code, self-signed cert.</p></div>
+  </div>
+  <figcaption>Crypto anti-patterns that fail a modern audit.</figcaption>
+</figure>
+"""
                 ),
                 "practical": (
                     "(1) Crie uma CMK em KMS com rotação anual habilitada. Adicione policy "
@@ -4649,11 +4825,11 @@ steals the disk steals the key along with it.</li>
                     "está bem ou mal:</p>"
                     """
 <div class="mermaid">
-flowchart LR
-    App["Aplicação / infra"] --> Metric["Métrica coletada"]
-    Metric --> Threshold{"Ultrapassou o limite configurado?"}
-    Threshold -- "Sim" --> Alert["Dispara alerta"]
-    Threshold -- "Não" --> Metric
+flowchart TD
+    S["Serviço"] --> L["Latência"]
+    S --> T["Tráfego"]
+    S --> E["Erros"]
+    S --> Sat["Saturação"]
 </div>
 """
                     "<ol>"
@@ -4751,7 +4927,15 @@ flowchart LR
                     "</table>"
                     "<p>OpenTelemetry está virando o padrão único para instrumentação, "
                     "instrumente uma vez, troque o backend depois.</p>"
-
+                    """
+<div class="mermaid">
+flowchart LR
+    App["App"] --> OTel["OpenTelemetry Collector"]
+    OTel --> M["Métricas"]
+    OTel --> L["Logs"]
+    OTel --> Tr["Traces"]
+</div>
+"""
                     "<h3>6. Cardinalidade, o assassino silencioso</h3>"
                     "<p>Cada combinação de labels em uma métrica é uma série temporal "
                     "armazenada. Se você tem:</p>"
@@ -4821,6 +5005,15 @@ flowchart LR
                     "'monitoring completo'. Lição: monitoramento sem ownership e revisão "
                     "ativa é só armazenamento caro. Cada painel/alarme deve ter dono e "
                     "data de última revisão.</p>"
+                    """
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Com ownership</strong><p>Poucos painéis, runbook, revisão mensal.</p></div>
+    <div class="lesson-viz-card"><strong>Sem dono</strong><p>73 painéis órfãos, alerta no Slack vazio.</p></div>
+  </div>
+  <figcaption>Monitoramento sem ownership é armazenamento caro, não observabilidade.</figcaption>
+</figure>
+"""
                 ),
                 "body_en": (
                     "<h3>1. The 4 golden signals (Google SRE)</h3>"
@@ -4828,11 +5021,11 @@ flowchart LR
                     "is healthy or not:</p>"
                     """
 <div class="mermaid">
-flowchart LR
-    App["Aplicação / infra"] --> Metric["Métrica coletada"]
-    Metric --> Threshold{"Ultrapassou o limite configurado?"}
-    Threshold -- "Sim" --> Alert["Dispara alerta"]
-    Threshold -- "Não" --> Metric
+flowchart TD
+    S["Service"] --> L["Latency"]
+    S --> T["Traffic"]
+    S --> E["Errors"]
+    S --> Sat["Saturation"]
 </div>
 """
                     "<ol>"
@@ -4930,7 +5123,15 @@ flowchart LR
                     "</table>"
                     "<p>OpenTelemetry is becoming the single standard for instrumentation, "
                     "instrument once, swap the backend later.</p>"
-
+                    """
+<div class="mermaid">
+flowchart LR
+    App["App"] --> OTel["OpenTelemetry Collector"]
+    OTel --> M["Metrics"]
+    OTel --> L["Logs"]
+    OTel --> Tr["Traces"]
+</div>
+"""
                     "<h3>6. Cardinality, the silent killer</h3>"
                     "<p>Every combination of labels on a metric is a stored time series. "
                     "If you have:</p>"
@@ -5001,6 +5202,15 @@ flowchart LR
                     "'complete monitoring'. Lesson: monitoring without ownership and active "
                     "review is just expensive storage. Every panel/alarm should have an "
                     "owner and a last-reviewed date.</p>"
+                    """
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>With ownership</strong><p>Few panels, runbooks, monthly review.</p></div>
+    <div class="lesson-viz-card"><strong>No owner</strong><p>73 orphan panels, alerts to an empty Slack.</p></div>
+  </div>
+  <figcaption>Monitoring without ownership is expensive storage, not observability.</figcaption>
+</figure>
+"""
                 ),
                 "practical": (
                     "(1) Defina um SLO realístico para uma rota da sua app (ex.: "
@@ -5304,6 +5514,15 @@ proteção — fica fisicamente desconectado da rede; e um período de
 imutabilidade de 90 dias ou mais dá tempo suficiente para detectar um
 comprometimento silencioso antes que ele afete o backup mais recente
 também.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Object Lock / WORM imutável.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Conta de backup separada.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Air gap lógico ou físico.</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>Retenção ≥ 90 dias imutável.</p></div>
+  </div>
+  <figcaption>Camadas que quebram o playbook de ransomware no backup.</figcaption>
+</figure>
 
 <h3>6. Backup de banco de dados, não é só copy</h3>
 <p>Um banco transacional exige consistência que uma cópia simples de
@@ -5400,7 +5619,15 @@ garantia.</li>
 us-east-2, por exemplo): um desastre geograficamente correlacionado
 pode afetar as duas ao mesmo tempo, anulando o propósito de ter
 distribuído a cópia.</li>
-</ul>"""
+</ul>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Feito</strong><p>3-2-1-1-0, restore testado, RPO/RTO documentados.</p></div>
+    <div class="lesson-viz-card"><strong>Ficção</strong><p>Snapshot na mesma conta, plano no papel, sem game day.</p></div>
+  </div>
+  <figcaption>Backup sem teste de restore não é backup — é esperança.</figcaption>
+</figure>
+"""
                 ),
                 "body_en": (
                 """<h3>1. RPO and RTO, the two base metrics</h3>
@@ -5416,8 +5643,8 @@ right strategy for each case, without paying for recovery capacity
 that a low-risk application will never need:</p>
 <div class="mermaid">
 flowchart LR
-    Backup["Último backup"] -- "RPO: dado que pode se perder" --> Incidente["Incidente"]
-    Incidente -- "RTO: tempo até restaurar" --> Restaurado["Serviço restaurado"]
+    Backup["Last backup"] -- "RPO: data you can lose" --> Incident["Incident"]
+    Incident -- "RTO: time to restore" --> Restored["Service restored"]
 </div>
 
 <table>
@@ -5496,6 +5723,15 @@ gap — offline tape, an old but still valid method for the final tier
 of protection — stays physically disconnected from the network; and
 an immutability period of 90 days or more gives enough time to detect
 a silent compromise before it also affects the most recent backup.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Immutable Object Lock / WORM.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Separate backup account.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Logical or physical air gap.</p></div>
+    <div class="lesson-viz-step"><span>4</span><p>≥ 90 days immutable retention.</p></div>
+  </div>
+  <figcaption>Layers that break the ransomware playbook on backups.</figcaption>
+</figure>
 
 <h3>6. Database backup, it's not just copy</h3>
 <p>A transactional database requires consistency that a simple file
@@ -5593,7 +5829,15 @@ guarantee.</li>
 and us-east-2, for example): a geographically correlated disaster can
 affect both at the same time, negating the purpose of having
 distributed the copy.</li>
-</ul>"""
+</ul>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Done</strong><p>3-2-1-1-0, restore tested, RPO/RTO documented.</p></div>
+    <div class="lesson-viz-card"><strong>Fiction</strong><p>Same-account snapshot, paper plan, no game day.</p></div>
+  </div>
+  <figcaption>Backup without a restore test is hope, not backup.</figcaption>
+</figure>
+"""
                 ),
                 "practical": (
                     "(1) Faça snapshot/backup do seu banco de teste (RDS, Postgres, MySQL "
@@ -5895,6 +6139,14 @@ cerca de 20% menos custo, usando famílias <code>m6g</code>,
 multi-arch já pronta; e, para carga muito variável, migrar para
 serverless (Lambda, Fargate, Cloud Run), que escala até zero quando
 ninguém está usando.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Medir CPU/RAM reais no Optimizer.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Trocar família ou reduzir tamanho.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Considerar Graviton / Spot / serverless.</p></div>
+  </div>
+  <figcaption>Right-sizing: dados primeiro, commit depois.</figcaption>
+</figure>
 
 <h3>5. Recursos órfãos, o ralo silencioso</h3>
 <p>Em qualquer conta com mais de seis meses de uso, um conjunto
@@ -6055,7 +6307,15 @@ assim.</li>
 mais precisaria do dado de custo fica sem o acesso direto a ele.</li>
 <li><strong>Showback que ninguém olha</strong>: gerar o relatório não
 basta se ele não influencia decisão real de nenhum time.</li>
-</ul>"""
+</ul>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Disciplina</strong><p>Tags, budget, right-sizing, anomaly alerts.</p></div>
+    <div class="lesson-viz-card"><strong>Deriva</strong><p>Reserved cego, órfãos, logs sem retenção.</p></div>
+  </div>
+  <figcaption>FinOps falha quando o custo é invisível ou ninguém age.</figcaption>
+</figure>
+"""
                 ),
                 "body_en": (
                 """<h3>1. Why FinOps exists</h3>
@@ -6075,11 +6335,11 @@ guarantees is a CONSCIOUS decision, made with real cost data on the
 table, not a decision made in the dark.</p>
 <div class="mermaid">
 flowchart LR
-    A["Provisiona recurso"] --> B["Custo gerado"]
-    B --> C["Visibilidade: tag e dashboard"]
-    C --> D{"Recurso subutilizado?"}
-    D -- "Sim" --> E["Redimensiona ou desliga"]
-    D -- "Não" --> A
+    A["Provision resource"] --> B["Cost generated"]
+    B --> C["Visibility: tags and dashboard"]
+    C --> D{"Underutilized resource?"}
+    D -- "Yes" --> E["Resize or shut down"]
+    D -- "No" --> A
     E --> A
 </div>
 
@@ -6150,6 +6410,14 @@ the <code>m6g</code>, <code>c7g</code> families, either recompiling
 for ARM or using an already-ready multi-arch image; and, for highly
 variable load, migrating to serverless (Lambda, Fargate, Cloud Run),
 which scales to zero when nobody's using it.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Measure real CPU/RAM in Optimizer.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Change family or downsize.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Consider Graviton / Spot / serverless.</p></div>
+  </div>
+  <figcaption>Right-sizing: data first, commitment later.</figcaption>
+</figure>
 
 <h3>5. Orphaned resources, the silent drain</h3>
 <p>In any account with more than six months of use, a predictable set
@@ -6314,7 +6582,15 @@ it.</li>
 <li><strong>Showback that nobody looks at</strong>: generating the
 report isn't enough if it doesn't influence any team's real
 decision.</li>
-</ul>"""
+</ul>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Discipline</strong><p>Tags, budgets, right-sizing, anomaly alerts.</p></div>
+    <div class="lesson-viz-card"><strong>Drift</strong><p>Blind Reserved, orphans, logs with no retention.</p></div>
+  </div>
+  <figcaption>FinOps fails when cost is invisible or nobody acts.</figcaption>
+</figure>
+"""
                 ),
                 "practical": (
                     "(1) Ative cost allocation tags em sua conta AWS. Adicione tag "

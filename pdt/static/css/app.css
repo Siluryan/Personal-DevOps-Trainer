@@ -195,7 +195,91 @@ html { scroll-behavior: smooth; }
 }
 .lesson-body .mermaid svg {
   max-width: 100%;
+  width: 100%;
   height: auto;
+  display: block;
+  margin: 0 auto;
+}
+/* Figuras / cards visuais (quando Mermaid não é o melhor formato) */
+.lesson-body .lesson-figure {
+  margin: 1.5rem 0;
+  padding: 0;
+  border: 1px solid var(--pdt-border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--pdt-surface2), var(--pdt-surface));
+  overflow: hidden;
+}
+.lesson-body .lesson-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 420px;
+  object-fit: contain;
+  background: #04091c;
+}
+.lesson-body .lesson-figure figcaption {
+  padding: 0.75rem 1rem 1rem;
+  font-size: 0.875rem;
+  color: #8bacc8;
+  line-height: 1.45;
+  border-top: 1px solid var(--pdt-border);
+}
+.lesson-body .lesson-viz {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.1rem 1.15rem;
+}
+.lesson-body .lesson-viz--steps {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) {
+  .lesson-body .lesson-viz--steps {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+  .lesson-body .lesson-viz--compare {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.lesson-body .lesson-viz--compare {
+  grid-template-columns: 1fr;
+}
+.lesson-body .lesson-viz-step,
+.lesson-body .lesson-viz-card {
+  background: rgba(4, 9, 28, 0.55);
+  border: 1px solid var(--pdt-border);
+  border-radius: 10px;
+  padding: 0.85rem 0.9rem;
+}
+.lesson-body .lesson-viz-step {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.lesson-body .lesson-viz-step > span {
+  flex: 0 0 auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #04091c;
+  background: #38bdf8;
+}
+.lesson-body .lesson-viz-step p,
+.lesson-body .lesson-viz-card p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #c8dff5;
+  line-height: 1.45;
+}
+.lesson-body .lesson-viz-card strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #bae6fd;
+  font-size: 0.9rem;
 }
 .mermaid-zoom-hint {
   position: absolute;
