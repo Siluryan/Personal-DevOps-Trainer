@@ -136,11 +136,11 @@ próprio arquivo depois.</p>
 find / -perm -2000 -type f 2&gt;/dev/null   # binários setgid</code></pre>
 <div class="mermaid">
 flowchart TD
-    A["Usuário comum executa binário"] --> B{"setuid setado?"}
-    B -- "Sim" --> C["Roda com UID do DONO"]
-    B -- "Não" --> D["Roda com UID do invocador"]
-    C --> E["Ex: passwd altera /etc/shadow"]
-    D --> F["Privilégio normal"]
+    A[Usuario comum executa binario] --> B{setuid setado}
+    B -->|Sim| C[Roda com UID do DONO]
+    B -->|Nao| D[Roda com UID do invocador]
+    C --> E[passwd altera /etc/shadow]
+    D --> F[Privilegio normal]
 </div>
 
 
@@ -374,11 +374,11 @@ own file afterward.</p>
 find / -perm -2000 -type f 2&gt;/dev/null   # binários setgid</code></pre>
 <div class="mermaid">
 flowchart TD
-    A["Ordinary user runs a binary"] --> B{"setuid set?"}
-    B -- "Yes" --> C["Runs as file OWNER UID"]
-    B -- "No" --> D["Runs as caller UID"]
-    C --> E["e.g. passwd edits /etc/shadow"]
-    D --> F["Normal privilege"]
+    A[Ordinary user runs a binary] --> B{setuid set}
+    B -->|Yes| C[Runs as file OWNER UID]
+    B -->|No| D[Runs as caller UID]
+    C --> E[passwd edits /etc/shadow]
+    D --> F[Normal privilege]
 </div>
 
 

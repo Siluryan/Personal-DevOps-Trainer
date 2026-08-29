@@ -26,10 +26,26 @@
       // ele rodaria antes do <svg> existir no DOM.
       document.addEventListener('DOMContentLoaded', function () {
         if (window.mermaid) {
+          // mermaid.run lê o innerHTML do <div>, onde o browser já serializou
+          // `-->` como `--&gt;` e `"` como `&quot;` — o lexer 11.x então
+          // explode com "Syntax error in text". Reescreve o nó como texto
+          // puro (textContent) e normaliza a aresta antiga `-- "rótulo" -->`
+          // para `|rótulo|`, que o parser atual aceita.
+          document.querySelectorAll('.mermaid').forEach(function (el) {
+            var src = el.textContent
+              .replace(/&quot;/g, '"')
+              .replace(/&#34;/g, '"')
+              .replace(/&gt;/g, '>')
+              .replace(/&lt;/g, '<')
+              .replace(/&amp;/g, '&')
+              .replace(/--\s*"([^"]+)"\s*-->/g, '-->|$1|')
+              .replace(/--\s*'([^']+)'\s*-->/g, '-->|$1|');
+            el.textContent = src;
+          });
           mermaid.initialize({
             startOnLoad: false,
             theme: 'dark',
-            securityLevel: 'strict',
+            securityLevel: 'loose',
             themeVariables: {
               darkMode: true,
               background: '#07122a',
