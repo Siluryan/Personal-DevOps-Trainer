@@ -51,6 +51,12 @@ variable "domain_name" {
   type        = string
 }
 
+variable "applier_domain" {
+  description = "Domínio do Applier no mesmo túnel/nginx (ex.: applier.ia.br). Vazio = não publica o vhost."
+  type        = string
+  default     = ""
+}
+
 variable "cloudflare_tunnel_token" {
   description = "Token do Cloudflare Tunnel (remotely-managed). Crie em Zero Trust > Networks > Tunnels."
   type        = string

@@ -44,6 +44,13 @@ resource "aws_ssm_parameter" "domain_name" {
   value = var.domain_name
 }
 
+resource "aws_ssm_parameter" "applier_domain" {
+  count = var.applier_domain == "" ? 0 : 1
+  name  = "/${var.project_name}/${var.environment}/applier_domain"
+  type  = "String"
+  value = var.applier_domain
+}
+
 # Lido pelo cloudflared na EC2 (token do tunnel remotely-managed).
 resource "aws_ssm_parameter" "cloudflare_tunnel_token" {
   name  = "/${var.project_name}/${var.environment}/cloudflare/tunnel_token"
