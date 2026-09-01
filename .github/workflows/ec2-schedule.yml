@@ -3,9 +3,9 @@
 name: EC2 Schedule
 
 on:
-  schedule:
-    - cron: "0 11 * * *" # 08:00 America/Sao_Paulo (UTC-3)
-    - cron: "0 3 * * *"  # 00:00 America/Sao_Paulo (UTC-3)
+  # schedule:
+  #   - cron: "0 11 * * *" # 08:00 America/Sao_Paulo (UTC-3)
+  #   - cron: "0 3 * * *"  # 00:00 America/Sao_Paulo (UTC-3)
   workflow_dispatch:
     inputs:
       action:
