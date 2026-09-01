@@ -74,11 +74,13 @@ de chamar ao kernel. E AppArmor/SELinux acrescentam controle de acesso
 obrigatório como camada complementar. Você pode observar esse isolamento
 diretamente:</p>
 <div class="mermaid">
-flowchart LR
-    DF["Dockerfile"] --> Build["docker build"]
-    Build --> Img["Imagem, read-only, em camadas"]
-    Img --> Run["docker run"]
-    Run --> Cont["Container, camada gravável por cima"]
+flowchart TB
+    Host["Host Linux, um kernel"] --> NS["Namespaces: PID, NET, MNT, UTS, IPC, USER"]
+    Host --> CG["cgroups: CPU, memória, I/O"]
+    NS --> C1["Container A isolado"]
+    NS --> C2["Container B isolado"]
+    CG --> C1
+    CG --> C2
 </div>
 
 <pre><code>$ docker run -d --name web nginx
@@ -228,6 +230,13 @@ segurança real. <strong>none</strong> desliga rede completamente.
 (usado por Swarm e conceitualmente por Kubernetes). E
 <strong>macvlan</strong> dá ao container um endereço MAC próprio,
 fazendo-o aparecer como um dispositivo físico independente na rede:</p>
+<div class="mermaid">
+flowchart LR
+    Web["serviço web"] --> Br["rede bridge"]
+    Api["serviço api"] --> Br
+    Br --> Dns["DNS embutido: web resolve api pelo nome"]
+</div>
+
 <pre><code>$ docker network create app-net
 $ docker run -d --name db --network app-net postgres
 $ docker run -d --name api --network app-net -e DB_HOST=db myapp
@@ -371,6 +380,14 @@ quanto para investigar se algo persistiu escrita fora dos volumes
 esperados, um sinal potencial de comprometimento.</p>
 
 <h3>12. Nove anti-padrões que aparecem repetidamente em imagens reais</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Evite</strong><p>USER root, FROM latest, copiar .env, um estágio único gordo.</p></div>
+    <div class="lesson-viz-card"><strong>Prefira</strong><p>USER não-root, tag/digest fixos, multi-stage, .dockerignore.</p></div>
+  </div>
+  <figcaption>Anti-padrões de imagem vs. base mínima segura.</figcaption>
+</figure>
+
 <ul>
 <li><strong><code>FROM ubuntu:latest</code></strong>: irreproduzível —
 fixe pelo menos a versão principal.</li>
@@ -428,11 +445,13 @@ port below 1024) without gaining any of root's other powers.
 call into the kernel. And AppArmor/SELinux add mandatory access control
 as a complementary layer. You can observe this isolation directly:</p>
 <div class="mermaid">
-flowchart LR
-    DF["Dockerfile"] --> Build["docker build"]
-    Build --> Img["Imagem, read-only, em camadas"]
-    Img --> Run["docker run"]
-    Run --> Cont["Container, camada gravável por cima"]
+flowchart TB
+    Host["Linux host, one kernel"] --> NS["Namespaces: PID, NET, MNT, UTS, IPC, USER"]
+    Host --> CG["cgroups: CPU, memory, I/O"]
+    NS --> C1["Isolated container A"]
+    NS --> C2["Isolated container B"]
+    CG --> C1
+    CG --> C2
 </div>
 
 <pre><code>$ docker run -d --name web nginx
@@ -580,6 +599,13 @@ networking off completely. <strong>overlay</strong> connects containers
 across multiple hosts (used by Swarm and conceptually by Kubernetes). And
 <strong>macvlan</strong> gives the container its own MAC address, making
 it appear as an independent physical device on the network:</p>
+<div class="mermaid">
+flowchart LR
+    Web["web service"] --> Br["bridge network"]
+    Api["api service"] --> Br
+    Br --> Dns["Built-in DNS: web resolves api by name"]
+</div>
+
 <pre><code>$ docker network create app-net
 $ docker run -d --name db --network app-net postgres
 $ docker run -d --name api --network app-net -e DB_HOST=db myapp
@@ -724,6 +750,14 @@ for investigating whether something wrote outside the expected volumes, a
 potential sign of compromise.</p>
 
 <h3>12. Nine anti-patterns that repeatedly show up in real images</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Avoid</strong><p>USER root, FROM latest, copying .env, one fat single stage.</p></div>
+    <div class="lesson-viz-card"><strong>Prefer</strong><p>Non-root USER, pinned tag/digest, multi-stage, .dockerignore.</p></div>
+  </div>
+  <figcaption>Image anti-patterns vs. a minimal secure baseline.</figcaption>
+</figure>
+
 <ul>
 <li><strong><code>FROM ubuntu:latest</code></strong>: not reproducible —
 pin at least the major version.</li>
@@ -929,9 +963,9 @@ sem gerenciador de pacotes algum. O espectro de bases disponíveis varia
 enormemente:</p>
 <div class="mermaid">
 flowchart LR
-    A["Imagem base completa"] --> B["Remove shell e package manager"]
-    B --> C["Roda como usuário não-root"]
-    C --> D["Imagem distroless / minimalista"]
+    Full["Imagem base completa"] --> Strip["Remove shell e package manager"]
+    Strip --> NonRoot["Roda como usuário não-root"]
+    NonRoot --> Min["Imagem distroless / minimalista"]
 </div>
 
 <table>
@@ -1078,6 +1112,14 @@ chave própria, ou "keyless" via OIDC — provando identidade através do
 próprio workflow de CI, sem gerenciar chave nenhuma manualmente), e o
 Rekor do projeto Sigstore registra essa assinatura num transparency log
 público e auditável:</p>
+<div class="mermaid">
+flowchart LR
+    Build["Build da imagem"] --> Sign["cosign sign"]
+    Sign --> Reg["Registry"]
+    Reg --> Verify["cosign verify no deploy"]
+    Verify --> Run["Só sobe se a assinatura for válida"]
+</div>
+
 <pre><code># Sign no CI (OIDC keyless, sem chave armazenada)
 $ cosign sign --yes ghcr.io/empresa/app@$DIGEST
 
@@ -1179,6 +1221,15 @@ recente rapidamente e a exposição a esse tipo de ataque de supply
 chain.</p>
 
 <h3>9. Dez anti-padrões que, somados, explicam a maioria das CVEs evitáveis</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Base mínima e pin por digest.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Scan + SBOM em todo push.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Assinar e exigir verify no deploy.</p></div>
+  </div>
+  <figcaption>Checklist curto contra a maioria das CVEs evitáveis.</figcaption>
+</figure>
+
 <ul>
 <li><strong><code>FROM ubuntu:18.04</code></strong> (fim de suporte):
 sem patch de segurança novo chegando.</li>
@@ -1219,9 +1270,9 @@ runtime and the essential libraries, with no shell, no package manager at
 all. The available base spectrum varies enormously:</p>
 <div class="mermaid">
 flowchart LR
-    A["Imagem base completa"] --> B["Remove shell e package manager"]
-    B --> C["Roda como usuário não-root"]
-    C --> D["Imagem distroless / minimalista"]
+    Full["Full base image"] --> Strip["Remove shell and package manager"]
+    Strip --> NonRoot["Run as non-root user"]
+    NonRoot --> Min["Distroless / minimal image"]
 </div>
 
 <table>
@@ -1365,6 +1416,14 @@ the image (with its own key, or "keyless" via OIDC — proving identity
 through the CI workflow itself, with no key to manage manually), and the
 Sigstore project's Rekor records that signature in a public, auditable
 transparency log:</p>
+<div class="mermaid">
+flowchart LR
+    Build["Image build"] --> Sign["cosign sign"]
+    Sign --> Reg["Registry"]
+    Reg --> Verify["cosign verify at deploy"]
+    Verify --> Run["Runs only if signature is valid"]
+</div>
+
 <pre><code># Sign no CI (OIDC keyless, sem chave armazenada)
 $ cosign sign --yes ghcr.io/empresa/app@$DIGEST
 
@@ -1467,6 +1526,15 @@ versions installed — a real trade-off between adopting a recent package
 quickly and the exposure to this kind of supply-chain attack.</p>
 
 <h3>9. Ten anti-patterns that, combined, explain most avoidable CVEs</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Minimal base and digest pin.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Scan + SBOM on every push.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Sign and require verify at deploy.</p></div>
+  </div>
+  <figcaption>Short checklist against most avoidable CVEs.</figcaption>
+</figure>
+
 <ul>
 <li><strong><code>FROM ubuntu:18.04</code></strong> (end of support): no
 new security patches arriving.</li>
@@ -1653,10 +1721,11 @@ justificam quando a organização já precisa de um registro multi-formato
 cobrindo não só imagem de container, mas também artefato Maven, pacote
 npm, entre outros, numa única plataforma.</p>
 <div class="mermaid">
-flowchart LR
-    CI["Pipeline de CI"] -- "push com digest" --> Reg["Registry"]
-    Reg -- "pull por digest, imutável" --> Prod["Produção"]
-    Reg -- "pull por tag, pode mudar" --> Dev["Ambiente de dev"]
+flowchart TB
+    Need["Escolha de registry"] --> Hub["Docker Hub: público e simples"]
+    Need --> Cloud["ECR / ACR / GCR: cloud nativo"]
+    Need --> GHCR["GHCR: próximo ao código no GitHub"]
+    Need --> Harbor["Harbor: on-prem, scan e políticas"]
 </div>
 
 
@@ -1785,6 +1854,14 @@ upstream, toda imagem externa passa a ter trilha de auditoria pelo seu
 próprio registry, e abre a possibilidade de escanear ou colocar em
 quarentena uma imagem externa ANTES dela chegar a qualquer pipeline
 interno.</p>
+<div class="mermaid">
+flowchart LR
+    CI["Jobs de CI"] --> Cache["Pull-through cache"]
+    Cache --> Hub["Docker Hub / upstream"]
+    Cache --> Local["Serve cópia local"]
+    CI --> Local
+</div>
+
 
 <h3>6. Scan contínuo: uma checagem no push não é o fim da história</h3>
 <p>Escanear no momento do push só captura vulnerabilidades JÁ conhecidas
@@ -1851,6 +1928,14 @@ build multi-arch é hoje expectativa padrão, não recurso avançado
 opcional.</p>
 
 <h3>10. Oito anti-padrões que comprometem segurança, custo ou confiabilidade do registry</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Arriscado</strong><p>Tags mutáveis, push humano, sem retenção, sem scan contínuo.</p></div>
+    <div class="lesson-viz-card"><strong>Saudável</strong><p>Digest imutável, CI-only push, retenção e scan contínuo.</p></div>
+  </div>
+  <figcaption>Higiene de registry: o que costuma quebrar segurança e custo.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Tags mutáveis em produção</strong>: <code>latest</code>,
 <code>main</code>, <code>dev</code> nunca deveriam aparecer num
@@ -1899,10 +1984,11 @@ Artifactory/Nexus make sense when the organization already needs a
 multi-format registry covering not only container images but also
 Maven artifacts, npm packages, and more, on a single platform.</p>
 <div class="mermaid">
-flowchart LR
-    CI["Pipeline de CI"] -- "push com digest" --> Reg["Registry"]
-    Reg -- "pull por digest, imutável" --> Prod["Produção"]
-    Reg -- "pull por tag, pode mudar" --> Dev["Ambiente de dev"]
+flowchart TB
+    Need["Registry choice"] --> Hub["Docker Hub: public and simple"]
+    Need --> Cloud["ECR / ACR / GCR: cloud-native"]
+    Need --> GHCR["GHCR: close to GitHub code"]
+    Need --> Harbor["Harbor: on-prem, scan and policies"]
 </div>
 
 
@@ -2031,6 +2117,14 @@ every pull), the pipeline survives a momentary upstream outage,
 every external image gets an audit trail through your own
 registry, and you can scan or quarantine an external image BEFORE
 it reaches any internal pipeline.</p>
+<div class="mermaid">
+flowchart LR
+    CI["CI jobs"] --> Cache["Pull-through cache"]
+    Cache --> Hub["Docker Hub / upstream"]
+    Cache --> Local["Serve local copy"]
+    CI --> Local
+</div>
+
 
 <h3>6. Continuous scanning: a check at push time is not the end of the story</h3>
 <p>Scanning at push time only catches vulnerabilities ALREADY known
@@ -2099,6 +2193,14 @@ local development, multi-arch builds are now a standard expectation,
 not an optional advanced feature.</p>
 
 <h3>10. Eight anti-patterns that compromise registry security, cost, or reliability</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Risky</strong><p>Mutable tags, human push, no retention, no continuous scan.</p></div>
+    <div class="lesson-viz-card"><strong>Healthy</strong><p>Immutable digest, CI-only push, retention and continuous scan.</p></div>
+  </div>
+  <figcaption>Registry hygiene: what usually breaks security and cost.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Mutable tags in production</strong>: <code>latest</code>,
 <code>main</code>, <code>dev</code> should never appear in a
@@ -2426,6 +2528,14 @@ container Docker ou Podman, binário nativo, VM via qemu, até JAR/WAR de
 Java — com um modelo operacional mais simples que Kubernetes. Integra
 naturalmente com Consul (service discovery) e Vault (segredos) para
 quem já usa a pilha HashiCorp completa:</p>
+<div class="mermaid">
+flowchart LR
+    Nomad["Nomad"] --> Docker["Containers Docker/Podman"]
+    Nomad --> Bin["Binário nativo"]
+    Nomad --> Vm["VM / qemu"]
+    Nomad --> Java["JAR / WAR"]
+</div>
+
 <pre><code># job.nomad.hcl
 job "web" {
   datacenters = ["dc1"]
@@ -2560,6 +2670,14 @@ que não depende de nenhuma ferramenta específica de backup instalada no
 host.</p>
 
 <h3>11. Seis anti-padrões que aparecem em quem tenta esticar Compose além do que ele resolve</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Compose basta</strong><p>Dev local, demo, um host, poucos serviços.</p></div>
+    <div class="lesson-viz-card"><strong>Hora de orquestrar</strong><p>Multi-host, autoscaling, rolling e discovery reais.</p></div>
+  </div>
+  <figcaption>Quando esticar Compose vira anti-padrão operacional.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Compose como produção multi-host</strong>: não escala para
 esse cenário — use Swarm, Nomad ou Kubernetes conforme a necessidade
@@ -2590,9 +2708,9 @@ a space); the old separate binary (<code>docker-compose</code>, with a
 hyphen) is officially out of support:</p>
 <div class="mermaid">
 flowchart TD
-    Compose["docker-compose.yml"] --> App["Serviço: app"]
-    Compose --> DB["Serviço: banco"]
-    Compose --> Cache["Serviço: cache"]
+    Compose["docker-compose.yml"] --> App["Service: app"]
+    Compose --> DB["Service: database"]
+    Compose --> Cache["Service: cache"]
     App --> DB
     App --> Cache
 </div>
@@ -2750,6 +2868,14 @@ container, a native binary, a VM via qemu, even a Java JAR/WAR — with an
 operational model simpler than Kubernetes. It integrates naturally with
 Consul (service discovery) and Vault (secrets) for anyone already using
 the full HashiCorp stack:</p>
+<div class="mermaid">
+flowchart LR
+    Nomad["Nomad"] --> Docker["Docker/Podman containers"]
+    Nomad --> Bin["Native binary"]
+    Nomad --> Vm["VM / qemu"]
+    Nomad --> Java["JAR / WAR"]
+</div>
+
 <pre><code># job.nomad.hcl
 job "web" {
   datacenters = ["dc1"]
@@ -2881,6 +3007,14 @@ mounting the data volume and the destination directory, and uses
 that doesn't depend on any host-specific backup tool.</p>
 
 <h3>11. Six anti-patterns that show up when people stretch Compose beyond what it solves</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Compose is enough</strong><p>Local dev, demos, one host, few services.</p></div>
+    <div class="lesson-viz-card"><strong>Time to orchestrate</strong><p>Multi-host, autoscaling, real rolling and discovery.</p></div>
+  </div>
+  <figcaption>When stretching Compose becomes an operational anti-pattern.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Compose as multi-host production</strong>: it doesn't scale for
 that scenario — use Swarm, Nomad, or Kubernetes according to the real
@@ -3197,6 +3331,14 @@ vulnerável que nunca é chamada com input controlável pelo usuário
 representa risco teórico, não risco prático. VEX (Vulnerability
 Exploitability eXchange) é uma declaração ASSINADA que expressa essa
 distinção explicitamente:</p>
+<div class="mermaid">
+flowchart LR
+    CVE["CVE no componente"] --> Present["Presente no SBOM?"]
+    Present --> Vex{"VEX: explorável aqui?"}
+    Vex -- "Não" --> Suppress["Suprime / documenta"]
+    Vex -- "Sim" --> Patch["Prioriza patch"]
+</div>
+
 <pre><code>{
   "vulnerabilities": [
     {
@@ -3324,6 +3466,15 @@ como atestado verificável, e envia uma cópia para a plataforma central
 que vai monitorar continuamente por CVE nova.</p>
 
 <h3>10. Seis anti-padrões que tornam SBOM um exercício de checklist sem valor real</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Gerar SBOM no build, nunca à mão.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Publicar junto do artefato.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Alertar com VEX, não só com lista crua.</p></div>
+  </div>
+  <figcaption>SBOM útil: automatizado, anexado e acionável.</figcaption>
+</figure>
+
 <ul>
 <li><strong>SBOM gerado manualmente</strong>: desatualizado em horas,
 pelo simples fato de dependências mudarem constantemente.</li>
@@ -3365,10 +3516,10 @@ additional unique identifier (PURL or CPE), dependency relationship,
 author of the SBOM data, and generation timestamp.</p>
 <div class="mermaid">
 flowchart LR
-    Build["Build do artefato"] --> Syft["Gera SBOM, ex.: Syft"]
-    Syft --> SBOM["SBOM: lista de componentes"]
-    SBOM --> Scan["Cruza com base de CVE"]
-    Scan --> Alert["Alerta se componente vulnerável"]
+    Build["Artifact build"] --> Syft["Generate SBOM, e.g. Syft"]
+    Syft --> SBOM["SBOM: component list"]
+    SBOM --> Scan["Cross-check CVE database"]
+    Scan --> Alert["Alert if a component is vulnerable"]
 </div>
 
 
@@ -3485,6 +3636,14 @@ function that is never called with user-controllable input represents
 theoretical risk, not practical risk. VEX (Vulnerability Exploitability
 eXchange) is a SIGNED declaration that expresses that distinction
 explicitly:</p>
+<div class="mermaid">
+flowchart LR
+    CVE["CVE in component"] --> Present["Present in SBOM?"]
+    Present --> Vex{"VEX: exploitable here?"}
+    Vex -- "No" --> Suppress["Suppress / document"]
+    Vex -- "Yes" --> Patch["Prioritize patch"]
+</div>
+
 <pre><code>{
   "vulnerabilities": [
     {
@@ -3609,6 +3768,15 @@ the SBOM as a verifiable attestation, and sends a copy to the central
 platform that will continuously monitor for new CVEs.</p>
 
 <h3>10. Six anti-patterns that turn SBOM into a checklist exercise with no real value</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Generate SBOM in the build, never by hand.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Publish it with the artifact.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Alert with VEX, not a raw list alone.</p></div>
+  </div>
+  <figcaption>Useful SBOM: automated, attached, and actionable.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Manually generated SBOM</strong>: stale within hours,
 simply because dependencies change constantly.</li>
@@ -3947,6 +4115,14 @@ negligenciar: tratar a plataforma como PRODUTO exige investimento real
 em product management e experiência de uso — sem isso, ela tende a
 degradar para uma fábrica de tickets ou um wrapper decorativo sem valor
 real agregado.</p>
+<div class="mermaid">
+flowchart TB
+    SA["Time stream-aligned"] --> Plat["Time de plataforma"]
+    Plat --> SA
+    En["Time enabling"] --> SA
+    Comp["Complicated-subsystem"] --> SA
+</div>
+
 
 <h3>6. Métricas de sucesso: como provar que a plataforma está funcionando, não só existindo</h3>
 <p>Time-to-first-deploy de um serviço novo — medido em horas em vez de
@@ -4003,6 +4179,15 @@ rodam Backstage internamente como sua própria plataforma de
 desenvolvedor.</p>
 
 <h3>9. Por onde começar, sem tentar construir a plataforma perfeita no primeiro ano</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Entreviste dores reais dos times.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Entregue um único golden path.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Meça lead time e adoção antes de expandir.</p></div>
+  </div>
+  <figcaption>Começar pequeno: plataforma que resolve uma dor primeiro.</figcaption>
+</figure>
+
 <ol>
 <li>Identifique três dores REAIS através de entrevista direta com
 desenvolvedores — não suposição do time de plataforma sobre o que eles
@@ -4051,9 +4236,9 @@ every new service is born with a dashboard and SLO already configured,
 with no extra manual work.</p>
 <div class="mermaid">
 flowchart LR
-    Dev["Desenvolvedor"] -- "Pede um serviço novo" --> Portal["Portal da IDP"]
-    Portal --> Template["Aplica o golden path"]
-    Template --> Infra["Provisiona infraestrutura"]
+    Dev["Developer"] -- "Requests a new service" --> Portal["IDP portal"]
+    Portal --> Template["Applies the golden path"]
+    Template --> Infra["Provisions infrastructure"]
     Infra --> Dev
 </div>
 
@@ -4210,6 +4395,14 @@ easiest to neglect: treating the platform as a PRODUCT requires real
 investment in product management and user experience — without that, it
 tends to degrade into a ticket factory or a decorative wrapper with no
 real aggregated value.</p>
+<div class="mermaid">
+flowchart TB
+    SA["Stream-aligned team"] --> Plat["Platform team"]
+    Plat --> SA
+    En["Enabling team"] --> SA
+    Comp["Complicated-subsystem"] --> SA
+</div>
+
 
 <h3>6. Success metrics: how to prove the platform is working, not just existing</h3>
 <p>Time-to-first-deploy of a new service — measured in hours instead of
@@ -4262,6 +4455,15 @@ Box, among many others, run Backstage internally as their own developer
 platform.</p>
 
 <h3>9. Where to start, without trying to build the perfect platform in year one</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Interview real team pain points.</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Ship a single golden path.</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Measure lead time and adoption before expanding.</p></div>
+  </div>
+  <figcaption>Start small: a platform that fixes one pain first.</figcaption>
+</figure>
+
 <ol>
 <li>Identify three REAL pains through direct interviews with
 developers — not the platform team's assumption about what they
@@ -4446,10 +4648,10 @@ profundidade: se uma camada falhar ou for contornada, a próxima ainda
 pega.</p>
 <div class="mermaid">
 flowchart LR
-    Request["Pedido de criar recurso"] --> Admission["Admission controller"]
-    Admission --> Policy{"Passa nas políticas, OPA ou Kyverno?"}
-    Policy -- "Sim" --> Create["Recurso é criado"]
-    Policy -- "Não" --> Reject["Pedido rejeitado"]
+    Ide["IDE / pre-commit"] --> Ci["CI / Conftest"]
+    Ci --> Admit["Admission no cluster"]
+    Admit --> Runtime["Runtime / Custodian"]
+    Runtime --> Org["SCP / Org Policy"]
 </div>
 
 
@@ -4565,6 +4767,14 @@ e <code>Constraint</code> INSTANCIA essa regra com parâmetros
 específicos — a mesma separação vista na aula de Admission Controllers,
 permitindo reusar a mesma lógica com parâmetros diferentes por
 instância:</p>
+<div class="mermaid">
+flowchart LR
+    CT["ConstraintTemplate em Rego"] --> C["Constraint com parâmetros"]
+    C --> Adm["Admission Gatekeeper"]
+    Adm -- "viola" --> Deny["Rejeita"]
+    Adm -- "ok" --> Allow["Cria recurso"]
+</div>
+
 <pre><code># Template (Rego)
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
@@ -4716,6 +4926,14 @@ raio de impacto de um bug ali costuma ser maior que um bug de aplicação
 comum.</p>
 
 <h3>11. Sete anti-padrões que decidem se o programa de Policy as Code sobrevive</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Mata o programa</strong><p>Enforce no dia 1, sem testes, exceções eternas.</p></div>
+    <div class="lesson-viz-card"><strong>Faz sobreviver</strong><p>Audit primeiro, teste como código, exceções com prazo.</p></div>
+  </div>
+  <figcaption>Adoção de Policy as Code: cultura antes de bloqueio duro.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Enforce logo no dia 1 em produção</strong>: revolta
 praticamente garantida, e a política acaba desligada de vez (seção 9).</li>
@@ -4758,10 +4976,10 @@ is defense in depth: if one layer fails or is bypassed, the next still
 catches it.</p>
 <div class="mermaid">
 flowchart LR
-    Request["Pedido de criar recurso"] --> Admission["Admission controller"]
-    Admission --> Policy{"Passa nas políticas, OPA ou Kyverno?"}
-    Policy -- "Sim" --> Create["Recurso é criado"]
-    Policy -- "Não" --> Reject["Pedido rejeitado"]
+    Ide["IDE / pre-commit"] --> Ci["CI / Conftest"]
+    Ci --> Admit["Cluster admission"]
+    Admit --> Runtime["Runtime / Custodian"]
+    Runtime --> Org["SCP / Org Policy"]
 </div>
 
 
@@ -4876,6 +5094,14 @@ and <code>Constraint</code> INSTANTIATES that rule with specific
 parameters — the same separation seen in the Admission Controllers
 lesson, allowing reuse of the same logic with different parameters per
 instance:</p>
+<div class="mermaid">
+flowchart LR
+    CT["ConstraintTemplate in Rego"] --> C["Constraint with parameters"]
+    C --> Adm["Gatekeeper admission"]
+    Adm -- "violates" --> Deny["Reject"]
+    Adm -- "ok" --> Allow["Create resource"]
+</div>
+
 <pre><code># Template (Rego)
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
@@ -5025,6 +5251,14 @@ because the policy runs automatically in production, the blast radius of
 a bug there is usually larger than a common application bug.</p>
 
 <h3>11. Seven anti-patterns that decide whether a Policy as Code program survives</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Kills the program</strong><p>Day-1 enforce, no tests, endless exceptions.</p></div>
+    <div class="lesson-viz-card"><strong>Makes it survive</strong><p>Audit first, test like code, time-boxed exceptions.</p></div>
+  </div>
+  <figcaption>Policy as Code adoption: culture before hard blocking.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Enforce on day 1 in production</strong>: revolt is
 practically guaranteed, and the policy ends up permanently disabled
@@ -5211,9 +5445,11 @@ explorar nada — headers, redirects, defaults expostos. Um DAST "ativo"
 isso contra produção sem autorização explícita, dado o potencial de
 causar dano real.</p>
 <div class="mermaid">
-flowchart LR
-    App["App rodando em ambiente isolado"] --> DAST["Scanner DAST ataca de fora"]
-    DAST --> Report["Reporta a vulnerabilidade encontrada"]
+flowchart TB
+    Code["Código-fonte"] --> SAST["SAST"]
+    Deps["Dependências"] --> SCA["SCA"]
+    Run["App em execução"] --> DAST["DAST"]
+    Run --> IAST["IAST"]
 </div>
 
 
@@ -5314,6 +5550,14 @@ jobs:
       - if: failure()
         uses: actions/upload-artifact@v4
         with: { name: dast-report, path: report_html.html }</code></pre>
+<div class="mermaid">
+flowchart LR
+    PR["Pull request"] --> Build["Build da imagem"]
+    Build --> Eph["Ambiente efêmero"]
+    Eph --> Zap["ZAP / DAST"]
+    Zap --> Gate["Gate do pipeline"]
+</div>
+
 <p>Subir a aplicação como um "service container" EFÊMERO dentro do
 próprio job de CI, com dado sintético semeado especificamente para o
 teste, resolve o dilema de "onde rodar DAST sem risco": o alvo é
@@ -5427,6 +5671,14 @@ PortSwigger Web Security Academy) — nunca contra um alvo de terceiro sem
 permissão documentada.</p>
 
 <h3>12. Cinco anti-padrões que tornam DAST inútil ou perigoso</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Perigoso</strong><p>Scan ativo em produção, sem auth, sem escopo.</p></div>
+    <div class="lesson-viz-card"><strong>Seguro</strong><p>Ambiente isolado, credenciais de teste, autorização explícita.</p></div>
+  </div>
+  <figcaption>DAST útil exige ambiente e autorização — não bravura.</figcaption>
+</figure>
+
 <ul>
 <li><strong>DAST ativo contra produção sem autorização</strong>: risco
 real de causar negação de serviço, além da questão legal da seção
@@ -5465,9 +5717,11 @@ attacker from the outside. White-box (full source access), black-box
 are complementary approaches — mature programs combine them instead of
 betting on a single one.</p>
 <div class="mermaid">
-flowchart LR
-    App["App rodando em ambiente isolado"] --> DAST["Scanner DAST ataca de fora"]
-    DAST --> Report["Reporta a vulnerabilidade encontrada"]
+flowchart TB
+    Code["Source code"] --> SAST["SAST"]
+    Deps["Dependencies"] --> SCA["SCA"]
+    Run["Running app"] --> DAST["DAST"]
+    Run --> IAST["IAST"]
 </div>
 
 
@@ -5564,6 +5818,14 @@ jobs:
       - if: failure()
         uses: actions/upload-artifact@v4
         with: { name: dast-report, path: report_html.html }</code></pre>
+<div class="mermaid">
+flowchart LR
+    PR["Pull request"] --> Build["Image build"]
+    Build --> Eph["Ephemeral environment"]
+    Eph --> Zap["ZAP / DAST"]
+    Zap --> Gate["Pipeline gate"]
+</div>
+
 <p>Bringing the application up as an EPHEMERAL "service container"
 inside the CI job itself, with synthetic data seeded specifically for
 the test, solves the dilemma of "where to run DAST without risk": the
@@ -5659,6 +5921,14 @@ own systems, environments explicitly contracted for pentest, or bug
 bounty programs with a formally defined scope.</p>
 
 <h3>12. Five anti-patterns that make DAST useless or dangerous</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Dangerous</strong><p>Active scan in production, no auth, no scope.</p></div>
+    <div class="lesson-viz-card"><strong>Safe</strong><p>Isolated env, test credentials, explicit authorization.</p></div>
+  </div>
+  <figcaption>Useful DAST needs environment and authorization — not bravado.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Active DAST against production without authorization</strong>:
 real risk of causing denial of service, plus the legal issue from
@@ -5841,12 +6111,11 @@ aplicação manuseia a senha do usuário diretamente) só deveria existir em
 sistemas legados que ainda não migraram — ambos expõem mais superfície
 de risco do que os fluxos modernos.</p>
 <div class="mermaid">
-flowchart TD
-    Req["GET /pedidos/123"] --> Auth{"Usuário autenticado?"}
-    Auth -- "Não" --> Deny["401"]
-    Auth -- "Sim" --> Owner{"O pedido 123 pertence a este usuário?"}
-    Owner -- "Não" --> Forbid["403, previne BOLA"]
-    Owner -- "Sim" --> Allow["Retorna o pedido"]
+flowchart LR
+    Client["Cliente"] --> IdP["IdP OAuth2 / OIDC"]
+    IdP --> Tok["Access token / JWT"]
+    Tok --> Api["API"]
+    Api --> Val["Valida assinatura, exp e audience"]
 </div>
 
 <p>Um JWT bem formado carrega estrutura específica que vale entender
@@ -6010,6 +6279,14 @@ X-RateLimit-Reset: 1714053900</code></pre>
 atributos de um objeto de banco de dados dá ao cliente controle sobre
 QUALQUER campo do modelo, inclusive campos que nunca deveriam ser
 editáveis externamente:</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Mass assignment</strong><p>JSON do request vira atributos do ORM sem allowlist.</p></div>
+    <div class="lesson-viz-card"><strong>Seguro</strong><p>Schema explícito; só campos permitidos chegam ao modelo.</p></div>
+  </div>
+  <figcaption>Mass assignment: o corpo da requisição não é o modelo.</figcaption>
+</figure>
+
 <pre><code># RUIM
 @app.put('/users/{id}')
 def update_user(id, body: dict):
@@ -6173,6 +6450,15 @@ requisições repetidas. Kong, AWS API Gateway, Apigee, NGINX, Traefik e
 Envoy são as opções mais usadas nesse papel.</p>
 
 <h3>12. Oito anti-padrões que resumem praticamente toda a aula</h3>
+<div class="mermaid">
+flowchart TD
+    Req["Request"] --> Authn["Autenticação"]
+    Authn --> Authz["Autorização / anti-BOLA"]
+    Authz --> Schema["Validação de schema"]
+    Schema --> Rate["Rate limit"]
+    Rate --> Ok["Resposta"]
+</div>
+
 <ul>
 <li><strong>JWT em localStorage do navegador</strong>: acessível a
 qualquer XSS bem-sucedido.</li>
@@ -6206,12 +6492,11 @@ for service-to-service; <strong>Device Code</strong> for limited-input
 devices; and the deprecated Implicit flow, which should no longer be
 used.</p>
 <div class="mermaid">
-flowchart TD
-    Req["GET /pedidos/123"] --> Auth{"Usuário autenticado?"}
-    Auth -- "Não" --> Deny["401"]
-    Auth -- "Sim" --> Owner{"O pedido 123 pertence a este usuário?"}
-    Owner -- "Não" --> Forbid["403, previne BOLA"]
-    Owner -- "Sim" --> Allow["Retorna o pedido"]
+flowchart LR
+    Client["Client"] --> IdP["OAuth2 / OIDC IdP"]
+    IdP --> Tok["Access token / JWT"]
+    Tok --> Api["API"]
+    Api --> Val["Validate signature, exp, and audience"]
 </div>
 
 <p>A well-formed JWT carries specific structure worth understanding
@@ -6333,6 +6618,14 @@ X-RateLimit-Reset: 1714053900</code></pre>
 <p>A handler that accepts the request JSON and applies it DIRECTLY to
 the attributes of a database object gives the client control over ANY
 model field, including fields that should never be editable externally:</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Mass assignment</strong><p>Request JSON becomes ORM attributes with no allowlist.</p></div>
+    <div class="lesson-viz-card"><strong>Safe</strong><p>Explicit schema; only allowed fields reach the model.</p></div>
+  </div>
+  <figcaption>Mass assignment: the request body is not the model.</figcaption>
+</figure>
+
 <pre><code># RUIM
 @app.put('/users/{id}')
 def update_user(id, body: dict):
@@ -6471,6 +6764,15 @@ API Gateway, Apigee, NGINX) is where those cross-cutting concerns live —
 so each service can focus on its business logic.</p>
 
 <h3>12. Eight anti-patterns that practically summarize the whole lesson</h3>
+<div class="mermaid">
+flowchart TD
+    Req["Request"] --> Authn["Authentication"]
+    Authn --> Authz["Authorization / anti-BOLA"]
+    Authz --> Schema["Schema validation"]
+    Schema --> Rate["Rate limit"]
+    Rate --> Ok["Response"]
+</div>
+
 <ul>
 <li><strong>JWT in browser localStorage</strong>: accessible to any
 successful XSS.</li>
@@ -6650,12 +6952,10 @@ UX geralmente superior, mas custo que escala rápido com volume, e
 retenção padrão frequentemente mais curta do que uma solução self-hosted
 permitiria pelo mesmo orçamento.</p>
 <div class="mermaid">
-flowchart LR
-    S1["Serviço 1"] --> Agent["Agente de coleta"]
-    S2["Serviço 2"] --> Agent
-    S3["Serviço 3"] --> Agent
-    Agent --> Central["Armazenamento centralizado"]
-    Central --> Dash["Dashboard e alerta"]
+flowchart TB
+    Apps["Serviços"] --> Elk["ELK / OpenSearch"]
+    Apps --> Loki["Grafana Loki"]
+    Apps --> Cloud["CloudWatch / Stackdriver"]
 </div>
 
 
@@ -6788,6 +7088,12 @@ qualquer coisa além de 30 dias — dado raramente consultado não precisa
 pagar o preço de armazenamento de acesso rápido. No ELK, o ILM (Index
 Lifecycle Management) automatiza essa transição entre tiers sem
 intervenção manual contínua.</p>
+<div class="mermaid">
+flowchart LR
+    Hot["Hot: 7–30 dias"] --> Warm["Warm: ~90 dias"]
+    Warm --> Cold["Cold / archive: 1 ano+"]
+</div>
+
 
 <h3>6. PII em log: um vazamento que já aconteceu no momento em que a linha foi escrita</h3>
 <p>Um log contendo CPF, e-mail em claro ou token de acesso não é só um
@@ -6876,6 +7182,14 @@ PagerDuty ou Opsgenie fecha o ciclo, transformando uma condição
 detectada em notificação para um humano responder.</p>
 
 <h3>10. Nove anti-padrões que aparecem repetidamente em operações de log mal desenhadas</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Anti-padrão</strong><p>Log em arquivo no container, texto livre, PII sem redaction.</p></div>
+    <div class="lesson-viz-card"><strong>Padrão saudável</strong><p>Stdout JSON, agente dedicado, retenção por tier.</p></div>
+  </div>
+  <figcaption>Logging centralizado começa no formato e no destino, não no dashboard.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Log em arquivo dentro do container</strong>: nenhuma
 ferramenta de coleta externa o vê por padrão.</li>
@@ -6922,12 +7236,10 @@ the ASL2 fork of Elasticsearch. And SaaS options (Datadog, Splunk,
 CloudWatch Logs, Grafana Cloud) trade operational cost for invoice
 cost.</p>
 <div class="mermaid">
-flowchart LR
-    S1["Serviço 1"] --> Agent["Agente de coleta"]
-    S2["Serviço 2"] --> Agent
-    S3["Serviço 3"] --> Agent
-    Agent --> Central["Armazenamento centralizado"]
-    Central --> Dash["Dashboard e alerta"]
+flowchart TB
+    Apps["Services"] --> Elk["ELK / OpenSearch"]
+    Apps --> Loki["Grafana Loki"]
+    Apps --> Cloud["CloudWatch / Stackdriver"]
 </div>
 
 
@@ -7037,6 +7349,12 @@ days; ERROR logs deserve a bit more, 30 to 90 days, as evidence of recent
 incidents; and audit/compliance logs may need 1+ year depending on the
 sector. Hot/warm/cold/archive tiering moves older data to cheaper
 storage automatically.</p>
+<div class="mermaid">
+flowchart LR
+    Hot["Hot: 7–30 days"] --> Warm["Warm: ~90 days"]
+    Warm --> Cold["Cold / archive: 1 year+"]
+</div>
+
 
 <h3>6. PII in logs: a leak that already happened the moment the line was written</h3>
 <p>A log containing CPF, cleartext email, or an access token is not just
@@ -7107,6 +7425,14 @@ or Vector (more flexible for complex transformation). And for alerting,
 Grafana Alerting or Alertmanager tied to runbooks.</p>
 
 <h3>10. Nine anti-patterns that show up repeatedly in poorly designed log operations</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Anti-pattern</strong><p>Log file in the container, free text, PII without redaction.</p></div>
+    <div class="lesson-viz-card"><strong>Healthy pattern</strong><p>JSON stdout, dedicated agent, tiered retention.</p></div>
+  </div>
+  <figcaption>Centralized logging starts with format and destination, not the dashboard.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Log to a file inside the container</strong>: no external
 collection tool sees it by default.</li>

@@ -12,47 +12,55 @@
   {% endcomment %}
   <script src="{% static 'js/lab.js' %}"></script>
   {% if topic.lesson %}
-    {# Só carrega Mermaid (biblioteca pesada) na página de aula, não no site inteiro. #}
+    {% comment %}Mermaid sem defer + startOnLoad false: o UMD 11 auto-inicia se o DOM ja estiver parseado.{% endcomment %}
     <script src="{% static 'js/mermaid-zoom.js' %}"></script>
-    <script src="{% static 'vendor/mermaid/mermaid.min.js' %}" defer></script>
+    <script src="{% static 'vendor/mermaid/mermaid.min.js' %}"></script>
     <script>
-      // Registrado sem defer: garante que este listener existe ANTES do
-      // DOMContentLoaded disparar, então quando ele rodar o mermaid.min.js
-      // (defer) já terá executado e window.mermaid já existe.
-      //
-      // startOnLoad:false + mermaid.run(...) manual (em vez do scan automático
-      // do mermaid.js) de propósito: precisamos saber quando o render termina
-      // para só então ligar o zoom/lightbox (enhanceMermaidDiagrams), senão
-      // ele rodaria antes do <svg> existir no DOM.
-      document.addEventListener('DOMContentLoaded', function () {
-        if (window.mermaid) {
-          mermaid.initialize({
-            startOnLoad: false,
-            theme: 'dark',
-            securityLevel: 'strict',
-            themeVariables: {
-              darkMode: true,
-              background: '#07122a',
-              primaryColor: '#0c1d3a',
-              primaryTextColor: '#ddeeff',
-              primaryBorderColor: '#0ea5e9',
-              lineColor: '#38bdf8',
-              secondaryColor: '#122444',
-              secondaryTextColor: '#ddeeff',
-              secondaryBorderColor: '#253d5e',
-              tertiaryColor: '#1a2f50',
-              tertiaryTextColor: '#ddeeff',
-              tertiaryBorderColor: '#253d5e',
-              fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
-              noteBkgColor: '#122444',
-              noteTextColor: '#ddeeff',
-              noteBorderColor: '#253d5e'
-            }
-          });
-          mermaid.run({ querySelector: '.mermaid' }).then(function () {
-            if (window.enhanceMermaidDiagrams) enhanceMermaidDiagrams();
-          });
+      function pdtMermaidSource(el) {
+        return (el.getAttribute('data-src') || el.textContent || '')
+          .replace(/&quot;/g, '"')
+          .replace(/&#34;/g, '"')
+          .replace(/&gt;/g, '>')
+          .replace(/&lt;/g, '<')
+          .replace(/&amp;/g, '&')
+          .replace(/--\s*"([^"]+)"\s*-->/g, '-->|$1|')
+          .replace(/--\s*'([^']+)'\s*-->/g, '-->|$1|');
+      }
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'dark',
+        securityLevel: 'loose',
+        themeVariables: {
+          darkMode: true,
+          background: '#07122a',
+          primaryColor: '#0c1d3a',
+          primaryTextColor: '#ddeeff',
+          primaryBorderColor: '#0ea5e9',
+          lineColor: '#38bdf8',
+          secondaryColor: '#122444',
+          secondaryTextColor: '#ddeeff',
+          secondaryBorderColor: '#253d5e',
+          tertiaryColor: '#1a2f50',
+          tertiaryTextColor: '#ddeeff',
+          tertiaryBorderColor: '#253d5e',
+          fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+          noteBkgColor: '#122444',
+          noteTextColor: '#ddeeff',
+          noteBorderColor: '#253d5e'
         }
+      });
+      document.addEventListener('DOMContentLoaded', function () {
+        var nodes = Array.prototype.slice.call(document.querySelectorAll('.mermaid'));
+        nodes.forEach(function (el, i) {
+          var src = pdtMermaidSource(el);
+          el.setAttribute('data-src', src);
+          mermaid.render('pdt-mmd-' + i, src).then(function (out) {
+            el.innerHTML = out.svg;
+            if (window.enhanceMermaidDiagrams) enhanceMermaidDiagrams();
+          }).catch(function (err) {
+            console.error('mermaid', err, src);
+          });
+        });
       });
     </script>
   {% endif %}
@@ -104,10 +112,39 @@
              style="{% if topic.lesson.intro %}border-top:none;border-radius:0;{% else %}border-radius:12px 12px 0 0;{% endif %}
                     {% if not topic.lesson.practical and not labs %}border-radius:0 0 12px 12px;{% endif %}"
              x-data="{ page: 0, total: {{ pages|length }},
-                        goToPage(n) { this.page = n; this.$refs.lessonTop.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }">
+                        init() {
+                          var raw = parseInt(new URLSearchParams(window.location.search).get('p'), 10);
+                          if (Number.isFinite(raw)) {
+                            this.page = Math.min(this.total - 1, Math.max(0, raw - 1));
+                          }
+                          this.syncUrl();
+                        },
+                        syncUrl() {
+                          var url = new URL(window.location.href);
+                          if (this.page <= 0) url.searchParams.delete('p');
+                          else url.searchParams.set('p', String(this.page + 1));
+                          var next = url.pathname + url.search + url.hash;
+                          var cur = window.location.pathname + window.location.search + window.location.hash;
+                          if (next !== cur) history.replaceState(null, '', next);
+                        },
+                        goToPage(n) {
+                          this.page = n;
+                          this.syncUrl();
+                          this.$refs.lessonTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          this.$nextTick(() => {
+                            if (window.reflowVisibleMermaid) window.reflowVisibleMermaid(this.$root);
+                          });
+                        } }">
           <h2 x-ref="lessonTop">{% trans "Aula" %}</h2>
           {% for section in pages %}
-            <div x-show="page === {{ forloop.counter0 }}" x-cloak>{{ section }}</div>
+            <div class="lesson-page" x-show="page === {{ forloop.counter0 }}" x-cloak>
+              {{ section }}
+              {% for lab in labs %}
+                {% if lab.lesson_page == forloop.parentloop.counter %}
+                  {% include "courses/_lab.html" %}
+                {% endif %}
+              {% endfor %}
+            </div>
           {% endfor %}
           {% if pages|length > 1 %}
             <div class="lesson-pagination">
@@ -125,10 +162,6 @@
         </div>
         {% endwith %}
       {% endif %}
-
-      {% for lab in labs %}
-        {% include "courses/_lab.html" %}
-      {% endfor %}
 
       {% if topic.lesson.practical %}
         <div class="lesson-body"

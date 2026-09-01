@@ -125,11 +125,11 @@ class TopicScore(models.Model):
         return score
 
 
-LAB_POINTS = 5
+LAB_POINTS = 1
 """Pontos somados ao `TopicScore` por laboratório concluído.
 
-Menor que o teto do quiz (10) de propósito: o lab reforça o conteúdo, o
-quiz é a medida principal do eixo no radar.
+Cada página da aula tem o próprio lab; 1 ponto por página reforça a
+leitura sem rivalizar com o teto do quiz (10) no eixo do radar.
 """
 
 

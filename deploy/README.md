@@ -71,6 +71,8 @@ EC2 (t4g.nano, ARM64) — sem EIP, sem 80/443 públicos
 3. Em **Public Hostname**, adicione rotas para o origin local:
    - `personaldevopstrainer.online` → `http://127.0.0.1:8080`
    - `www.personaldevopstrainer.online` → `http://127.0.0.1:8080`
+   - domínio do Applier (ex. `applier.ia.br`) → `http://127.0.0.1:8080`
+     (mesmo origin; o nginx separa pelo `Host`)
 4. Habilite **WebSockets** se o painel oferecer (necessário para `/ws/`).
 5. No DNS da Cloudflare, remova o **A record** apontando para o EIP antigo e
    confirme que **apex e www** ficam com CNAME para `*.cfargotunnel.com`
@@ -86,6 +88,30 @@ EC2 (t4g.nano, ARM64) — sem EIP, sem 80/443 públicos
 
 TLS termina na Cloudflare (modo **Full** ou **Full (strict)**). A origem fala HTTP
 com nginx em localhost; não é necessário certbot/Let's Encrypt na EC2.
+
+## Applier no mesmo servidor
+
+A t4g.nano (0,5 GB RAM) já roda PDT + Postgres + Redis. **Não** cabe o app Next.js
+do Applier nessa instância. O que cabe: o mesmo Cloudflare Tunnel e um segundo
+`server_name` no nginx, com site estático (landing + privacidade).
+
+1. Compre o domínio no Registro.br.
+2. Adicione o domínio na **mesma conta Cloudflare** do PDT e use os two nameservers
+   da Cloudflare no pedido do Registro.br (isso zera a pendência de DNS).
+3. No túnel já existente: **Public Hostname** → apex (e www, se quiser) →
+   `http://127.0.0.1:8080`.
+4. Grave o host no SSM (ou em `applier_domain` no Terraform):
+
+   ```bash
+   aws ssm put-parameter --name /pdt/prod/applier_domain --type String \
+     --value applier.ia.br --overwrite --region us-east-1
+   ```
+
+5. Push na `main` do PDT (ou `workflow_dispatch` do deploy) para o nginx publicar
+   `/var/www/applier`. Privacidade: `https://SEU-DOMINIO/legal/privacidade`.
+
+A instância **desliga à meia-noite BRT**; a Chrome Web Store precisa da URL no ar
+na hora da análise.
 
 ## Bootstrap inicial
 

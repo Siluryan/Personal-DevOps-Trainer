@@ -54,9 +54,9 @@ passa um número) e é também a raiz de comportamentos que surpreendem quem
 vem de linguagens com tipos primitivos "de verdade" (seção 2).</p>
 <div class="mermaid">
 flowchart LR
-    A["def f(x=[])"] --> B["Lista criada uma vez, na definição"]
-    B --> C["Toda chamada sem argumento reusa a MESMA lista"]
-    C --> D["Estado vaza entre chamadas"]
+    Nome["Nome: x"] --> Obj["Objeto no heap"]
+    Obj --> Attrs["Atributos e métodos"]
+    Tipo["int / str / list / função"] --> Obj
 </div>
 
 <pre><code>x: int   = 42
@@ -166,6 +166,12 @@ de webhook, eventos de fila (SQS, Pub/Sub) ou CloudEvents, onde a forma do
 JSON varia conforme o tipo de evento.</p>
 
 <h3>5. Funções: por que `*` existe e por que default mutável é uma armadilha</h3>
+<div class="mermaid">
+flowchart LR
+    A["def f(x=[])"] --> B["Lista criada uma vez, na definição"]
+    B --> C["Toda chamada sem argumento reusa a MESMA lista"]
+    C --> D["Estado vaza entre chamadas"]
+</div>
 <pre><code>def deploy(
     image: str,                       # posicional
     *,                                # tudo depois é keyword-only
@@ -237,6 +243,13 @@ string se realmente for emitir o log — economia real de CPU em sistemas
 que geram muitos logs de debug desligados em produção.</p>
 
 <h3>8. Erros clássicos de quem vem de outra linguagem</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Evite</strong><p>Usar == em float, is no lugar de ==, type(x) == int, abrir arquivo sem with.</p></div>
+    <div class="lesson-viz-card"><strong>Prefira</strong><p>math.isclose(), == para valor, isinstance(), context managers.</p></div>
+  </div>
+  <figcaption>Erros clássicos: o idioma errado costuma funcionar até falhar em produção.</figcaption>
+</figure>
 <ul>
 <li>Comparar floats com <code>==</code>: ponto flutuante tem erro de
 arredondamento (<code>0.1 + 0.2 != 0.3</code> em Python, como na maioria
@@ -265,9 +278,9 @@ way you pass a number), and it's also the root of behaviors that surprise
 people coming from languages with "real" primitive types (section 2).</p>
 <div class="mermaid">
 flowchart LR
-    A["def f(x=[])"] --> B["Lista criada uma vez, na definição"]
-    B --> C["Toda chamada sem argumento reusa a MESMA lista"]
-    C --> D["Estado vaza entre chamadas"]
+    Name["Name: x"] --> Obj["Object on the heap"]
+    Obj --> Attrs["Attributes and methods"]
+    Type["int / str / list / function"] --> Obj
 </div>
 
 <pre><code>x: int   = 42
@@ -378,6 +391,12 @@ for parsing webhook payloads, queue events (SQS, Pub/Sub) or CloudEvents,
 where the JSON shape varies depending on the event type.</p>
 
 <h3>5. Functions: why `*` exists and why a mutable default is a trap</h3>
+<div class="mermaid">
+flowchart LR
+    A["def f(x=[])"] --> B["List created once, at definition time"]
+    B --> C["Every call without an argument reuses the SAME list"]
+    C --> D["State leaks across calls"]
+</div>
 <pre><code>def deploy(
     image: str,                       # posicional
     *,                                # tudo depois é keyword-only
@@ -450,6 +469,13 @@ will actually emit the log — real CPU savings in systems generating many
 debug logs turned off in production.</p>
 
 <h3>8. Classic mistakes from people coming from another language</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Avoid</strong><p>Using == on floats, is instead of ==, type(x) == int, opening files without with.</p></div>
+    <div class="lesson-viz-card"><strong>Prefer</strong><p>math.isclose(), == for value, isinstance(), context managers.</p></div>
+  </div>
+  <figcaption>Classic mistakes: the wrong idiom often works until it fails in production.</figcaption>
+</figure>
 <ul>
 <li>Comparing floats with <code>==</code>: floating point has rounding
 error (<code>0.1 + 0.2 != 0.3</code> in Python, as in most languages); use
@@ -683,9 +709,13 @@ candidato imediato a virar <code>set</code> — a mudança de O(n²) total
 para O(n) num laço de milhares de itens é a diferença entre milissegundos
 e minutos.</p>
 <div class="mermaid">
-flowchart LR
-    A["Lista: colchetes"] --> B["Carrega tudo na memória de uma vez"]
-    C["Generator: parênteses"] --> D["Produz um item por vez, sob demanda"]
+flowchart TD
+    Need["Preciso de..."] --> Q1{"Ordem importa?"}
+    Q1 -- "Sim" --> Q2{"Mutável?"}
+    Q1 -- "Não, únicos" --> Set["set"]
+    Q1 -- "Chave → valor" --> Dict["dict"]
+    Q2 -- "Sim" --> List["list"]
+    Q2 -- "Não" --> Tup["tuple"]
 </div>
 
 
@@ -770,6 +800,11 @@ ambas as pontas — essencial para filas e janelas deslizantes de tamanho
 fixo (<code>maxlen</code> descarta o item mais antigo automaticamente).</p>
 
 <h3>5. `itertools`: combinar iteráveis sem nunca materializar a combinação</h3>
+<div class="mermaid">
+flowchart LR
+    A["Lista: colchetes"] --> B["Carrega tudo na memória de uma vez"]
+    C["Generator: parênteses"] --> D["Produz um item por vez, sob demanda"]
+</div>
 <pre><code>import itertools as it
 
 # chain: concatenar iteráveis
@@ -867,6 +902,14 @@ os valores como string normal, útil quando o valor precisa ir para um
 log ou JSON sem conversão extra.</p>
 
 <h3>9. Caso real: um pipeline de log que nunca carrega o arquivo inteiro</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Abrir o arquivo como stream</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Filtrar linhas com generator</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Agregar só o que importa</p></div>
+  </div>
+  <figcaption>Pipeline Pythonic: processar sob demanda em vez de listar o arquivo inteiro.</figcaption>
+</figure>
 <pre><code>from collections import Counter
 import itertools as it, gzip, re
 
@@ -926,9 +969,13 @@ immediate candidate to become a <code>set</code> — the change from total
 O(n²) to O(n) in a loop of thousands of items is the difference between
 milliseconds and minutes.</p>
 <div class="mermaid">
-flowchart LR
-    A["Lista: colchetes"] --> B["Carrega tudo na memória de uma vez"]
-    C["Generator: parênteses"] --> D["Produz um item por vez, sob demanda"]
+flowchart TD
+    Need["I need..."] --> Q1{"Order matters?"}
+    Q1 -- "Yes" --> Q2{"Mutable?"}
+    Q1 -- "No, unique" --> Set["set"]
+    Q1 -- "Key to value" --> Dict["dict"]
+    Q2 -- "Yes" --> List["list"]
+    Q2 -- "No" --> Tup["tuple"]
 </div>
 
 
@@ -1015,6 +1062,11 @@ sliding windows (<code>maxlen</code> automatically drops the oldest
 item).</p>
 
 <h3>5. `itertools`: combining iterables without ever materializing the combination</h3>
+<div class="mermaid">
+flowchart LR
+    A["List: brackets"] --> B["Loads everything into memory at once"]
+    C["Generator: parentheses"] --> D["Yields one item at a time, on demand"]
+</div>
 <pre><code>import itertools as it
 
 # chain: concatenar iteráveis
@@ -1113,6 +1165,14 @@ formatting the values as a normal string, useful when the value needs to
 go into a log or JSON without extra conversion.</p>
 
 <h3>9. Real case: a log pipeline that never loads the whole file</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Open the file as a stream</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Filter lines with a generator</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Aggregate only what matters</p></div>
+  </div>
+  <figcaption>Pythonic pipeline: process on demand instead of listing the whole file.</figcaption>
+</figure>
 <pre><code>from collections import Counter
 import itertools as it, gzip, re
 
@@ -1376,9 +1436,9 @@ guarda dados (sem lógica além de acessar campos), escrever
 <code>@dataclass</code> (visto na aula anterior) já resolve.</p>
 <div class="mermaid">
 flowchart LR
-    A["with obj as f"] --> B["obj.__enter__()"]
-    B --> C["Bloco de código roda"]
-    C --> D["obj.__exit__() roda sempre, mesmo com exceção"]
+    Call["Classe()"] --> New["__new__ aloca"]
+    New --> Init["__init__ inicializa"]
+    Init --> Inst["Instância pronta"]
 </div>
 
 
@@ -1475,6 +1535,14 @@ para TODO atributo "por precaução", adicionando indireção onde não há
 regra nenhuma para justificar.</p>
 
 <h3>6. A hierarquia de exceções, e por que dois ramos são proibidos de capturar</h3>
+<div class="mermaid">
+flowchart TD
+    Base["BaseException"] --> Sys["SystemExit / KeyboardInterrupt"]
+    Base --> Exc["Exception"]
+    Exc --> Val["ValueError / TypeError"]
+    Exc --> OS["OSError"]
+    Exc --> Runtime["RuntimeError"]
+</div>
 <pre><code>BaseException
 ├── SystemExit         # sys.exit(), não capture genericamente
 ├── KeyboardInterrupt  # Ctrl+C, não capture genericamente
@@ -1527,6 +1595,12 @@ aconteceu dentro do <code>try</code> — o lugar certo para cleanup que não
 pode ser pulado de jeito nenhum.</p>
 
 <h3>8. Context managers: `with` como garantia, não como conveniência</h3>
+<div class="mermaid">
+flowchart LR
+    A["with obj as f"] --> B["obj.__enter__()"]
+    B --> C["Bloco de código roda"]
+    C --> D["obj.__exit__() roda sempre, mesmo com exceção"]
+</div>
 <p>O padrão mais visto é <code>open()</code>:</p>
 <pre><code>with open("/etc/passwd") as f:
     data = f.read()
@@ -1609,9 +1683,9 @@ holds data (no logic beyond accessing fields), writing
 <code>@dataclass</code> (seen in the previous lesson) already solves.</p>
 <div class="mermaid">
 flowchart LR
-    A["with obj as f"] --> B["obj.__enter__()"]
-    B --> C["Bloco de código roda"]
-    C --> D["obj.__exit__() roda sempre, mesmo com exceção"]
+    Call["Class()"] --> New["__new__ allocates"]
+    New --> Init["__init__ initializes"]
+    Init --> Inst["Ready instance"]
 </div>
 
 
@@ -1708,6 +1782,14 @@ creating a property for EVERY attribute "just in case", adding indirection
 where there's no rule to justify it.</p>
 
 <h3>6. The exception hierarchy, and why two branches must not be caught</h3>
+<div class="mermaid">
+flowchart TD
+    Base["BaseException"] --> Sys["SystemExit / KeyboardInterrupt"]
+    Base --> Exc["Exception"]
+    Exc --> Val["ValueError / TypeError"]
+    Exc --> OS["OSError"]
+    Exc --> Runtime["RuntimeError"]
+</div>
 <pre><code>BaseException
 ├── SystemExit         # sys.exit(), não capture genericamente
 ├── KeyboardInterrupt  # Ctrl+C, não capture genericamente
@@ -1760,6 +1842,12 @@ happened inside <code>try</code> — the right place for cleanup that
 must not be skipped under any circumstance.</p>
 
 <h3>8. Context managers: `with` as a guarantee, not a convenience</h3>
+<div class="mermaid">
+flowchart LR
+    A["with obj as f"] --> B["obj.__enter__()"]
+    B --> C["Code block runs"]
+    C --> D["obj.__exit__() always runs, even on exception"]
+</div>
 <p>The most common pattern is <code>open()</code>:</p>
 <pre><code>with open("/etc/passwd") as f:
     data = f.read()
@@ -2067,9 +2155,9 @@ quebrar silenciosamente em outro sistema operacional, enquanto código
 todo em <code>pathlib</code> costuma simplesmente funcionar nos dois.</p>
 <div class="mermaid">
 flowchart LR
-    CLI["Linha de comando"] --> Parser["argparse.ArgumentParser"]
-    Parser --> Args["Namespace com os argumentos"]
-    Args --> Main["Lógica do programa"]
+    P["Path"] --> Resolve["resolve / exists"]
+    P --> Parts["parent / name / suffix"]
+    P --> IO["read_text / write_text / open"]
 </div>
 
 
@@ -2129,6 +2217,12 @@ de outro time, configuração baixada de rede) deve SEMPRE passar por
 <code>safe_load</code>, nunca por <code>load</code>.</p>
 
 <h3>4. `argparse`: a stdlib que documenta a si mesma</h3>
+<div class="mermaid">
+flowchart LR
+    CLI["Linha de comando"] --> Parser["argparse.ArgumentParser"]
+    Parser --> Args["Namespace com os argumentos"]
+    Args --> Main["Lógica do programa"]
+</div>
 <pre><code>import argparse
 from pathlib import Path
 
@@ -2221,6 +2315,13 @@ terminal — mas que um script consumidor não deveria ver — vai para
 stderr.</p>
 
 <h3>8. Códigos de saída: o protocolo que scripts de automação verificam</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Sucesso</strong><p>return 0 — o contrato padrão que pipelines e shells esperam.</p></div>
+    <div class="lesson-viz-card"><strong>Falha</strong><p>Códigos distintos (config, permissão, timeout) para quem chama decidir o próximo passo.</p></div>
+  </div>
+  <figcaption>CLI bem comportado: stdout para dados, stderr para diagnóstico, exit code para status.</figcaption>
+</figure>
 <pre><code>def main() -&gt; int:
     try: do_work()
     except ConfigError: return 65   # data format error
@@ -2276,9 +2377,9 @@ break silently on another operating system, while code
 written entirely in <code>pathlib</code> usually just works on both.</p>
 <div class="mermaid">
 flowchart LR
-    CLI["Linha de comando"] --> Parser["argparse.ArgumentParser"]
-    Parser --> Args["Namespace com os argumentos"]
-    Args --> Main["Lógica do programa"]
+    P["Path"] --> Resolve["resolve / exists"]
+    P --> Parts["parent / name / suffix"]
+    P --> IO["read_text / write_text / open"]
 </div>
 
 
@@ -2338,6 +2439,12 @@ team's file, config downloaded from the network) must ALWAYS go through
 <code>safe_load</code>, never through <code>load</code>.</p>
 
 <h3>4. `argparse`: the stdlib that documents itself</h3>
+<div class="mermaid">
+flowchart LR
+    CLI["Command line"] --> Parser["argparse.ArgumentParser"]
+    Parser --> Args["Namespace with arguments"]
+    Args --> Main["Program logic"]
+</div>
 <pre><code>import argparse
 from pathlib import Path
 
@@ -2430,6 +2537,13 @@ terminal — but that a consuming script shouldn't see — goes to
 stderr.</p>
 
 <h3>8. Exit codes: the protocol automation scripts check</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Success</strong><p>return 0 — the default contract pipelines and shells expect.</p></div>
+    <div class="lesson-viz-card"><strong>Failure</strong><p>Distinct codes (config, permission, timeout) so the caller can decide the next step.</p></div>
+  </div>
+  <figcaption>Well-behaved CLI: stdout for data, stderr for diagnostics, exit code for status.</figcaption>
+</figure>
 <pre><code>def main() -&gt; int:
     try: do_work()
     except ConfigError: return 65   # data format error
@@ -2678,11 +2792,12 @@ para o servidor responder pode legitimamente ser mais longo (uma API lenta
 processando), então vale limites diferentes.</p>
 <div class="mermaid">
 flowchart LR
-    Client["Cliente"] -- "request" --> API["API"]
-    API -- "5xx" --> Retry{"Tentativas esgotadas?"}
-    Retry -- "Não" --> Client
-    Retry -- "Sim" --> Fail["Levanta exceção"]
-    API -- "2xx" --> Success["Retorna o dado"]
+    Req["requests.get"] --> TO{"timeout definido?"}
+    TO -- "Não" --> Hang["Pode travar para sempre"]
+    TO -- "Sim" --> Resp["Response"]
+    Resp --> RFS["raise_for_status"]
+    RFS --> OK["2xx: segue"]
+    RFS --> Err["4xx/5xx: exceção"]
 </div>
 
 <p><code>raise_for_status()</code> resolve um problema sutil: <code>requests</code>
@@ -2712,6 +2827,14 @@ host. Em um script que faz 100 chamadas à mesma API, a diferença entre
 sessão e chamadas soltas costuma ser a diferença entre segundos e minutos.</p>
 
 <h3>3. Retry com backoff: só para falhas que valem repetir</h3>
+<div class="mermaid">
+flowchart LR
+    Client["Cliente"] -- "request" --> API["API"]
+    API -- "5xx" --> Retry{"Tentativas esgotadas?"}
+    Retry -- "Não" --> Client
+    Retry -- "Sim" --> Fail["Levanta exceção"]
+    API -- "2xx" --> Success["Retorna o dado"]
+</div>
 <p>Erros transitórios (502, 503, 504, timeout de rede) tendem a se resolver
 sozinhos numa nova tentativa — o servidor estava sobrecarregado por um
 instante, não quebrado. Configurar isso no nível de transporte, não em
@@ -2841,6 +2964,13 @@ ferramentas internas (um endpoint que aciona um deploy, por exemplo), isso
 elimina uma classe inteira de bugs de "esqueci de validar um campo".</p>
 
 <h3>8. Webhooks: por que comparar assinaturas com `==` é uma falha de segurança</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Frágil</strong><p>if sig == expected — comparação que vaza timing e falha em edge cases.</p></div>
+    <div class="lesson-viz-card"><strong>Seguro</strong><p>hmac.compare_digest(sig, expected) — constante no tempo e explícito.</p></div>
+  </div>
+  <figcaption>Assinatura de webhook: trate como segredo criptográfico, não como string comum.</figcaption>
+</figure>
 <pre><code>import hmac, hashlib
 
 def verify_github(payload: bytes, signature: str, secret: str) -&gt; bool:
@@ -2887,11 +3017,12 @@ for the server to respond can legitimately be longer (a slow API
 processing), so different limits make sense.</p>
 <div class="mermaid">
 flowchart LR
-    Client["Cliente"] -- "request" --> API["API"]
-    API -- "5xx" --> Retry{"Tentativas esgotadas?"}
-    Retry -- "Não" --> Client
-    Retry -- "Sim" --> Fail["Levanta exceção"]
-    API -- "2xx" --> Success["Retorna o dado"]
+    Req["requests.get"] --> TO{"timeout set?"}
+    TO -- "No" --> Hang["Can hang forever"]
+    TO -- "Yes" --> Resp["Response"]
+    Resp --> RFS["raise_for_status"]
+    RFS --> OK["2xx: continue"]
+    RFS --> Err["4xx/5xx: exception"]
 </div>
 
 <p><code>raise_for_status()</code> solves a subtle problem: <code>requests</code>
@@ -2922,6 +3053,14 @@ API, the difference between session and one-off calls is often the difference be
 seconds and minutes.</p>
 
 <h3>3. Retry with backoff: only for failures worth repeating</h3>
+<div class="mermaid">
+flowchart LR
+    Client["Client"] -- "request" --> API["API"]
+    API -- "5xx" --> Retry{"Retries exhausted?"}
+    Retry -- "No" --> Client
+    Retry -- "Yes" --> Fail["Raise exception"]
+    API -- "2xx" --> Success["Return the data"]
+</div>
 <p>Transient errors (502, 503, 504, network timeout) tend to resolve
 themselves on a new attempt — the server was overloaded for a
 moment, not broken. Configuring this at the transport layer, not in
@@ -3051,6 +3190,13 @@ internal tools (an endpoint that triggers a deploy, for example), that
 eliminates an entire class of "I forgot to validate a field" bugs.</p>
 
 <h3>8. Webhooks: why comparing signatures with `==` is a security failure</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Fragile</strong><p>if sig == expected — a comparison that leaks timing and fails on edge cases.</p></div>
+    <div class="lesson-viz-card"><strong>Safe</strong><p>hmac.compare_digest(sig, expected) — constant-time and explicit.</p></div>
+  </div>
+  <figcaption>Webhook signatures: treat them as cryptographic secrets, not ordinary strings.</figcaption>
+</figure>
 <pre><code>import hmac, hashlib
 
 def verify_github(payload: bytes, signature: str, secret: str) -&gt; bool:
@@ -3364,6 +3510,13 @@ subprocesso não encontrando binários que deveriam estar no PATH, um
 sintoma que não aponta óbvio para "esqueci de copiar o ambiente".</p>
 
 <h3>4. `shell=True`: quando o risco vale o benefício, e a alternativa sem shell</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>shell=True</strong><p>Pipe e glob fáceis — mas injeção se qualquer pedaço vier de input externo.</p></div>
+    <div class="lesson-viz-card"><strong>Lista de args</strong><p>Sem shell: o binário recebe argv já separado; user input não vira comando.</p></div>
+  </div>
+  <figcaption>Regra prática: shell só quando o shell é indispensável e a string é 100% controlada.</figcaption>
+</figure>
 <pre><code>cmd = "ps aux | grep nginx | wc -l"
 subprocess.run(cmd, shell=True, check=True)</code></pre>
 <p>Pipes e redirecionamento nativos do shell (<code>|</code>,
@@ -3479,6 +3632,14 @@ pode ser interceptado por nenhum handler — é o sinal de último recurso
 quando um processo ignora <code>SIGTERM</code> repetidamente.</p>
 
 <h3>9. Checklist para scripts que vão rodar em produção</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>check=True + timeout em todo subprocess</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Logs em stderr, dados em stdout</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Tratar sinais e limpar temporários</p></div>
+  </div>
+  <figcaption>Checklist mínimo antes de colocar o script no cron ou no CI.</figcaption>
+</figure>
 <ul>
 <li>Sempre <code>check=True</code>, sempre <code>timeout</code> — as duas
 proteções mais baratas contra as duas falhas mais comuns (erro
@@ -3531,9 +3692,9 @@ oldest and most exploited vulnerability classes in
 automation tools.</p>
 <div class="mermaid">
 flowchart LR
-    Py["Script Python"] --> Sub["subprocess.run com lista de args"]
-    Sub --> Proc["Processo filho"]
-    Proc --> Out["stdout, stderr e returncode"]
+    Py["Python script"] --> Sub["subprocess.run with arg list"]
+    Sub --> Proc["Child process"]
+    Proc --> Out["stdout, stderr and returncode"]
     Out --> Py
 </div>
 
@@ -3584,6 +3745,13 @@ subprocess not finding binaries that should be on PATH, a
 symptom that doesn't obviously point to "I forgot to copy the environment".</p>
 
 <h3>4. `shell=True`: when the risk is worth the benefit, and the shell-free alternative</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>shell=True</strong><p>Easy pipes and globs — but injection if any piece comes from external input.</p></div>
+    <div class="lesson-viz-card"><strong>Arg list</strong><p>No shell: the binary gets a separated argv; user input does not become a command.</p></div>
+  </div>
+  <figcaption>Practical rule: shell only when the shell is indispensable and the string is fully controlled.</figcaption>
+</figure>
 <pre><code>cmd = "ps aux | grep nginx | wc -l"
 subprocess.run(cmd, shell=True, check=True)</code></pre>
 <p>Native shell pipes and redirection (<code>|</code>,
@@ -3699,6 +3867,14 @@ be intercepted by any handler — it's the last-resort signal
 when a process repeatedly ignores <code>SIGTERM</code>.</p>
 
 <h3>9. Checklist for scripts that will run in production</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>check=True + timeout on every subprocess</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Logs on stderr, data on stdout</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Handle signals and clean up temps</p></div>
+  </div>
+  <figcaption>Minimum checklist before putting the script in cron or CI.</figcaption>
+</figure>
 <ul>
 <li>Always <code>check=True</code>, always <code>timeout</code> — the two
 cheapest protections against the two most common failures (silent
@@ -4014,6 +4190,14 @@ CONGELA o event loop inteiro, travando todas as outras tarefas até ela
 terminar (seção 5).</p>
 
 <h3>4. Padrões essenciais de `asyncio`</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Criar tasks com create_task / gather</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>await nos pontos de I/O</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Não bloquear a event loop com CPU sync</p></div>
+  </div>
+  <figcaption>asyncio: uma thread, vários awaits — o trabalho avança enquanto espera I/O.</figcaption>
+</figure>
 <pre><code># gather: aguarda várias tarefas, retorna lista
 results = await asyncio.gather(t1, t2, t3, return_exceptions=True)
 
@@ -4140,6 +4324,13 @@ recursivamente.</li>
 </ul>
 
 <h3>9. Guia rápido: qual modelo para qual problema</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>I/O paralelo</strong><p>threads ou asyncio — muitas esperas, pouco CPU Python.</p></div>
+    <div class="lesson-viz-card"><strong>CPU paralelo</strong><p>multiprocessing — contorna o GIL com processos separados.</p></div>
+  </div>
+  <figcaption>Escolha pelo gargalo: espera de rede ≠ cálculo pesado.</figcaption>
+</figure>
 <table>
 <thead><tr><th>Caso</th><th>Escolha</th></tr></thead>
 <tbody>
@@ -4168,13 +4359,13 @@ a subprocess), the GIL is released during the wait, so threads do help: while
 one waits for the network, another runs.</p>
 <div class="mermaid">
 flowchart TD
-    subgraph Threads ["threading, com GIL"]
-        T1["Thread 1"] --> GIL["Só uma roda bytecode Python por vez"]
+    subgraph Threads ["threading, with GIL"]
+        T1["Thread 1"] --> GIL["Only one runs Python bytecode at a time"]
         T2["Thread 2"] --> GIL
     end
     subgraph Multi ["multiprocessing"]
-        P1["Processo 1, próprio interpretador"]
-        P2["Processo 2, próprio interpretador"]
+        P1["Process 1, own interpreter"]
+        P2["Process 2, own interpreter"]
     end
 </div>
 <p><code>ThreadPoolExecutor</code> hides the boilerplate of creating/joining
@@ -4222,6 +4413,14 @@ sync <code>requests.get</code>, heavy CPU) freezes the whole loop. Use
 work.</p>
 
 <h3>4. Essential `asyncio` patterns</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Create tasks with create_task / gather</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>await at I/O points</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Do not block the event loop with sync CPU work</p></div>
+  </div>
+  <figcaption>asyncio: one thread, many awaits — work progresses while waiting on I/O.</figcaption>
+</figure>
 <pre><code># gather: aguarda várias tarefas, retorna lista
 results = await asyncio.gather(t1, t2, t3, return_exceptions=True)
 
@@ -4309,6 +4508,13 @@ must share, use <code>asyncio.Lock</code>.</p>
 </ul>
 
 <h3>9. Quick guide: which model for which problem</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Parallel I/O</strong><p>threads or asyncio — many waits, little Python CPU.</p></div>
+    <div class="lesson-viz-card"><strong>Parallel CPU</strong><p>multiprocessing — bypasses the GIL with separate processes.</p></div>
+  </div>
+  <figcaption>Choose by bottleneck: network wait ≠ heavy compute.</figcaption>
+</figure>
 <table>
 <thead><tr><th>Problem</th><th>Prefer</th></tr></thead>
 <tbody>
@@ -4656,6 +4862,14 @@ artificialmente genérico. Nesse ponto, separar em funções distintas é mais
 honesto do que espremer no parametrize.</p>
 
 <h3>5. Mocks: isolando o que está fora do teste — e o erro mais comum ao usá-los</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Identificar dependência externa</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Patch no local de uso, não na definição</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Assertar chamada e resultado</p></div>
+  </div>
+  <figcaption>Mock bem feito: isola I/O sem mentir sobre o que o código realmente chama.</figcaption>
+</figure>
 <p>Testes unitários não devem fazer chamadas reais a API, banco ou shell:
 isso os torna lentos, dependentes de rede e não-determinísticos (a API pode
 estar fora do ar no CI). A solução é substituir a dependência por um dublê
@@ -4765,6 +4979,11 @@ nele podem travar ou lançar <code>RuntimeError: attached to a different
 loop</code>, um erro que só aparece rodando a suíte inteira em paralelo.</p>
 
 <h3>10. Unitário, integração, e2e: a pirâmide e por que invertê-la é caro</h3>
+<div class="mermaid">
+flowchart TD
+    E2E["Poucos e2e: lentos, frágeis"] --> Int["Alguns integração"]
+    Int --> Unit["Muitos unitários: rápidos e baratos"]
+</div>
 <ul>
 <li><strong>Unitário</strong>: testa função/método isolado, rápido
 (&lt;100ms), sem I/O real. Roda a cada commit, em segundos.</li>
@@ -4792,11 +5011,11 @@ and a plugin ecosystem (cov, asyncio, mock, xdist). unittest still works, but
 modern Python projects standardize on pytest.</p>
 <div class="mermaid">
 flowchart LR
-    A["Escreve o teste"] --> B["Roda pytest"]
-    B --> C{"Passou?"}
-    C -- "Não, vermelho" --> D["Ajusta o código"]
+    A["Write the test"] --> B["Run pytest"]
+    B --> C{"Passed?"}
+    C -- "No, red" --> D["Fix the code"]
     D --> B
-    C -- "Sim, verde" --> E["Segue pro próximo caso"]
+    C -- "Yes, green" --> E["Move to the next case"]
 </div>
 <p>Discovery is convention-based: files named <code>test_*.py</code> or
 <code>*_test.py</code>, functions/classes prefixed with <code>test</code>.
@@ -4859,6 +5078,14 @@ not deep internals. <code>monkeypatch</code> and <code>unittest.mock</code> /
 <code>pytest-mock</code> cover most cases.</p>
 
 <h3>5. Mocks: isolating what's outside the test — and the most common misuse</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Identify the external dependency</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Patch where it is used, not where it is defined</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Assert the call and the result</p></div>
+  </div>
+  <figcaption>Good mocks: isolate I/O without lying about what the code actually calls.</figcaption>
+</figure>
 <pre><code>def fetch_user(client, uid: int):
     r = client.get(f"/users/{uid}")
     r.raise_for_status()
@@ -4928,6 +5155,11 @@ async def test_async_fetch():
 integration tests, and a thin e2e layer for critical flows.</p>
 
 <h3>10. Unit, integration, e2e: the pyramid and why inverting it is expensive</h3>
+<div class="mermaid">
+flowchart TD
+    E2E["Few e2e: slow, fragile"] --> Int["Some integration"]
+    Int --> Unit["Many unit tests: fast and cheap"]
+</div>
 <p>In DevOps tooling, unit-test pure logic (parsing, policy decisions) and
 integration-test subprocess/API boundaries with mocks or testcontainers. Keep
 e2e for "does the CLI exit 0 on a happy path in CI".</p>
@@ -5159,10 +5391,9 @@ inteira de conflito: cada ambiente tem seu próprio conjunto de pacotes,
 completamente isolado dos outros.</p>
 <div class="mermaid">
 flowchart LR
-    Src["Código-fonte"] --> Pyproject["pyproject.toml"]
-    Pyproject --> Build["uv build"]
-    Build --> Wheel["wheel e sdist na pasta dist"]
-    Wheel --> Publish["Publica no índice de pacotes"]
+    Global["Python global do sistema"] --> Conflict["Deps conflitam entre projetos"]
+    Venv["Ambiente virtual"] --> Isolated["Deps isoladas por projeto"]
+    Isolated --> Repro["Reproduzível com lockfile"]
 </div>
 
 
@@ -5246,6 +5477,14 @@ exatamente o que seria publicado e instalado por outra pessoa, não um
 atalho que só existe no seu checkout local.</p>
 
 <h3>5. `ruff`: uma ferramenta em Rust cobrindo o que antes eram quatro em Python</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Lint + format com ruff</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Tipos com mypy (gradual)</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Hooks no pre-commit e na CI</p></div>
+  </div>
+  <figcaption>Qualidade moderna: uma pipeline curta que o time consegue rodar localmente e no CI.</figcaption>
+</figure>
 <p><code>ruff</code> reimplementa as regras de flake8, isort, pylint e
 black numa única ferramenta compilada — a diferença de velocidade (segundos
 viram milissegundos num projeto grande) importa na prática porque muda o
@@ -5342,6 +5581,13 @@ projeto só descobre que quebrou em 3.12 quando alguém tenta rodar em
 produção nessa versão — tarde demais para ser um problema de CI.</p>
 
 <h3>9. Distribuição: do wheel local ao registro privado</h3>
+<div class="mermaid">
+flowchart LR
+    Src["Código-fonte"] --> Pyproject["pyproject.toml"]
+    Pyproject --> Build["uv build"]
+    Build --> Wheel["wheel e sdist na pasta dist"]
+    Wheel --> Publish["Publica no índice de pacotes"]
+</div>
 <pre><code>uv build                    # cria dist/*.whl e *.tar.gz
 uv publish                  # publica no PyPI (requer token)
 
@@ -5384,10 +5630,9 @@ per project. Activate it before install/run; CI should create a fresh env every
 job.</p>
 <div class="mermaid">
 flowchart LR
-    Src["Código-fonte"] --> Pyproject["pyproject.toml"]
-    Pyproject --> Build["uv build"]
-    Build --> Wheel["wheel e sdist na pasta dist"]
-    Wheel --> Publish["Publica no índice de pacotes"]
+    Global["System-wide Python"] --> Conflict["Deps conflict across projects"]
+    Venv["Virtual environment"] --> Isolated["Deps isolated per project"]
+    Isolated --> Repro["Reproducible with a lockfile"]
 </div>
 <p><code>uv</code> resolves and installs dramatically faster than classic pip,
 keeps a lockfile, and can manage Python versions. Day-to-day:
@@ -5449,6 +5694,14 @@ black) in one Rust binary. Configure line length and rule sets in
 <code>pyproject.toml</code>; run in CI and pre-commit.</p>
 
 <h3>5. `ruff`: one Rust tool covering what used to be four in Python</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Lint + format with ruff</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Types with mypy (gradual)</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Hooks in pre-commit and CI</p></div>
+  </div>
+  <figcaption>Modern quality: a short pipeline the team can run locally and in CI.</figcaption>
+</figure>
 <pre><code>ruff check .                  # lint (encontra problemas)
 ruff check --fix .            # lint + correções automáticas
 ruff format .                 # formatador (substitui black)
@@ -5518,6 +5771,13 @@ jobs:
 index. Prefer wheels for install speed; keep sdist for source builds.</p>
 
 <h3>9. Distribution: from a local wheel to a private registry</h3>
+<div class="mermaid">
+flowchart LR
+    Src["Source code"] --> Pyproject["pyproject.toml"]
+    Pyproject --> Build["uv build"]
+    Build --> Wheel["wheel and sdist in dist/"]
+    Wheel --> Publish["Publish to the package index"]
+</div>
 <pre><code>uv build                    # cria dist/*.whl e *.tar.gz
 uv publish                  # publica no PyPI (requer token)
 
@@ -5849,6 +6109,13 @@ próprio kube-apiserver — e é a base certa para alertas específicos que o
 kube-prometheus padrão não cobre.</p>
 
 <h3>4. Métricas Prometheus: instrumentar um serviço que fica de pé</h3>
+<div class="mermaid">
+flowchart LR
+    App["App Python"] --> Metrics["Counter / Histogram"]
+    Metrics --> Expo["/metrics"]
+    Expo --> Prom["Prometheus scrape"]
+    Prom --> Alert["Alertas e dashboards"]
+</div>
 <pre><code># pip install prometheus-client
 from prometheus_client import Counter, Histogram, start_http_server
 import time, random
@@ -5967,6 +6234,14 @@ precisar escrever esse loop de watch, reconexão em caso de queda, e
 tratamento de erro manualmente a cada operador novo.</p>
 
 <h3>9. Checklist para ferramentas DevSecOps que outras pessoas vão rodar</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Saída JSON para máquina, texto para humano</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Credenciais só via IAM/env — nunca no código</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Timeout, retries e códigos de saída explícitos</p></div>
+  </div>
+  <figcaption>Ferramenta que outros vão operar: previsível, auditável e sem segredo embutido.</figcaption>
+</figure>
 <ul>
 <li>Saída em JSON quando o consumidor é máquina (outro script, um
 pipeline); texto legível quando é humano — decidir isso cedo evita
@@ -6022,9 +6297,9 @@ Never hardcode access keys. List APIs are paginated: use
 the first page.</p>
 <div class="mermaid">
 flowchart LR
-    EC2["Instância EC2"] --> Role["IAM Role anexado"]
-    Role --> IMDS["Credenciais via IMDS"]
-    IMDS --> SDK["boto3 usa automaticamente"]
+    EC2["EC2 instance"] --> Role["Attached IAM Role"]
+    Role --> IMDS["Credentials via IMDS"]
+    IMDS --> SDK["boto3 uses them automatically"]
 </div>
 <p>The official client can load in-cluster config when running inside the
 cluster, or <code>kube_config</code> when running on a laptop. Try in-cluster
@@ -6070,6 +6345,13 @@ for event in w.stream(v1.list_namespaced_pod, namespace="prod", timeout_seconds=
 histograms, gauges, and an HTTP <code>/metrics</code> endpoint for scraping.</p>
 
 <h3>4. Prometheus metrics: instrumenting a service that stays up</h3>
+<div class="mermaid">
+flowchart LR
+    App["Python app"] --> Metrics["Counter / Histogram"]
+    Metrics --> Expo["/metrics"]
+    Expo --> Prom["Prometheus scrape"]
+    Prom --> Alert["Alerts and dashboards"]
+</div>
 <pre><code># pip install prometheus-client
 from prometheus_client import Counter, Histogram, start_http_server
 import time, random
@@ -6166,6 +6448,14 @@ def delete_bucket(spec, **kwargs):
 </ul>
 
 <h3>9. Checklist for DevSecOps tools other people will run</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>JSON output for machines, text for humans</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Credentials only via IAM/env — never in code</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Explicit timeouts, retries and exit codes</p></div>
+  </div>
+  <figcaption>Tools others will operate: predictable, auditable, and with no embedded secrets.</figcaption>
+</figure>
 <p>The Python you practiced in this phase — packaging, HTTP, subprocess,
 concurrency, tests — is the substrate. Production tools are those habits
 applied with security and operability as first-class requirements.</p>

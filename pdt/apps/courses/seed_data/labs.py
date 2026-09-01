@@ -1,4 +1,4 @@
-"""60 laboratórios práticos, um por tópico, todos interativos client-side.
+"""60 laboratórios autorais (1 por tópico), base para expandir 1 lab por página.
 
 Resolve a queixa "não tem laboratório prático de verdade" sem exigir sandbox
 real (a plataforma roda numa t4g.nano, 512 MB — sandbox por aluno exigiria
@@ -9,7 +9,9 @@ Cada entrada tem `topic_title` (deve bater exatamente com o "title" do
 tópico em phaseN.py), `kind` (um de apps.courses.models.Lab.Kind) e `spec`
 no formato esperado por aquele kind (ver static/js/lab.js):
 
-  terminal:  {scenario, correct_command: [tok,...], distractor_tokens: [...], explanation}
+  terminal:  {scenario, correct_command: [tok,...],
+              accepted_commands?: [[tok,...], ...],  # ordens equivalentes
+              distractor_tokens: [...], explanation}
   find_flaw: {scenario, lines: [...], flaw_line_index, explanation}
   order:     {scenario, steps_shuffled: [...], correct_order: [...], explanation}
   blanks:    {scenario, template: "...___KEY___...", blanks: {KEY: {options:[...], correct}}, explanation}
@@ -45,14 +47,16 @@ LABS: list[dict] = [{'topic_title': 'Fundamentos de Linux',
   'title_en': 'Resolve the name',
   'spec': {'scenario': 'Descubra rapidamente pra qual IP o nome exemplo.com resolve, '
                        'sem ruído extra na saída.',
-           'correct_command': ['dig', 'exemplo.com', '+short'],
+           'correct_command': ['dig', '+short', 'exemplo.com'],
+           'accepted_commands': [['dig', 'exemplo.com', '+short']],
            'distractor_tokens': ['ping', '-c', 'nslookup'],
            'explanation': '`dig +short` retorna só o IP, direto ao ponto. `ping` testa '
                           'conectividade (não é resolução pura); `nslookup` funciona '
                           'mas está deprecado em favor de `dig`.'},
   'spec_en': {'scenario': 'Quickly find which IP the name exemplo.com resolves to, '
                           'without extra noise in the output.',
-              'correct_command': ['dig', 'exemplo.com', '+short'],
+              'correct_command': ['dig', '+short', 'exemplo.com'],
+              'accepted_commands': [['dig', 'exemplo.com', '+short']],
               'distractor_tokens': ['ping', '-c', 'nslookup'],
               'explanation': '`dig +short` returns only the IP, straight to the point. '
                              '`ping` tests connectivity (not pure resolution); '
@@ -215,6 +219,7 @@ LABS: list[dict] = [{'topic_title': 'Fundamentos de Linux',
   'spec': {'scenario': 'Usando journalctl, veja só as mensagens de erro (ou pior) '
                        'registradas hoje.',
            'correct_command': ['journalctl', '-p', 'err', '-S', 'today'],
+           'accepted_commands': [['journalctl', '-S', 'today', '-p', 'err']],
            'distractor_tokens': ['-u', 'nginx'],
            'explanation': '`-p err` filtra por prioridade (erro ou mais grave); `-S '
                           'today` limita ao dia atual. `-u nginx` filtraria por '
@@ -222,6 +227,7 @@ LABS: list[dict] = [{'topic_title': 'Fundamentos de Linux',
   'spec_en': {'scenario': 'Using journalctl, show only error messages (or worse) '
                           'logged today.',
               'correct_command': ['journalctl', '-p', 'err', '-S', 'today'],
+              'accepted_commands': [['journalctl', '-S', 'today', '-p', 'err']],
               'distractor_tokens': ['-u', 'nginx'],
               'explanation': '`-p err` filters by priority (error or more severe); `-S '
                              'today` limits to the current day. `-u nginx` would '
@@ -920,6 +926,7 @@ LABS: list[dict] = [{'topic_title': 'Fundamentos de Linux',
   'spec': {'scenario': 'Gere um SBOM de uma imagem de container no formato CycloneDX, '
                        'usando o Syft.',
            'correct_command': ['syft', 'imagem:tag', '-o', 'cyclonedx-json'],
+           'accepted_commands': [['syft', '-o', 'cyclonedx-json', 'imagem:tag']],
            'distractor_tokens': ['--scan', 'trivy'],
            'explanation': '`syft <imagem> -o cyclonedx-json` gera o inventário de '
                           'componentes no formato CycloneDX. Trivy é outra ferramenta '
@@ -927,6 +934,7 @@ LABS: list[dict] = [{'topic_title': 'Fundamentos de Linux',
   'spec_en': {'scenario': 'Generate an SBOM for a container image in CycloneDX format, '
                           'using Syft.',
               'correct_command': ['syft', 'imagem:tag', '-o', 'cyclonedx-json'],
+              'accepted_commands': [['syft', '-o', 'cyclonedx-json', 'imagem:tag']],
               'distractor_tokens': ['--scan', 'trivy'],
               'explanation': '`syft <image> -o cyclonedx-json` generates the component '
                              'inventory in CycloneDX format. Trivy is another tool '
@@ -1096,12 +1104,20 @@ LABS: list[dict] = [{'topic_title': 'Fundamentos de Linux',
   'title_en': 'List the pods',
   'spec': {'scenario': "Liste os pods do namespace 'default' no cluster.",
            'correct_command': ['kubectl', 'get', 'pods', '-n', 'default'],
+           'accepted_commands': [
+               ['kubectl', 'get', '-n', 'default', 'pods'],
+               ['kubectl', '-n', 'default', 'get', 'pods'],
+           ],
            'distractor_tokens': ['-A', 'describe'],
            'explanation': '`-n default` filtra pro namespace pedido. `-A` listaria de '
                           'TODOS os namespaces; `describe` mostraria detalhe de UM pod '
                           'específico, não a lista.'},
   'spec_en': {'scenario': "List the pods in the 'default' namespace on the cluster.",
               'correct_command': ['kubectl', 'get', 'pods', '-n', 'default'],
+              'accepted_commands': [
+                  ['kubectl', 'get', '-n', 'default', 'pods'],
+                  ['kubectl', '-n', 'default', 'get', 'pods'],
+              ],
               'distractor_tokens': ['-A', 'describe'],
               'explanation': '`-n default` filters to the requested namespace. `-A` '
                              'would list ALL namespaces; `describe` would show detail '

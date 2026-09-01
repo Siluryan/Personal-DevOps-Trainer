@@ -107,6 +107,36 @@ class TestLanguageSwitcher:
         assert resp.status_code == 302
         assert client.cookies["django_language"].value == "en"
 
+    def test_set_language_preserva_querystring_do_next(self, client):
+        resp = client.post(
+            reverse("set_language"),
+            {"language": "en", "next": "/trilha/topico/fundamentos-de-linux/?p=3"},
+        )
+        assert resp.status_code == 302
+        assert resp["Location"].endswith("/trilha/topico/fundamentos-de-linux/?p=3")
+
+    def test_lang_switch_inclui_querystring_no_next(
+        self, client, admitted_user, seed_phases
+    ):
+        client.force_login(admitted_user)
+        url = reverse("courses:topic_detail", args=[seed_phases["topic"].slug])
+        resp = client.get(f"{url}?p=3")
+        assert resp.status_code == 200
+        assert f'name="next" value="{url}?p=3"'.encode() in resp.content
+
+    def test_trocar_idioma_volta_para_a_mesma_pagina_da_aula(
+        self, client, admitted_user, seed_phases
+    ):
+        client.force_login(admitted_user)
+        url = reverse("courses:topic_detail", args=[seed_phases["topic"].slug])
+        next_url = f"{url}?p=3"
+        resp = client.post(reverse("set_language"), {"language": "en", "next": next_url})
+        assert resp.status_code == 302
+        assert resp["Location"] == next_url
+        landed = client.get(resp["Location"])
+        assert landed.status_code == 200
+        assert f'name="next" value="{next_url}"'.encode() in landed.content
+
 
 class TestSeedDataIntegrity:
     """Garante que o conteúdo das 6 fases está bem-formado."""
@@ -214,6 +244,21 @@ class TestLabDataIntegrity:
             pool = spec["correct_command"] + spec["distractor_tokens"]
             assert len(set(pool)) == len(pool), f"{lab['title']}: token duplicado no pool"
 
+    def test_accepted_commands_sao_o_mesmo_conjunto_de_tokens(self):
+        for lab in LABS:
+            if lab["kind"] != "terminal":
+                continue
+            for key in ("spec", "spec_en"):
+                spec = lab.get(key) or {}
+                if "accepted_commands" not in spec:
+                    continue
+                canon = spec["correct_command"]
+                for alt in spec["accepted_commands"]:
+                    assert sorted(alt) == sorted(canon), (
+                        f"{lab['title']} {key}: {alt} ≠ tokens de {canon}"
+                    )
+                    assert alt != canon, f"{lab['title']} {key}: accepted duplica o gabarito"
+
     def test_spec_find_flaw_indice_dentro_do_range(self):
         for lab in LABS:
             if lab["kind"] != "find_flaw":
@@ -245,6 +290,80 @@ class TestLabDataIntegrity:
             boas = sum(1 for c in spec["choices"] if c["good"])
             assert boas == 1, f"{lab['title']}: {boas} choices boas (esperava 1)"
 
+    def test_expand_labs_um_por_pagina_de_cada_topico(self):
+        from apps.core.pagination import paginate_html_sections
+        from apps.courses.seed_data import PHASES
+        from apps.courses.seed_data.page_labs import expand_labs
+
+        expanded = expand_labs()
+        by_topic: dict[str, list[int]] = {}
+        for lab in expanded:
+            by_topic.setdefault(lab["topic_title"], []).append(lab["lesson_page"])
+            assert lab["lesson_page"] >= 1
+            assert lab["kind"] in {k for k, _ in Lab.Kind.choices}
+
+        assert len(by_topic) == 60
+        for phase in PHASES:
+            for topic in phase["topics"]:
+                body = (topic.get("lesson") or {}).get("body") or ""
+                n = len(paginate_html_sections(body) or [body])
+                pages = sorted(by_topic[topic["title"]])
+                assert pages == list(range(1, n + 1)), topic["title"]
+
+    def test_labs_gerados_sao_praticos_nao_quiz_de_tema(self):
+        from apps.courses.seed_data.labs import LABS
+        from apps.courses.seed_data.page_labs import expand_labs
+
+        authored_titles = {lab["title"] for lab in LABS}
+        kinds = {"terminal": 0, "order": 0, "find_flaw": 0, "blanks": 0, "scenario": 0}
+        for lab in expand_labs():
+            kinds[lab["kind"]] = kinds.get(lab["kind"], 0) + 1
+            if lab["title"] in authored_titles:
+                continue
+            spec = lab["spec"]
+            if lab["kind"] == "scenario":
+                sit = spec.get("situation", "")
+                assert "tema central" not in sit.lower()
+                assert "central topic" not in sit.lower()
+                assert "termo que entra primeiro" not in sit.lower()
+                assert "escrevendo o runbook" not in sit.lower()
+                assert "você controla" not in sit.lower()
+                boas = sum(1 for c in spec["choices"] if c["good"])
+                assert boas == 1, lab["title"]
+            assert "Complete o runbook" not in lab["title"]
+            if lab["kind"] == "blanks":
+                assert "termo que entra primeiro" not in spec.get("template", "")
+            if lab["kind"] == "terminal":
+                pool = spec["correct_command"] + spec["distractor_tokens"]
+                assert len(set(pool)) == len(pool), lab["title"]
+                cmd = " ".join(spec["correct_command"])
+                sit = spec.get("scenario", "")
+                assert cmd not in sit, f"{lab['title']}: enunciado entrega `{cmd}`"
+                for tok in spec["correct_command"]:
+                    if len(tok) >= 4 and tok.startswith(("-", "+", "/")):
+                        continue
+                    if len(tok) >= 5:
+                        assert tok not in sit, f"{lab['title']}: enunciado vaza `{tok}`"
+            if lab["kind"] == "order":
+                assert sorted(spec["steps_shuffled"]) == sorted(spec["correct_order"])
+            if lab["kind"] == "find_flaw":
+                assert 0 <= spec["flaw_line_index"] < len(spec["lines"])
+            if lab["kind"] == "blanks":
+                for key, blank in spec["blanks"].items():
+                    assert f"___{key}___" in spec["template"]
+                    assert blank["correct"] in blank["options"]
+        practical = kinds["terminal"] + kinds["order"] + kinds["find_flaw"] + kinds["blanks"]
+        assert kinds["terminal"] >= 40, kinds
+        assert practical >= 100, kinds
+        generic = sum(
+            1
+            for lab in expand_labs()
+            if lab["title"] not in authored_titles
+            and lab["kind"] == "scenario"
+            and "menor privilégio possível" in lab["spec"]["choices"][0]["text"]
+        )
+        assert generic < 120, generic
+
 
 @pytest.mark.django_db
 class TestSeedLabsCommand:
@@ -255,8 +374,11 @@ class TestSeedLabsCommand:
 
         call_command("seed_topics", verbosity=0)
         call_command("seed_labs", verbosity=0)
-        assert Lab.objects.count() == 60
+        from apps.courses.seed_data.page_labs import expand_labs
+
+        assert Lab.objects.count() == len(expand_labs())
         assert Topic.objects.filter(labs__isnull=True).count() == 0
+        assert Lab.objects.filter(is_active=True).count() == Lab.objects.count()
 
     def test_seed_labs_idempotente(self):
         from django.core.management import call_command
@@ -308,11 +430,11 @@ class TestLabCompleteView:
         url = reverse("courses:lab_complete", args=[lab.id])
         resp = client.post(url)
         assert resp.status_code == 200
-        assert resp.json()["lab_bonus"] == 5
+        assert resp.json()["lab_bonus"] == 1
         assert LabCompletion.objects.filter(user=admitted_user, lab=lab).count() == 1
 
         resp2 = client.post(url)  # refazer não deve dobrar o bônus
-        assert resp2.json()["lab_bonus"] == 5
+        assert resp2.json()["lab_bonus"] == 1
         assert LabCompletion.objects.filter(user=admitted_user, lab=lab).count() == 1
 
     def test_completar_lab_exige_login(self, client, seed_phases):
@@ -547,3 +669,30 @@ class TestTopicViews:
         resp = client.get(url)
         assert resp.status_code == 200
         assert b"T\xc3\xb3pico de Teste" in resp.content
+
+    def test_lab_fica_dentro_da_pagina_correspondente(self, client, admitted_user, seed_phases):
+        topic = seed_phases["topic"]
+        lesson = topic.lesson
+        lesson.body = "".join(f"<h3>{i}. Seção</h3><p>{'x' * 1600}</p>" for i in range(1, 6))
+        lesson.save(update_fields=["body"])
+        Lab.objects.filter(topic=topic).delete()
+        Lab.objects.create(
+            topic=topic,
+            kind="terminal",
+            title="Lab só na página 2",
+            spec={
+                "scenario": "s",
+                "correct_command": ["echo", "ok"],
+                "distractor_tokens": ["no"],
+                "explanation": "e",
+            },
+            lesson_page=2,
+        )
+        client.force_login(admitted_user)
+        html = client.get(reverse("courses:topic_detail", args=[topic.slug])).content.decode()
+        pages = html.split('class="lesson-page"')
+        assert len(pages) >= 3
+        assert "Lab só na página 2" not in pages[1]  # página 1
+        assert "Lab só na página 2" in pages[2]  # página 2
+        assert "Lab só na página 2" not in pages[3]  # página 3
+        assert html.count("lab-card") == 1

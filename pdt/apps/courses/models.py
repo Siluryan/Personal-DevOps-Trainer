@@ -218,7 +218,8 @@ class Lab(models.Model):
     formato abaixo é resolvido por TOQUE, não por digitação.
 
     Cada `kind` interpreta `spec` de um jeito (o schema de cada um está
-    documentado em apps/courses/seed_data/labs.py, junto dos 60 labs).
+    documentado em apps/courses/seed_data/labs.py). Cada página da aula
+    tem o seu (`lesson_page`).
     """
 
     class Kind(models.TextChoices):
@@ -232,6 +233,13 @@ class Lab(models.Model):
     kind = models.CharField(max_length=16, choices=Kind.choices)
     title = models.CharField(max_length=140)
     title_en = models.CharField(max_length=140, blank=True)
+    lesson_page = models.PositiveSmallIntegerField(
+        default=1,
+        help_text=(
+            "Página da aula (1 = primeira) em que este lab aparece. "
+            "A paginação é a mesma de `paginate_lesson_body`."
+        ),
+    )
     spec = models.JSONField(
         help_text="Conteúdo do lab; o formato depende de `kind` (ver seed_data/labs.py)."
     )
@@ -257,7 +265,8 @@ class Lab(models.Model):
     )
 
     class Meta:
-        ordering = ["topic_id", "order", "id"]
+        ordering = ["topic_id", "lesson_page", "order", "id"]
+        unique_together = [("topic", "lesson_page")]
         verbose_name = "laboratório"
         verbose_name_plural = "laboratórios"
 

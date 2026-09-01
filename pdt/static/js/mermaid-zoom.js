@@ -151,3 +151,28 @@ function enhanceMermaidDiagrams() {
   });
 }
 window.enhanceMermaidDiagrams = enhanceMermaidDiagrams;
+
+// Páginas da aula usam Alpine x-show (display:none). Mermaid mede SVG com o
+// nó oculto e o diagrama fica estreito/quebrado até a página ficar visível.
+// Chamar no goToPage() depois do $nextTick para forçar reflow do que apareceu.
+window.reflowVisibleMermaid = function reflowVisibleMermaid(root) {
+  var scope = root || document;
+  var nodes = scope.querySelectorAll
+    ? scope.querySelectorAll('.lesson-body .mermaid')
+    : [];
+  nodes.forEach(function (el) {
+    if (el.offsetParent === null && el.getClientRects().length === 0) return;
+    var svg = el.querySelector('svg');
+    if (!svg) return;
+    var w = svg.getBoundingClientRect().width;
+    if (w >= 80) return;
+    // Força o browser a recalcular o viewBox/escala do SVG.
+    svg.style.width = '100%';
+    svg.style.maxWidth = '100%';
+    svg.style.height = 'auto';
+    void svg.getBoundingClientRect();
+  });
+  if (typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new Event('resize'));
+  }
+};

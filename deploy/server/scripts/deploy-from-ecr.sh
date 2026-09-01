@@ -187,6 +187,20 @@ ensure_nginx_tunnel() {
   sed "s|__DOMAIN__|$root_domain $www_domain|g" "$template" >"$out"
   ln -sf /etc/nginx/sites-available/pdt.conf /etc/nginx/sites-enabled/pdt.conf
   rm -f /etc/nginx/sites-enabled/default
+
+  local applier_domain
+  applier_domain=$(ssm_get "/$PROJECT_NAME/$ENVIRONMENT_NAME/applier_domain")
+  applier_domain="${applier_domain#www.}"
+  local applier_tpl="$REPO_DIR/deploy/server/nginx/applier.conf.tpl"
+  local applier_src="$REPO_DIR/deploy/server/applier-site"
+  if [ -n "$applier_domain" ] && [ "$applier_domain" != "None" ] && [ -f "$applier_tpl" ]; then
+    install -d -m 0755 /var/www/applier
+    cp -a "$applier_src/." /var/www/applier/
+    sed "s|__APPLIER_DOMAIN__|$applier_domain www.$applier_domain|g" "$applier_tpl" \
+      >/etc/nginx/sites-available/applier.conf
+    ln -sf /etc/nginx/sites-available/applier.conf /etc/nginx/sites-enabled/applier.conf
+  fi
+
   nginx -t
   systemctl enable --now nginx
   systemctl reload nginx

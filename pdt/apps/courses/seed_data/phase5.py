@@ -41,11 +41,14 @@ nginx:1.25, expostas via Service"), envia essa descrição ao API server,
 e dezenas de <em>controllers</em> trabalham em loop infinito para fazer
 a realidade CONVERGIR ao que foi declarado:</p>
 <div class="mermaid">
-flowchart TD
-    Internet["Internet"] --> Ingress["Ingress"]
-    Ingress --> Service["Service"]
-    Service --> Pod1["Pod 1"]
-    Service --> Pod2["Pod 2"]
+flowchart LR
+    Desired["Estado desejado no etcd"] --> Compare["Controller compara"]
+    Actual["Estado atual do cluster"] --> Compare
+    Compare --> Diff{"Há diferença?"}
+    Diff -- "Sim" --> Apply["Aplica mudanças"]
+    Diff -- "Não" --> Wait["Aguarda próximo ciclo"]
+    Apply --> Wait
+    Wait --> Desired
 </div>
 
 <pre><code># Loop conceitual de qualquer controller K8s
@@ -232,6 +235,15 @@ específica significa perder o serviço inteiro, mesmo tendo 5 réplicas
 REPRODUZÍVEL — o mesmo manifesto aplicado em momentos diferentes pode
 puxar conteúdo de imagem diferente; prefira versionamento semântico ou,
 mais forte ainda, o digest da imagem (<code>@sha256:...</code>).</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Cria ReplicaSet novo com a imagem desejada</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Sobe pods novos gradualmente (maxSurge)</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Remove pods antigos só quando os novos estão Ready</p></div>
+  </div>
+  <figcaption>Rolling update: convergência controlada, não big bang.</figcaption>
+</figure>
+
 
 <h3>6. Service: por que "falar com o IP do pod" nunca funciona de verdade</h3>
 <p>Pods são efetivamente descartáveis — criados e destruídos com
@@ -512,7 +524,15 @@ grande o suficiente trabalhando em paralelo para que a coordenação
 declarativa valha o overhead de aprendizado. Adotar Kubernetes só porque
 "virou o padrão da indústria", sem que o problema real da organização o
 exija, troca simplicidade real por complexidade que não paga o próprio
-custo.</p>"""
+custo.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Evite</strong><p>Pods sem requests/limits, :latest, um único node, Secrets só em base64.</p></div>
+    <div class="lesson-viz-card"><strong>Prefira</strong><p>Requests explícitos, digest pinado, multi-AZ, encryption at rest + RBAC.</p></div>
+  </div>
+  <figcaption>Checklist rápido antes de chamar o cluster de produção.</figcaption>
+</figure>
+"""
                 ),
                 "body_en": (
                 """<h3>1. The mental model that changes everything: you don't command, you declare</h3>
@@ -523,11 +543,14 @@ nginx:1.25 image, exposed via a Service"), send that description to the API
 server, and dozens of <em>controllers</em> work in an infinite loop to make
 reality CONVERGE to what was declared:</p>
 <div class="mermaid">
-flowchart TD
-    Internet["Internet"] --> Ingress["Ingress"]
-    Ingress --> Service["Service"]
-    Service --> Pod1["Pod 1"]
-    Service --> Pod2["Pod 2"]
+flowchart LR
+    Desired["Desired state in etcd"] --> Compare["Controller compares"]
+    Actual["Actual cluster state"] --> Compare
+    Compare --> Diff{"Any difference?"}
+    Diff -- "Yes" --> Apply["Apply changes"]
+    Diff -- "No" --> Wait["Wait for next cycle"]
+    Apply --> Wait
+    Wait --> Desired
 </div>
 <pre><code># Loop conceitual de qualquer controller K8s
 while True:
@@ -713,6 +736,15 @@ replicas on paper. And using a mutable tag like <code>:latest</code> or
 REPRODUCIBLE — the same manifest applied at different times might
 pull different image content; prefer semantic versioning or,
 stronger still, the image digest (<code>@sha256:...</code>).</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Create a new ReplicaSet with the desired image</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Bring new pods up gradually (maxSurge)</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Remove old pods only when new ones are Ready</p></div>
+  </div>
+  <figcaption>Rolling update: controlled convergence, not a big bang.</figcaption>
+</figure>
+
 
 <h3>6. Service: why "talking to the pod's IP" never really works</h3>
 <p>Pods are effectively disposable — created and destroyed
@@ -993,7 +1025,15 @@ team large enough working in parallel that declarative coordination
 is worth the learning overhead. Adopting Kubernetes just because
 "it became the industry standard," without the organization's actual problem
 requiring it, trades real simplicity for complexity that doesn't pay for its
-own cost.</p>"""
+own cost.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Avoid</strong><p>Pods without requests/limits, :latest, a single node, Secrets as plain base64.</p></div>
+    <div class="lesson-viz-card"><strong>Prefer</strong><p>Explicit requests, pinned digests, multi-AZ, encryption at rest + RBAC.</p></div>
+  </div>
+  <figcaption>Quick checklist before calling the cluster production.</figcaption>
+</figure>
+"""
                 ),
                 "practical": (
                     "Suba <code>kind create cluster</code> local. Crie um Deployment de NGINX "
@@ -1162,10 +1202,15 @@ comum do que qualquer exploit sofisticado. Nenhum controle isolado
 resolve todos os cinco: hardening funciona como defesa em camadas, onde
 cada camada cobre o que a anterior deixou passar.</p>
 <div class="mermaid">
-flowchart LR
-    User["Usuário / ServiceAccount"] --> Binding["RoleBinding"]
-    Binding --> Role["Role: lista de permissões"]
-    Role --> Resource["Recurso do cluster"]
+flowchart TD
+    Attacker["Atacante"] --> SA["Token de ServiceAccount roubado"]
+    Attacker --> Esc["Escape de container"]
+    Attacker --> Lateral["Movimento lateral entre pods"]
+    SA --> API["API server"]
+    Esc --> Host["Node host"]
+    Lateral --> Data["Dados / outros serviços"]
+    API --> Goal["Controle do cluster"]
+    Host --> Goal
 </div>
 
 
@@ -1279,6 +1324,14 @@ filtra cerca de 70 syscalls consideradas perigosas (como
 <code>mount</code> e <code>ptrace</code>), reduzindo o que um processo
 comprometido dentro do container consegue pedir ao kernel, mesmo que já
 tenha conseguido executar código arbitrário.</p>
+<div class="mermaid">
+flowchart LR
+    Root["runAsNonRoot"] --> Drop["drop ALL capabilities"]
+    Drop --> RO["readOnlyRootFilesystem"]
+    RO --> Seccomp["seccomp RuntimeDefault"]
+    Seccomp --> Hardened["Superfície de ataque reduzida"]
+</div>
+
 
 <h3>5. NetworkPolicy default-deny: o mínimo para não deixar o cluster inteiro aberto</h3>
 <p>Sem NetworkPolicy nenhuma configurada, comprometer UM pod dá acesso de
@@ -1487,6 +1540,14 @@ motivo que um runbook nunca testado (visto na aula de Incident Response)
 tem boa chance de estar errado exatamente quando for preciso.</p>
 
 <h3>14. Cinco anti-padrões que aparecem com frequência incômoda</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Anti-padrão</strong><p>cluster-admin para tudo; PSS em warn eterno; Secrets sem encryption at rest.</p></div>
+    <div class="lesson-viz-card"><strong>Padrão saudável</strong><p>RBAC mínimo; PSS restricted em prod; etcd criptografado + auditoria.</p></div>
+  </div>
+  <figcaption>Hardening que fica no papel não conta como defesa.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Tudo cluster-admin para o CI</strong>: comprometer o
 pipeline de CI, um alvo cada vez mais visado, equivale a comprometer o
@@ -1545,10 +1606,15 @@ common than any sophisticated exploit. No single control
 solves all five: hardening works as defense in layers, where
 each layer covers what the previous one let through.</p>
 <div class="mermaid">
-flowchart LR
-    User["Usuário / ServiceAccount"] --> Binding["RoleBinding"]
-    Binding --> Role["Role: lista de permissões"]
-    Role --> Resource["Recurso do cluster"]
+flowchart TD
+    Attacker["Attacker"] --> SA["Stolen ServiceAccount token"]
+    Attacker --> Esc["Container escape"]
+    Attacker --> Lateral["Lateral movement between pods"]
+    SA --> API["API server"]
+    Esc --> Host["Node host"]
+    Lateral --> Data["Data / other services"]
+    API --> Goal["Cluster control"]
+    Host --> Goal
 </div>
 
 
@@ -1662,6 +1728,14 @@ filters around 70 syscalls considered dangerous (like
 <code>mount</code> and <code>ptrace</code>), reducing what a
 compromised process inside the container can ask of the kernel, even if it has
 already managed to execute arbitrary code.</p>
+<div class="mermaid">
+flowchart LR
+    Root["runAsNonRoot"] --> Drop["drop ALL capabilities"]
+    Drop --> RO["readOnlyRootFilesystem"]
+    RO --> Seccomp["seccomp RuntimeDefault"]
+    Seccomp --> Hardened["Reduced attack surface"]
+</div>
+
 
 <h3>5. Default-deny NetworkPolicy: the minimum to avoid leaving the whole cluster open</h3>
 <p>With no NetworkPolicy configured at all, compromising ONE pod gives network
@@ -1869,6 +1943,14 @@ reason that a runbook never tested (seen in the Incident Response lesson)
 has a good chance of being wrong exactly when it's needed.</p>
 
 <h3>14. Five anti-patterns that show up with uncomfortable frequency</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Anti-pattern</strong><p>cluster-admin for everything; PSS stuck on warn forever; Secrets without encryption at rest.</p></div>
+    <div class="lesson-viz-card"><strong>Healthy pattern</strong><p>Least-privilege RBAC; PSS restricted in prod; encrypted etcd + auditing.</p></div>
+  </div>
+  <figcaption>Hardening that stays on paper does not count as defense.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Everything cluster-admin for CI</strong>: compromising the
 CI pipeline, an increasingly targeted target, is equivalent to compromising
@@ -2055,13 +2137,10 @@ implementação) — um detalhe que você não precisa gerenciar diretamente,
 só saber que precisa estar presente.</p>
 <div class="mermaid">
 flowchart LR
-    subgraph SemNP ["Sem NetworkPolicy"]
-        A1["Pod A"] --> B1["Pod B"]
-        A1 --> C1["Pod C"]
-    end
-    subgraph ComNP ["Com default-deny + regra explícita"]
-        A2["Pod A"] --> B2["Pod B, permitido"]
-    end
+    YAML["NetworkPolicy YAML"] --> API["API server / etcd"]
+    API --> CNI["CNI plugin"]
+    CNI --> Enforce["Regras no datapath"]
+    Enforce --> Pods["Tráfego entre pods"]
 </div>
 
 
@@ -2204,6 +2283,14 @@ chama); e para acesso à internet propriamente dito, rotear através de um
 proxy de saída dedicado (Squid, ou uma solução ZTNA) que aplica uma
 allowlist explícita de domínios e gera log auditável de cada conexão —
 em vez de liberar egress irrestrito para qualquer destino externo:</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Só ingress</strong><p>Bloqueia quem entra no pod, mas exfiltração e C2 ainda saem livres.</p></div>
+    <div class="lesson-viz-card"><strong>Ingress + egress</strong><p>Default-deny nos dois sentidos; libera DNS e destinos explícitos.</p></div>
+  </div>
+  <figcaption>Egress costuma ser o controle que mais reduz impacto de um pod comprometido.</figcaption>
+</figure>
+
 <pre><code># exemplo: pod web só fala com api e DNS
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -2349,7 +2436,16 @@ novo já nasça com default-deny, fechando a lacuna de alguém esquecer o
 passo manual. E Hubble, além de servir para debug pontual (seção 8),
 vale rodar continuamente em produção como validação contínua de que o
 comportamento real da rede ainda corresponde ao que as políticas
-declaram.</p>"""
+declaram.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Default-deny por namespace antes de abrir exceções</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Sempre liberar DNS (UDP/TCP 53) explicitamente</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Validar AND/OR dos seletores com ferramenta, não só olho</p></div>
+  </div>
+  <figcaption>Ordem que evita aplicar NP e o cluster sumir.</figcaption>
+</figure>
+"""
                 ),
                 "body_en": (
                 """<h3>1. NetworkPolicy is just an object — what actually enforces it is the CNI</h3>
@@ -2369,13 +2465,10 @@ implementation) — a detail you do not need to manage directly,
 only know that it needs to be present.</p>
 <div class="mermaid">
 flowchart LR
-    subgraph SemNP ["Sem NetworkPolicy"]
-        A1["Pod A"] --> B1["Pod B"]
-        A1 --> C1["Pod C"]
-    end
-    subgraph ComNP ["Com default-deny + regra explícita"]
-        A2["Pod A"] --> B2["Pod B, permitido"]
-    end
+    YAML["NetworkPolicy YAML"] --> API["API server / etcd"]
+    API --> CNI["CNI plugin"]
+    CNI --> Enforce["Rules on the datapath"]
+    Enforce --> Pods["Traffic between pods"]
 </div>
 
 
@@ -2518,6 +2611,14 @@ calls); and for internet access proper, route through a
 dedicated egress proxy (Squid, or a ZTNA solution) that applies an
 explicit domain allowlist and produces an auditable log of every connection —
 instead of opening unrestricted egress to any external destination:</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Ingress only</strong><p>Blocks who can enter the pod, but exfiltration and C2 still leave freely.</p></div>
+    <div class="lesson-viz-card"><strong>Ingress + egress</strong><p>Default-deny both ways; allow DNS and explicit destinations.</p></div>
+  </div>
+  <figcaption>Egress is often the control that most reduces blast radius of a compromised pod.</figcaption>
+</figure>
+
 <pre><code># exemplo: pod web só fala com api e DNS
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -2663,7 +2764,16 @@ namespace is born with default-deny, closing the gap of someone forgetting the
 manual step. And Hubble, beyond point debugging (section 8),
 is worth running continuously in production as continuous validation that the
 real network behavior still matches what the policies
-declare.</p>"""
+declare.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Default-deny per namespace before opening exceptions</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Always allow DNS (UDP/TCP 53) explicitly</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Validate selector AND/OR with a tool, not just eyeballs</p></div>
+  </div>
+  <figcaption>Order that avoids applying NP and the cluster vanishing.</figcaption>
+</figure>
+"""
                 ),
                 "practical": (
                     "Em cluster com Cilium ou Calico, aplique <code>default-deny</code> em um NS "
@@ -2971,6 +3081,15 @@ conta própria antes que vire bloqueio. <strong>enforce</strong>
 finalmente bloqueia — e só deveria ser ativado depois que os estágios de
 audit e warn já estiverem "limpos" (sem violações restantes conhecidas).
 Pular direto para enforce é o anti-padrão mais citado na seção 13.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Audit: registra violações sem bloquear</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Warn: avisa o usuário no apply</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Enforce: rejeita o que ainda viola</p></div>
+  </div>
+  <figcaption>Progressão típica: semanas de audit/warn antes do enforce.</figcaption>
+</figure>
+
 
 <h3>8. Webhook em produção: por que um serviço externo pode derrubar o cluster inteiro</h3>
 <p>Um webhook de admission mal configurado tem um poder incomum: se o
@@ -3056,6 +3175,14 @@ Security) preenchem — observando comportamento real do processo em
 execução, não apenas a configuração declarada no momento da criação.</p>
 
 <h3>13. Cinco anti-padrões que sabotam a adoção de admission policies</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Quebra confiança</strong><p>Enforce no dia 1; webhook sem fail policy clara; silêncio sobre violações.</p></div>
+    <div class="lesson-viz-card"><strong>Ganha adoção</strong><p>Audit primeiro; timeout/fail definidos; relatório semanal para os times.</p></div>
+  </div>
+  <figcaption>Admission sem comunicação vira bloqueio político, não segurança.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Deploy direto em modo enforce</strong>: o time atualiza o
 repositório, o deploy falha sem aviso prévio, e a reação natural é
@@ -3121,9 +3248,9 @@ flowchart LR
     Req["kubectl apply"] --> API["API server"]
     API --> Mutating["Mutating webhook"]
     Mutating --> Validating["Validating webhook"]
-    Validating --> Store{"Aprovado?"}
-    Store -- "Sim" --> Etcd["Persistido no etcd"]
-    Store -- "Não" --> Reject["Rejeitado"]
+    Validating --> Store{"Approved?"}
+    Store -- "Yes" --> Etcd["Persisted in etcd"]
+    Store -- "No" --> Reject["Rejected"]
 </div>
 
 
@@ -3270,6 +3397,15 @@ their own before it becomes a block. <strong>enforce</strong>
 finally blocks — and should only be enabled after the audit and warn
 stages are already "clean" (no remaining known violations).
 Jumping straight to enforce is the anti-pattern most cited in section 13.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Audit: log violations without blocking</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Warn: notify the user on apply</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Enforce: reject what still violates</p></div>
+  </div>
+  <figcaption>Typical progression: weeks of audit/warn before enforce.</figcaption>
+</figure>
+
 
 <h3>8. Webhooks in production: why an external service can take down the entire cluster</h3>
 <p>A misconfigured admission webhook has unusual power: if the
@@ -3355,6 +3491,14 @@ Security lesson) fill — observing real process behavior at
 runtime, not only the configuration declared at creation time.</p>
 
 <h3>13. Five anti-patterns that sabotage adoption of admission policies</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Breaks trust</strong><p>Enforce on day 1; webhook with unclear fail policy; silence about violations.</p></div>
+    <div class="lesson-viz-card"><strong>Wins adoption</strong><p>Audit first; defined timeout/fail; weekly report for teams.</p></div>
+  </div>
+  <figcaption>Admission without communication becomes political blocking, not security.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Deploy straight into enforce mode</strong>: the team updates the
 repository, the deploy fails without prior warning, and the natural reaction is
@@ -3550,10 +3694,14 @@ perímetro tecnicamente "segurou" — o firewall não foi violado por força
 bruta — porque o atacante já estava do lado de dentro por outro caminho,
 e uma vez lá dentro, nada mais o impedia.</p>
 <div class="mermaid">
-flowchart TD
-    Req["Toda requisição"] --> Verify{"Identidade e contexto verificados agora?"}
-    Verify -- "Sim" --> Grant["Acesso ao recurso específico"]
-    Verify -- "Não" --> Deny["Acesso negado"]
+flowchart LR
+    subgraph Old ["Modelo de perímetro"]
+        VPN["Dentro da VPN = confiável"]
+        Flat["Rede flat interna"]
+    end
+    Breach["Credencial / phishing"] --> Inside["Atacante já no perímetro"]
+    Inside --> Lateral["Movimento lateral livre"]
+    Lateral --> Impact["Impacto amplo"]
 </div>
 
 
@@ -3625,6 +3773,14 @@ não de um arquivo de configuração. E tokens JWT de curta duração, com
 audience e issuer específicos, limitam o dano de um token eventualmente
 vazado, porque ele expira rápido e só serve para o destinatário
 pretendido.</p>
+<div class="mermaid">
+flowchart LR
+    PodA["Pod A"] --> mTLS["mTLS / SPIFFE ID"]
+    mTLS --> Policy["Policy: quem pode falar com quem"]
+    Policy --> PodB["Pod B"]
+    Policy -- "Negado" --> Deny["Conexão rejeitada"]
+</div>
+
 
 <h3>6. O ecossistema de ferramentas, comerciais e abertas</h3>
 <p><strong>Cloudflare Access</strong> é a solução SaaS corporativa mais
@@ -3714,6 +3870,15 @@ centralizado num SIEM; e imagens assinadas com SBOM anexado (proveniência
 verificável). Nenhuma dessas camadas sozinha implementa Zero Trust
 completo — juntas, cada uma limita o raio de impacto se a anterior
 falhar, exatamente o princípio de defesa em profundidade.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Inventário de identidades humanas e de carga</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>SSO + MFA para acesso humano</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>mTLS / identidade de workload entre serviços críticos</p></div>
+  </div>
+  <figcaption>Comece pelo que já tem valor sem big-bang de mesh.</figcaption>
+</figure>
+
 
 <h3>12. Limites honestos: Zero Trust não é grátis nem universal</h3>
 <p>Toda a arquitetura depende, em última análise, de identidade — se o
@@ -3757,10 +3922,14 @@ perimeter technically "held" — the firewall was not breached by brute
 force — because the attacker was already on the inside via another path,
 and once there, nothing else stopped them.</p>
 <div class="mermaid">
-flowchart TD
-    Req["Toda requisição"] --> Verify{"Identidade e contexto verificados agora?"}
-    Verify -- "Sim" --> Grant["Acesso ao recurso específico"]
-    Verify -- "Não" --> Deny["Acesso negado"]
+flowchart LR
+    subgraph Old ["Perimeter model"]
+        VPN["Inside VPN = trusted"]
+        Flat["Flat internal network"]
+    end
+    Breach["Credential / phishing"] --> Inside["Attacker already inside perimeter"]
+    Inside --> Lateral["Free lateral movement"]
+    Lateral --> Impact["Wide impact"]
 </div>
 
 
@@ -3832,6 +4001,14 @@ not from a config file. And short-lived JWT tokens, with
 specific audience and issuer, limit the damage of a token that eventually
 leaks, because it expires quickly and only works for the intended
 recipient.</p>
+<div class="mermaid">
+flowchart LR
+    PodA["Pod A"] --> mTLS["mTLS / SPIFFE ID"]
+    mTLS --> Policy["Policy: who may talk to whom"]
+    Policy --> PodB["Pod B"]
+    Policy -- "Denied" --> Deny["Connection rejected"]
+</div>
+
 
 <h3>6. The tool ecosystem, commercial and open</h3>
 <p><strong>Cloudflare Access</strong> is the best-known corporate SaaS solution
@@ -3921,6 +4098,15 @@ log in a SIEM; and signed images with attached SBOM (verifiable
 provenance). None of these layers alone implements complete Zero Trust
 — together, each limits the blast radius if the previous one
 fails, exactly the defense-in-depth principle.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Inventory human and workload identities</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>SSO + MFA for human access</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>mTLS / workload identity between critical services</p></div>
+  </div>
+  <figcaption>Start with what delivers value without a mesh big-bang.</figcaption>
+</figure>
+
 
 <h3>12. Honest limits: Zero Trust is neither free nor universal</h3>
 <p>The whole architecture ultimately depends on identity — if the
@@ -4090,10 +4276,10 @@ Tetragon), cada uma aproveitando o mesmo mecanismo eficiente do kernel
 para propósitos diferentes.</p>
 <div class="mermaid">
 flowchart LR
-    Syscalls["Syscalls do container"] --> Falco["Monitor de runtime, ex.: Falco"]
-    Falco --> Rule{"Bate com regra suspeita?"}
-    Rule -- "Sim" --> Alert["Gera alerta ou ação"]
-    Rule -- "Não" --> Syscalls
+    App["Processo no container"] --> Syscall["Syscall"]
+    Syscall --> eBPF["Programa eBPF no kernel"]
+    eBPF --> Observe["Observa / filtra / age"]
+    Observe --> User["Agente em userspace"]
 </div>
 
 
@@ -4189,6 +4375,14 @@ T1611 (Escape to Host)? T1552 (Unsecured Credentials)?" — cada técnica
 sem detecção correspondente vira candidata explícita para a próxima
 regra customizada a escrever, em vez de depender de intuição sobre "o
 que ainda falta cobrir".</p>
+<div class="mermaid">
+flowchart TD
+    Map["ATT&CK Containers"] --> Detect["Quais técnicas suas regras cobrem?"]
+    Detect --> Gap["Lacunas"]
+    Gap --> Rules["Novas regras / sensores"]
+    Rules --> Map
+</div>
+
 
 <h3>6. Operar Falco no dia a dia: da instalação ao afinamento contínuo</h3>
 <p>Começar com as regras padrão é o ponto de partida certo, mas rodá-las
@@ -4268,6 +4462,14 @@ Falco no node detecta comportamento visível de DENTRO do container — são
 visões complementares, não substitutas uma da outra.</p>
 
 <h3>10. Quatro anti-padrões que tornam a ferramenta inútil na prática</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Inútil</strong><p>Só regras default; alertas sem dono; sem playbook de resposta.</p></div>
+    <div class="lesson-viz-card"><strong>Útil</strong><p>Regras no contexto do app; rota clara; resposta ensaiada.</p></div>
+  </div>
+  <figcaption>Detecção sem resposta é métrica de vanity.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Falco instalado, alertas ignorados</strong>: uma ferramenta
 ruidosa sem afinamento vira spam constante, e spam constante vira
@@ -4306,10 +4508,10 @@ Tetragon), each leveraging the same efficient kernel mechanism
 for different purposes.</p>
 <div class="mermaid">
 flowchart LR
-    Syscalls["Syscalls do container"] --> Falco["Monitor de runtime, ex.: Falco"]
-    Falco --> Rule{"Bate com regra suspeita?"}
-    Rule -- "Sim" --> Alert["Gera alerta ou ação"]
-    Rule -- "Não" --> Syscalls
+    App["Process in container"] --> Syscall["Syscall"]
+    Syscall --> eBPF["eBPF program in kernel"]
+    eBPF --> Observe["Observe / filter / act"]
+    Observe --> User["Userspace agent"]
 </div>
 
 
@@ -4405,6 +4607,14 @@ T1611 (Escape to Host)? T1552 (Unsecured Credentials)?" — each technique
 without matching detection becomes an explicit candidate for the next
 custom rule to write, instead of relying on intuition about "what
 is still missing".</p>
+<div class="mermaid">
+flowchart TD
+    Map["ATT&CK Containers"] --> Detect["Which techniques do your rules cover?"]
+    Detect --> Gap["Gaps"]
+    Gap --> Rules["New rules / sensors"]
+    Rules --> Map
+</div>
+
 
 <h3>6. Operating Falco day to day: from install to continuous tuning</h3>
 <p>Starting with the default rules is the right starting point, but running them
@@ -4484,6 +4694,14 @@ Falco on the node detects behavior visible FROM INSIDE the container — they ar
 complementary views, not substitutes for each other.</p>
 
 <h3>10. Four anti-patterns that make the tool useless in practice</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Useless</strong><p>Default rules only; alerts with no owner; no response playbook.</p></div>
+    <div class="lesson-viz-card"><strong>Useful</strong><p>App-context rules; clear routing; rehearsed response.</p></div>
+  </div>
+  <figcaption>Detection without response is a vanity metric.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Falco installed, alerts ignored</strong>: a noisy tool
 without tuning becomes constant spam, and constant spam becomes
@@ -4812,6 +5030,16 @@ debug sem pagar o custo de guardar tudo.</p>
 <h3>8. Correlação: o que transforma três fontes separadas numa investigação rápida</h3>
 <p>Incluir o <code>trace_id</code> em CADA linha de log é o elo que
 conecta as três fontes de observabilidade:</p>
+<div class="mermaid">
+flowchart LR
+    Trace["trace_id"] --> Logs["Logs filtrados"]
+    Trace --> Metrics["Métricas do serviço"]
+    Trace --> Spans["Spans da requisição"]
+    Logs --> Story["História completa do incidente"]
+    Metrics --> Story
+    Spans --> Story
+</div>
+
 <pre><code>{"timestamp": "...", "level": "ERROR",
  "service": "payment", "trace_id": "4bf92f3577b34da6",
  "span_id": "00f067aa0ba902b7",
@@ -4952,19 +5180,27 @@ guardar tudo. E para quem usa um fornecedor SaaS, o custo real costuma
 ser calculado por GB ingerido MAIS por host monitorado — um modelo de
 cobrança que pode escalar de forma surpreendente conforme a
 infraestrutura cresce, e vale projetar antes de se comprometer com uma
-plataforma específica.</p>"""
+plataforma específica.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Caro e cego</strong><p>Alta cardinalidade; sem sampling; alertas em média; silos sem trace_id.</p></div>
+    <div class="lesson-viz-card"><strong>Útil e contido</strong><p>Labels controlados; tail sampling; alertas em SLO; correlação obrigatória.</p></div>
+  </div>
+  <figcaption>Custo sem pergunta de investigação é desperdício.</figcaption>
+</figure>
+"""
                 ),
                 "body_en": (
                 """<h3>1. The three pillars: why none alone is enough to investigate an incident</h3>
 <p><strong>Metrics</strong> are time series of aggregated numbers — "requests/second", "500 errors/second", "CPU%" — cheap to store and statistically powerful, but with necessarily low cardinality: they say WHAT is happening in aggregate, without detail of any specific request. <strong>Logs</strong> are discrete textual events ("login failed for user@x"), with far more detail than a metric can carry, but with proportionally higher storage cost and free-text search, not numeric aggregation. <strong>Traces</strong> are the span tree that represents the real PATH of a request across several services — the only of the three sources that answers "where did this specific call go, and where was time spent". Each pillar answers a different question; in an architecture with dozens of microservices, investigating an incident using only one of the three is like trying to reconstruct a crime seeing only the photo, only the audio, or only the video — the three TOGETHER, correlated (section 8), is what enables fast reasoning during a real incident.</p>
 <div class="mermaid">
 flowchart LR
-    subgraph Pilares ["Três pilares"]
+    subgraph Pillars ["Three pillars"]
         Logs["Logs"]
-        Metrics["Métricas"]
+        Metrics["Metrics"]
         Traces["Traces"]
     end
-    Logs --> Correl["Correlacionados por trace_id"]
+    Logs --> Correl["Correlated by trace_id"]
     Metrics --> Correl
     Traces --> Correl
 </div>
@@ -5036,6 +5272,16 @@ processors:
 
 <h3>8. Correlation: what turns three separate sources into a fast investigation</h3>
 <p>Including the <code>trace_id</code> in EVERY log line is the link that connects the three observability sources:</p>
+<div class="mermaid">
+flowchart LR
+    Trace["trace_id"] --> Logs["Filtered logs"]
+    Trace --> Metrics["Service metrics"]
+    Trace --> Spans["Request spans"]
+    Logs --> Story["Full incident story"]
+    Metrics --> Story
+    Spans --> Story
+</div>
+
 <pre><code>{"timestamp": "...", "level": "ERROR",
  "service": "payment", "trace_id": "4bf92f3577b34da6",
  "span_id": "00f067aa0ba902b7",
@@ -5098,6 +5344,14 @@ service:
 
 <h3>14. Cost: where each pillar grows, and how to contain each one</h3>
 <p>Log storage grows linearly with traffic volume — the common operational response is to retain little "hot" time (7 to 30 days, where search is fast) and move the rest to a cheaper "cold" archive tier, but with slower search. Metrics stay under control mainly by controlling cardinality (section 6) — the cost is not about data volume over time, it is about the number of different series kept simultaneously. Traces benefit from aggressive sampling combined with tail-based (section 7) to preserve exactly the rare cases that are expensive to lose (errors, slowness) without paying the cost of keeping everything. And for those using a SaaS vendor, the real cost is usually calculated per GB ingested PLUS per monitored host — a billing model that can scale surprisingly as infrastructure grows, and is worth projecting before committing to a specific platform.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Expensive and blind</strong><p>High cardinality; no sampling; alerts on averages; silos without trace_id.</p></div>
+    <div class="lesson-viz-card"><strong>Useful and contained</strong><p>Controlled labels; tail sampling; SLO-based alerts; mandatory correlation.</p></div>
+  </div>
+  <figcaption>Cost without an investigation question is waste.</figcaption>
+</figure>
+
 """
                 ),
                 "practical": (
@@ -5412,6 +5666,14 @@ temporário testa se a auditoria de RBAC detecta a anomalia. E uma imagem
 com um cryptominer disfarçado testa se o scan de imagem e a admission
 policy (vistos na aula de Admission Controllers) realmente bloqueiam
 antes do deploy, não só teoricamente.</p>
+<div class="mermaid">
+flowchart LR
+    Hyp["Hipótese: NP bloqueia egress"] --> Exp["Experimento: tentar exfiltrar"]
+    Exp --> OK{"Bloqueou?"}
+    OK -- "Sim" --> Conf["Controle confirmado"]
+    OK -- "Não" --> Fix["Corrigir política / CNI"]
+</div>
+
 
 <h3>9. Chaos em produção: sim, mas com um kill switch testado antes de precisar dele</h3>
 <p>Rodar chaos engineering direto em produção é seguro quando seguido de
@@ -5462,6 +5724,15 @@ feito um tabletop — costuma terminar no primeiro anti-padrão da seção
 confiança na prática inteira, e o programa morre antes de amadurecer.</p>
 
 <h3>12. Cinco formas de o programa falhar antes de gerar valor</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Definir steady state mensurável antes do experimento</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Começar em staging / blast radius pequeno</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Coordenar com SOC e ter kill switch testado</p></div>
+  </div>
+  <figcaption>Chaos sem hipótese e sem aborto vira vandalismo.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Chaos sem hipótese</strong>: "vamos ver o que acontece" é
 vandalismo, não experimento — sem uma pergunta específica, qualquer
@@ -5489,10 +5760,10 @@ sobre a mesa.</li>
 <p>Chaos engineering is not "break things to see what happens" — it is a scientific method applied to production systems, with five steps that, when skipped, turn the experiment into theater with no real value:</p>
 <div class="mermaid">
 flowchart LR
-    A["Hipótese: sistema resiste a X"] --> B["Experimento controlado"]
-    B --> C{"Sistema se comportou como esperado?"}
-    C -- "Sim" --> D["Confiança confirmada"]
-    C -- "Não" --> E["Fraqueza real encontrada, corrige"]
+    A["Hypothesis: system withstands X"] --> B["Controlled experiment"]
+    B --> C{"Did the system behave as expected?"}
+    C -- "Yes" --> D["Confidence confirmed"]
+    C -- "No" --> E["Real weakness found, fix it"]
 </div>
 
 <ol>
@@ -5556,6 +5827,14 @@ spec:
 
 <h3>8. Security chaos: validate the control, not only the infrastructure</h3>
 <p>The central difference of SECURITY chaos versus resilience chaos is that here the experiment's target is a DEFENSIVE CONTROL, not an infrastructure component. Deliberately "forgetting" an AWS key in a public test repository measures three chained response times: how long until the CI's own secret scanner alerts, how long until GitHub automatically revokes, and how long until the SOC notices via CloudTrail that that credential was used from somewhere unexpected — each defense layer tested in isolation. Simulating exfiltration by having a pod call a "canary" domain (controlled, for observation) tests whether DLP or the SIEM really detect suspicious outbound traffic, or would only detect it in a theoretical report. Simulating a privilege-escalation attempt (a <code>setuid</code> inside a container, for example) directly tests whether Falco (or equivalent) actually generates the alert it should. Introducing a ServiceAccount with temporary <code>cluster-admin</code> tests whether RBAC auditing detects the anomaly. And an image with a disguised cryptominer tests whether image scanning and the admission policy (seen in the Admission Controllers lesson) really block before deploy, not only in theory.</p>
+<div class="mermaid">
+flowchart LR
+    Hyp["Hypothesis: NP blocks egress"] --> Exp["Experiment: try to exfiltrate"]
+    Exp --> OK{"Blocked?"}
+    OK -- "Yes" --> Conf["Control confirmed"]
+    OK -- "No" --> Fix["Fix policy / CNI"]
+</div>
+
 
 <h3>9. Chaos in production: yes, but with a kill switch tested before you need it</h3>
 <p>Running chaos engineering directly in production is safe when followed by a progression: start in development and staging until you gain confidence in tool behavior and blast-radius limits. Only then advance to an isolated Game Day in production, with a time window COMMUNICATED to all relevant stakeholders ("on day X at Y, we will take down an entire zone in region Z for 15 minutes"). The kill switch — a single command able to interrupt the entire experiment instantly — must be TESTED before the first real experiment, not only exist in theory; a kill switch that was never triggered is as reliable as a backup that was never restored. Always have a plan B for the scenario where the experiment becomes a real incident. Netflix has operated <strong>continuous chaos</strong> in production for years — the final maturity stage, where the blast radius is small enough to run all the time without relevant risk.</p>
@@ -5574,6 +5853,15 @@ spec:
 <p>Skipping stages — going straight to continuous chaos in production without ever having done a tabletop — usually ends in the first anti-pattern of section 12: a blast radius that is too large on the first attempt, the team loses confidence in the whole practice, and the program dies before maturing.</p>
 
 <h3>12. Five ways the program fails before generating value</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Define measurable steady state before the experiment</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Start in staging / small blast radius</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Coordinate with SOC and have a tested kill switch</p></div>
+  </div>
+  <figcaption>Chaos without a hypothesis and abort path becomes vandalism.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Chaos without a hypothesis</strong>: "let's see what happens" is vandalism, not experiment — without a specific question, any result looks "interesting" but teaches nothing actionable.</li>
 <li><strong>No postmortem with concrete action</strong>: the experiment reveals a real hole, but nobody closes it afterwards — the next chaos round will find the SAME problem, and the organization learned nothing.</li>
@@ -5819,6 +6107,15 @@ investigar depois), identificar IOCs — indicadores de comprometimento
 como IPs, hashes de arquivo, domínios — e mapear a real extensão do
 comprometimento, porque agir sobre um escopo menor do que o real deixa
 persistência escondida que reaparece depois.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Isolar hosts / contas / segmentos afetados</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Preservar evidência (não destruir logs)</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Só então aprofundar eradication</p></div>
+  </div>
+  <figcaption>Containment primeiro; curiosidade forense depois.</figcaption>
+</figure>
+
 
 <h3>6. Eradication e Recovery: por que rotacionar "só o que foi comprometido" não basta</h3>
 <p>Reconstruir imagens e containers do zero, em vez de "limpar" os
@@ -5956,6 +6253,14 @@ falha aparecendo pela terceira vez — é o sinal mais claro de um problema
 sistêmico que nenhuma correção pontual resolveu de verdade.</p>
 
 <h3>14. Sete anti-padrões que garantem incidentes mais longos</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Alonga o incidente</strong><p>Sem severidade pré-definida; heróis no teclado; postmortem com culpa.</p></div>
+    <div class="lesson-viz-card"><strong>Encurta o incidente</strong><p>Severidade clara; papéis separados; postmortem blameless + ações.</p></div>
+  </div>
+  <figcaption>Processo treinado bate heroísmo às 3h da manhã.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Sem runbook</strong>: cada incidente vira improviso do zero,
 às 3 da manhã, sob a pior condição possível para pensar com clareza.</li>
@@ -6002,7 +6307,7 @@ anterior) com prática de resposta real.</li>
 <p>NIST structures incident response in four phases, and the detail many people miss is that the last phase FEEDS the first, closing a continuous-improvement cycle, not a linear checklist that ends at "resolved". <strong>Preparation</strong> is everything done BEFORE the incident happens — written runbooks, practiced drills, tools already configured, updated contacts, emergency ("break-glass") access ready to use. It is systematically the most underestimated phase, because it produces no visible short-term result — and precisely for that reason it is what most separates a team that responds in 10 minutes from one that takes 10 hours for the same incident. <strong>Detection & Analysis</strong> covers from the alert arriving through triage: distinguishing false positive from real incident, determining scope and severity. <strong>Containment, Eradication & Recovery</strong> is the action phase — limit the problem's advance, remove what caused it (a malicious artifact, a wrong configuration), restore the service. <strong>Post-Incident Activity</strong> — the blameless postmortem (section 7), resulting action items, runbook update — is what closes the cycle, feeding lessons learned back into Preparation. A team that skips that last phase repeats the same incidents indefinitely, because it never converts experience into prevention.</p>
 <div class="mermaid">
 flowchart LR
-    A["Preparation"] --> B["Detection e Analysis"]
+    A["Preparation"] --> B["Detection and Analysis"]
     B --> C["Containment"]
     C --> D["Eradication"]
     D --> E["Recovery"]
@@ -6025,6 +6330,15 @@ no checkout. Times de pagamento e infra envolvidos. Próximo update: 15:00.</cod
 
 <h3>5. Containment: stop the bleeding before investigating in depth</h3>
 <p>Short-term containment has a single goal: interrupt ongoing damage as fast as possible, even before understanding the full cause — isolate a compromised pod or host (via NetworkPolicy or taint), revoke a suspicious credential (kill a JWT, rotate a key), turn off a feature toggle causing the problem, or block a malicious IP at the WAF. Long-term containment already looks toward the eradication that comes next: take a snapshot or preserve forensic evidence BEFORE destroying anything (once destroyed, there is no way to investigate later), identify IOCs — indicators of compromise such as IPs, file hashes, domains — and map the real extent of the compromise, because acting on a smaller scope than the real one leaves hidden persistence that reappears later.</p>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--steps">
+    <div class="lesson-viz-step"><span>1</span><p>Isolate affected hosts / accounts / segments</p></div>
+    <div class="lesson-viz-step"><span>2</span><p>Preserve evidence (do not destroy logs)</p></div>
+    <div class="lesson-viz-step"><span>3</span><p>Only then deepen eradication</p></div>
+  </div>
+  <figcaption>Containment first; forensic curiosity later.</figcaption>
+</figure>
+
 
 <h3>6. Eradication and Recovery: why rotating "only what was compromised" is not enough</h3>
 <p>Rebuilding images and containers from scratch, instead of "cleaning" existing ones, guarantees no malicious artifact survives hidden — manual cleanup of a potentially compromised system is a bet, rebuild from zero is a guarantee. Rotating ALL secrets within the affected scope — not only those proven leaked — recognizes a real investigation limit: proving a credential was NOT compromised is usually harder and slower than simply rotating it. Applying the root-vulnerability patch closes the door that allowed the original incident — without that, the same vector remains available for the next attack. Restoring from backup when there is destruction or ransomware requires that the backup was already tested beforehand (the Phase 3 backup lesson covers why). Validating that the service returned to steady state before declaring the incident closed avoids reopening the same incident hours later. And intensified monitoring for days after the incident detects a second wave or a return attempt by the same attacker, who rarely gives up on the first blocked try.</p>
@@ -6059,6 +6373,14 @@ Action item: revisar todos templates de Deployment para liveness mais leve.</cod
 <p>MTTD measures time to detection — the larger it is, the more time an attacker or a failure has to cause damage before someone notices; the realistic goal is minutes, not hours. MTTA measures time to acknowledgment (the "ack" from whoever receives the pager alert) — goal under 5 minutes, because an unrecognized alert is equivalent to no alert. MTTR measures time to full recovery — the goal varies by severity, but the trend over time matters more than the absolute number of an isolated incident. Incident frequency by severity reveals whether the system is becoming more or less fragile across months. Action items completed measures whether the improvement cycle (section 1) is actually closing, not only generating documents. And root-cause repetition — the SAME failure appearing for the third time — is the clearest signal of a systemic problem that no point fix truly solved.</p>
 
 <h3>14. Seven anti-patterns that guarantee longer incidents</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Lengthens the incident</strong><p>No predefined severity; heroes on the keyboard; blame postmortem.</p></div>
+    <div class="lesson-viz-card"><strong>Shortens the incident</strong><p>Clear severity; separated roles; blameless postmortem + actions.</p></div>
+  </div>
+  <figcaption>A rehearsed process beats 3 a.m. heroics.</figcaption>
+</figure>
+
 <ul>
 <li><strong>No runbook</strong>: every incident becomes improvisation from scratch, at 3am, under the worst possible condition to think clearly.</li>
 <li><strong>Never-tested runbook</strong>: a document written and never exercised has roughly a 50% chance of being outdated or wrong exactly when needed — the same logic as a never-restored backup.</li>
@@ -6240,11 +6562,16 @@ organiza práticas de segurança em cinco funções
 <strong>FedRAMP</strong> é o padrão para vender à nuvem do governo
 americano.</p>
 <div class="mermaid">
-flowchart LR
-    Infra["Infraestrutura em produção"] --> Check["Checagem automática contínua"]
-    Check --> Compliant{"Está em conformidade?"}
-    Compliant -- "Sim" --> Evidence["Evidência gerada automaticamente"]
-    Compliant -- "Não" --> Fix["Alerta ou correção automática"]
+flowchart TD
+    Biz["Modelo de negócio / dados"] --> Ask["Quais frameworks se aplicam?"]
+    Ask --> LGPD["LGPD / GDPR"]
+    Ask --> SOC["SOC 2"]
+    Ask --> ISO["ISO 27001"]
+    Ask --> Other["PCI, HIPAA, ..."]
+    LGPD --> Scope["Escopo e controles"]
+    SOC --> Scope
+    ISO --> Scope
+    Other --> Scope
 </div>
 
 
@@ -6340,6 +6667,14 @@ CONSULTA a plataforma de compliance diretamente, em vez de esperar a
 empresa reunir evidência sob pressão — a auditoria deixa de ser um evento
 traumático de meses e vira um relatório quase instantâneo do que já
 estava sendo medido o ano inteiro.</p>
+<div class="mermaid">
+flowchart LR
+    Change["Mudança na infra"] --> Check["Checagem automática"]
+    Check --> Pass{"Conforme?"}
+    Pass -- "Sim" --> Evidence["Evidência gerada"]
+    Pass -- "Não" --> Fix["Alerta / remediação"]
+</div>
+
 
 <h3>8. O ecossistema de ferramentas de continuous compliance</h3>
 <p><strong>AWS Config</strong>, <strong>Azure Policy</strong> e
@@ -6473,6 +6808,14 @@ longo de um ciclo de 3 anos — não é um selo único, é uma renovação
 contínua de evidência.</p>
 
 <h3>15. Cinco anti-padrões que transformam compliance em teatro</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Teatro</strong><p>Planilha anual; evidência caçada na véspera; tags inexistentes.</p></div>
+    <div class="lesson-viz-card"><strong>Contínuo</strong><p>Policy as code; evidência automática; tagging obrigatório.</p></div>
+  </div>
+  <figcaption>Auditoria deixa de ser evento e vira propriedade do sistema.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Compliance theater</strong>: políticas escritas que ninguém
 lê, controles documentados que ninguém de fato aplica, evidência
@@ -6525,11 +6868,16 @@ tempo de operação real.</li>
                 """<h3>1. Frameworks: why there are so many, and which applies to you</h3>
 <p>Each compliance framework was born to solve a specific problem, and most companies need more than one at once. <strong>LGPD</strong> (General Data Protection Law, Brazil, 2018) regulates how personal data is processed — principles, legal bases, data-subject rights, controller/processor obligations — with fines that reach R$50 million per violation or 2% of revenue, enough to make non-compliance a real financial risk, not only reputational. <strong>GDPR</strong> is the European equivalent, with even larger fines (4% of global revenue or €20M) and applies to any company that processes EU citizens' data, even without a seat there. <strong>ISO 27001</strong> certifies an entire Information Security Management System (93 controls in Annex A), renewed by an accredited auditor annually — it is about a security PROCESS, not a specific law. <strong>SOC 2</strong> is the de facto standard for B2B SaaS in the US, with two levels: Type I evaluates control DESIGN at a point in time; Type II evaluates whether they actually WORKED over 6+ months — the second is what real enterprise customers demand, because it proves real operation, not intention on paper. <strong>PCI DSS</strong> applies to whoever touches card data, even when processing via Stripe — control scope shrinks, but does not disappear. <strong>HIPAA</strong> covers health data in the US, <strong>NIST CSF</strong> organizes security practices into five functions (Identify/Protect/Detect/Respond/Recover) voluntarily, and <strong>FedRAMP</strong> is the standard for selling to the US government cloud.</p>
 <div class="mermaid">
-flowchart LR
-    Infra["Infraestrutura em produção"] --> Check["Checagem automática contínua"]
-    Check --> Compliant{"Está em conformidade?"}
-    Compliant -- "Sim" --> Evidence["Evidência gerada automaticamente"]
-    Compliant -- "Não" --> Fix["Alerta ou correção automática"]
+flowchart TD
+    Biz["Business model / data"] --> Ask["Which frameworks apply?"]
+    Ask --> LGPD["LGPD / GDPR"]
+    Ask --> SOC["SOC 2"]
+    Ask --> ISO["ISO 27001"]
+    Ask --> Other["PCI, HIPAA, ..."]
+    LGPD --> Scope["Scope and controls"]
+    SOC --> Scope
+    ISO --> Scope
+    Other --> Scope
 </div>
 
 
@@ -6550,6 +6898,14 @@ flowchart LR
 
 <h3>7. Continuous compliance: apply DevOps principles to audit</h3>
 <p>The problem continuous compliance solves is structural: traditional annual audit produces a snapshot of the system at ONE instant in the year, which may already be outdated the next day — and the process of collecting evidence manually (screenshots, spreadsheets, confirmation emails) consumes weeks of repetitive work and still produces a static document. The alternative applies the same infrastructure-as-code logic to compliance: each control becomes an automatically evaluable RULE ("every S3 bucket must be private"); the real environment is CONTINUOUSLY evaluated against those rules, not once a year; evidence (logs, exports, automatic screenshots) is generated by the system itself, not by a human hunting proof; and it is stored in an immutable location (WORM — Write Once Read Many). The practical result: when the auditor arrives, they QUERY the compliance platform directly, instead of waiting for the company to gather evidence under pressure — the audit stops being a traumatic multi-month event and becomes an almost-instant report of what was already being measured all year.</p>
+<div class="mermaid">
+flowchart LR
+    Change["Infra change"] --> Check["Automatic check"]
+    Check --> Pass{"Compliant?"}
+    Pass -- "Yes" --> Evidence["Evidence generated"]
+    Pass -- "No" --> Fix["Alert / remediation"]
+</div>
+
 
 <h3>8. The continuous-compliance tool ecosystem</h3>
 <p><strong>AWS Config</strong>, <strong>Azure Policy</strong>, and <strong>GCP Organization Policies</strong> detect configuration drift in cloud resources themselves — a bucket that became public without authorization, for example, is flagged the moment the change happens, not only at the next manual audit. <strong>Cloud Custodian</strong> generalizes that idea with policy rules AND automatic remediation in YAML, working across multiple clouds at once. <strong>Drata, Vanta, Sprinto, Tugboat Logic, Secureframe</strong> are SaaS platforms specialized in collecting evidence from several sources (cloud, GitHub, identity provider, MDM, HR system) automatically and keeping a dashboard showing the real-time compliance level against a specific framework (SOC 2, ISO 27001) — the kind of tool that turned continuous compliance from an academic concept into common practice for SaaS startups. <strong>OpenSCAP</strong> validates Linux configuration against standardized SCAP benchmarks; OpenShift's <strong>Compliance Operator</strong> applies the same principle (via kube-bench and policies) inside Kubernetes clusters. <strong>OneTrust</strong> and <strong>BigID</strong> focus specifically on privacy and third-party risk management — tracking which vendors have access to what kind of data.</p>
@@ -6593,6 +6949,14 @@ $ aws configservice put-conformance-pack \\
 <p>Clauses 4 to 10 of the standard define a Management System based on the PDCA cycle (Plan-Do-Check-Act) — certification does not evaluate only isolated technical controls, it evaluates whether a continuous information-security improvement PROCESS exists. Annex A lists 93 controls organized in four groups (Organizational, People, Physical, Technological, in the 2022 version of the standard) — but not every control applies to every company, and that is where the SoA (Statement of Applicability) comes in: a formal document declaring which controls apply, which do not, and the JUSTIFICATION for each exclusion, because "we did not implement" without justification is not accepted by the auditor. Certification requires annual internal audit plus external audit to certify, with intermediate surveillance over a 3-year cycle — it is not a one-time seal, it is continuous renewal of evidence.</p>
 
 <h3>15. Five anti-patterns that turn compliance into theater</h3>
+<figure class="lesson-figure">
+  <div class="lesson-viz lesson-viz--compare">
+    <div class="lesson-viz-card"><strong>Theater</strong><p>Annual spreadsheet; evidence hunted the night before; missing tags.</p></div>
+    <div class="lesson-viz-card"><strong>Continuous</strong><p>Policy as code; automatic evidence; mandatory tagging.</p></div>
+  </div>
+  <figcaption>Audit stops being an event and becomes a system property.</figcaption>
+</figure>
+
 <ul>
 <li><strong>Compliance theater</strong>: written policies nobody reads, documented controls nobody actually applies, evidence fabricated in a rush for the auditor — the most expensive form of compliance, because it consumes resources without reducing any real risk.</li>
 <li><strong>Once-a-year panic audit</strong>: the exact opposite of what continuous compliance (section 7) solves — if the company only discovers its own compliance state under deadline pressure, the structural problem was never fixed, only hidden between one audit and the next.</li>
