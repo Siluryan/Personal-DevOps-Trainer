@@ -36,6 +36,29 @@ def correct_is_longest(pair: Pair) -> bool:
     return len(correct) > max(len(w) for w in wrong)
 
 
+def correct_is_shortest(pair: Pair) -> bool:
+    """True se a correta é (estritamente) a mais curta entre as opções.
+
+    O espelho de `correct_is_longest`, e o defeito que sobrou depois da
+    primeira correção: alongar os distratores derrubou "marcar a mais longa"
+    de 90,2% para 3,5%, mas empurrou o viés para o outro lado — a correta
+    virou sistematicamente a mais curta, e "marcar a mais curta" passou a
+    acertar 77,2% no curso e 87% nas entrevistas sênior. Para o aluno que
+    chuta pela forma, tanto faz de que lado o desequilíbrio está.
+    """
+    correct, wrong = pair
+    if not wrong:
+        return False
+    return len(correct) < min(len(w) for w in wrong)
+
+
+def shortest_wins_rate(pairs: list[Pair]) -> float:
+    """Acurácia de quem sempre marca a mais curta, sem ler o enunciado."""
+    if not pairs:
+        return 0.0
+    return sum(correct_is_shortest(p) for p in pairs) / len(pairs)
+
+
 def absolute_word_leaks(pair: Pair) -> bool:
     """True se uma palavra absoluta aparece SÓ nos distratores.
 

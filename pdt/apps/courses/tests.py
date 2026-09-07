@@ -308,7 +308,14 @@ class TestLabDataIntegrity:
                 body = (topic.get("lesson") or {}).get("body") or ""
                 n = len(paginate_html_sections(body) or [body])
                 pages = sorted(by_topic[topic["title"]])
-                assert pages == list(range(1, n + 1)), topic["title"]
+                # Página sem material concreto fica SEM lab de propósito (ver
+                # docstring de expand_labs): exercício de fachada, cuja
+                # resposta saía por eliminação, era pior que nenhum. O que
+                # continua valendo: no máximo 1 lab por página, sem repetir
+                # página, e todo tópico com pelo menos um lab.
+                assert pages == sorted(set(pages)), topic["title"]
+                assert pages, topic["title"]
+                assert max(pages) <= n, topic["title"]
 
     def test_labs_gerados_sao_praticos_nao_quiz_de_tema(self):
         from apps.courses.seed_data.labs import LABS
@@ -362,7 +369,108 @@ class TestLabDataIntegrity:
             and lab["kind"] == "scenario"
             and "menor privilégio possível" in lab["spec"]["choices"][0]["text"]
         )
-        assert generic < 120, generic
+        assert generic == 0, generic
+
+    def test_labs_gerados_nao_usam_distrator_caricato(self):
+        """Distrator absurdo entrega a resposta por eliminação.
+
+        "Abrir 0.0.0.0 e chmod 777 'só para testar'" aparecia em 135 dos 361
+        labs, inclusive em seções onde nem fazia sentido (região AWS, cultura
+        DevSecOps): o aluno descartava sem ler e o exercício virava 2 opções.
+        """
+        from apps.courses.seed_data.labs import LABS
+        from apps.courses.seed_data.page_labs import expand_labs
+
+        authored_titles = {lab["title"] for lab in LABS}
+        for lab in expand_labs():
+            if lab["title"] in authored_titles:
+                continue
+            for spec_key in ("spec", "spec_en"):
+                for choice in (lab.get(spec_key) or {}).get("choices", []):
+                    text = choice["text"].lower()
+                    assert "chmod 777" not in text, f"{lab['title']}: {choice['text']}"
+                    assert "ignorar a tabela" not in text, lab["title"]
+                    assert "ignore the table" not in text, lab["title"]
+
+    def test_order_so_para_lista_realmente_sequencial(self):
+        """Ordenar só faz sentido quando existe uma ordem certa.
+
+        Antes, qualquer `<li>` da página virava "ordene as etapas" e o
+        gabarito era a ordem do HTML — arbitrária para lista de ferramentas
+        (ELK/Loki/Datadog), ameaças ou itens de checklist.
+        """
+        from apps.courses.seed_data.page_labs import (
+            _CHECKLIST_HEADING_RE,
+            _looks_sequential,
+            expand_labs,
+        )
+        from apps.courses.seed_data.labs import LABS
+
+        authored_titles = {lab["title"] for lab in LABS}
+        for lab in expand_labs():
+            if lab["kind"] != "order" or lab["title"] in authored_titles:
+                continue
+            # O título é truncado para caber na UI, então não dá para
+            # reconstruir o heading original a partir dele: validamos as
+            # propriedades observáveis do exercício.
+            assert not _CHECKLIST_HEADING_RE.search(lab["title"]), lab["title"]
+            steps = lab["spec"]["correct_order"]
+            assert len(steps) == len(set(steps)), lab["title"]
+            perguntas = sum(1 for s in steps if s.rstrip().endswith("?"))
+            assert perguntas < 2, f"{lab['title']}: lista de verificações, não etapas"
+
+    def test_lab_autoral_nao_cai_antes_da_aula_ensinar_o_comando(self):
+        """O exercício não pode chegar antes do conteúdo que o resolve.
+
+        O lab de `setfacl` caía na página 2 de "Fundamentos de Linux", mas
+        `setfacl` só é apresentado na página 3 — o aluno via um comando que
+        a aula ainda não tinha ensinado e não tinha como responder.
+        """
+        from apps.courses.seed_data import PHASES
+        from apps.courses.seed_data.labs import LABS
+        from apps.courses.seed_data.page_labs import _topic_pages, assign_authored_page
+
+        authored = {lab["topic_title"]: lab for lab in LABS}
+        for phase in PHASES:
+            for topic in phase["topics"]:
+                lab = authored.get(topic["title"])
+                if not lab or lab["kind"] != "terminal":
+                    continue
+                command = (lab["spec"].get("correct_command") or [None])[0]
+                pages, _ = _topic_pages(topic)
+                if not command or not any(command.lower() in p.lower() for p in pages):
+                    continue
+                page = pages[assign_authored_page(pages, lab) - 1]
+                assert command.lower() in page.lower(), (
+                    f"{topic['title']}: lab pede `{command}` numa página que "
+                    "não apresenta o comando"
+                )
+
+    def test_looks_sequential_rejeita_lista_sem_ordem(self):
+        from apps.courses.seed_data.page_labs import _looks_sequential
+
+        ferramentas = [
+            "Elastic Stack (ELK): indexa tudo full-text. Caro em armazenamento.",
+            "Grafana Loki: indexa só labels. Storage barato (S3).",
+            "CloudWatch Logs: gerenciado, ótimo para começar.",
+        ]
+        assert not _looks_sequential("Onde centralizar logs", ferramentas)
+        assert not _looks_sequential("Checklist mensal", ferramentas)
+
+        verificacoes = [
+            "Conta root tem MFA hardware?",
+            "CloudTrail está ativo em todas as regiões?",
+            "Block Public Access está ativado na conta inteira?",
+        ]
+        assert not _looks_sequential("Revisão de conta", verificacoes)
+
+        etapas = [
+            "1. Gerar o par de chaves na máquina do desenvolvedor.",
+            "2. Enviar a chave pública para o servidor.",
+            "3. Desabilitar a autenticação por senha no sshd.",
+        ]
+        assert _looks_sequential("Configurando acesso", etapas)
+        assert _looks_sequential("Fluxo de deploy", etapas)
 
 
 @pytest.mark.django_db

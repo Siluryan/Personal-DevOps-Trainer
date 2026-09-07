@@ -27,6 +27,7 @@ from apps.core.question_quality import (
     absolute_leak_rate,
     absolute_word_leaks,
     longest_wins_rate,
+    shortest_wins_rate,
     worst_offenders_by_length_gap,
 )
 from apps.courses.seed_data import PHASES
@@ -34,6 +35,12 @@ from apps.courses.seed_data import PHASES
 # Medido antes desta correção, uma fase por vez.
 _BASELINE_LONGEST_WINS = {1: 0.77, 2: 0.89, 3: 0.99, 4: 0.97, 5: 0.97, 6: 0.73}
 _TARGET_LONGEST_WINS = 0.30
+
+# A correção de "mais longa" alongou os distratores e inverteu o viés: a
+# correta virou a mais CURTA, e chutar a mais curta passou a acertar 77,2%
+# do quiz inteiro. Mesma regra de banca, lado oposto — por isso o alvo é o
+# mesmo dos outros vazamentos.
+_TARGET_SHORTEST_WINS = 0.30
 
 
 def _pairs(phase: dict) -> list:
@@ -74,6 +81,18 @@ class TestVazamentoAgregadoPorFase:
             f"Fase {phase_num} regrediu: {taxa * 100:.1f}%.\n"
             + "\n".join(worst_offenders_by_length_gap(_labeled_pairs(PHASES[phase_num - 1], phase_num)))
         )
+
+    @pytest.mark.parametrize("phase_num", [1, 2, 3, 4, 5, 6])
+    def test_taxa_de_acerto_marcando_sempre_a_mais_curta(self, phase_num):
+        pairs = _pairs(PHASES[phase_num - 1])
+        taxa = shortest_wins_rate(pairs)
+        if taxa > _TARGET_SHORTEST_WINS:
+            pytest.xfail(
+                f"Viés invertido: fase {phase_num} com {taxa * 100:.1f}% "
+                f"marcando sempre a mais curta (alvo: ≤ "
+                f"{_TARGET_SHORTEST_WINS * 100:.0f}%; baseline aleatório: 25%)"
+            )
+        assert taxa <= _TARGET_SHORTEST_WINS, f"Fase {phase_num}: {taxa * 100:.1f}%"
 
     @pytest.mark.parametrize("phase_num", [1, 2, 3, 4, 5, 6])
     def test_absoluto_nao_vaza_so_no_distrator(self, phase_num):
