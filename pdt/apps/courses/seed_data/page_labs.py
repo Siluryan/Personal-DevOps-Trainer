@@ -497,6 +497,26 @@ def _flag_swap(tokens: list[str]) -> list[list[str]]:
     return []
 
 
+# "Seis anti-padrões", "Cinco formas", "As quatro armadilhas": nomeiam a
+# forma do texto, não o assunto. Como título de lab se repetiriam entre
+# tópicos sem nada distinguindo um do outro.
+_GENERIC_HEAD_RE = re.compile(
+    r"(?:as?\s+|os\s+)?(?:uma?|dois|duas|três|quatro|cinco|seis|sete|oito|nove|dez|\d+)\s+"
+    r"(?:anti-?padr(?:ão|ões)|anti-?patterns?|formas?|armadilhas?|erros?|"
+    r"pegadinhas?|motivos?|razões|casos?|regras?|passos?)",
+    re.IGNORECASE,
+)
+# Palavra que não pode encerrar um título truncado.
+_DANGLING_WORDS = frozenset(
+    {
+        "que", "para", "com", "sem", "de", "da", "do", "das", "dos", "em",
+        "no", "na", "nos", "nas", "e", "ou", "a", "o", "as", "os", "um",
+        "uma", "por", "ao", "à", "se", "como", "quando", "mas", "the", "of",
+        "to", "and", "or", "in", "on", "for", "with",
+    }
+)
+
+
 def _trim_heading(raw: str) -> str:
     """Encurta o heading sem cortar palavra pela metade.
 
@@ -509,18 +529,42 @@ def _trim_heading(raw: str) -> str:
     raw = re.sub(r"^\d+\.\s*", "", raw).strip()
     if len(raw) <= 46:
         return raw
-    # Headings deste conteúdo têm forma "tema: detalhe", "tema, detalhe" ou
-    # "tema (nota)". Ficar com a primeira cláusula dá um título curto e
-    # INTEIRO; truncar com reticências fica em último caso.
+
+    # 1) "tema: detalhe" / "tema, detalhe" / "tema (nota)" — fica o tema.
+    #    O piso é baixo de propósito: "Networking", "CORS", "eBPF" e "O GIL"
+    #    são títulos melhores do que a frase inteira cortada no meio.
     for sep in (":", " — ", ",", " ("):
         if sep in raw:
-            head = raw.split(sep, 1)[0].strip()
-            if 12 <= len(head) <= 52:
+            head = raw.split(sep, 1)[0].strip(" `")
+            if 4 <= len(head) <= 46:
                 return head
-    cut = raw[:43]
+
+    # 2) "Nove anti-padrões QUE aparecem repetidamente em imagens reais" —
+    #    a oração subordinada é o que estoura o limite; o núcleo nominal
+    #    antes dela já nomeia o exercício. Só que cortar aí em headings do
+    #    tipo "Seis anti-padrões que ..." deixaria vários tópicos com o
+    #    MESMO título genérico — a repetição que este corte quer evitar.
+    #    Nesses casos é melhor manter a frase e truncar mais adiante.
+    for conn in (" que ", " para ", " antes de ", " quando ", " como ", " sem ", " com "):
+        if conn in raw:
+            head = raw.split(conn, 1)[0].strip()
+            if 14 <= len(head) <= 46 and not _GENERIC_HEAD_RE.fullmatch(head):
+                return head
+
+    cut = raw[:52]
     if " " in cut:
         cut = cut[: cut.rfind(" ")]
-    return cut.rstrip(" ,;:-") + "…"
+    # Terminar em conectivo ("... anti-padrões que") fica pior que truncar
+    # uma palavra antes.
+    words = cut.split()
+    while words and words[-1].lower() in _DANGLING_WORDS:
+        words.pop()
+    return " ".join(words).rstrip(" ,;:-") + "…"
+
+
+def _full_heading(headings: list[str], page: int) -> str:
+    """Heading da seção, sem o número, para desambiguar título repetido."""
+    return re.sub(r"^\d+\.\s*", "", headings[0] if headings else f"Página {page}").strip()
 
 
 def _short_title(headings: list[str], page: int, prefix_pt: str, prefix_en: str) -> tuple[str, str]:
@@ -1224,6 +1268,32 @@ def _topic_pages(topic: dict) -> tuple[list[str], list[str]]:
     return pages, pages_en
 
 
+def _disambiguate_titles(labs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Reescreve título que se repete em tópicos diferentes.
+
+    Encurtar o heading pelo primeiro ":" às vezes chega em algo genérico
+    demais ("Roadmap pragmático", "Autenticação"), que então aparece igual
+    em vários tópicos — a mesma sensação de exercício repetido que o resto
+    deste módulo tenta evitar. Quando isso acontece, o título volta a usar
+    o heading inteiro (truncado na palavra), que é específico o bastante.
+    """
+    counts: dict[str, int] = {}
+    for lab in labs:
+        counts[lab["title"]] = counts.get(lab["title"], 0) + 1
+
+    for lab in labs:
+        heading = lab.pop("_heading", "")
+        if counts.get(lab["title"], 0) < 2 or not heading:
+            continue
+        prefix = lab["title"].split(":", 1)[0]
+        prefix_en = lab["title_en"].split(":", 1)[0]
+        detailed = heading if len(heading) <= 58 else heading[:55].rsplit(" ", 1)[0] + "…"
+        if detailed and detailed not in lab["title"]:
+            lab["title"] = f"{prefix}: {detailed}"
+            lab["title_en"] = f"{prefix_en}: {detailed}"
+    return labs
+
+
 def expand_labs() -> list[dict[str, Any]]:
     """Lista pronta para o seed: no máximo 1 lab por (tópico, página).
 
@@ -1265,7 +1335,8 @@ def expand_labs() -> list[dict[str, Any]]:
                         "topic_title": topic["title"],
                         "lesson_page": i,
                         "order": i,
+                        "_heading": _full_heading(headings, i),
                         **built,
                     }
                 )
-    return out
+    return _disambiguate_titles(out)
