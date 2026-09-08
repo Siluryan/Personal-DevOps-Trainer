@@ -497,11 +497,34 @@ def _flag_swap(tokens: list[str]) -> list[list[str]]:
     return []
 
 
+def _trim_heading(raw: str) -> str:
+    """Encurta o heading sem cortar palavra pela metade.
+
+    O corte cego em 39 caracteres produzia título quebrado no meio da
+    palavra ("O modelo de ameaça: contra o quê harden…"). Headings deste
+    conteúdo quase sempre têm a forma "tema: detalhe" — ficar com o tema
+    antes dos dois-pontos dá um título curto e inteiro. Só se ainda passar
+    do limite é que trunca, e aí na fronteira da palavra.
+    """
+    raw = re.sub(r"^\d+\.\s*", "", raw).strip()
+    if len(raw) <= 46:
+        return raw
+    # Headings deste conteúdo têm forma "tema: detalhe", "tema, detalhe" ou
+    # "tema (nota)". Ficar com a primeira cláusula dá um título curto e
+    # INTEIRO; truncar com reticências fica em último caso.
+    for sep in (":", " — ", ",", " ("):
+        if sep in raw:
+            head = raw.split(sep, 1)[0].strip()
+            if 12 <= len(head) <= 52:
+                return head
+    cut = raw[:43]
+    if " " in cut:
+        cut = cut[: cut.rfind(" ")]
+    return cut.rstrip(" ,;:-") + "…"
+
+
 def _short_title(headings: list[str], page: int, prefix_pt: str, prefix_en: str) -> tuple[str, str]:
-    raw = headings[0] if headings else f"Página {page}"
-    raw = re.sub(r"^\d+\.\s*", "", raw)
-    if len(raw) > 42:
-        raw = raw[:39].rstrip() + "…"
+    raw = _trim_heading(headings[0] if headings else f"Página {page}")
     return f"{prefix_pt}: {raw}", f"{prefix_en}: {raw}"
 
 
@@ -661,9 +684,60 @@ def _dangerous_inline(page_html: str) -> str | None:
     )
     for raw in _INLINE_CODE_RE.findall(page_html):
         text = html_lib.unescape(raw).strip()
-        if any(d in text.lower() for d in danger):
+        low = text.lower()
+        for d in danger:
+            if d not in low:
+                continue
+            # "777" precisa ser o modo inteiro: `1777` é o sticky bit de
+            # /tmp, configuração correta, e virava "anti-pattern" por
+            # casar como substring.
+            if d == "777" and not re.search(r"(?<![0-9])777(?![0-9])", low):
+                continue
             return text[:80]
     return None
+
+
+def _flaw_lines(page_html: str, bad: str) -> tuple[list[str], int]:
+    """Monta o trecho do exercício em volta da linha perigosa.
+
+    Antes, os 44 exercícios de caça-a-falha compartilhavam o MESMO snippet
+    (`#!/bin/bash`, `set -euo pipefail`, a linha ruim, `echo ok`, `exit 0`),
+    trocando só a linha perigosa: o aluno reconhecia o exercício de longe e
+    a leitura virava formalidade. Agora as linhas "boas" saem do próprio
+    bloco de código da seção, então cada exercício tem o contexto da aula a
+    que pertence. O molde genérico só entra quando a página não tem código
+    aproveitável.
+    """
+    candidates: list[str] = []
+    for block in _CODE_BLOCK_RE.findall(page_html):
+        for raw in html_lib.unescape(_TAG_RE.sub("", block)).splitlines():
+            line = raw.rstrip()
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or len(line) > 78:
+                continue
+            if stripped == bad.strip() or bad.strip() in stripped:
+                continue
+            # Blocos de código da aula costumam trazer legendas anotadas
+            # ("└ user 7 = r+w+x", "→ saída esperada") e a própria saída do
+            # comando. Como linha de exercício elas não fazem sentido: o
+            # aluno tocaria numa explicação, não numa instrução.
+            if stripped[0] in "└├│─>→←#$%":
+                continue
+            if _plain(stripped) != stripped:
+                continue
+            if stripped not in candidates:
+                candidates.append(stripped)
+
+    if len(candidates) >= 3:
+        chosen = candidates[:4]
+        # A falha no meio, nunca sempre na mesma posição: com a linha ruim
+        # fixa no índice 2, contar até a terceira já resolvia o exercício.
+        idx = 1 + (len(bad) % max(1, len(chosen) - 1))
+        lines = chosen[:idx] + [bad] + chosen[idx:]
+        return lines, idx
+
+    lines = ["#!/bin/bash", "set -euo pipefail", bad, "echo ok", "exit 0"]
+    return lines, 2
 
 
 def _synthesize_find_flaw(page_html: str, headings: list[str], page: int) -> dict[str, Any] | None:
@@ -671,27 +745,22 @@ def _synthesize_find_flaw(page_html: str, headings: list[str], page: int) -> dic
     if not bad:
         return None
     title, title_en = _short_title(headings, page, "Ache a falha", "Find the flaw")
-    lines = [
-        "#!/bin/bash",
-        "set -euo pipefail",
-        bad,
-        "echo ok",
-        "exit 0",
-    ]
+    tema = _trim_heading(headings[0] if headings else f"página {page}")
+    lines, flaw_index = _flaw_lines(page_html, bad)
     return {
         "kind": "find_flaw",
         "title": title,
         "title_en": title_en,
         "spec": {
-            "scenario": "Este snippet mistura rotina saudável com o anti-pattern da página. Toque na linha perigosa.",
+            "scenario": f"Trecho de {tema}. Uma das linhas é o anti-pattern que a seção manda evitar: toque nela.",
             "lines": lines,
-            "flaw_line_index": 2,
+            "flaw_line_index": flaw_index,
             "explanation": f"`{bad}` é exatamente o anti-pattern que esta seção pede para evitar.",
         },
         "spec_en": {
-            "scenario": "This snippet mixes healthy boilerplate with this page's anti-pattern. Tap the dangerous line.",
+            "scenario": f"Snippet from {tema}. One line is the anti-pattern the section warns about: tap it.",
             "lines": lines,
-            "flaw_line_index": 2,
+            "flaw_line_index": flaw_index,
             "explanation": f"`{bad}` is the anti-pattern this section tells you to avoid.",
         },
     }
@@ -908,7 +977,7 @@ def _synthesize_table_decision(
         "title": title,
         "title_en": title_en,
         "spec": {
-            "situation": f"Para `{subject}`, o que a tabela desta página manda aplicar?",
+            "situation": f"A tabela desta seção cobre vários casos. Você está diante de `{subject}`: o que aplica?",
             "choices": [
                 {
                     "text": f"Aplicar `{action}`.",
@@ -929,7 +998,7 @@ def _synthesize_table_decision(
             "explanation": f"Na tabela desta página, `{subject}` combina com `{action}`.",
         },
         "spec_en": {
-            "situation": f"For `{subject}`, what does this page's table tell you to apply?",
+            "situation": f"This section's table covers several cases. You are facing `{subject}`: what do you apply?",
             "choices": [
                 {
                     "text": f"Apply `{action}`.",
@@ -1014,8 +1083,12 @@ def _synthesize_decision(page_html: str, headings: list[str], page: int) -> dict
         ]
         explain_pt = f"O exercício pede para aplicar `{primary}` ({tema})."
         explain_en = f"The exercise asks you to apply `{primary}` ({tema})."
-        situation_pt = f"Incidente no tema `{tema}`. Qual ação desta página você executa agora?"
-        situation_en = f"Incident on `{tema}`. Which action from this page do you run now?"
+        situation_pt = (
+            f"Você precisa aplicar `{primary}` no contexto de {tema}. Qual opção faz isso?"
+        )
+        situation_en = (
+            f"You need to apply `{primary}` in the context of {tema}. Which option does that?"
+        )
     else:
         # Sem comando concreto nem termo em destaque, o único exercício que
         # dava para montar era "siga o procedimento desta página" contra um
