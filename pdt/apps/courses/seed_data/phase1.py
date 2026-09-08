@@ -584,18 +584,22 @@ dig further.</p>"""
             "questions": [
                 q("O que representa o '7' em `chmod 750 arquivo`?",
                   "Leitura, escrita e execução (rwx) para o dono do arquivo.",
-                  ["Um bit de SUID combinado com sticky bit, não permissão comum de dono.",
-                   "Leitura e escrita combinadas para o grupo, sem execução liberada.",
-                   "Execução isolada para o dono, sem leitura ou escrita concedidas."],
+                  ["Leitura e execução (r-x) para o dono, sem escrita.",
+                   "Escrita e execução (-wx) para o dono, sem leitura.",
+                   "O bit SUID ligado no arquivo, somado ao modo comum do dono."],
                   "Em octal: 4 (read) + 2 (write) + 1 (execute) = 7. O segundo dígito (5) "
-                  "é r-x para o grupo e o terceiro (0) bloqueia o resto do mundo.",
+                  "é r-x para o grupo e o terceiro (0) bloqueia o resto do mundo. "
+                  "r-x seria 5 e -wx seria 3; o bit SUID mora num quarto dígito à esquerda "
+                  "(`chmod 4750`), fora dos três dígitos de dono/grupo/outros.",
                   statement_en="What does the '7' represent in `chmod 750 file`?",
                   correct_en="Read, write, and execute (rwx) for the file's owner.",
-                  wrong_en=["A SUID bit combined with the sticky bit, not a regular owner permission.",
-                            "Read and write combined for the group, with execute left out.",
-                            "Execute only for the owner, with no read or write granted at all."],
+                  wrong_en=["Read and execute (r-x) for the owner, with no write.",
+                            "Write and execute (-wx) for the owner, with no read.",
+                            "The SUID bit set on the file, added to the regular owner mode."],
                   explanation_en="In octal: 4 (read) + 2 (write) + 1 (execute) = 7. The second "
-                  "digit (5) is r-x for the group, and the third (0) blocks everyone else."),
+                  "digit (5) is r-x for the group, and the third (0) blocks everyone else. "
+                  "r-x would be 5 and -wx would be 3; the SUID bit lives in a fourth digit to "
+                  "the left (`chmod 4750`), outside the owner/group/other triplet."),
                 q("Qual comando exibe os processos em execução com seu PID?",
                   "ps", ["chmod", "ls", "tar"],
                   "ps lista os processos do shell atual; `ps auxf` mostra todos com hierarquia.",
@@ -614,43 +618,52 @@ dig further.</p>"""
                   "changes permissions."),
                 q("O que é o UID 0 em sistemas Linux?",
                   "É o ID do superusuário (root).",
-                  ["Um usuário de sistema criado especificamente para rodar o servidor web nginx.",
-                   "Um usuário criado durante a instalação, mas sem qualquer privilégio especial.",
-                   "Uma conta reservada para acesso temporário de visitantes na máquina."],
-                  "UID 0 ignora checks de permissão, por isso processos críticos não devem rodar como root.",
+                  ["É o ID do usuário nobody.",
+                   "É o ID do primeiro usuário comum.",
+                   "É o ID reservado para contas de serviço."],
+                  "UID 0 ignora checks de permissão, por isso processos críticos não devem rodar como root. "
+                  "O nobody costuma ficar em 65534, o primeiro usuário comum em 1000 e as contas "
+                  "de serviço abaixo de 1000 — nenhuma delas ganha privilégio por isso.",
                   statement_en="What is UID 0 on Linux systems?",
                   correct_en="It's the ID of the superuser (root).",
-                  wrong_en=["A system user created specifically to run the nginx web server.",
-                            "A user created during installation, but with no special privilege at all.",
-                            "An account reserved for temporary guest access on the machine."],
+                  wrong_en=["It's the ID of the nobody user.",
+                            "It's the ID of the first regular user.",
+                            "It's the ID reserved for service accounts."],
                   explanation_en="UID 0 ignores permission checks entirely, which is why critical "
-                  "processes should never run as root."),
+                  "processes should never run as root. nobody is usually 65534, the first regular "
+                  "user is 1000, and service accounts sit below 1000 — none of which grants privilege."),
                 q("Qual sinal `kill -9 PID` envia para o processo?",
                   "SIGKILL, termina o processo imediatamente sem chance de cleanup.",
-                  ["SIGTERM, pede o encerramento e dá tempo para o processo salvar estado antes.",
-                   "SIGHUP, recarrega a configuração do processo sem derrubar a conexão atual.",
-                   "SIGSTOP, pausa o processo, que pode ser retomado depois com SIGCONT."],
-                  "SIGKILL não pode ser ignorado nem capturado. Prefira SIGTERM (15) sempre que possível.",
+                  ["SIGTERM, pede encerramento e dá tempo de salvar estado.",
+                   "SIGHUP, recarrega a configuração sem derrubar o processo.",
+                   "SIGSTOP, pausa o processo, que segue parado até receber um SIGCONT."],
+                  "SIGKILL não pode ser ignorado nem capturado. Prefira SIGTERM (15) sempre que possível. "
+                  "SIGTERM é o padrão do `kill` sem flag e pede saída limpa; SIGHUP (1) virou convenção "
+                  "de reload de config em daemons; SIGSTOP (19) só congela, sem terminar nada.",
                   statement_en="Which signal does `kill -9 PID` send to the process?",
                   correct_en="SIGKILL, terminates the process immediately with no chance for cleanup.",
-                  wrong_en=["SIGTERM, asks for termination and gives the process time to save state first.",
-                            "SIGHUP, reloads the process configuration without dropping the current connection.",
-                            "SIGSTOP, pauses the process, which can later be resumed with SIGCONT."],
+                  wrong_en=["SIGTERM, asks for termination and gives time to save state.",
+                            "SIGHUP, reloads the configuration without dropping the process.",
+                            "SIGSTOP, pauses the process."],
                   explanation_en="SIGKILL cannot be ignored or caught. Prefer SIGTERM (15) whenever "
-                  "possible."),
+                  "possible. SIGTERM is what plain `kill` sends and asks for a clean exit; SIGHUP (1) "
+                  "became the config-reload convention in daemons; SIGSTOP (19) only freezes."),
                 q("Em `ls -l`, a string `-rwxr-x---` significa que o grupo pode:",
                   "Ler e executar, mas não escrever.",
-                  ["Escrever e ler o conteúdo, mas sem permissão para executar o arquivo.",
-                   "Executar sem restrição, incluindo escrita liberada para o grupo inteiro.",
-                   "Bloqueado por completo, o grupo não acessa o arquivo de forma alguma."],
-                  "r-x para o grupo (5 em octal) e --- para outros (0). Modo final 750.",
+                  ["Ler e escrever, mas não executar.",
+                   "Ler, escrever e executar sem restrição.",
+                   "Nem ler nem executar o arquivo."],
+                  "r-x para o grupo (5 em octal) e --- para outros (0). Modo final 750. "
+                  "rw- (6) seria ler e escrever, rwx (7) seria acesso completo e --- (0) seria "
+                  "grupo sem acesso — este último é o que a string mostra para os outros.",
                   statement_en="In `ls -l`, the string `-rwxr-x---` means the group can:",
                   correct_en="Read and execute, but not write.",
-                  wrong_en=["Write and read the content, but without permission to execute the file.",
-                            "Execute without restriction, including write access for the whole group.",
-                            "Fully blocked, the group cannot access the file in any way."],
+                  wrong_en=["Read and write, but not execute.",
+                            "Read, write, and execute without restriction.",
+                            "Neither read nor execute the file."],
                   explanation_en="r-x for the group (5 in octal) and --- for others (0). Final "
-                  "mode 750."),
+                  "mode 750. rw- (6) would be read and write, rwx (7) full access, and --- (0) no "
+                  "access — the last is what the string shows for others."),
                 q("Onde ficam os usuários e seus shells padrão?",
                   "/etc/passwd",
                   ["/etc/shadow", "/var/log/users", "/root/.bashrc"],
@@ -941,18 +954,20 @@ iperf3 -c host                              # banda</code></pre><h3>7. Anatomy o
                   "UDP is connectionless; ICMP is for control messages; ARP resolves MAC↔IP."),
                 q("O que faz o comando `dig example.com`?",
                   "Consulta registros DNS para o domínio.",
-                  ["Mostra a rota de rede percorrida até o destino, hop a hop.",
-                   "Faz uma requisição HTTP e imprime corpo e status code.",
-                   "Abre um socket TCP bruto sem passar por camada de protocolo de aplicação."],
+                  ["Traça a rota de rede até o destino, hop a hop.",
+                   "Faz uma requisição HTTP e imprime o corpo.",
+                   "Abre um socket TCP bruto para o host."],
                   "dig é a ferramenta padrão para consultar DNS, substituiu o `nslookup` em "
-                  "ambientes profissionais.",
+                  "ambientes profissionais. Quem traça a rota hop a hop é o `traceroute`, quem "
+                  "busca o corpo HTTP é o `curl` e quem abre socket bruto é o `nc`.",
                   statement_en="What does the `dig example.com` command do?",
                   correct_en="Queries DNS records for the domain.",
-                  wrong_en=["Shows the network route traveled to the destination, hop by hop.",
-                            "Makes an HTTP request and prints the body and status code.",
-                            "Opens a raw TCP socket without going through an application protocol layer."],
+                  wrong_en=["Traces the network route to the destination, hop by hop.",
+                            "Makes an HTTP request and prints the body.",
+                            "Opens a raw TCP socket to the host."],
                   explanation_en="dig is the standard tool for querying DNS, it replaced "
-                  "`nslookup` in professional environments."),
+                  "`nslookup` in professional environments. `traceroute` traces the route hop by "
+                  "hop, `curl` fetches the HTTP body, and `nc` opens a raw socket."),
                 q("Qual registro DNS aponta um nome para um IP IPv4?",
                   "A", ["MX", "CNAME", "AAAA"],
                   "A = IPv4, AAAA = IPv6 (4 vezes maior), CNAME = alias, MX = servidor de e-mail.",
@@ -962,18 +977,20 @@ iperf3 -c host                              # banda</code></pre><h3>7. Anatomy o
                   "mail server."),
                 q("O que indica TTL em respostas DNS?",
                   "Por quanto tempo o resultado pode ficar em cache.",
-                  ["A latência da rede medida entre cliente e servidor autoritativo.",
-                   "A versão do protocolo DNS usada na consulta e resposta.",
-                   "O tamanho em bytes do pacote de resposta enviado pelo servidor."],
+                  ["A latência medida até o servidor autoritativo.",
+                   "A versão do protocolo DNS usada na consulta.",
+                   "O tamanho em bytes do pacote de resposta enviado."],
                   "TTL alto → menos consultas mas migração lenta. TTL baixo → mais carga mas "
-                  "mudanças se propagam rápido.",
+                  "mudanças se propagam rápido. A latência aparece no `Query time` do dig, o "
+                  "tamanho no `MSG SIZE rcvd`, e a versão do protocolo não trafega na resposta.",
                   statement_en="What does TTL indicate in DNS responses?",
                   correct_en="How long the result may stay cached.",
-                  wrong_en=["The network latency measured between client and authoritative server.",
-                            "The version of the DNS protocol used in the query and response.",
-                            "The size in bytes of the response packet sent by the server."],
+                  wrong_en=["The latency measured to the authoritative server.",
+                            "The version of the DNS protocol used in the query.",
+                            "The size in bytes of the response packet sent."],
                   explanation_en="High TTL → fewer queries but slow migration. Low TTL → more "
-                  "load but changes propagate fast."),
+                  "load but changes propagate fast. Latency shows up in dig's `Query time`, size "
+                  "in `MSG SIZE rcvd`, and the protocol version does not travel in the answer."),
                 q("Qual ferramenta lista sockets em escuta no Linux moderno?",
                   "ss -tulpn",
                   ["ifconfig -a", "ipset list", "route -n"],
@@ -1003,31 +1020,38 @@ iperf3 -c host                              # banda</code></pre><h3>7. Anatomy o
                   "254 of them usable (network + broadcast)."),
                 q("UDP é normalmente usado em:",
                   "DNS, vídeo em tempo real e streaming de baixa latência.",
-                  ["Transferência confiável de arquivo ponta a ponta, sem perda de pacote no caminho.",
-                   "Transação bancária, onde ordem e confirmação de entrega importam muito.",
-                   "Conexão SSH interativa, que depende de fluxo ordenado e confiável de bytes."],
-                  "UDP é stateless e sem retransmissão, perfeito quando latência > confiabilidade.",
+                  ["Transferência confiável de arquivo ponta a ponta.",
+                   "Transação bancária, com confirmação de entrega.",
+                   "Conexão SSH interativa, com fluxo ordenado e confiável de bytes."],
+                  "UDP é stateless e sem retransmissão, perfeito quando latência > confiabilidade. "
+                  "Os outros três casos são território do TCP: transferência de arquivo, transação "
+                  "bancária e sessão SSH dependem de ordem garantida e retransmissão do que se perde.",
                   statement_en="UDP is typically used for:",
                   correct_en="DNS, real-time video, and low-latency streaming.",
-                  wrong_en=["Reliable end-to-end file transfer, with no packet loss along the way.",
-                            "Bank transactions, where order and delivery confirmation matter a lot.",
-                            "Interactive SSH connections, which depend on an ordered, reliable byte stream."],
+                  wrong_en=["Reliable end-to-end file transfer.",
+                            "Bank transactions, with delivery confirmation.",
+                            "Interactive SSH connections, with an ordered, reliable byte stream."],
                   explanation_en="UDP is stateless and has no retransmission, perfect when "
-                  "latency > reliability."),
+                  "latency > reliability. The other three are TCP territory: file transfer, bank "
+                  "transactions, and SSH sessions need guaranteed ordering and retransmission."),
                 q("O que `curl -v` mostra além do corpo?",
                   "Cabeçalhos da requisição e da resposta.",
-                  ["O status code numérico da resposta HTTP recebida do servidor.",
-                   "O corpo da resposta formatado como JSON legível, sem mais detalhe.",
-                   "O tempo total gasto na requisição, do início até o fim."],
+                  ["O status code numérico da resposta HTTP.",
+                   "O corpo formatado como JSON legível.",
+                   "O tempo total gasto na requisição."],
                   "-v também mostra o handshake TLS, redirecionamentos e tempo de cada fase. "
-                  "É a ferramenta de debug HTTP universal.",
+                  "É a ferramenta de debug HTTP universal. O status code sozinho sai com "
+                  "`curl -o /dev/null -w '%{http_code}'`, o JSON legível é trabalho do `jq` e o "
+                  "tempo por fase vem das variáveis `time_*` do `-w`.",
                   statement_en="What does `curl -v` show besides the body?",
                   correct_en="The request and response headers.",
-                  wrong_en=["The numeric status code of the HTTP response received from the server.",
-                            "The response body formatted as readable JSON, with no further detail.",
-                            "The total time spent on the request, from start to finish."],
+                  wrong_en=["The numeric status code of the HTTP response.",
+                            "The response body formatted as readable JSON.",
+                            "The total time spent on the request."],
                   explanation_en="-v also shows the TLS handshake, redirects, and the timing of "
-                  "each phase. It's the universal HTTP debugging tool."),
+                  "each phase. It's the universal HTTP debugging tool. The status code alone comes "
+                  "from `curl -o /dev/null -w '%{http_code}'`, readable JSON is `jq`'s job, and "
+                  "per-phase timing comes from the `time_*` variables of `-w`."),
             ],
         },
         # =====================================================================
@@ -1597,18 +1621,20 @@ check manually in every new script.</p>"""
             "questions": [
                 q("Para que serve `set -e` em um script bash?",
                   "Aborta a execução se um comando retornar erro.",
-                  ["Ativa modo verboso, imprimindo cada comando antes de executá-lo.",
-                   "Define uma variável de ambiente visível para os subprocessos do script.",
-                   "Roda o script inteiro num processo separado, em paralelo com o terminal atual."],
+                  ["Imprime cada comando antes de executá-lo.",
+                   "Exporta as variáveis definidas para os subprocessos.",
+                   "Roda o script inteiro num subshell separado."],
                   "Sem -e, um falha intermediária passa despercebida e o script continua "
-                  "como se tudo desse certo.",
+                  "como se tudo desse certo. Quem imprime cada comando é `set -x`, quem exporta "
+                  "tudo que for definido é `set -a`, e rodar em subshell é o que `( ... )` faz.",
                   statement_en="What does `set -e` do in a bash script?",
                   correct_en="Aborts execution if a command returns an error.",
-                  wrong_en=["Enables verbose mode, printing each command before executing it.",
-                            "Defines an environment variable visible to the script's subprocesses.",
-                            "Runs the entire script in a separate process, in parallel with the current terminal."],
+                  wrong_en=["Prints each command before executing it.",
+                            "Exports the variables it defines to subprocesses.",
+                            "Runs the entire script in a separate subshell."],
                   explanation_en="Without -e, an intermediate failure goes unnoticed and the "
-                  "script continues as if everything went fine."),
+                  "script continues as if everything went fine. `set -x` prints each command, "
+                  "`set -a` exports everything defined, and `( ... )` runs code in a subshell."),
                 q("Qual a forma correta de citar uma variável?",
                   "echo \"$var\"", ["echo $var", "echo '$var'", "echo `var`"],
                   "Aspas duplas evitam word splitting e expansão de glob mantendo a expansão "
@@ -1620,18 +1646,22 @@ check manually in every new script.</p>"""
                   "still expanding the variable."),
                 q("O que `pipefail` faz?",
                   "Faz o pipeline falhar se qualquer comando intermediário falhar.",
-                  ["Reinicia o pipe inteiro automaticamente após qualquer comando interno travar.",
-                   "Ignora e descarta qualquer código de erro vindo de dentro do pipe.",
-                   "Faz o pipeline retornar sucesso mesmo quando algo dentro dele falhou de verdade."],
+                  ["Reinicia o pipe inteiro se um comando interno travar.",
+                   "Descarta o código de erro vindo de dentro do pipe.",
+                   "Faz o pipeline retornar sucesso mesmo quando um comando interno falha."],
                   "Sem pipefail, `cmd1 | cmd2` retorna o status de cmd2 mesmo que cmd1 tenha "
-                  "explodido, fonte recorrente de bugs silenciosos.",
+                  "explodido, fonte recorrente de bugs silenciosos. O bash não reinicia pipeline "
+                  "sozinho; descartar o erro do meio é justamente o comportamento padrão que "
+                  "pipefail vem corrigir, e não o que ele passa a fazer.",
                   statement_en="What does `pipefail` do?",
                   correct_en="Makes the pipeline fail if any intermediate command fails.",
-                  wrong_en=["Automatically restarts the whole pipe after any internal command hangs.",
-                            "Ignores and discards any error code coming from inside the pipe.",
-                            "Makes the pipeline return success even when something inside it truly failed."],
+                  wrong_en=["Restarts the whole pipe if an internal command hangs.",
+                            "Discards the error code coming from inside the pipe.",
+                            "Makes the pipeline return success even when an internal command fails."],
                   explanation_en="Without pipefail, `cmd1 | cmd2` returns cmd2's status even if "
-                  "cmd1 blew up, a recurring source of silent bugs."),
+                  "cmd1 blew up, a recurring source of silent bugs. Bash never restarts a pipeline "
+                  "on its own; swallowing the middle error is exactly the default that pipefail "
+                  "fixes, not what it starts doing."),
                 q("Como capturar a saída de um comando em uma variável?",
                   "result=$(comando)", ["result=`comando`", "result=$comando", "result=>'comando'"],
                   "Backticks aninham mal e são considerados legados; preferir $(...).",
@@ -1651,18 +1681,22 @@ check manually in every new script.</p>"""
                   "names. find is the right tool."),
                 q("Por que `eval` com input externo é perigoso?",
                   "Permite execução arbitrária de código se a string vier de fora.",
-                  ["Deixa o script mais lento, porque precisa reinterpretar a string a cada execução.",
-                   "Não funciona em versões antigas do macOS que ainda usam bash 3.2.",
-                   "Gera erro de sintaxe quando a string contém aspas desbalanceadas dentro dela."],
+                  ["Deixa o script mais lento por reinterpretar a string.",
+                   "Não funciona em bash 3.2, ainda padrão no macOS.",
+                   "Gera erro de sintaxe quando a string tem aspas desbalanceadas dentro dela."],
                   "Eval interpreta a string como comando bash, então qualquer coisa do tipo "
-                  "`; rm -rf /` no input é executada.",
+                  "`; rm -rf /` no input é executada. Eval existe desde o bash 3.2 e o custo de "
+                  "reinterpretar a string é irrelevante; aspas desbalanceadas realmente quebram, "
+                  "mas o ataque vem justamente de um input bem formado.",
                   statement_en="Why is `eval` with external input dangerous?",
                   correct_en="It allows arbitrary code execution if the string comes from outside.",
-                  wrong_en=["It makes the script slower, because it has to reinterpret the string on every run.",
-                            "It doesn't work on old macOS versions that still use bash 3.2.",
-                            "It raises a syntax error when the string contains unbalanced quotes inside it."],
+                  wrong_en=["It makes the script slower by reinterpreting the string.",
+                            "It doesn't work on bash 3.2, still the macOS default.",
+                            "It raises a syntax error when the string has unbalanced quotes inside it."],
                   explanation_en="Eval interprets the string as a bash command, so anything "
-                  "like `; rm -rf /` in the input gets executed."),
+                  "like `; rm -rf /` in the input gets executed. Eval has existed since bash 3.2 "
+                  "and the reinterpretation cost is irrelevant; unbalanced quotes do break, but "
+                  "the attack comes precisely from a well-formed input."),
                 q("Como passar argumento posicional em script bash?",
                   "$1, $2, $3...",
                   ["%1, %2, %3...", "&1, &2, &3...", "arg1, arg2, arg3..."],
@@ -1674,26 +1708,31 @@ check manually in every new script.</p>"""
                   "\"$@\"."),
                 q("Qual ferramenta detecta bugs comuns em scripts?",
                   "shellcheck",
-                  ["eslint --fix", "rubocop --auto", "pylint --errors-only"],
-                  "shellcheck é o linter de fato para bash/sh, integra com a maioria das IDEs.",
+                  ["shfmt -d", "eslint --fix", "pylint --errors-only"],
+                  "shellcheck é o linter de fato para bash/sh, integra com a maioria das IDEs. "
+                  "shfmt formata script shell mas não aponta bug; eslint é de JavaScript e "
+                  "pylint, de Python.",
                   statement_en="Which tool detects common bugs in scripts?",
                   correct_en="shellcheck",
-                  wrong_en=["eslint --fix", "rubocop --auto", "pylint --errors-only"],
+                  wrong_en=["shfmt -d", "eslint --fix", "pylint --errors-only"],
                   explanation_en="shellcheck is the de facto linter for bash/sh, it integrates "
-                  "with most IDEs."),
+                  "with most IDEs. shfmt formats shell scripts but flags no bugs; eslint is for "
+                  "JavaScript and pylint for Python."),
                 q("`[[ -z \"$x\" ]]` é verdadeiro quando:",
                   "x está vazio ou não definida.",
-                  ["x é igual a 0, um teste numérico diferente (-eq), não de string.",
-                   "x aponta para um arquivo existente, o que -f testaria, não -z.",
-                   "x aponta para um diretório existente, o que -d testaria, não -z."],
-                  "-z testa string vazia. -n é o oposto. Use sempre as aspas para evitar erro de sintaxe.",
+                  ["x é igual a 0.",
+                   "x aponta para um arquivo existente.",
+                   "x aponta para um diretório existente."],
+                  "-z testa string vazia. -n é o oposto. Use sempre as aspas para evitar erro de sintaxe. "
+                  "Comparar com 0 é `-eq` (numérico), arquivo existente é `-f` e diretório é `-d`.",
                   statement_en="`[[ -z \"$x\" ]]` is true when:",
                   correct_en="x is empty or unset.",
-                  wrong_en=["x equals 0, a different numeric test (-eq), not a string test.",
-                            "x points to an existing file, which -f would test, not -z.",
-                            "x points to an existing directory, which -d would test, not -z."],
+                  wrong_en=["x equals 0.",
+                            "x points to an existing file.",
+                            "x points to an existing directory."],
                   explanation_en="-z tests for an empty string. -n is the opposite. Always use "
-                  "quotes to avoid a syntax error."),
+                  "quotes to avoid a syntax error. Comparing to 0 is `-eq` (numeric), an existing "
+                  "file is `-f`, and a directory is `-d`."),
                 q("Qual o jeito recomendado de iterar arquivos com espaços no nome?",
                   "find ... -print0 | xargs -0",
                   ["for f in $(ls -1 *.sh)", "echo * | tr ' ' '\\n' | cat", "ls -1 | while read -r f; do"],
@@ -1985,13 +2024,17 @@ chown -R $USER:$USER ~/.ssh</code></pre><p>If anything is more open than that, s
                   "even a key algorithm."),
                 q("Onde fica a chave pública do usuário no servidor?",
                   "~/.ssh/authorized_keys",
-                  ["~/.bashrc.d/keys.conf.bak", "/root/keys.pub.backup.old", "/etc/passwd.d/keys.backup"],
-                  "Cada usuário do servidor mantém suas chaves autorizadas no próprio home.",
+                  ["~/.ssh/id_rsa.pub", "~/.ssh/known_hosts", "/etc/ssh/ssh_host_rsa_key"],
+                  "Cada usuário do servidor mantém suas chaves autorizadas no próprio home. "
+                  "id_rsa.pub é a chave pública do lado do cliente, known_hosts guarda as chaves "
+                  "dos servidores já aceitos e /etc/ssh/ssh_host_rsa_key é a chave do próprio host.",
                   statement_en="Where does the user's public key live on the server?",
                   correct_en="~/.ssh/authorized_keys",
-                  wrong_en=["~/.bashrc.d/keys.conf.bak", "/root/keys.pub.backup.old", "/etc/passwd.d/keys.backup"],
+                  wrong_en=["~/.ssh/id_rsa.pub", "~/.ssh/known_hosts", "/etc/ssh/ssh_host_rsa_key"],
                   explanation_en="Each server user keeps their authorized keys in their own "
-                  "home directory."),
+                  "home directory. id_rsa.pub is the public key on the client side, known_hosts "
+                  "stores already-accepted server keys, and /etc/ssh/ssh_host_rsa_key is the "
+                  "host's own key."),
                 q("Qual diretiva no `sshd_config` desabilita login com senha?",
                   "PasswordAuthentication no",
                   ["DenyPassword yes always", "DisablePassword on strict", "AllowPassword false global"],
@@ -2018,50 +2061,62 @@ chown -R $USER:$USER ~/.ssh</code></pre><p>If anything is more open than that, s
                   "forwarding leaks the identity."),
                 q("Qual permissão é exigida pelo OpenSSH para `~/.ssh/authorized_keys`?",
                   "600 (rw apenas para o dono).",
-                  ["777, que dá leitura e escrita para qualquer usuário do sistema.",
-                   "644, que ainda permite outros usuários lerem o conteúdo da chave.",
-                   "400 com dono root, inacessível até para o próprio usuário do serviço."],
-                  "O sshd recusa silenciosamente a chave se o arquivo for legível por outros.",
+                  ["400 com dono root.",
+                   "644 (rw para o dono, leitura para os outros).",
+                   "777 (rw e execução para qualquer usuário)."],
+                  "O sshd recusa silenciosamente a chave se o arquivo for legível por outros. "
+                  "644 e 777 expõem a chave; 400 com dono root deixa o próprio usuário sem acesso "
+                  "ao próprio authorized_keys, e o sshd também recusa.",
                   statement_en="Which permission does OpenSSH require for `~/.ssh/authorized_keys`?",
                   correct_en="600 (read/write for the owner only).",
-                  wrong_en=["777, which gives read and write to any user on the system.",
-                            "644, which still lets other users read the key's contents.",
-                            "400 owned by root, inaccessible even to the service's own user."],
+                  wrong_en=["400 owned by root.",
+                            "644 (rw for the owner, read for others).",
+                            "777 (rw and execute for any user)."],
                   explanation_en="sshd silently refuses the key if the file is readable by "
-                  "others."),
+                  "others. 644 and 777 expose the key; 400 owned by root leaves the user with no "
+                  "access to their own authorized_keys."),
                 q("Como copiar a chave pública para o servidor?",
                   "ssh-copy-id user@host",
-                  ["ssh --send-key user@host", "rsync key user@host:~/", "scp -p chave.pub user@host"],
-                  "ssh-copy-id já faz append em authorized_keys e ajusta permissões.",
+                  ["ssh-add -L user@host", "scp chave.pub user@host:", "rsync chave.pub user@host:"],
+                  "ssh-copy-id já faz append em authorized_keys e ajusta permissões. "
+                  "scp e rsync copiam o arquivo para o home, mas não fazem o append nem corrigem "
+                  "o modo 600; `ssh-add -L` só lista as chaves já carregadas no agent.",
                   statement_en="How do you copy the public key to the server?",
                   correct_en="ssh-copy-id user@host",
-                  wrong_en=["ssh --send-key user@host", "rsync key user@host:~/", "scp -p key.pub user@host"],
+                  wrong_en=["ssh-add -L user@host", "scp key.pub user@host:", "rsync key.pub user@host:"],
                   explanation_en="ssh-copy-id already appends to authorized_keys and adjusts "
-                  "permissions."),
+                  "permissions. scp and rsync copy the file to the home directory but neither "
+                  "append it nor fix mode 600; `ssh-add -L` only lists keys loaded in the agent."),
                 q("Qual variável de ambiente o ssh-agent define?",
                   "SSH_AUTH_SOCK",
-                  ["SSH_TOKEN_PATH", "SSH_PASS_AGENT", "SSH_KEY_SOCKET"],
-                  "É o socket Unix por onde o cliente fala com o agent.",
+                  ["SSH_ASKPASS", "SSH_TOKEN_PATH", "SSH_KEY_SOCKET"],
+                  "É o socket Unix por onde o cliente fala com o agent. SSH_ASKPASS existe, mas "
+                  "aponta para o programa que pede a passphrase em ambiente gráfico; as outras "
+                  "duas não existem no OpenSSH.",
                   statement_en="Which environment variable does ssh-agent set?",
                   correct_en="SSH_AUTH_SOCK",
-                  wrong_en=["SSH_TOKEN_PATH", "SSH_PASS_AGENT", "SSH_KEY_SOCKET"],
+                  wrong_en=["SSH_ASKPASS", "SSH_TOKEN_PATH", "SSH_KEY_SOCKET"],
                   explanation_en="It's the Unix socket through which the client talks to the "
-                  "agent."),
+                  "agent. SSH_ASKPASS does exist, but points to the program that prompts for the "
+                  "passphrase in a graphical environment; the other two don't exist in OpenSSH."),
                 q("O que é uma chave de host em SSH?",
                   "Chave que identifica o servidor para evitar MITM.",
-                  ["Chave temporária gerada para um usuário convidado sem privilégio real.",
-                   "Chave dedicada só a criptografar o conteúdo dos pacotes trafegados.",
-                   "Chave usada exclusivamente pela conta root para tarefa administrativa."],
+                  ["Chave temporária de um usuário convidado.",
+                   "Chave que cifra o conteúdo dos pacotes trafegados.",
+                   "Chave usada pela conta root para tarefa administrativa."],
                   "Na primeira conexão, você aceita a chave; depois ela vai pra known_hosts. "
-                  "Se mudar inesperadamente, é sinal de MITM (ou rebuild legítimo).",
+                  "Se mudar inesperadamente, é sinal de MITM (ou rebuild legítimo). O tráfego é "
+                  "cifrado com chave de sessão negociada no handshake, e chaves de convidado ou "
+                  "de root são chaves de usuário, guardadas em authorized_keys.",
                   statement_en="What is a host key in SSH?",
                   correct_en="A key that identifies the server to prevent MITM.",
-                  wrong_en=["A temporary key generated for a guest user with no real privilege.",
-                            "A key dedicated only to encrypting the content of packets in transit.",
-                            "A key used exclusively by the root account for administrative tasks."],
+                  wrong_en=["A temporary key for a guest user.",
+                            "A key that encrypts the content of packets in transit.",
+                            "A key used by the root account for administrative tasks."],
                   explanation_en="On the first connection, you accept the key; afterward it "
                   "goes into known_hosts. If it changes unexpectedly, that's a sign of MITM "
-                  "(or a legitimate rebuild)."),
+                  "(or a legitimate rebuild). Traffic is encrypted with a session key negotiated "
+                  "in the handshake, and guest or root keys are user keys in authorized_keys."),
                 q("Por que evitar PermitRootLogin yes?",
                   "Aumenta a superfície de ataque dando acesso direto a um usuário onipotente.",
                   ["Bloqueia completamente o serviço sshd assim que a opção é ativada.",
@@ -2702,33 +2757,41 @@ incident response later.</p>
             "questions": [
                 q("Por que evitar rodar serviços como root?",
                   "Se o serviço for comprometido, o atacante já tem privilégios totais.",
-                  ["Porque o root consome mais recurso de CPU e memória do que outro usuário.",
-                   "Porque o protocolo HTTPS exige explicitamente que o processo não seja root.",
-                   "Porque o processo root reinicia o sistema inteiro assim que qualquer serviço trava."],
+                  ["Porque o root consome mais CPU e memória.",
+                   "Porque um processo root reinicia o sistema ao travar.",
+                   "Porque o HTTPS exige explicitamente que o processo do servidor não seja root."],
                   "Cada vulnerabilidade (heartbleed, log4shell, etc.) num serviço root vira "
-                  "comprometimento total da máquina.",
+                  "comprometimento total da máquina. O UID não muda o consumo de CPU nem memória, "
+                  "processo root que morre não derruba a máquina, e o HTTPS nada exige sobre o "
+                  "usuário do processo — bindar a 443 precisa de CAP_NET_BIND_SERVICE, só isso.",
                   statement_en="Why avoid running services as root?",
                   correct_en="If the service is compromised, the attacker already has full privileges.",
                   wrong_en=[
-                    "Because root consumes more CPU and memory resources than another user account.",
-                    "Because the HTTPS protocol explicitly requires that the process not be root.",
-                    "Because a root process reboots the entire system as soon as any service crashes."
+                    "Because root consumes more CPU and memory.",
+                    "Because a root process reboots the system when it crashes.",
+                    "Because HTTPS explicitly requires that the server process not run as root."
                 ],
-                  explanation_en="Every vulnerability (heartbleed, log4shell, etc.) in a root service becomes"
-                  "full machine compromise."),
+                  explanation_en="Every vulnerability (heartbleed, log4shell, etc.) in a root service becomes "
+                  "full machine compromise. The UID changes neither CPU nor memory usage, a dying root "
+                  "process does not take the machine down, and HTTPS demands nothing about the process "
+                  "user — binding to 443 needs CAP_NET_BIND_SERVICE, nothing more."),
                 q("Qual arquivo controla regras de `sudo`?",
                   "/etc/sudoers (e /etc/sudoers.d/)",
-                  ["/etc/passwd e /etc/shadow.bak.old", "/root/.bashrc pessoal da conta root", "/var/log/sudo.log rotativo diário"],
-                  "Edite com `visudo` ou drops em /etc/sudoers.d/, que evita corromper o arquivo principal.",
+                  ["/etc/passwd", "/var/log/sudo.log", "/etc/pam.d/sudo (e /etc/security/)"],
+                  "Edite com `visudo` ou drops em /etc/sudoers.d/, que evita corromper o arquivo principal. "
+                  "/etc/passwd lista usuários, /var/log/sudo.log registra o uso depois do fato e "
+                  "/etc/pam.d/sudo define como o sudo autentica — nenhum deles diz quem pode o quê.",
                   statement_en="Which file controls `sudo` rules?",
                   correct_en="/etc/sudoers (and /etc/sudoers.d/)",
                   wrong_en=[
-                    "/etc/passwd and /etc/shadow.bak.old",
-                    "/root/.bashrc belonging to the root account",
-                    "/var/log/sudo.log rotated on a daily schedule"
+                    "/etc/passwd",
+                    "/var/log/sudo.log",
+                    "/etc/pam.d/sudo (and /etc/security/)"
                 ],
-                  explanation_en="Edit with `visudo` or drop-ins under /etc/sudoers.d/, which avoids"
-                  "corrupting the main file."),
+                  explanation_en="Edit with `visudo` or drop-ins under /etc/sudoers.d/, which avoids "
+                  "corrupting the main file. /etc/passwd lists users, /var/log/sudo.log records usage "
+                  "after the fact, and /etc/pam.d/sudo defines how sudo authenticates — none of them "
+                  "says who may do what."),
                 q("O que fazem as Linux capabilities?",
                   "Decompõem privilégios de root em grãos menores (ex.: NET_BIND_SERVICE).",
                   ["Aceleram a execução de syscall trocando o escalonador padrão do kernel.",
@@ -2758,18 +2821,22 @@ incident response later.</p>
                   explanation_en="Combine it with a specific runAsUser, and the image must be ready for that."),
                 q("Qual prática viola PoLP?",
                   "Dar 'AdministratorAccess' a uma role de aplicação.",
-                  ["Aplicar service account dedicada com permissão mínima para cada workload.",
-                   "Rotacionar credencial periodicamente conforme a política de segurança da equipe.",
-                   "Usar policy do IAM com escopo restrito a um recurso e ação específicos."],
-                  "Aplicação não precisa de admin. PoLP é dar exatamente o que ela usa.",
+                  ["Usar service account dedicada por workload.",
+                   "Usar policy do IAM restrita a um recurso e ação.",
+                   "Rotacionar credencial conforme a política da equipe."],
+                  "Aplicação não precisa de admin. PoLP é dar exatamente o que ela usa. "
+                  "Service account por workload, policy de escopo estreito e rotação de credencial "
+                  "são justamente as práticas que sustentam o princípio.",
                   statement_en="Which practice violates PoLP?",
                   correct_en="Granting 'AdministratorAccess' to an application role.",
                   wrong_en=[
-                    "Applying a dedicated service account with minimal permission for each workload.",
-                    "Rotating credentials on a schedule according to the team's security policy.",
-                    "Using an IAM policy scoped to a specific resource and action."
+                    "Using a dedicated service account per workload.",
+                    "Using an IAM policy scoped to one resource and action.",
+                    "Rotating credentials according to the team's policy."
                 ],
-                  explanation_en="An application does not need admin. PoLP means giving exactly what it uses."),
+                  explanation_en="An application does not need admin. PoLP means giving exactly what it "
+                  "uses. A service account per workload, a narrowly scoped policy, and credential "
+                  "rotation are precisely the practices that uphold the principle."),
                 q("`chmod 777 /opt/app` é problemático porque:",
                   "Qualquer usuário do sistema pode escrever, ler e executar, escalada trivial.",
                   ["Apaga o conteúdo do arquivo assim que o comando chmod termina de rodar.",
@@ -2786,19 +2853,22 @@ incident response later.</p>
                   explanation_en="An attacker with any local user can inject a payload into the legitimate app."),
                 q("O que é uma 'identity-based policy' em IAM?",
                   "Regras anexadas a um usuário/role definindo o que pode fazer.",
-                  ["Senha rotativa gerada automaticamente a cada login bem-sucedido do usuário.",
-                   "Token de DNS usado para provar propriedade de um domínio específico.",
-                   "Backup criptografado guardado numa conta separada da conta de produção."],
-                  "Resource-based policies, em contraste, ficam no recurso (ex.: bucket policy).",
+                  ["Senha rotativa gerada a cada login do usuário.",
+                   "Token de DNS que prova a propriedade de um domínio.",
+                   "Backup criptografado guardado numa conta separada da de produção."],
+                  "Resource-based policies, em contraste, ficam no recurso (ex.: bucket policy). "
+                  "Senha rotativa é gestão de credencial, token de DNS serve para validar domínio "
+                  "em certificados e o backup em conta separada é estratégia de resiliência.",
                   statement_en="What is an 'identity-based policy' in IAM?",
                   correct_en="Rules attached to a user/role defining what it is allowed to do.",
                   wrong_en=[
-                    "A rotating password generated automatically after every successful user login.",
-                    "A DNS token used to prove ownership of a specific domain name.",
-                    "An encrypted backup stored in an account separate from the production account."
+                    "A rotating password generated at each user login.",
+                    "A DNS token that proves ownership of a domain.",
+                    "An encrypted backup stored in an account separate from production."
                 ],
-                  explanation_en="Resource-based policies, by contrast, live on the resource (e.g. a bucket"
-                  "policy)."),
+                  explanation_en="Resource-based policies, by contrast, live on the resource (e.g. a bucket "
+                  "policy). A rotating password is credential management, a DNS token validates domains "
+                  "for certificates, and a backup in a separate account is a resilience strategy."),
                 q("Qual ferramenta confina syscalls de processos no Linux?",
                   "seccomp",
                   ["iptables", "cron", "udev"],
@@ -2815,34 +2885,40 @@ incident response later.</p>
                   "and K8s use it."),
                 q("Quando uso 'sudo -i', o que acontece?",
                   "Inicio um shell de login como root.",
-                  ["Atualizo o sistema operacional inteiro sem pedir confirmação adicional.",
-                   "Rodo o próximo comando com um atraso extra, sem trocar de usuário atual.",
-                   "Confirmo que minha conta tem permissão de usar sudo, sem executar comando algum depois disso."],
+                  ["Rodo um comando único como root.",
+                   "Abro um shell root mantendo meu ambiente.",
+                   "Confirmo que minha conta pode usar sudo, sem rodar comando."],
                   "-i carrega o ambiente de login do root; -s mantém o ambiente atual; "
-                  "sem flags, executa um comando único.",
+                  "sem flags, executa um comando único. E `sudo -v` é a flag que só renova o "
+                  "timestamp da sessão sudo, sem executar nada.",
                   statement_en="When I use 'sudo -i', what happens?",
                   correct_en="I start a login shell as root.",
                   wrong_en=[
-                    "I update the entire operating system without asking for extra confirmation.",
-                    "I run the next command with an extra delay, without changing the current user.",
-                    "I confirm my account may use sudo, without running any further command afterward."
+                    "I run a single command as root.",
+                    "I open a root shell keeping my environment.",
+                    "I confirm my account may use sudo, without running a command."
                 ],
-                  explanation_en="-i loads root's login environment; -s keeps the current environment; with"
-                  "no flags, it runs a single command."),
+                  explanation_en="-i loads root's login environment; -s keeps the current environment; with "
+                  "no flags, it runs a single command. And `sudo -v` is the flag that only refreshes the "
+                  "sudo session timestamp without running anything."),
                 q("A rotação periódica de credenciais ajuda PoLP porque:",
                   "Reduz a janela de exploração caso uma credencial vaze.",
-                  ["Aumenta a entropia do gerador de senha usado para criar a credencial nova.",
-                   "Faz log detalhado do uso completo da credencial nas últimas semanas de operação.",
-                   "Substitui completamente a necessidade de configurar MFA na conta do usuário."],
-                  "Não substitui PoLP, mas limita o blast radius de um vazamento.",
+                  ["Aumenta a entropia do gerador de senha.",
+                   "Faz log detalhado do uso da credencial.",
+                   "Substitui a necessidade de configurar MFA na conta do usuário."],
+                  "Não substitui PoLP, mas limita o blast radius de um vazamento. "
+                  "A entropia depende do gerador, não da frequência de troca; o log de uso vem do "
+                  "CloudTrail ou equivalente; e MFA continua necessário mesmo com rotação em dia.",
                   statement_en="Periodic credential rotation helps PoLP because:",
                   correct_en="It shrinks the exploitation window if a credential leaks.",
                   wrong_en=[
-                    "It increases the entropy of the password generator used to create the new credential.",
-                    "It produces a detailed log of full credential usage over the last weeks of operation.",
-                    "It fully replaces the need to configure MFA on the user's account."
+                    "It increases the entropy of the password generator.",
+                    "It produces a detailed log of credential usage.",
+                    "It replaces the need to configure MFA on the user's account."
                 ],
-                  explanation_en="It does not replace PoLP, but it limits the blast radius of a leak."),
+                  explanation_en="It does not replace PoLP, but it limits the blast radius of a leak. "
+                  "Entropy depends on the generator, not on how often you rotate; the usage log comes "
+                  "from CloudTrail or equivalent; and MFA is still needed even with rotation in place."),
             ],
         },
         # =====================================================================
@@ -3380,18 +3456,22 @@ it serve today?".</li>
                   explanation_en="UFW recognizes service names (ssh, http, https) or a port number."),
                 q("Política recomendada de entrada (INPUT)?",
                   "default deny, só permite o explicitamente autorizado.",
-                  ["default allow, que libera qualquer conexão sem restrição.",
-                   "ignorar tudo, deixando o kernel decidir sem regra aplicada de propósito.",
-                   "drop saída e permitir entrada, o inverso do padrão recomendado."],
-                  "Default-deny inverte o padrão: nada entra a menos que você diga sim.",
+                  ["drop na saída e allow na entrada.",
+                   "sem política definida, deixando o kernel decidir.",
+                   "default allow, que libera qualquer conexão sem restrição."],
+                  "Default-deny inverte o padrão: nada entra a menos que você diga sim. "
+                  "Default allow deixa tudo aberto até você lembrar de fechar, inverter INPUT e "
+                  "OUTPUT protege o lado errado, e sem política a chain cai no ACCEPT de fábrica.",
                   statement_en="Recommended inbound (INPUT) policy?",
                   correct_en="default deny, allowing only what you explicitly authorize.",
                   wrong_en=[
-                    "default allow, which opens every connection with no restriction applied.",
-                    "ignore everything, leaving the kernel to decide without any intentional rule.",
-                    "drop outbound and allow inbound, the inverse of the recommended baseline."
+                    "drop outbound and allow inbound.",
+                    "no policy set, leaving the kernel to decide.",
+                    "default allow."
                 ],
-                  explanation_en="Default-deny flips the default: nothing enters unless you say yes."),
+                  explanation_en="Default-deny flips the default: nothing enters unless you say yes. "
+                  "Default allow leaves everything open until you remember to close it, swapping INPUT "
+                  "and OUTPUT protects the wrong side, and with no policy the chain falls back to ACCEPT."),
                 q("Qual chain do iptables filtra pacotes destinados ao próprio host?",
                   "INPUT", ["OUTPUT", "FORWARD", "POSTROUTING"],
                   "OUTPUT = pacotes saídos pelo host. FORWARD = pacotes roteados pela máquina (gateway).",
@@ -3421,82 +3501,102 @@ it serve today?".</li>
                   ["Acelera o handshake.",
                    "Diminui CPU do kernel.",
                    "É exigência POSIX."],
-                  "ufw limit bloqueia IPs com mais de 6 tentativas em 30s, combina bem com fail2ban.",
+                  "ufw limit bloqueia IPs com mais de 6 tentativas em 30s, combina bem com fail2ban. "
+                  "O handshake não fica mais rápido, o custo de CPU do filtro é irrelevante e o POSIX "
+                  "não define nada sobre firewall.",
                   statement_en="Why rate-limit SSH connections?",
                   correct_en="It mitigates brute force.",
                   wrong_en=[
-                    "It speeds up the SSH handshake for legitimate clients on the network.",
-                    "It reduces kernel CPU usage by skipping checksum validation on each packet.",
-                    "It is a hard requirement defined by the POSIX networking specification."
+                    "It speeds up the handshake.",
+                    "It lowers kernel CPU usage.",
+                    "It is a POSIX requirement."
                 ],
-                  explanation_en="ufw limit blocks IPs with more than 6 attempts in 30s; it pairs well with"
-                  "fail2ban."),
+                  explanation_en="ufw limit blocks IPs with more than 6 attempts in 30s; it pairs well with "
+                  "fail2ban. The handshake gets no faster, the filter's CPU cost is negligible, and POSIX "
+                  "defines nothing about firewalls."),
                 q("Qual o sucessor moderno do iptables?",
                   "nftables",
                   ["ipset", "ipchains", "netcat"],
-                  "nftables unifica vários antigos; iptables atual é shim sobre nft em distros novas.",
+                  "nftables unifica vários antigos; iptables atual é shim sobre nft em distros novas. "
+                  "ipset só guarda conjuntos de IP consumidos por outra regra, ipchains é o antecessor "
+                  "do iptables (Linux 2.2) e netcat nem filtra pacote.",
                   statement_en="What is the modern successor to iptables?",
                   correct_en="nftables",
                   wrong_en=[
-                    "ipset used as a full firewall replacement",
-                    "ipchains from the early Linux 2.2 era",
-                    "netcat listening as a packet filter daemon"
+                    "ipset",
+                    "ipchains",
+                    "netcat"
                 ],
-                  explanation_en="nftables unifies several older tools; current iptables is often a shim over"
-                  "nft on newer distros."),
+                  explanation_en="nftables unifies several older tools; current iptables is often a shim over "
+                  "nft on newer distros. ipset only holds IP sets consumed by another rule, ipchains is "
+                  "the predecessor of iptables (Linux 2.2), and netcat does not filter packets at all."),
                 q("`ufw status numbered` mostra:",
                   "Lista numerada de regras para edição/exclusão.",
-                  ["O uso de banda consumido por cada interface de rede monitorada.",
-                   "Ataques recentes registrados no log do sistema de detecção.",
-                   "Tráfego em tempo real passando por cada porta aberta agora."],
-                  "Permite remover por índice: `ufw delete 3`.",
+                  ["O uso de banda por interface de rede.",
+                   "Tráfego em tempo real por porta aberta agora.",
+                   "Ataques recentes registrados no log do fail2ban."],
+                  "Permite remover por índice: `ufw delete 3`. Banda por interface sai do `iftop` "
+                  "ou `vnstat`, tráfego ao vivo do `tcpdump`, e tentativa de ataque bloqueada "
+                  "aparece no `fail2ban-client status`.",
                   statement_en="`ufw status numbered` shows:",
                   correct_en="A numbered list of rules for editing/deletion.",
                   wrong_en=[
-                    "Bandwidth usage consumed by each monitored network interface.",
-                    "Recent attacks recorded in the system's detection log facility.",
-                    "Live traffic currently flowing through each open port right now."
+                    "Bandwidth usage per network interface.",
+                    "Live traffic through each open port right now.",
+                    "Recent attacks recorded in the fail2ban log."
                 ],
-                  explanation_en="Lets you remove by index: `ufw delete 3`."),
+                  explanation_en="Lets you remove by index: `ufw delete 3`. Per-interface bandwidth comes "
+                  "from `iftop` or `vnstat`, live traffic from `tcpdump`, and blocked attack attempts show "
+                  "up in `fail2ban-client status`."),
                 q("Qual porta 53 é tipicamente liberada para?",
                   "DNS", ["HTTP", "RDP", "SMB"],
-                  "DNS usa 53 em UDP (queries normais) e TCP (zone transfer e mensagens grandes).",
+                  "DNS usa 53 em UDP (queries normais) e TCP (zone transfer e mensagens grandes). "
+                  "HTTP fica na 80, RDP na 3389 e SMB na 445.",
                   statement_en="Port 53 is typically opened for?",
                   correct_en="DNS",
                   wrong_en=[
-                    "HTTP reverse-proxy traffic on cleartext port 80",
-                    "RDP remote desktop sessions to Windows hosts",
-                    "SMB file sharing between Windows clients and servers"
+                    "HTTP",
+                    "RDP",
+                    "SMB"
                 ],
-                  explanation_en="DNS uses 53 on UDP (normal queries) and TCP (zone transfers and large messages)."),
+                  explanation_en="DNS uses 53 on UDP (normal queries) and TCP (zone transfers and large "
+                  "messages). HTTP is on 80, RDP on 3389, and SMB on 445."),
                 q("`ufw deny from 10.0.0.5` faz o quê?",
                   "Bloqueia conexões originadas desse IP.",
-                  ["Renomeia a interface de rede associada àquele endereço específico.",
-                   "Apaga a rota de rede configurada para alcançar esse IP específico.",
-                   "Permite conexão vinda exclusivamente desse IP, bloqueando os demais."],
-                  "Útil para banir IPs maliciosos rapidamente.",
+                  ["Apaga a rota para esse IP.",
+                   "Renomeia a interface associada a esse IP.",
+                   "Permite conexão vinda desse IP, bloqueando os demais."],
+                  "Útil para banir IPs maliciosos rapidamente. Apagar rota é `ip route del`, "
+                  "renomear interface é `ip link set ... name`, e liberar um IP e barrar o resto "
+                  "seria `ufw allow from` somado a uma política default deny.",
                   statement_en="What does `ufw deny from 10.0.0.5` do?",
                   correct_en="It blocks connections originating from that IP.",
                   wrong_en=[
-                    "It renames the network interface associated with that specific address.",
-                    "It deletes the network route configured to reach that specific IP.",
-                    "It allows connections exclusively from that IP, blocking everyone else."
+                    "It deletes the route to that IP.",
+                    "It renames the interface associated with that IP.",
+                    "It allows connections from that IP, blocking everyone else."
                 ],
-                  explanation_en="Useful for banning malicious IPs quickly."),
+                  explanation_en="Useful for banning malicious IPs quickly. Deleting a route is "
+                  "`ip route del`, renaming an interface is `ip link set ... name`, and allowing one IP "
+                  "while barring the rest would be `ufw allow from` plus a default deny policy."),
                 q("Por que abrir 'all' (qualquer porta) em produção é ruim?",
                   "Aumenta drasticamente a superfície de ataque.",
-                  ["Quebra a resolução de DNS para qualquer requisição feita depois disso.",
-                   "Reduz a performance do roteador por processar mais regra por pacote.",
-                   "Não é uma configuração permitida pelo kernel na maioria das distribuições."],
-                  "Cada porta exposta é uma chance a mais para encontrar uma vulnerabilidade.",
+                  ["Reduz a performance do roteador.",
+                   "Quebra a resolução de DNS na máquina.",
+                   "É configuração que o kernel rejeita na maioria das distros."],
+                  "Cada porta exposta é uma chance a mais para encontrar uma vulnerabilidade. "
+                  "Abrir tudo na verdade deixa o filtro com menos regra a avaliar, não quebra DNS "
+                  "e é perfeitamente aceito pelo kernel — o problema é só de segurança.",
                   statement_en="Why is opening 'all' (every port) in production a bad idea?",
                   correct_en="It drastically increases the attack surface.",
                   wrong_en=[
-                    "It breaks DNS resolution for any request made after that change.",
-                    "It reduces router performance by processing more rules per packet.",
-                    "It is a configuration the kernel rejects on most Linux distributions."
+                    "It reduces router performance.",
+                    "It breaks DNS resolution on the machine.",
+                    "It is a configuration the kernel rejects on most distros."
                 ],
-                  explanation_en="Every exposed port is another chance to find a vulnerability."),
+                  explanation_en="Every exposed port is another chance to find a vulnerability. "
+                  "Opening everything actually leaves the filter with fewer rules to evaluate, does not "
+                  "break DNS, and the kernel accepts it fine — the problem is purely security."),
             ],
         },
         # =====================================================================
@@ -4145,94 +4245,124 @@ before.</li>
             "questions": [
                 q("Qual diretiva no Nginx oculta o número da versão?",
                   "server_tokens off;",
-                  ["no_version on; custom", "server_hidden 1; ativo", "hide_version yes; extra"],
-                  "Reduz o fingerprint para scanners automatizados.",
+                  ["autoindex off;", "more_clear_headers Server;", "server_name_in_redirect off;"],
+                  "Reduz o fingerprint para scanners automatizados. autoindex controla a listagem "
+                  "de diretório, server_name_in_redirect muda o Host usado nos redirects e "
+                  "more_clear_headers vem do módulo headers-more, que apaga o header Server inteiro "
+                  "em vez de só esconder a versão.",
                   statement_en="Which Nginx directive hides the version number?",
                   correct_en="server_tokens off;",
-                  wrong_en=["no_version on; custom", "server_hidden 1; ativo", "hide_version yes; extra"],
-                  explanation_en="Reduces fingerprinting for automated scanners."),
+                  wrong_en=["autoindex off;", "more_clear_headers Server;", "server_name_in_redirect off;"],
+                  explanation_en="Reduces fingerprinting for automated scanners. autoindex controls "
+                  "directory listing, server_name_in_redirect changes the Host used in redirects, and "
+                  "more_clear_headers comes from the headers-more module, which drops the whole Server "
+                  "header instead of just hiding the version."),
                 q("Qual header força HTTPS em browsers compatíveis?",
                   "Strict-Transport-Security (HSTS)",
-                  ["Upgrade-Required (customizado antigo)", "Cache-Secure (nome totalmente inventado)", "Force-HTTPS (não padronizado ainda)"],
-                  "Inclua max-age longo e includeSubDomains; considere preload list após estável.",
+                  ["X-Content-Type-Options", "Upgrade-Insecure-Requests",
+                   "Content-Security-Policy: upgrade-insecure-requests"],
+                  "Inclua max-age longo e includeSubDomains; considere preload list após estável. "
+                  "X-Content-Type-Options impede MIME sniffing; Upgrade-Insecure-Requests é enviado "
+                  "pelo browser, não pelo servidor; e a diretiva CSP de mesmo nome só troca o esquema "
+                  "dos sub-recursos daquela página, sem obrigar HTTPS nas próximas visitas.",
                   statement_en="Which header forces HTTPS in compatible browsers?",
                   correct_en="Strict-Transport-Security (HSTS)",
                   wrong_en=[
-                    "Upgrade-Required (legacy custom name)",
-                    "Cache-Secure (a completely invented header name)",
-                    "Force-HTTPS (not a standardized header yet)"
+                    "X-Content-Type-Options",
+                    "Upgrade-Insecure-Requests",
+                    "Content-Security-Policy: upgrade-insecure-requests"
                 ],
-                  explanation_en="Include a long max-age and includeSubDomains; consider the preload list"
-                  "after things are stable."),
+                  explanation_en="Include a long max-age and includeSubDomains; consider the preload list "
+                  "after things are stable. X-Content-Type-Options blocks MIME sniffing; "
+                  "Upgrade-Insecure-Requests is sent by the browser, not the server; and the CSP "
+                  "directive of the same name only rewrites that page's sub-resources, without forcing "
+                  "HTTPS on later visits."),
                 q("Em Nginx, como configurar um proxy reverso?",
                   "Usando proxy_pass http://backend; em um bloco location.",
-                  ["Configurar root html sozinho, sem proxy de fato envolvido no caminho.",
-                   "fastcgi_pass *, sintaxe inválida usada para PHP-FPM, não proxy HTTP.",
-                   "rewrite ^.*$, reescreve a URL mas não encaminha para outro servidor."],
-                  "Lembre-se de proxy_set_header Host $host e X-Forwarded-* para a app saber o cliente real.",
+                  ["Usando root /var/www/html; em um bloco location.",
+                   "Usando fastcgi_pass 127.0.0.1:9000; no location.",
+                   "Usando rewrite ^/(.*)$ /$1 permanent; no bloco server principal."],
+                  "Lembre-se de proxy_set_header Host $host e X-Forwarded-* para a app saber o cliente real. "
+                  "root serve arquivo do disco, fastcgi_pass fala o protocolo FastCGI com PHP-FPM (não "
+                  "HTTP) e rewrite só reescreve a URL, devolvendo um redirect em vez de encaminhar.",
                   statement_en="In Nginx, how do you configure a reverse proxy?",
                   correct_en="Using proxy_pass http://backend; inside a location block.",
                   wrong_en=[
-                    "Configure root html alone, with no actual proxy involved in the path.",
-                    "fastcgi_pass *, invalid syntax used for PHP-FPM, not an HTTP proxy.",
-                    "rewrite ^.*$, which rewrites the URL but does not forward to another server."
+                    "Using root /var/www/html; inside a location block.",
+                    "Using fastcgi_pass 127.0.0.1:9000; in the location.",
+                    "Using rewrite ^/(.*)$ /$1 permanent; in the main server block."
                 ],
-                  explanation_en="Remember proxy_set_header Host $host and X-Forwarded-* so the app knows the"
-                  "real client."),
+                  explanation_en="Remember proxy_set_header Host $host and X-Forwarded-* so the app knows the "
+                  "real client. root serves files from disk, fastcgi_pass speaks FastCGI to PHP-FPM (not "
+                  "HTTP), and rewrite only rewrites the URL, returning a redirect instead of forwarding."),
                 q("Qual a porta padrão do TLS/HTTPS?",
                   "443",
                   ["8443", "80", "23"],
-                  "443 é well-known. 80 é HTTP puro, 23 é Telnet (legado e inseguro).",
+                  "443 é well-known. 80 é HTTP puro, 23 é Telnet (legado e inseguro) e 8443 é a "
+                  "porta alternativa comum quando o processo não roda como root.",
                   statement_en="What is the default TLS/HTTPS port?",
                   correct_en="443",
                   wrong_en=[
-                    "8443 used as an alternate TLS listener port",
-                    "80 used for cleartext HTTP without encryption",
-                    "23 used historically for the Telnet remote shell"
+                    "8443",
+                    "80",
+                    "23"
                 ],
-                  explanation_en="443 is well-known. 80 is plain HTTP; 23 is Telnet (legacy and insecure)."),
+                  explanation_en="443 is well-known. 80 is plain HTTP; 23 is Telnet (legacy and insecure); "
+                  "and 8443 is the common alternate port when the process does not run as root."),
                 q("Por que ativar gzip/brotli?",
                   "Reduz tamanho da resposta, acelera entrega.",
-                  ["Aumenta a segurança da conexão contra ataque de interceptação.",
-                   "Substitui completamente o cache do navegador e do proxy.",
-                   "É um requisito real para habilitar o protocolo HTTP/2 no servidor."],
-                  "Cuidado com BREACH/CRIME se concatenar conteúdo do usuário com segredo na mesma resposta.",
+                  ["Aumenta a segurança da conexão.",
+                   "Substitui o cache do navegador e do proxy.",
+                   "É requisito para habilitar HTTP/2 no servidor."],
+                  "Cuidado com BREACH/CRIME se concatenar conteúdo do usuário com segredo na mesma resposta. "
+                  "Compressão não acrescenta segurança (e mal usada até tira), não substitui cache "
+                  "— são camadas independentes — e o HTTP/2 funciona sem ela.",
                   statement_en="Why enable gzip/brotli?",
                   correct_en="It shrinks response size and speeds up delivery.",
                   wrong_en=[
-                    "It increases connection security against interception attacks.",
-                    "It completely replaces the browser cache and the proxy cache.",
-                    "It is a hard requirement to enable the HTTP/2 protocol on the server."
+                    "It increases connection security.",
+                    "It replaces the browser cache and the proxy cache.",
+                    "It is a requirement to enable HTTP/2 on the server."
                 ],
-                  explanation_en="Watch for BREACH/CRIME if you concatenate user content with a secret in the"
-                  "same response."),
+                  explanation_en="Watch for BREACH/CRIME if you concatenate user content with a secret in the "
+                  "same response. Compression adds no security (misused it even removes some), does not "
+                  "replace caching — they are independent layers — and HTTP/2 works fine without it."),
                 q("Qual diretiva limita tamanho do body em Nginx?",
                   "client_max_body_size",
-                  ["max_body_kb inválido", "post_size não existe", "request_size_limit falso"],
-                  "Mitiga abuso por uploads gigantes; ajuste por endpoint quando for upload legítimo.",
+                  ["client_body_buffer_size", "large_client_header_buffers", "client_body_timeout"],
+                  "Mitiga abuso por uploads gigantes; ajuste por endpoint quando for upload legítimo. "
+                  "client_body_buffer_size decide só quanto fica em memória antes de ir para disco, "
+                  "large_client_header_buffers dimensiona cabeçalhos e client_body_timeout limita "
+                  "tempo, não tamanho.",
                   statement_en="Which Nginx directive limits body size?",
                   correct_en="client_max_body_size",
                   wrong_en=[
-                    "max_body_kb which is not a valid Nginx directive",
-                    "post_size which does not exist in Nginx configuration",
-                    "request_size_limit which is a made-up directive name"
+                    "client_body_buffer_size",
+                    "large_client_header_buffers",
+                    "client_body_timeout"
                 ],
-                  explanation_en="Mitigates abuse via giant uploads; adjust per endpoint when legitimate"
-                  "uploads are needed."),
+                  explanation_en="Mitigates abuse via giant uploads; adjust per endpoint when legitimate "
+                  "uploads are needed. client_body_buffer_size only decides how much stays in memory "
+                  "before spilling to disk, large_client_header_buffers sizes headers, and "
+                  "client_body_timeout caps time, not size."),
                 q("O que faz o Mozilla SSL Configuration Generator?",
                   "Gera configurações TLS recomendadas (modern/intermediate/old).",
-                  ["Renova certificado TLS automaticamente antes dele expirar de vez.",
-                   "Cria par de chave SSH para autenticação de acesso remoto ao servidor.",
+                  ["Renova certificado TLS antes de ele expirar.",
+                   "Cria par de chave SSH para acesso remoto.",
                    "Mede a latência de rede entre o cliente e o servidor de destino."],
-                  "Atualizado pela Mozilla com base em pesquisa de browsers e CVEs.",
+                  "Atualizado pela Mozilla com base em pesquisa de browsers e CVEs. "
+                  "Renovar certificado é papel do certbot, gerar chave SSH é do ssh-keygen e medir "
+                  "latência, do ping ou do próprio `curl -w`.",
                   statement_en="What does the Mozilla SSL Configuration Generator do?",
                   correct_en="It generates recommended TLS configs (modern/intermediate/old).",
                   wrong_en=[
-                    "It renews a TLS certificate automatically before it fully expires.",
-                    "It creates an SSH key pair for remote authentication to the server.",
+                    "It renews a TLS certificate before it expires.",
+                    "It creates an SSH key pair for remote access.",
                     "It measures network latency between the client and the destination server."
                 ],
-                  explanation_en="Kept up to date by Mozilla based on browser research and CVEs."),
+                  explanation_en="Kept up to date by Mozilla based on browser research and CVEs. "
+                  "Renewing certificates is certbot's job, generating SSH keys is ssh-keygen's, and "
+                  "measuring latency is ping's or `curl -w`'s."),
                 q("Como redirecionar HTTP para HTTPS em Nginx?",
                   "return 301 https://$host$request_uri;",
                   ["proxy_pass https://$host/upstream;", "rewrite ^/ /https/ permanent always;", "if ($http) drop; return 403 forbidden;"],
@@ -4248,32 +4378,40 @@ before.</li>
                   "faster."),
                 q("Por que rate limiting em /login?",
                   "Mitiga ataques de força bruta e credential stuffing.",
-                  ["Reduz o consumo de memória RAM do processo worker do Nginx.",
-                   "Acelera o processo de login reduzindo etapa de validação.",
+                  ["Reduz o consumo de RAM do worker do Nginx.",
+                   "Acelera o login reduzindo etapa de validação.",
                    "Ativa autenticação multifator diretamente na camada do Nginx."],
-                  "Limit_req_zone + limit_req em Nginx, ou middleware na própria app.",
+                  "Limit_req_zone + limit_req em Nginx, ou middleware na própria app. "
+                  "A zona compartilhada do limit_req na verdade consome um pouco de RAM, o login "
+                  "não fica mais rápido e MFA continua sendo trabalho da aplicação.",
                   statement_en="Why rate-limit /login?",
                   correct_en="It mitigates brute-force and credential stuffing attacks.",
                   wrong_en=[
-                    "It reduces RAM usage of the Nginx worker process itself.",
-                    "It speeds up login by skipping a validation step in the flow.",
+                    "It reduces RAM usage of the Nginx worker.",
+                    "It speeds up login by skipping a validation step.",
                     "It enables multifactor authentication directly at the Nginx layer."
                 ],
-                  explanation_en="limit_req_zone + limit_req in Nginx, or middleware in the app itself."),
+                  explanation_en="limit_req_zone + limit_req in Nginx, or middleware in the app itself. "
+                  "The limit_req shared zone actually costs a little RAM, login gets no faster, and MFA "
+                  "remains the application's job."),
                 q("Qual ferramenta automatiza certificados TLS gratuitos?",
                   "certbot (Let's Encrypt).",
-                  ["docker compose, orquestra container, não emite certificado TLS.",
-                   "cron-tls, nome inventado; não existe ferramenta com esse nome.",
-                   "iptables, ferramenta de firewall, não emissão de certificado."],
-                  "ACME é o protocolo; certbot, acme.sh, lego e o próprio Caddy implementam.",
+                  ["cfssl gencert.",
+                   "docker compose up -d.",
+                   "openssl req -x509 -newkey rsa."],
+                  "ACME é o protocolo; certbot, acme.sh, lego e o próprio Caddy implementam. "
+                  "openssl e cfssl emitem certificado, mas autoassinado ou de uma CA interna, sem "
+                  "passar pelo desafio ACME de uma CA pública; docker compose orquestra container.",
                   statement_en="Which tool automates free TLS certificates?",
                   correct_en="certbot (Let's Encrypt).",
                   wrong_en=[
-                    "docker compose, which orchestrates containers and does not issue TLS certificates.",
-                    "cron-tls, an invented name; no tool with that name exists.",
-                    "iptables, a firewall tool, not a certificate issuer."
+                    "cfssl gencert.",
+                    "docker compose up -d.",
+                    "openssl req -x509 -newkey rsa."
                 ],
-                  explanation_en="ACME is the protocol; certbot, acme.sh, lego, and Caddy itself implement it."),
+                  explanation_en="ACME is the protocol; certbot, acme.sh, lego, and Caddy itself implement it. "
+                  "openssl and cfssl do issue certificates, but self-signed or from an internal CA, without "
+                  "the ACME challenge of a public CA; docker compose orchestrates containers."),
             ],
         },
         # =====================================================================
@@ -4824,143 +4962,182 @@ cycle running without depending on someone remembering manually.</li>
             "questions": [
                 q("O que é um arquivo `.gpg` em /etc/apt/trusted.gpg.d/?",
                   "Chave pública usada para validar assinaturas de pacotes do repositório.",
-                  ["Chave privada do mantenedor, que jamais deveria sair da máquina onde foi gerada.",
-                   "Um token OAuth usado para autenticar uma chamada de API do repositório remoto.",
+                  ["Chave privada do mantenedor do repositório.",
+                   "Um token OAuth para autenticar na API do repositório.",
                    "O hash do binário do pacote, calculado bem antes de qualquer assinatura existir."],
-                  "É a parte pública; APT a usa para verificar a assinatura do Release file.",
+                  "É a parte pública; APT a usa para verificar a assinatura do Release file. "
+                  "A chave privada fica com o mantenedor e nunca é distribuída; o APT não usa OAuth; "
+                  "e os hashes dos pacotes ficam no próprio arquivo Packages, cobertos pela assinatura.",
                   statement_en="What is a `.gpg` file under /etc/apt/trusted.gpg.d/?",
                   correct_en="A public key used to validate package signatures from the repository.",
                   wrong_en=[
-                    "The maintainer's private key, which should not leave the machine where it was generated.",
-                    "An OAuth token used to authenticate an API call to the remote repository.",
+                    "The repository maintainer's private key.",
+                    "An OAuth token to authenticate against the repository API.",
                     "The package binary hash, computed well before any signature exists."
                 ],
-                  explanation_en="It is the public part; APT uses it to verify the Release file signature."),
+                  explanation_en="It is the public part; APT uses it to verify the Release file signature. "
+                  "The private key stays with the maintainer and is never shipped; APT does not use OAuth; "
+                  "and package hashes live in the Packages file, covered by that signature."),
                 q("`apt update` faz o quê?",
                   "Baixa metadados (índices) dos repositórios.",
-                  ["Reinstala cada pacote já presente no sistema, um por um.",
-                   "Apaga o cache local de pacote já baixado anteriormente.",
-                   "Aplica patch de segurança direto no kernel em execução."],
-                  "Atualiza o conhecimento sobre versões disponíveis. `apt upgrade` é que aplica.",
+                  ["Apaga o cache local de pacote já baixado.",
+                   "Reinstala cada pacote já presente no sistema.",
+                   "Aplica patch de segurança no kernel em execução."],
+                  "Atualiza o conhecimento sobre versões disponíveis. `apt upgrade` é que aplica. "
+                  "Limpar o cache é `apt clean`, reinstalar é `apt install --reinstall` e patch de "
+                  "kernel sem reboot depende de livepatch, fora do apt.",
                   statement_en="What does `apt update` do?",
                   correct_en="It downloads metadata (indexes) from the repositories.",
                   wrong_en=[
-                    "It reinstalls every package already present on the system, one by one.",
-                    "It deletes the local cache of packages previously downloaded.",
-                    "It applies a security patch directly to the running kernel."
+                    "It deletes the local cache of already downloaded packages.",
+                    "It reinstalls every package already present on the system.",
+                    "It applies a security patch to the running kernel."
                 ],
-                  explanation_en="It refreshes knowledge of available versions. `apt upgrade` is what applies"
-                  "them."),
+                  explanation_en="It refreshes knowledge of available versions. `apt upgrade` is what applies "
+                  "them. Clearing the cache is `apt clean`, reinstalling is `apt install --reinstall`, and "
+                  "patching a running kernel needs livepatch, outside apt."),
                 q("Como bloquear uma versão específica em apt?",
                   "Pinning via /etc/apt/preferences.",
-                  ["apt-get freeze, um subcomando que não existe no apt real.",
-                   "dpkg --hold-version, flag inventada; dpkg não reconhece isso.",
-                   "apt-mark exclude, opção que não existe no apt-mark de verdade."],
-                  "`apt-mark hold` também funciona; pinning oferece mais granularidade (priority por origem).",
+                  ["apt-get clean.",
+                   "apt-mark auto no pacote alvo.",
+                   "apt-cache policy do pacote desejado."],
+                  "`apt-mark hold` também funciona; pinning oferece mais granularidade (priority por origem). "
+                  "apt-get clean só esvazia o cache de .deb baixados, apt-mark auto marca o pacote como "
+                  "instalado por dependência (candidato a autoremove) e apt-cache policy apenas mostra as "
+                  "prioridades já em vigor, sem definir nenhuma.",
                   statement_en="How do you pin a specific version in apt?",
                   correct_en="Pinning via /etc/apt/preferences.",
                   wrong_en=[
-                    "apt-get freeze, a subcommand that does not exist in real apt.",
-                    "dpkg --hold-version, an invented flag; dpkg does not recognize it.",
-                    "apt-mark exclude, an option that does not exist in real apt-mark."
+                    "apt-get clean.",
+                    "apt-mark auto on the target package.",
+                    "apt-cache policy on the desired package."
                 ],
-                  explanation_en="`apt-mark hold` also works; pinning offers more granularity (priority by"
-                  "origin)."),
+                  explanation_en="`apt-mark hold` also works; pinning offers more granularity (priority by "
+                  "origin). apt-get clean only empties the downloaded .deb cache, apt-mark auto marks the "
+                  "package as dependency-installed (an autoremove candidate), and apt-cache policy only "
+                  "shows the priorities already in effect without setting any."),
                 q("Por que evitar `curl ... | sh`?",
                   "Executa código remoto sem verificação de assinatura.",
-                  ["Deixa o download mais lento por não usar cache do gerenciador.",
-                   "Não funciona quando o shell padrão do sistema não é o bash.",
+                  ["Deixa o download mais lento sem o cache do apt.",
+                   "Não funciona quando o shell padrão não é bash.",
                    "Quebra a verificação de certificado TLS da conexão HTTPS."],
-                  "MITM ou comprometimento do servidor de origem viram RCE imediato. Prefira pacote assinado.",
+                  "MITM ou comprometimento do servidor de origem viram RCE imediato. Prefira pacote assinado. "
+                  "O curl continua validando o certificado TLS normalmente e o script roda em qualquer "
+                  "shell POSIX; a velocidade não é o ponto — o problema é executar o que chegou sem "
+                  "nenhuma prova de origem.",
                   statement_en="Why avoid `curl ... | sh`?",
                   correct_en="It runs remote code without signature verification.",
                   wrong_en=[
-                    "It makes the download slower by not using the package manager cache.",
-                    "It fails when the system's default shell is not bash.",
+                    "It makes the download slower without the apt cache.",
+                    "It fails when the default shell is not bash.",
                     "It breaks TLS certificate verification on the HTTPS connection."
                 ],
-                  explanation_en="MITM or a compromised origin server becomes immediate RCE. Prefer a signed"
-                  "package."),
+                  explanation_en="MITM or a compromised origin server becomes immediate RCE. Prefer a signed "
+                  "package. curl still validates the TLS certificate and the script runs in any POSIX shell; "
+                  "speed is not the point — the problem is executing what arrived with no proof of origin."),
                 q("`dpkg -l` lista:",
                   "Pacotes instalados em sistemas Debian.",
-                  ["Logs recentes gerados pelo kernel durante o boot do sistema.",
-                   "Repositórios configurados atualmente em /etc/apt/sources.list.",
-                   "Só as dependências quebradas, sem listar o pacote inteiro."],
-                  "É o equivalente a `rpm -qa` no mundo RHEL.",
+                  ["Logs do kernel gerados no boot.",
+                   "As dependências quebradas do sistema.",
+                   "Repositórios configurados em /etc/apt/sources.list."],
+                  "É o equivalente a `rpm -qa` no mundo RHEL. Log de boot sai do `dmesg` ou "
+                  "`journalctl -b`, dependência quebrada aparece no `apt --fix-broken install` e a "
+                  "lista de repositórios vem do `apt policy`.",
                   statement_en="`dpkg -l` lists:",
                   correct_en="Installed packages on Debian systems.",
                   wrong_en=[
-                    "Recent logs generated by the kernel during system boot.",
-                    "Repositories currently configured in /etc/apt/sources.list.",
-                    "Broken dependencies alone, without listing the full package set."
+                    "Kernel logs generated during boot.",
+                    "The system's broken dependencies.",
+                    "Repositories configured in /etc/apt/sources.list."
                 ],
-                  explanation_en="It is the equivalent of `rpm -qa` in the RHEL world."),
+                  explanation_en="It is the equivalent of `rpm -qa` in the RHEL world. Boot logs come from "
+                  "`dmesg` or `journalctl -b`, broken dependencies show up in `apt --fix-broken install`, "
+                  "and the repository list comes from `apt policy`."),
                 q("Em supply chain, 'typosquatting' é:",
                   "Publicar pacotes com nomes parecidos para enganar usuários (ex.: 'numpyy').",
-                  ["Um erro de digitação cometido dentro do próprio código-fonte do kernel Linux.",
-                   "Uma falha de resolução de nome causada por configuração errada de servidor DNS.",
+                  ["Um erro de digitação no código-fonte do kernel.",
+                   "Falha de resolução de nome por DNS mal configurado.",
                    "Um patch de segurança aplicado automaticamente sem revisão humana alguma antes."],
-                  "Caso famoso: pacotes maliciosos com nomes próximos a 'request', 'pyyaml', 'colorama' etc.",
+                  "Caso famoso: pacotes maliciosos com nomes próximos a 'request', 'pyyaml', 'colorama' etc. "
+                  "Typo no código-fonte é bug comum, erro de DNS é problema de infraestrutura e patch sem "
+                  "revisão é risco de processo — nenhum deles é ataque de supply chain por nome parecido.",
                   statement_en="In supply chain, 'typosquatting' is:",
                   correct_en="Publishing packages with similar names to trick users (e.g. 'numpyy').",
                   wrong_en=[
-                    "A typo made inside the Linux kernel's own source code.",
-                    "A name-resolution failure caused by a misconfigured DNS server.",
+                    "A typo in the kernel source code.",
+                    "A name-resolution failure from a misconfigured DNS.",
                     "A security patch applied automatically with no human review beforehand."
                 ],
-                  explanation_en="Famous cases: malicious packages with names close to 'request', 'pyyaml',"
-                  "'colorama', etc."),
+                  explanation_en="Famous cases: malicious packages with names close to 'request', 'pyyaml', "
+                  "'colorama', etc. A source-code typo is an ordinary bug, a DNS error is an infrastructure "
+                  "problem, and an unreviewed patch is a process risk — none is a name-lookalike attack."),
                 q("Qual ferramenta gera SBOM em projetos Python?",
                   "syft (ou pip-audit/cyclonedx-py).",
-                  ["pylint, linter de qualidade de código Python, não gerador de SBOM.",
-                   "isort, organizador de import Python, não tem relação com SBOM.",
-                   "tox, ferramenta de automação de teste, não gera lista de dependência."],
-                  "syft funciona em qualquer linguagem; cyclonedx-py é específico de Python.",
+                  ["isort --check-only.",
+                   "pylint --output-format=json.",
+                   "tox -e deps, que roda o ambiente de teste."],
+                  "syft funciona em qualquer linguagem; cyclonedx-py é específico de Python. "
+                  "isort só reordena imports, pylint aponta problema de qualidade de código e tox "
+                  "orquestra ambientes de teste — nenhum produz inventário de dependência assinável.",
                   statement_en="Which tool generates an SBOM for Python projects?",
                   correct_en="syft (or pip-audit/cyclonedx-py).",
                   wrong_en=[
-                    "pylint, a Python code-quality linter, not an SBOM generator.",
-                    "isort, a Python import organizer, unrelated to SBOM.",
-                    "tox, a test automation tool, which does not generate a dependency list."
+                    "isort --check-only.",
+                    "pylint --output-format=json.",
+                    "tox -e deps."
                 ],
-                  explanation_en="syft works for any language; cyclonedx-py is Python-specific."),
+                  explanation_en="syft works for any language; cyclonedx-py is Python-specific. isort only "
+                  "reorders imports, pylint flags code-quality problems, and tox orchestrates test "
+                  "environments — none produces a signable dependency inventory."),
                 q("Por que assinar pacotes internos?",
                   "Garante autenticidade e integridade frente a tampering.",
-                  ["Reduz o tamanho final do pacote compactado antes da distribuição.",
-                   "Aumenta a velocidade de download por usar um servidor mais próximo.",
+                  ["Reduz o tamanho final do pacote compactado.",
+                   "Aumenta a velocidade de download do pacote.",
                    "Substitui a necessidade de rodar antivírus na máquina de destino."],
-                  "Mesmo em rede 'segura', uma máquina comprometida poderia injetar binário se não houver assinatura.",
+                  "Mesmo em rede 'segura', uma máquina comprometida poderia injetar binário se não houver assinatura. "
+                  "A assinatura acrescenta alguns bytes em vez de reduzir tamanho, não muda a velocidade "
+                  "de download e não avalia o conteúdo — só prova quem publicou e que nada foi alterado.",
                   statement_en="Why sign internal packages?",
                   correct_en="It guarantees authenticity and integrity against tampering.",
                   wrong_en=[
-                    "It reduces the final size of the compressed package before distribution.",
-                    "It increases download speed by using a closer mirror server.",
+                    "It reduces the final size of the compressed package.",
+                    "It increases the package download speed.",
                     "It replaces the need to run antivirus on the destination machine."
                 ],
-                  explanation_en="Even on a 'secure' network, a compromised machine could inject a binary if"
-                  "there is no signature."),
+                  explanation_en="Even on a 'secure' network, a compromised machine could inject a binary if "
+                  "there is no signature. A signature adds a few bytes rather than shrinking the package, "
+                  "does not change download speed, and does not inspect content — it only proves who "
+                  "published it and that nothing was altered."),
                 q("Em RHEL, qual comando equivalente a `apt update`?",
                   "dnf check-update",
-                  ["yum reset --force --all", "rpm -i all --nodeps", "dnf install all --assumeyes"],
-                  "Em RHEL 8+ é dnf; antes era yum (mantido como alias).",
+                  ["dnf makecache", "rpm -qa --last", "yum clean all && yum list"],
+                  "Em RHEL 8+ é dnf; antes era yum (mantido como alias). dnf makecache só reconstrói "
+                  "o cache de metadados sem dizer o que mudou, rpm -qa lista o que já está instalado "
+                  "e `yum clean all` descarta o cache em vez de atualizá-lo.",
                   statement_en="On RHEL, which command is equivalent to `apt update`?",
                   correct_en="dnf check-update",
-                  wrong_en=["yum reset --force --everything", "rpm -i everything --nodeps", "dnf install everything --assumeyes"],
-                  explanation_en="On RHEL 8+ it is dnf; earlier it was yum (kept as an alias)."),
+                  wrong_en=["dnf makecache", "rpm -qa --last", "yum clean all && yum list"],
+                  explanation_en="On RHEL 8+ it is dnf; earlier it was yum (kept as an alias). dnf makecache "
+                  "only rebuilds the metadata cache without reporting what changed, rpm -qa lists what is "
+                  "already installed, and `yum clean all` discards the cache instead of refreshing it."),
                 q("Por que fixar versões em produção?",
                   "Reprodutibilidade e evitar atualizações automáticas que quebrem o sistema.",
-                  ["Reduz o consumo de CPU do processo gerenciador de pacotes durante a instalação.",
-                   "Permite hot reload da aplicação inteira sem reiniciar o processo principal dela.",
+                  ["Reduz o consumo de CPU do gerenciador de pacotes.",
+                   "Permite hot reload da aplicação sem reiniciar o processo.",
                    "Habilita um modo verbose, mostrando muito mais detalhe durante a instalação inteira."],
-                  "Update automático em pipeline sem testes = receita para outage.",
+                  "Update automático em pipeline sem testes = receita para outage. "
+                  "Fixar versão não muda o custo de CPU da instalação, não tem relação com hot reload "
+                  "e não altera o nível de log — quem faz isso é `-v` ou `--debug` no gerenciador.",
                   statement_en="Why pin versions in production?",
                   correct_en="Reproducibility and avoiding automatic updates that break the system.",
                   wrong_en=[
-                    "It reduces CPU use of the package manager process during installation.",
-                    "It enables hot reload of the entire application without restarting the main process.",
+                    "It reduces CPU use of the package manager.",
+                    "It enables hot reload of the app without restarting the process.",
                     "It enables a verbose mode showing much more detail during the whole install."
                 ],
-                  explanation_en="Automatic updates in a pipeline without tests are a recipe for outage."),
+                  explanation_en="Automatic updates in a pipeline without tests are a recipe for outage. "
+                  "Pinning changes neither the CPU cost of installing nor anything about hot reload, and "
+                  "it does not alter log level."),
             ],
         },
         # =====================================================================

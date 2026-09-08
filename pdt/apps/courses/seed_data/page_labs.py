@@ -5,10 +5,15 @@ o cenário. As demais páginas ganham um exercício gerado do HTML da própria
 seção, nesta ordem de preferência:
 
   1. terminal — comando em `<pre><code>` ou `<code>` inline
-  2. order    — checklist / etapas numeradas da página
+  2. order    — só quando a lista é mesmo um processo com ordem certa
   3. find_flaw — anti-pattern: a linha perigosa no meio de um snippet
   4. blanks   — preencher um path ou flag citado na aula
   5. scenario — decisão prática (nunca “qual o tema da página”)
+
+Cada exercício é montado a partir da SEÇÃO (`<h3>`) de onde saiu o conteúdo,
+não da página inteira: uma página agrupa várias seções, e varrer tudo junto
+misturava assuntos no mesmo enunciado. Página sem material concreto fica sem
+lab — exercício de fachada, resolvido por eliminação, ensina menos que nada.
 """
 from __future__ import annotations
 
@@ -213,6 +218,53 @@ def _page_headings(page_html: str) -> list[str]:
 
 def _page_text(page_html: str) -> str:
     return _plain(page_html)
+
+
+_H3_SPLIT_RE = re.compile(r"(<h3[^>]*>.*?</h3>)", re.S)
+
+
+def _sections(page_html: str) -> list[tuple[str, str]]:
+    """Divide a página em (heading, html) por `<h3>`.
+
+    Uma página agrupa várias seções (`paginate_html_sections` junta `<h3>`
+    vizinhos até encher a página). Gerar exercício a partir da página inteira
+    misturava itens de assuntos diferentes sob o título do PRIMEIRO heading —
+    era o que produzia lab de "O que NÃO logar" listando ELK/Loki/Datadog.
+    Trabalhar por seção mantém enunciado e conteúdo no mesmo assunto.
+    """
+    parts = _H3_SPLIT_RE.split(page_html)
+    out: list[tuple[str, str]] = []
+    if parts and parts[0].strip():
+        out.append(("", parts[0]))
+    for i in range(1, len(parts), 2):
+        heading = _plain(parts[i])
+        body = parts[i + 1] if i + 1 < len(parts) else ""
+        out.append((heading, body))
+    return out or [("", page_html)]
+
+
+# Sinais de que uma lista descreve um PROCESSO (tem ordem certa), e não um
+# conjunto (ferramentas, ameaças, características — onde "ordene" não tem
+# resposta). Sem um destes sinais o gerador não produz lab de ordenação.
+_PROCESS_HEADING_RE = re.compile(
+    r"\b(fluxo|passo a passo|passos|etapas|pipeline|procedimento|ordem|ciclo|"
+    r"workflow|processo|handshake|boot|rollout|deploy|resposta a incidente|"
+    r"runbook|receita|como fazer|step by step|steps|flow)\b",
+    re.IGNORECASE,
+)
+_CHECKLIST_HEADING_RE = re.compile(
+    r"\b(checklists?|check-lists?|cheat ?sheets?|boas práticas|best practices|"
+    r"regras|princípios|critérios|requisitos|alertas|armadilhas|"
+    r"anti-?patterns?)\b",
+    re.IGNORECASE,
+)
+_STEP_PREFIX_RE = re.compile(r"^\s*(?:\(?\d{1,2}[.)°º]|passo\s+\d|step\s+\d)\s*", re.IGNORECASE)
+_SEQUENCE_WORD_RE = re.compile(
+    r"\b(primeiro|depois|em seguida|então|por fim|finalmente|antes de|"
+    r"first|then|next|finally|after that)\b",
+    re.IGNORECASE,
+)
+_IMPERATIVE_RE = re.compile(r"^[A-ZÁÉÍÓÚÂÊÔÃÕÇ]?[a-záéíóúâêôãõç]+(?:ar|er|ir|e|a)\b")
 
 
 _TRIVIAL_BINS = frozenset(
@@ -509,9 +561,38 @@ def _synthesize_terminal(
     }
 
 
-def _checklist_steps(page_html: str) -> list[str]:
+def _looks_sequential(heading: str, steps: list[str]) -> bool:
+    """True só quando a lista descreve um processo com ordem defensável.
+
+    Antes, qualquer `<li>` virava "ordene as etapas" e o gabarito era a ordem
+    em que os itens apareciam no HTML — arbitrária para lista de ferramentas,
+    ameaças ou características. Exercício sem resposta certa é pior que
+    exercício nenhum, então na dúvida não geramos ordenação.
+    """
+    if len(steps) < 3:
+        return False
+    # Checklist é conjunto de verificações independentes ("root tem MFA?",
+    # "CloudTrail ativo?"): pedir para ordenar não tem resposta defensável.
+    if _CHECKLIST_HEADING_RE.search(heading):
+        return False
+    if sum(1 for s in steps if s.rstrip().endswith("?")) >= 2:
+        return False
+    if _PROCESS_HEADING_RE.search(heading):
+        return True
+    numbered = sum(1 for s in steps if _STEP_PREFIX_RE.match(s))
+    if numbered >= max(3, len(steps) - 1):
+        return True
+    if sum(1 for s in steps if _SEQUENCE_WORD_RE.search(s)) >= 2:
+        return True
+    # Lista de ações (verbo iniciando cada item) costuma ser procedimento;
+    # lista de substantivos ("Elastic Stack: ...", "OpenSearch: ...") não é.
+    imperative = sum(1 for s in steps if _IMPERATIVE_RE.match(s.strip()))
+    return imperative >= max(3, int(len(steps) * 0.75))
+
+
+def _checklist_steps(section_html: str) -> list[str]:
     steps: list[str] = []
-    for raw in _LI_RE.findall(page_html):
+    for raw in _LI_RE.findall(section_html):
         text = _plain(raw)
         if not text or len(text) > 140:
             continue
@@ -520,6 +601,17 @@ def _checklist_steps(page_html: str) -> list[str]:
         if len(steps) >= 5:
             break
     return steps
+
+
+def _sequential_steps(page_html: str) -> tuple[list[str], str] | None:
+    """Primeira seção da página cuja lista é de fato um processo ordenado."""
+    for heading, section in _sections(page_html):
+        steps = _checklist_steps(section)
+        if _looks_sequential(heading, steps):
+            cleaned = [_STEP_PREFIX_RE.sub("", s).strip() for s in steps]
+            if len(set(cleaned)) == len(cleaned):
+                return cleaned, heading
+    return None
 
 
 def _synthesize_order(steps: list[str], headings: list[str], page: int) -> dict[str, Any]:
@@ -704,9 +796,11 @@ def _synthesize_strong_scenario(
         picked = pairs[1]
     term, clause = picked
     wrongs = [name for name, _ in pairs if name != term][:2]
-    while len(wrongs) < 2:
-        extra = "chmod 777" if "chmod 777" not in wrongs else "0.0.0.0/0"
-        wrongs.append(extra)
+    if len(wrongs) < 2:
+        # Sem dois termos concorrentes da própria página, o preenchimento
+        # antigo injetava "chmod 777" como distrator: absurdo fora de contexto
+        # (numa seção sobre região AWS, por exemplo) e descartável de imediato.
+        return None
     title, title_en = _short_title(headings, page, "Escolha na prática", "Pick in practice")
     return {
         "kind": "scenario",
@@ -798,6 +892,14 @@ def _synthesize_table_decision(
         return None
     if len(subject) < 4 or len(action) < 4:
         return None
+    # Terceira alternativa: outra linha REAL da tabela. Antes era um distrator
+    # caricato fixo ("ignorar a tabela e abrir 0.0.0.0 / chmod 777"), que o
+    # aluno descarta sem ler — sobrando 2 opções e metade da dificuldade.
+    col = -1 if wrong == last[-1] else 0
+    others = [r[col] for r in rows[1:-1] if r[col] and r[col] not in (action, wrong)]
+    if not others:
+        return None
+    third = max(others, key=len)
     if len(subject) > 56:
         subject = subject[:53].rstrip() + "…"
     title, title_en = _short_title(headings, page, "Escolha a estratégia", "Pick the strategy")
@@ -819,8 +921,8 @@ def _synthesize_table_decision(
                     "good": False,
                 },
                 {
-                    "text": "Ignorar a tabela e abrir 0.0.0.0 / chmod 777 'só para testar'.",
-                    "outcome": "Isso não é estratégia desta página — é o atalho que vira incidente.",
+                    "text": f"Aplicar `{third}`.",
+                    "outcome": "Também está na tabela, mas resolve outro caso — não este.",
                     "good": False,
                 },
             ],
@@ -840,8 +942,8 @@ def _synthesize_table_decision(
                     "good": False,
                 },
                 {
-                    "text": "Ignore the table and open 0.0.0.0 / chmod 777 'just to test'.",
-                    "outcome": "That is not this page's strategy — it is the shortcut that becomes an incident.",
+                    "text": f"Apply `{third}`.",
+                    "outcome": "It is also in the table, but it solves a different case — not this one.",
                     "good": False,
                 },
             ],
@@ -850,7 +952,7 @@ def _synthesize_table_decision(
     }
 
 
-def _synthesize_decision(page_html: str, headings: list[str], page: int) -> dict[str, Any]:
+def _synthesize_decision(page_html: str, headings: list[str], page: int) -> dict[str, Any] | None:
     """Decisão prática: o que fazer vs o atalho perigoso, com base no texto."""
     title, title_en = _short_title(headings, page, "Decida na prática", "Decide in practice")
     inline = [html_lib.unescape(x).strip() for x in _INLINE_CODE_RE.findall(page_html)]
@@ -888,8 +990,8 @@ def _synthesize_decision(page_html: str, headings: list[str], page: int) -> dict
                 "good": False,
             },
             {
-                "text": "Abrir 0.0.0.0 e chmod 777 'só para testar' e lembrar de reverter depois.",
-                "outcome": "Esse atalho vira permanente e é o anti-pattern mais comum.",
+                "text": f"Adiar a decisão e seguir com o padrão de `{other}` até alguém revisar.",
+                "outcome": "Manter o padrão anterior mantém o problema que esta seção descreve.",
                 "good": False,
             },
         ]
@@ -905,8 +1007,8 @@ def _synthesize_decision(page_html: str, headings: list[str], page: int) -> dict
                 "good": False,
             },
             {
-                "text": "Open 0.0.0.0 and chmod 777 'just to test' and remember to revert later.",
-                "outcome": "That shortcut becomes permanent and is the most common anti-pattern.",
+                "text": f"Postpone the call and keep the `{other}` default until someone reviews it.",
+                "outcome": "Keeping the previous default keeps the problem this section describes.",
                 "good": False,
             },
         ]
@@ -915,44 +1017,12 @@ def _synthesize_decision(page_html: str, headings: list[str], page: int) -> dict
         situation_pt = f"Incidente no tema `{tema}`. Qual ação desta página você executa agora?"
         situation_en = f"Incident on `{tema}`. Which action from this page do you run now?"
     else:
-        choices_pt = [
-            {
-                "text": f"Seguir o procedimento de `{tema}` com o menor privilégio possível.",
-                "outcome": "Certo: a página ensina o controle concreto, não um atalho genérico.",
-                "good": True,
-            },
-            {
-                "text": "Abrir 0.0.0.0 e chmod 777 'só para testar' e lembrar de reverter depois.",
-                "outcome": "Esse atalho vira permanente e é o anti-pattern mais comum.",
-                "good": False,
-            },
-            {
-                "text": "Ignorar o detalhe e só olhar o dashboard se alguém reclamar.",
-                "outcome": "Sem o controle desta página o incidente chega antes do dashboard.",
-                "good": False,
-            },
-        ]
-        choices_en = [
-            {
-                "text": f"Follow the `{tema}` procedure with least privilege.",
-                "outcome": "Right: the page teaches the concrete control, not a generic shortcut.",
-                "good": True,
-            },
-            {
-                "text": "Open 0.0.0.0 and chmod 777 'just to test' and remember to revert later.",
-                "outcome": "That shortcut becomes permanent and is the most common anti-pattern.",
-                "good": False,
-            },
-            {
-                "text": "Ignore the detail and only check the dashboard if someone complains.",
-                "outcome": "Without this page's control the incident arrives before the dashboard.",
-                "good": False,
-            },
-        ]
-        explain_pt = f"O exercício pede a ação desta página ({tema}), não o atalho perigoso."
-        explain_en = f"The exercise asks for this page's action ({tema}), not the dangerous shortcut."
-        situation_pt = f"Você está no cenário desta página ({tema}). O que faz agora?"
-        situation_en = f"You are in this page's scenario ({tema}). What do you do now?"
+        # Sem comando concreto nem termo em destaque, o único exercício que
+        # dava para montar era "siga o procedimento desta página" contra um
+        # distrator caricato ("chmod 777 só para testar"): a resposta certa
+        # saía por eliminação, sem ensinar nada. Página sem material concreto
+        # agora fica sem lab, em vez de ganhar um exercício de fachada.
+        return None
     return {
         "kind": "scenario",
         "title": title,
@@ -986,7 +1056,7 @@ def _tokens_are_antipattern(tokens: list[str]) -> bool:
     ) or bool(re.search(r"\|\s*(ba)?sh\b", joined))
 
 
-def synthesize_page_lab(page_html: str, headings: list[str], page: int) -> dict[str, Any]:
+def synthesize_page_lab(page_html: str, headings: list[str], page: int) -> dict[str, Any] | None:
     if _is_anti_page(page_html, headings) or _dangerous_inline(page_html):
         flaw = _synthesize_find_flaw(page_html, headings, page)
         if flaw:
@@ -998,9 +1068,10 @@ def synthesize_page_lab(page_html: str, headings: list[str], page: int) -> dict[
         heads = [cmd_heading] if cmd_heading else headings
         return _synthesize_terminal(tokens, comment, heads, page)
 
-    steps = _checklist_steps(page_html)
-    if len(steps) >= 3:
-        return _synthesize_order(steps, headings, page)
+    seq = _sequential_steps(page_html)
+    if seq:
+        steps, seq_heading = seq
+        return _synthesize_order(steps, [seq_heading] if seq_heading else headings, page)
 
     if _is_anti_page(page_html, headings):
         flaw = _synthesize_find_flaw(page_html, headings, page)
@@ -1045,10 +1116,24 @@ def _score_page(page_html: str, authored: dict) -> int:
 
 
 def assign_authored_page(pages: list[str], authored: dict) -> int:
+    """Página em que o lab autoral entra, nunca antes de a aula ensinar o tema.
+
+    Só pontuar palavras em comum colocava o lab de `setfacl` na página 2 de
+    "Fundamentos de Linux", enquanto `setfacl` só aparece na página 3: o
+    aluno topava com um exercício sobre um comando que a aula ainda não
+    tinha apresentado. Quando o lab tem um comando central, as candidatas
+    ficam restritas às páginas que realmente o mencionam.
+    """
     if not pages:
         return 1
-    best_i, best_s = 1, -1
-    for i, page in enumerate(pages, start=1):
+    candidates = list(enumerate(pages, start=1))
+    command = ((authored.get("spec") or {}).get("correct_command") or [None])[0]
+    if command:
+        teaching = [(i, p) for i, p in candidates if command.lower() in p.lower()]
+        if teaching:
+            candidates = teaching
+    best_i, best_s = candidates[0][0], -1
+    for i, page in candidates:
         s = _score_page(page, authored)
         if s > best_s:
             best_i, best_s = i, s
@@ -1067,12 +1152,18 @@ def _topic_pages(topic: dict) -> tuple[list[str], list[str]]:
 
 
 def expand_labs() -> list[dict[str, Any]]:
-    """Lista pronta para o seed: 1 lab por (tópico, página)."""
+    """Lista pronta para o seed: no máximo 1 lab por (tópico, página).
+
+    Página sem material concreto (comando, checklist ordenado, anti-pattern,
+    path, tabela ou termo em destaque) fica SEM lab de propósito: o gerador
+    prefere o vazio a um exercício de fachada, cuja resposta certa saía por
+    eliminação. `seed_labs` desativa os labs cuja página saiu do catálogo.
+    """
     authored_by_title = {lab["topic_title"]: lab for lab in LABS}
     out: list[dict[str, Any]] = []
     for phase in PHASES:
         for topic in phase["topics"]:
-            pages, _pages_en = _topic_pages(topic)
+            pages, pages_en = _topic_pages(topic)
             authored = authored_by_title.get(topic["title"])
             authored_page = assign_authored_page(pages, authored) if authored else None
             for i, page in enumerate(pages, start=1):
@@ -1081,6 +1172,21 @@ def expand_labs() -> list[dict[str, Any]]:
                     continue
                 headings = _page_headings(page)
                 built = synthesize_page_lab(page, headings, i)
+                if not built:
+                    continue
+                # O conteúdo do exercício (cenário, linhas, etapas) sai do HTML
+                # da página; gerar só a partir do português deixava o aluno em
+                # inglês com título e enunciado meio traduzidos ("Build the
+                # command: Modelo de identidade..."). Regerar a partir da
+                # página em inglês só vale se cair no MESMO tipo de exercício —
+                # senão as duas versões divergiriam em estrutura, e o template
+                # renderiza uma só (`kind`).
+                page_en = pages_en[i - 1] if i - 1 < len(pages_en) else page
+                if page_en != page:
+                    built_en = synthesize_page_lab(page_en, _page_headings(page_en), i)
+                    if built_en and built_en["kind"] == built["kind"]:
+                        built["title_en"] = built_en["title_en"]
+                        built["spec_en"] = built_en["spec_en"]
                 out.append(
                     {
                         "topic_title": topic["title"],
