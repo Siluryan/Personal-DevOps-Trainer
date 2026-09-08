@@ -73,9 +73,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "What is the main purpose of the `grep` command?",
         "choices": [
             "Procurar por padrões (regex) em arquivos ou na entrada padrão e imprimir as linhas que casam com o padrão.",
-            "Substituir trechos de texto in-place em um ou mais arquivos, decisão que parece segura até o primeiro teste de penetração real.",
-            "Comprimir arquivos preservando metadados, função coberta por `gzip`, `bzip2` ou `xz`, prática que passa despercebida até uma auditoria de segurança.",
-            "Listar quais arquivos estão abertos por cada processo do sistema, função do utilitário `lsof`, que só aparece como problema depois que o sistema já está em produção.",
+            "Substituir trechos de texto in-place em um ou mais arquivos.",
+            "Comprimir arquivos preservando metadados, função coberta por `gzip`, `bzip2` ou `xz`.",
+            "Listar quais arquivos estão abertos por cada processo do sistema, função do utilitário `lsof`.",
         ],
         "choices_en": [
             "Search for patterns (regex) in files or standard input and print the lines that match the pattern.",
@@ -112,10 +112,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Sobre o comando `sudo`, qual afirmação é correta?",
         "statement_en": "Regarding the `sudo` command, which statement is correct?",
         "choices": [
-            "Executa qualquer comando como root sem necessidade de credencial, basta o usuário pertencer ao grupo `sudo`/`wheel`, prática que gera falso senso de segurança no time.",
+            "Executa qualquer comando como root sem necessidade de credencial, basta o usuário pertencer ao grupo `sudo`/`wheel`.",
             "Permite rodar comandos com privilégios elevados (de outro usuário, normalmente root) conforme as regras definidas em `/etc/sudoers` e `/etc/sudoers.d/`.",
-            "Substitui permanentemente a sessão pelo usuário-alvo, equivalente a um `login` completo, sem retorno ao usuário original ao final do comando, comportamento que só some quando alguém finalmente lê a documentação.",
-            "Dispensa qualquer autenticação por senha em vários comandos por padrão na maioria das distros, basta o usuário estar logado interativamente, escolha que economiza tempo agora e cobra o preço mais tarde.",
+            "Substitui permanentemente a sessão pelo usuário-alvo, equivalente a um `login` completo, sem retorno ao usuário original ao final do comando.",
+            "Dispensa qualquer autenticação por senha em vários comandos por padrão na maioria das distros, basta o usuário estar logado interativamente.",
         ],
         "choices_en": [
             "Runs any command as root with no credential required, as long as the user belongs to the `sudo`/`wheel` group, which creates a false sense of security on the team.",
@@ -132,10 +132,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que faz o comando `ln -s arquivo link`?",
         "statement_en": "What does the command `ln -s arquivo link` do?",
         "choices": [
-            "Cria uma referência adicional para o mesmo arquivo de origem, compartilhando metadados e conteúdo com ele, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Cria uma referência adicional para o mesmo arquivo de origem, compartilhando metadados e conteúdo com ele.",
             "Cria um link simbólico (soft link): um arquivo especial que armazena o caminho textual para o alvo e pode atravessar filesystems.",
-            "Cria um novo arquivo em `link` com os mesmos dados do original, preservando permissões e datas, abordagem que funciona bem até o primeiro pico de carga real.",
-            "Renomeia o arquivo original para `link`, mantendo o mesmo inode e removendo o nome antigo, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
+            "Cria um novo arquivo em `link` com os mesmos dados do original, preservando permissões e datas.",
+            "Renomeia o arquivo original para `link`, mantendo o mesmo inode e removendo o nome antigo, decisão que parece inofensiva isolada.",
         ],
         "choices_en": [
             "Creates an extra reference to the same source file, sharing metadata and content with it, which increases the attack surface without anyone noticing.",
@@ -172,10 +172,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual a diferença entre `>` e `>>` em redirecionamento de saída no shell POSIX?",
         "statement_en": "What is the difference between `>` and `>>` for output redirection in a POSIX shell?",
         "choices": [
-            "Ambos abrem o arquivo em modo append; a única diferença é que `>>` adiciona uma quebra de linha implícita ao final, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Ambos abrem o arquivo em modo append; a única diferença é que `>>` adiciona uma quebra de linha implícita ao final.",
             "Com `>`, o shell trunca ou cria o arquivo e grava o stdout do comando; com `>>`, abre em append e preserva o que já estava no arquivo.",
-            "Com `>`, a saída é geralmente adicionada ao final do arquivo existente; com `>>`, o shell recria o arquivo do zero antes de escrever, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
-            "Ambos exigem `sudo` quando o arquivo de destino fica fora do `$HOME` do usuário; sem isso, falham com `Permission denied`, comportamento que confunde quem está debugando meses depois.",
+            "Com `>`, a saída é geralmente adicionada ao final do arquivo existente; com `>>`, o shell recria o arquivo do zero antes de escrever, decisão que cria dívida técnica silenciosa.",
+            "Ambos exigem `sudo` quando o arquivo de destino fica fora do `$HOME` do usuário; sem isso, falham com `Permission denied`.",
         ],
         "choices_en": [
             "Both open the file in append mode; the only difference is that `>>` adds an implicit newline at the end, a typical result of copying config from another project without adapting it.",
@@ -232,10 +232,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que faz o operador `|` (pipe) entre dois comandos em Bash?",
         "statement_en": "What does the `|` (pipe) operator do between two commands in Bash?",
         "choices": [
-            "Executa os dois comandos em paralelo, em processos independentes, sem qualquer comunicação entre eles, equivalente a `cmd1 & cmd2`, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Executa os dois comandos em paralelo, em processos independentes, sem qualquer comunicação entre eles, equivalente a `cmd1 & cmd2`.",
             "Conecta o `stdout` do comando à esquerda ao `stdin` do comando à direita, criando um fluxo entre processos via pipe(2) anônimo em memória.",
-            "Comenta o restante da linha após o `|`, fazendo o shell ignorar o comando à direita, papel do caractere `#`, atalho que funciona hoje mas complica a próxima migração.",
-            "Redireciona o `stderr` (descriptor 2) para um arquivo regular criado pelo shell antes da execução do comando, prática ainda comum em sistema legado que raramente é atualizado.",
+            "Comenta o restante da linha após o `|`, fazendo o shell ignorar o comando à direita, papel do caractere `#`.",
+            "Redireciona o `stderr` (descriptor 2) para um arquivo regular criado pelo shell antes da execução do comando.",
         ],
         "choices_en": [
             "Runs both commands in parallel as independent processes with no communication between them, equivalent to `cmd1 & cmd2`, a typical result of copying config from another project without adapting it.",
@@ -272,10 +272,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Em um shell script Bash, qual o efeito de `set -e` no início do arquivo?",
         "statement_en": "In a Bash shell script, what is the effect of `set -e` at the start of the file?",
         "choices": [
-            "Habilita o eco de cada comando antes de executá-lo, útil para depuração, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Habilita o eco de cada comando antes de executá-lo, útil para depuração, decisão que cria dívida técnica silenciosa.",
             "Faz o script encerrar imediatamente caso qualquer comando retorne status diferente de zero, com algumas exceções (comandos em pipes intermediários, em `if`, em `||`/`&&`).",
-            "Define que variáveis não exportadas serão exportadas automaticamente para subprocessos, prática que só aparece como erro grave durante um incidente real.",
-            "Ativa modo verbose (`-v`), imprimindo cada linha do script lida pelo shell antes de qualquer expansão, diferente do `-e`, prática que troca previsibilidade por economia de esforço imediato.",
+            "Define que variáveis não exportadas serão exportadas automaticamente para subprocessos.",
+            "Ativa modo verbose (`-v`), imprimindo cada linha do script lida pelo shell antes de qualquer expansão, diferente do `-e`.",
         ],
         "choices_en": [
             "Enables echoing each command before running it, useful for debugging, which creates silent technical debt without an immediate error.",
@@ -292,10 +292,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual o papel da variável de ambiente `PATH` em sistemas Unix-like?",
         "statement_en": "What is the role of the `PATH` environment variable on Unix-like systems?",
         "choices": [
-            "Define o diretório onde o systemd grava os logs persistentes, normalmente apontando para `/var/log/journal`, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Define o diretório onde o systemd grava os logs persistentes, normalmente apontando para `/var/log/journal`.",
             "Contém uma lista de diretórios separados por `:` em que o shell procura, em ordem, o executável correspondente ao nome digitado.",
-            "Armazena o nome do usuário atualmente logado, abordagem que resolve o sintoma, não a causa raiz do problema.",
-            "Identifica o hostname da máquina exibido no prompt, comportamento que confunde quem está debugando meses depois.",
+            "Armazena o nome do usuário atualmente logado, abordagem que resolve o sintoma.",
+            "Identifica o hostname da máquina exibido no prompt.",
         ],
         "choices_en": [
             "Defines the directory where systemd writes persistent logs, usually pointing to `/var/log/journal`, an assumption that rarely holds outside a controlled lab environment.",
@@ -335,8 +335,8 @@ JUNIOR_QUESTIONS: list[dict] = [
         "choices": [
             "Um protocolo de roteamento dinâmico que troca tabelas de rotas entre roteadores, função desempenhada na verdade por OSPF e BGP, suposição que só vale em ambiente de desenvolvimento, não em produção.",
             "Um sistema hierárquico distribuído que traduz nomes de domínio (ex.: `exemplo.com`) em endereços IP e vice-versa, normalmente sobre UDP/53 (com fallback para TCP/53).",
-            "Um serviço de entrega de e-mails entre servidores, típico do SMTP para encaminhamento e do IMAP/POP3 para leitura das caixas postais pelos clientes, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
-            "Um padrão de criptografia simétrica usado para proteger sessões TLS, equivalente ao AES-GCM negociado no handshake, algo que passa no code review quando ninguém olha com atenção.",
+            "Um serviço de entrega de e-mails entre servidores, típico do SMTP para encaminhamento e do IMAP/POP3 para leitura das caixas postais pelos clientes, atalho que parece seguro isolado.",
+            "Um padrão de criptografia simétrica usado para proteger sessões TLS, equivalente ao AES-GCM negociado no handshake.",
         ],
         "choices_en": [
             "A dynamic routing protocol that exchanges route tables between routers, a role actually played by OSPF and BGP, an assumption that only holds in development, not production.",
@@ -353,10 +353,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual afirmação descreve corretamente a diferença entre TCP e UDP?",
         "statement_en": "Which statement correctly describes the difference between TCP and UDP?",
         "choices": [
-            "TCP é mais rápido por não confirmar pacotes (fire-and-forget), enquanto UDP estabelece conexão para garantir ordem, suposição que só se sustenta enquanto o time é pequeno.",
-            "UDP garante entrega, ordenação e controle de fluxo; TCP é sem conexão e não confirma recebimento, prática ainda comum em sistema legado que raramente é atualizado.",
+            "TCP é mais rápido por não confirmar pacotes (fire-and-forget), enquanto UDP estabelece conexão para garantir ordem.",
+            "UDP garante entrega, ordenação e controle de fluxo; TCP é sem conexão e não confirma recebimento.",
             "TCP é orientado a conexão e confiável (handshake, ACKs, retransmissão, ordenação); UDP é sem conexão, *best-effort*, sem garantia de entrega ou ordem.",
-            "No nível da API socket os dois protocolos têm o mesmo comportamento; a única diferença é a porta padrão registrada na IANA para cada um, decisão que parece segura até o primeiro teste de penetração real.",
+            "No nível da API socket os dois protocolos têm o mesmo comportamento; a única diferença é a porta padrão registrada na IANA para cada um.",
         ],
         "choices_en": [
             "TCP is faster because it does not acknowledge packets (fire-and-forget), while UDP establishes a connection to guarantee order, an assumption that only holds while the team is small.",
@@ -373,10 +373,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual das faixas abaixo é uma faixa de endereços IPv4 privados definida pela RFC 1918?",
         "statement_en": "Which of the ranges below is a private IPv4 address range defined by RFC 1918?",
         "choices": [
-            "`8.8.8.0/24`, bloco do Google Public DNS, roteável publicamente, prática que gera falso senso de segurança no time.",
+            "`8.8.8.0/24`, bloco do Google Public DNS, roteável publicamente.",
             "`10.0.0.0/8`, faixa reservada para endereçamento privado (RFC 1918, não roteável na Internet pública típica).",
-            "`192.0.2.0/24`, bloco TEST-NET-1 reservado pela RFC 5737 para documentação e exemplos, abordagem que resolve o sintoma, não a causa raiz do problema.",
-            "`169.254.0.0/16`, faixa link-local APIPA (RFC 3927), usada quando DHCP falha, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "`192.0.2.0/24`, bloco TEST-NET-1 reservado pela RFC 5737 para documentação e exemplos, abordagem que resolve o sintoma.",
+            "`169.254.0.0/16`, faixa link-local APIPA (RFC 3927), usada quando DHCP falha, decisão que cria dívida técnica silenciosa.",
         ],
         "choices_en": [
             "`8.8.8.0/24`, a Google Public DNS block, publicly routable, creating a false sense of security on the team.",
@@ -393,10 +393,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual a função do NAT (Network Address Translation) em um roteador de borda?",
         "statement_en": "What is the role of NAT (Network Address Translation) on an edge router?",
         "choices": [
-            "Aplicar políticas de segurança na camada de aplicação, analisando o conteúdo das requisições, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Aplicar políticas de segurança na camada de aplicação, analisando o conteúdo das requisições.",
             "Reescrever endereços IP (e, em muitos cenários, portas) nos cabeçalhos dos pacotes ao cruzar redes distintas, permitindo o compartilhamento de endereços públicos.",
             "Estabelecer um canal criptografado ponto a ponto para tráfego entre redes através de infraestrutura pública, erro típico de configuração feita às pressas, sem revisão posterior.",
-            "Absorver picos de tráfego malicioso em larga escala com filtragem distribuída próxima da borda, atalho que troca segurança por conveniência de curto prazo.",
+            "Absorver picos de tráfego malicioso em larga escala com filtragem distribuída próxima da borda.",
         ],
         "choices_en": [
             "Apply application-layer security policies by inspecting request contents, an assumption that rarely holds outside a controlled lab environment.",
@@ -413,10 +413,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Para diagnosticar latência e perda de pacotes ao longo do caminho de rede entre dois hosts, qual ferramenta combina ping com traceroute por hop?",
         "statement_en": "To diagnose latency and packet loss along the network path between two hosts, which tool combines ping with traceroute per hop?",
         "choices": [
-            "`nslookup` consulta servidores DNS e retorna registros como A/AAAA/MX, mas não testa latência nem caminho de rede, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "`nslookup` consulta servidores DNS e retorna registros como A/AAAA/MX, mas não testa latência nem caminho de rede.",
             "`mtr` (My TraceRoute) e `traceroute` exibem cada hop entre origem e destino; o `mtr` mantém a sondagem contínua e calcula perda e RTT por hop em tempo real.",
-            "`telnet host porta` só testa se uma porta TCP aceita conexão; não revela hops intermediários nem perda por hop, erro que só é percebido quando o time de operação já está lidando com o incidente.",
-            "`scp` é cliente SCP/SSH para transferência de arquivos; mede throughput de cópia, não latência por hop, algo que passa no code review quando ninguém olha com atenção.",
+            "`telnet host porta` só testa se uma porta TCP aceita conexão; não revela hops intermediários nem perda por hop.",
+            "`scp` é cliente SCP/SSH para transferência de arquivos; mede throughput de cópia, não latência por hop.",
         ],
         "choices_en": [
             "`nslookup` queries DNS servers and returns records such as A/AAAA/MX, but does not test latency or network path, a common shortcut when deadlines are tight and nobody reviews later.",
@@ -434,9 +434,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "What is a public-CA-issued TLS X.509 certificate?",
         "choices": [
             "Um arquivo no formato X.509 que contém a chave pública do servidor e metadados (subject, SAN, validade), assinado digitalmente pela autoridade certificadora.",
-            "A senha utilizada pelo servidor para autenticar-se em conexões TLS, armazenada cifrada no `keychain` do sistema operacional, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
-            "Um algoritmo de hash (SHA-256/SHA-384) negociado no handshake e usado para integridade dos pacotes TLS, prática que gera falso senso de segurança no time.",
-            "Um cookie de sessão emitido pelo servidor para evitar repetir o handshake em requisições subsequentes, equivalente a um session ticket TLS, que só aparece como problema depois que o sistema já está em produção.",
+            "A senha utilizada pelo servidor para autenticar-se em conexões TLS, armazenada cifrada no `keychain` do sistema operacional.",
+            "Um algoritmo de hash (SHA-256/SHA-384) negociado no handshake e usado para integridade dos pacotes TLS.",
+            "Um cookie de sessão emitido pelo servidor para evitar repetir o handshake em requisições subsequentes, equivalente a um session ticket TLS.",
         ],
         "choices_en": [
             "An X.509-format file that contains the server's public key and metadata (subject, SAN, validity), digitally signed by the certificate authority.",
@@ -453,9 +453,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual a função de um load balancer em uma arquitetura web?",
         "statement_en": "What is the role of a load balancer in a web architecture?",
         "choices": [
-            "Aplicar regras de filtragem de tráfego por origem, porta e protocolo para permitir ou bloquear conexões, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "Aplicar regras de filtragem de tráfego por origem, porta e protocolo para permitir ou bloquear conexões.",
             "Distribuir requisições recebidas entre múltiplos backends saudáveis usando algoritmos como round-robin, least-connections ou consistent hashing.",
-            "Manter respostas populares em memória para reduzir latência e aliviar carga dos servidores de aplicação, prática que troca previsibilidade por economia de esforço imediato.",
+            "Manter respostas populares em memória para reduzir latência e aliviar carga dos servidores de aplicação.",
             "Persistir dados estruturados consultáveis por SQL, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
         ],
         "choices_en": [
@@ -514,10 +514,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual comando cria uma nova branch local e já faz o checkout para ela em um único passo?",
         "statement_en": "Which command creates a new local branch and checks it out in a single step?",
         "choices": [
-            "`git branch novo` cria a branch a partir do HEAD atual, mas não muda o checkout, você precisa rodar `git checkout novo` em seguida, prática que só aparece como erro grave durante um incidente real.",
+            "`git branch novo` cria a branch a partir do HEAD atual, mas não muda o checkout, você precisa rodar `git checkout novo` em seguida.",
             "`git checkout -b novo` cria a branch a partir do HEAD atual e já move o `HEAD` (e o working tree) para ela, equivalente moderno é `git switch -c novo`.",
-            "`git switch novo` faz checkout em uma branch já existente; sem a flag `-c`, falha se a branch ainda não existe, atalho que troca segurança por conveniência de curto prazo.",
-            "`git merge novo` integra os commits da branch `novo` na branch atual, não cria branch nem muda de contexto, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "`git switch novo` faz checkout em uma branch já existente; sem a flag `-c`, falha se a branch ainda não existe.",
+            "`git merge novo` integra os commits da branch `novo` na branch atual, não cria branch nem muda de contexto, abordagem que resolve o sintoma.",
         ],
         "choices_en": [
             "`git branch novo` creates the branch from current HEAD but does not change checkout; you still need `git checkout novo` afterward, a practice that only surfaces as a serious problem during a real incident.",
@@ -535,8 +535,8 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "What is the difference between `git fetch` and `git pull` on the current branch?",
         "choices": [
             "O `git fetch` baixa refs e objetos do remoto e atualiza `refs/remotes/*` sem alterar o working tree; `git pull` agrega `fetch` mais `merge` ou `rebase` na branch atual (ex.: com `pull.rebase=true`).",
-            "Ambos baixam objetos do remoto, mas só o `pull` atualiza as refs de tracking; o `fetch` só popula `.git/objects` sem mover refs, atalho que troca segurança por conveniência de curto prazo.",
-            "O `fetch` baixa só tags assinadas e branches protegidas, enquanto o `pull` inclui também referências não protegidas e objetos LFS, prática que troca previsibilidade por economia de esforço imediato.",
+            "Ambos baixam objetos do remoto, mas só o `pull` atualiza as refs de tracking; o `fetch` só popula `.git/objects` sem mover refs.",
+            "O `fetch` baixa só tags assinadas e branches protegidas, enquanto o `pull` inclui também referências não protegidas e objetos LFS.",
             "O `pull` funciona só com permissão de leitura, enquanto o `fetch` exige permissão de escrita no remoto para atualizar refs, suposição que só vale em ambiente de desenvolvimento, não em produção.",
         ],
         "choices_en": [
@@ -554,10 +554,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que faz `git stash push` (ou simplesmente `git stash`) em um working tree com mudanças não comitadas?",
         "statement_en": "What does `git stash push` (or simply `git stash`) do in a working tree with uncommitted changes?",
         "choices": [
-            "Apaga permanentemente vários arquivos não rastreados, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Apaga permanentemente vários arquivos não rastreados, decisão que funciona no papel.",
             "Salva as mudanças do working tree e do index em uma pilha temporária (`refs/stash`) e restaura o working tree para o estado do HEAD.",
-            "Faz `push` da branch atual para o remoto configurado em `origin`, equivalente a `git push origin HEAD`, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
-            "Cria uma tag anotada apontando para o commit atual, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Faz `push` da branch atual para o remoto configurado em `origin`, equivalente a `git push origin HEAD`, atalho que parece seguro isolado.",
+            "Cria uma tag anotada apontando para o commit atual.",
         ],
         "choices_en": [
             "Permanently deletes several untracked files, a decision that works on paper but does not survive the first real incident.",
@@ -574,10 +574,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual estratégia integra mudanças de outra branch preservando histórico linear, sem criar merge commits?",
         "statement_en": "Which strategy integrates changes from another branch while preserving a linear history, without creating merge commits?",
         "choices": [
-            "`git merge` cria um commit de merge com dois pais quando a branch de destino divergiu, gera histórico não linear, abordagem que funciona bem até o primeiro pico de carga real.",
+            "`git merge` cria um commit de merge com dois pais quando a branch de destino divergiu, gera histórico não linear.",
             "`git rebase` reaplica os commits da branch atual em cima da ponta da outra branch, reescrevendo os SHAs e mantendo um histórico linear.",
-            "`git cherry-pick` aplica commits específicos por SHA na branch atual, mas não é a forma usual de integrar uma branch inteira, que só aparece como problema depois que o sistema já está em produção.",
-            "`git stash apply` reaplica mudanças armazenadas no stash; não tem relação com integração entre branches, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
+            "`git cherry-pick` aplica commits específicos por SHA na branch atual, mas não é a forma usual de integrar uma branch inteira.",
+            "`git stash apply` reaplica mudanças armazenadas no stash; não tem relação com integração entre branches.",
         ],
         "choices_en": [
             "`git merge` creates a merge commit with two parents when the destination branch has diverged, producing a non-linear history, an approach that works well until the first real load spike.",
@@ -595,9 +595,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "How do you undo only the last local commit (not yet pushed to the remote), keeping the changes already staged?",
         "choices": [
             "`git reset --soft HEAD~1` move o `HEAD` para o commit anterior, preserva o index com as mudanças staged e mantém o working tree intacto.",
-            "`git reset --hard HEAD~1` move o `HEAD`, descarta o index *e* o working tree, você perde irreversivelmente o conteúdo do último commit, prática que troca previsibilidade por economia de esforço imediato.",
+            "`git reset --hard HEAD~1` move o `HEAD`, descarta o index *e* o working tree, você perde irreversivelmente o conteúdo do último commit.",
             "`git push --force` reescreve o histórico no remoto sem afetar o `HEAD` local; o último commit local segue presente, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
-            "`git revert HEAD` cria um *novo* commit que inverte as mudanças do último commit; não remove o commit do histórico, prática que passa despercebida até uma auditoria de segurança.",
+            "`git revert HEAD` cria um *novo* commit que inverte as mudanças do último commit; não remove o commit do histórico.",
         ],
         "choices_en": [
             "`git reset --soft HEAD~1` moves `HEAD` to the previous commit, keeps the index with the staged changes, and leaves the working tree intact.",
@@ -614,10 +614,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual é a função de um Pull Request (GitHub/Bitbucket) ou Merge Request (GitLab)?",
         "statement_en": "What is the role of a Pull Request (GitHub/Bitbucket) or Merge Request (GitLab)?",
         "choices": [
-            "Substituir automaticamente o branch principal pela branch da feature, sem revisão nem testes, escolha que economiza tempo agora e cobra o preço mais tarde.",
+            "Substituir automaticamente o branch principal pela branch da feature, sem revisão nem testes.",
             "Solicitar revisão e merge de uma branch em outra, oferecendo espaço para code review, comentários linha-a-linha, checks de CI e aprovações antes da integração.",
-            "Comprimir o histórico do repositório, reduzindo o tamanho da `.git/objects`, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
-            "Criar um repositório remoto a partir do local, operação real de `git remote add` ou da criação de repo no provedor, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Comprimir o histórico do repositório, reduzindo o tamanho da `.git/objects`.",
+            "Criar um repositório remoto a partir do local, operação real de `git remote add` ou da criação de repo no provedor, decisão que funciona no papel.",
         ],
         "choices_en": [
             "Automatically replace the main branch with the feature branch, with no review or tests, saving time now and charging the cost later.",
@@ -634,10 +634,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Em uma estratégia de branching trunk-based development, o time:",
         "statement_en": "In a trunk-based development branching strategy, the team:",
         "choices": [
-            "Mantém múltiplos *long-lived branches* (release, feature, develop) e integra só em janelas trimestrais, modelo do Git Flow clássico, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Mantém múltiplos *long-lived branches* (release, feature, develop) e integra só em janelas trimestrais, modelo do Git Flow clássico, decisão que funciona no papel.",
             "Faz merges curtos e frequentes em uma única branch principal (`main`/`trunk`), usando feature flags para esconder código incompleto e priorizando integração contínua.",
-            "Substitui Git por Subversion ou Mercurial em vez de uma DAG distribuída, por questões de modelo de branching, comportamento que só vira prioridade depois que já causou prejuízo.",
-            "Faz commits em pares só semanalmente, em janela única de integração na sexta-feira, prática descontinuada do Release Train clássico, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Substitui Git por Subversion ou Mercurial em vez de uma DAG distribuída, por questões de modelo de branching.",
+            "Faz commits em pares só semanalmente, em janela única de integração na sexta-feira, prática descontinuada do Release Train clássico.",
         ],
         "choices_en": [
             "Keeps multiple *long-lived branches* (release, feature, develop) and integrates only in quarterly windows, the classic Git Flow model, a decision that works on paper but does not survive the first real incident.",
@@ -677,8 +677,8 @@ JUNIOR_QUESTIONS: list[dict] = [
         "choices": [
             "Iniciar contêineres a partir de imagens já existentes, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
             "Receita declarativa em texto que descreve, camada por camada, como construir uma imagem Docker via `docker build`.",
-            "Listar os contêineres atualmente em execução, prática que funciona em teste, mas falha sob carga real de produção.",
-            "Substituir o `docker-compose.yml` em ambientes de produção, definindo múltiplos serviços e suas redes, que só aparece como problema depois que o sistema já está em produção.",
+            "Listar os contêineres atualmente em execução, prática que funciona em teste.",
+            "Substituir o `docker-compose.yml` em ambientes de produção, definindo múltiplos serviços e suas redes.",
         ],
         "choices_en": [
             "Start containers from already existing images, which can raise false alerts or silence real ones depending on the case.",
@@ -695,10 +695,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual diretiva de Dockerfile define o comando padrão executado quando o contêiner inicia (e que pode ser sobrescrito ao chamar `docker run`)?",
         "statement_en": "Which Dockerfile directive defines the default command run when the container starts (and that can be overridden when calling `docker run`)?",
         "choices": [
-            "`FROM` define a imagem base sobre a qual o build começa, não o comando de runtime, atalho que funciona hoje mas complica a próxima migração.",
-            "`RUN` executa um comando *durante o build* (gera uma camada com o resultado), não no startup do contêiner, comportamento que só é notado quando alguém audita os logs depois.",
+            "`FROM` define a imagem base sobre a qual o build começa, não o comando de runtime.",
+            "`RUN` executa um comando *durante o build* (gera uma camada com o resultado), não no startup do contêiner.",
             "`CMD` define o comando default executado pelo contêiner; pode ser sobrescrito por argumentos passados a `docker run` ou pelo `command:` do Compose.",
-            "`EXPOSE` documenta as portas em que o contêiner escuta, é metadado e não publica portas no host por si só, suposição que só se sustenta enquanto o time é pequeno.",
+            "`EXPOSE` documenta as portas em que o contêiner escuta, é metadado e não publica portas no host por si só.",
         ],
         "choices_en": [
             "`FROM` defines the base image the build starts from, not the runtime command, a shortcut that works today but complicates the next migration.",
@@ -715,10 +715,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual a diferença entre uma imagem e um contêiner Docker?",
         "statement_en": "What is the difference between a Docker image and a container?",
         "choices": [
-            "Imagem é um arquivo `.zip` desempacotado em runtime; contêiner é uma máquina virtual completa com kernel próprio, que só aparece como problema depois que o sistema já está em produção.",
+            "Imagem é um arquivo `.zip` desempacotado em runtime; contêiner é uma máquina virtual completa com kernel próprio.",
             "Imagem é o template imutável (camadas read-only) gerado pelo build; contêiner é uma instância em execução com uma camada writable por cima e um processo rodando.",
-            "Imagem e contêiner referem-se ao mesmo artefato em runtime, Docker abandonou a distinção entre os dois termos a partir da versão 20.10, suposição que só se sustenta enquanto o time é pequeno.",
-            "Imagem só funciona em hosts Linux; contêiner só funciona em hosts Windows, daí a separação dos termos, comportamento que só some quando alguém finalmente lê a documentação.",
+            "Imagem e contêiner referem-se ao mesmo artefato em runtime, Docker abandonou a distinção entre os dois termos a partir da versão 20.10.",
+            "Imagem só funciona em hosts Linux; contêiner só funciona em hosts Windows, daí a separação dos termos.",
         ],
         "choices_en": [
             "An image is a `.zip` file unpacked at runtime; a container is a full virtual machine with its own kernel, which only surfaces after the system is already in production.",
@@ -755,10 +755,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que faz `docker exec -it <container> bash`?",
         "statement_en": "What does `docker exec -it <container> bash` do?",
         "choices": [
-            "Cria um novo contêiner a partir da imagem do contêiner alvo, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Cria um novo contêiner a partir da imagem do contêiner alvo, abordagem que resolve o sintoma.",
             "Abre um shell `bash` interativo dentro do contêiner em execução, alocando TTY (`-t`) e mantendo `stdin` aberto (`-i`).",
-            "Reinicia o contêiner alvo executando seu `CMD` em uma sessão interativa, comportamento parcial de `docker restart`, prática ainda comum em sistema legado que raramente é atualizado.",
-            "Apaga o contêiner alvo após o término da sessão `bash`, comportamento que só some quando alguém finalmente lê a documentação.",
+            "Reinicia o contêiner alvo executando seu `CMD` em uma sessão interativa, comportamento parcial de `docker restart`.",
+            "Apaga o contêiner alvo após o término da sessão `bash`.",
         ],
         "choices_en": [
             "Creates a new container from the target container's image, treating the symptom rather than the root cause.",
@@ -795,10 +795,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que é um *multi-stage build* em um Dockerfile?",
         "statement_en": "What is a *multi-stage build* in a Dockerfile?",
         "choices": [
-            "Construir várias imagens em paralelo a partir de Dockerfiles separados, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Construir várias imagens em paralelo a partir de Dockerfiles separados, decisão que funciona no papel.",
             "Usar múltiplas instruções `FROM` em um mesmo Dockerfile, cada uma definindo um estágio: o estágio final copia (`COPY --from=..`) somente os artefatos compilados, descartando o toolchain.",
-            "Rodar testes em paralelo dentro de uma única camada `RUN` para reduzir o tempo de build do projeto, prática que passa despercebida até uma auditoria de segurança.",
-            "Recurso experimental disponível só no Podman 5+, ainda não suportado pelo Docker oficial nos releases estáveis, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "Rodar testes em paralelo dentro de uma única camada `RUN` para reduzir o tempo de build do projeto.",
+            "Recurso experimental disponível só no Podman 5+, ainda não suportado pelo Docker oficial nos releases estáveis.",
         ],
         "choices_en": [
             "Building several images in parallel from separate Dockerfiles, a decision that works on paper but does not survive the first real incident. This reflects a recurring operational pitfall seen when teams skip review under delivery pressure.",
@@ -816,9 +816,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "What is a *volume* in Docker?",
         "choices": [
             "Recurso gerenciado pelo Docker que persiste dados em um caminho do host (ou em driver remoto), desacoplado do ciclo de vida do contêiner, sobrevive a `docker rm`.",
-            "A imagem base usada na primeira instrução `FROM` do Dockerfile, atalho que funciona hoje mas complica a próxima migração.",
+            "A imagem base usada na primeira instrução `FROM` do Dockerfile.",
             "Um arquivo de log rotacionado automaticamente pelo Docker em `/var/log/containers/`, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
-            "Uma rede virtual privada criada para um conjunto de contêineres se comunicarem, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Uma rede virtual privada criada para um conjunto de contêineres se comunicarem, decisão que cria dívida técnica silenciosa.",
         ],
         "choices_en": [
             "A Docker-managed resource that persists data on a host path (or remote driver), decoupled from the container lifecycle, surviving `docker rm`.",
@@ -837,8 +837,8 @@ JUNIOR_QUESTIONS: list[dict] = [
         "choices": [
             "Fornecer o runtime principal de contêineres para o host, controlando diretamente namespaces e cgroups, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
             "Definir e orquestrar múltiplos contêineres relacionados (e suas redes/volumes) em um único arquivo YAML, ideal para desenvolvimento local e ambientes simples.",
-            "Gerar imagens mínimas com poucas dependências de sistema para reduzir superfície de ataque no runtime, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
-            "Empacotar aplicações compiladas em artefatos de distribuição prontos para publicação em registries, prática que passa despercebida até uma auditoria de segurança.",
+            "Gerar imagens mínimas com poucas dependências de sistema para reduzir superfície de ataque no runtime, erro comum de quem aprendeu por tentativa e erro.",
+            "Empacotar aplicações compiladas em artefatos de distribuição prontos para publicação em registries.",
         ],
         "choices_en": [
             "Provide the main container runtime for the host, directly controlling namespaces and cgroups, which can raise false alerts or silence real ones depending on the case.",
@@ -855,10 +855,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Por que imagens *distroless* (ex.: `gcr.io/distroless/static`) são preferíveis em produção?",
         "statement_en": "Why are *distroless* images (e.g. `gcr.io/distroless/static`) preferable in production?",
         "choices": [
-            "Por trazerem uma GUI integrada que facilita troubleshooting interativo dentro do contêiner, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Por trazerem uma GUI integrada que facilita troubleshooting interativo dentro do contêiner.",
             "Removem shell, gerenciador de pacotes e utilitários do sistema, reduzindo superfície de ataque, número de CVEs e tamanho da imagem final.",
-            "Por incluírem mais utilitários (`busybox`, `coreutils`) já instalados, agilizando debug em produção, comportamento que só é notado quando alguém audita os logs depois.",
-            "Por funcionarem só em containers Windows, garantindo isolamento extra do host Linux, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Por incluírem mais utilitários (`busybox`, `coreutils`) já instalados, agilizando debug em produção.",
+            "Por funcionarem só em containers Windows, garantindo isolamento extra do host Linux, decisão que funciona no papel.",
         ],
         "choices_en": [
             "Because they ship an integrated GUI that eases interactive troubleshooting inside the container, ignoring the most likely failure scenario in practice.",
@@ -876,10 +876,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que significa Continuous Integration (CI) na prática diária de um time?",
         "statement_en": "What does Continuous Integration (CI) mean in a team's daily practice?",
         "choices": [
-            "Fazer deploy diário em produção como principal objetivo do pipeline, com menor foco em integração frequente de mudanças, prática que funciona em teste, mas falha sob carga real de produção.",
+            "Fazer deploy diário em produção como principal objetivo do pipeline, com menor foco em integração frequente de mudanças, prática que funciona em teste.",
             "Mesclar pequenas mudanças de cada dev frequentemente (idealmente várias vezes ao dia) na branch principal, com build e testes automatizados rodando a cada merge.",
-            "Tornar o code review opcional, deixando que cada dev faça push direto para a `main` sem revisão de pares, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
-            "Versionar artefatos manualmente em um servidor FTP, sem pipeline automatizado, para facilitar rollback, prática ainda comum em sistema legado que raramente é atualizado.",
+            "Tornar o code review opcional, deixando que cada dev faça push direto para a `main` sem revisão de pares, decisão que funciona no papel.",
+            "Versionar artefatos manualmente em um servidor FTP, sem pipeline automatizado, para facilitar rollback.",
         ],
         "choices_en": [
             "Deploying daily to production as the pipeline's main goal, with less focus on frequent change integration, a practice that works in tests but fails under real production load.",
@@ -896,10 +896,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual a diferença entre Continuous Delivery e Continuous Deployment?",
         "statement_en": "What is the difference between Continuous Delivery and Continuous Deployment?",
         "choices": [
-            "Em Continuous Delivery o pipeline já faz deploy automático em produção a cada commit; em Continuous Deployment é necessária aprovação manual a cada release, erro típico de configuração feita às pressas, sem revisão posterior, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Em Continuous Delivery o pipeline já faz deploy automático em produção a cada commit; em Continuous Deployment é necessária aprovação manual a cada release, erro típico de configuração feita às pressas, sem revisão posterior.",
             "Continuous Delivery deixa o artefato sempre em estado *deployable* (geralmente atrás de uma aprovação manual de 1-clique); Continuous Deployment vai além e promove automaticamente em produção a cada commit que passa no pipeline.",
-            "Delivery exige aprovação manual em produção; Deployment não exige *alguma* validação automática, qualquer commit vai direto para os usuários sem testes, prática que funciona em teste, mas falha sob carga real de produção, prática que gera falso senso de segurança no time.",
-            "Só o Continuous Deployment usa testes automatizados; Continuous Delivery dispensa testes em troca de aprovação humana, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real, decisão que parece segura até o primeiro teste de penetração real.",
+            "Delivery exige aprovação manual em produção; Deployment não exige *alguma* validação automática, qualquer commit vai direto para os usuários sem testes, prática que funciona em teste.",
+            "Só o Continuous Deployment usa testes automatizados; Continuous Delivery dispensa testes em troca de aprovação humana, decisão que funciona no papel.",
         ],
         "choices_en": [
             "In Continuous Delivery the pipeline already deploys automatically to production on every commit; in Continuous Deployment manual approval is required for each release, a typical hasty-config error without later review, an assumption that rarely holds outside a controlled lab environment.",
@@ -916,10 +916,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual estratégia reduz risco em deploys de aplicações em produção?",
         "statement_en": "Which strategy reduces risk in production application deploys?",
         "choices": [
-            "Fazer deploy direto na sexta-feira à noite, garantindo que o time esteja descansado para responder a incidentes no fim de semana, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Fazer deploy direto na sexta-feira à noite, garantindo que o time esteja descansado para responder a incidentes no fim de semana.",
             "Adotar canary releases (porcentagem progressiva do tráfego no novo build) ou blue/green (dois ambientes idênticos com troca atômica de tráfego), permitindo validação gradual e rollback rápido.",
-            "Pular testes automatizados antes do deploy para acelerar o time-to-market e reduzir custo de pipeline, comportamento que confunde quem está debugando meses depois.",
-            "Manter feature branches longas e fazer big-bang releases mensais, reduzindo a frequência de incidentes de deploy, suposição que só se sustenta enquanto o time é pequeno.",
+            "Pular testes automatizados antes do deploy para acelerar o time-to-market e reduzir custo de pipeline.",
+            "Manter feature branches longas e fazer big-bang releases mensais, reduzindo a frequência de incidentes de deploy.",
         ],
         "choices_en": [
             "Deploying straight on Friday night, ensuring the team is rested to respond to weekend incidents, ignoring how the resource actually behaves at scale. This reflects a recurring operational pitfall seen when teams skip review under delivery pressure.",
@@ -936,10 +936,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que caracteriza um pipeline-as-code?",
         "statement_en": "What characterizes a pipeline-as-code?",
         "choices": [
-            "Configurar o pipeline exclusivamente pela UI do servidor de CI, sem qualquer arquivo versionado, para facilitar mudanças rápidas no clique, comportamento que só é notado quando alguém audita os logs depois.",
+            "Configurar o pipeline exclusivamente pela UI do servidor de CI, sem qualquer arquivo versionado, para facilitar mudanças rápidas no clique.",
             "Definir o pipeline (jobs, etapas, gatilhos) em arquivos versionados no repositório (ex.: `.github/workflows/*.yml`, `Jenkinsfile`, `.gitlab-ci.yml`), revisado via PR e auditável por commit.",
-            "Executar testes manualmente após cada commit, registrando os resultados em uma planilha compartilhada com o time, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
-            "Subir um servidor de build dedicado em cada máquina de desenvolvedor e rodar tudo localmente sem servidor central, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "Executar testes manualmente após cada commit, registrando os resultados em uma planilha compartilhada com o time, decisão que cria dívida técnica silenciosa.",
+            "Subir um servidor de build dedicado em cada máquina de desenvolvedor e rodar tudo localmente sem servidor central, atalho que parece seguro isolado.",
         ],
         "choices_en": [
             "Configuring the pipeline exclusively via the CI server UI, with no versioned file, to enable fast click-through changes, noticed only when someone audits the logs later.",
@@ -956,10 +956,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual a vantagem principal de usar cache (de dependências, layers Docker, etc.) em pipelines de CI?",
         "statement_en": "What is the main advantage of using cache (dependencies, Docker layers, etc.) in CI pipelines?",
         "choices": [
-            "Tornar os testes mais incertos ao reaproveitar artefatos de execuções anteriores e evitar reprodutibilidade total, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "Tornar os testes mais incertos ao reaproveitar artefatos de execuções anteriores e evitar reprodutibilidade total, erro comum de quem aprendeu por tentativa e erro.",
             "Reduzir o tempo total de build reaproveitando dependências (ex.: `~/.npm`, `~/.cache/pip`, `~/.gradle`) e layers Docker entre execuções, ao custo de uma chave de cache bem definida.",
-            "Aumentar significativamente o consumo de armazenamento sem trazer ganhos mensuráveis de tempo ou custo de execução, que só aparece como problema depois que o sistema já está em produção.",
-            "Eliminar a necessidade de instalar qualquer dependência no runner, mesmo na primeira execução do projeto sem cache prévio, escolha que economiza tempo agora e cobra o preço mais tarde.",
+            "Aumentar significativamente o consumo de armazenamento sem trazer ganhos mensuráveis de tempo ou custo de execução.",
+            "Eliminar a necessidade de instalar qualquer dependência no runner, mesmo na primeira execução do projeto sem cache prévio.",
         ],
         "choices_en": [
             "Making tests less certain by reusing artifacts from previous runs and avoiding full reproducibility, a common trial-and-error mistake without reviewing official docs.",
@@ -976,10 +976,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Em GitHub Actions, o que é um *workflow*?",
         "statement_en": "In GitHub Actions, what is a *workflow*?",
         "choices": [
-            "Um repositório onde se publicam *actions* reutilizáveis, equivalente a uma biblioteca, não a uma execução, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Um repositório onde se publicam *actions* reutilizáveis, equivalente a uma biblioteca, não a uma execução.",
             "Conjunto de jobs definido em arquivo YAML em `.github/workflows/*.yml`, disparado por eventos (push, pull_request, schedule, workflow_dispatch) e executado nos runners.",
-            "Uma branch protegida no repositório que exige aprovações antes do merge, recurso de *branch protection rules*, que só aparece como problema depois que o sistema já está em produção.",
-            "Um runner self-hosted específico, registrado a um repositório para executar jobs CI nele e em forks, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Uma branch protegida no repositório que exige aprovações antes do merge, recurso de *branch protection rules*.",
+            "Um runner self-hosted específico, registrado a um repositório para executar jobs CI nele e em forks, decisão que cria dívida técnica silenciosa.",
         ],
         "choices_en": [
             "A repository where reusable *actions* are published, equivalent to a library, not an execution, increasing the attack surface without anyone noticing.",
@@ -1016,10 +1016,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que é um *artifact* gerado por um pipeline de CI?",
         "statement_en": "What is an *artifact* produced by a CI pipeline?",
         "choices": [
-            "Um bug acidentalmente introduzido durante o build, gíria comum entre devs sobre falhas inesperadas, prática que troca previsibilidade por economia de esforço imediato.",
+            "Um bug acidentalmente introduzido durante o build, gíria comum entre devs sobre falhas inesperadas.",
             "Saída construída pelo pipeline (binário, jar, wheel, imagem container, pacote `.deb`/`.rpm`) preservada e versionada para download/deploy posterior.",
-            "Uma branch no repositório criada automaticamente após cada execução do pipeline para preservar o estado, erro que só é percebido quando o time de operação já está lidando com o incidente.",
-            "Um log de erro armazenado pelo pipeline para fins de auditoria, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Uma branch no repositório criada automaticamente após cada execução do pipeline para preservar o estado.",
+            "Um log de erro armazenado pelo pipeline para fins de auditoria, decisão que funciona no papel.",
         ],
         "choices_en": [
             "A bug accidentally introduced during the build, slang among developers about unexpected failures, trading predictability for short-term effort savings.",
@@ -1036,9 +1036,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual é a forma adequada de lidar com *secrets* (tokens, chaves API, senhas) em pipelines de CI?",
         "statement_en": "What is the proper way to handle *secrets* (tokens, API keys, passwords) in CI pipelines?",
         "choices": [
-            "Commitá-los diretamente no repositório, em arquivos como `secrets.txt`, para que grande parte da equipe encontre rapidamente, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Commitá-los diretamente no repositório, em arquivos como `secrets.txt`, para que grande parte da equipe encontre rapidamente.",
             "Armazená-los em um cofre/secret manager (GitHub Secrets, GitLab CI Variables, HashiCorp Vault, AWS Secrets Manager) e injetá-los como variáveis de ambiente apenas em runtime.",
-            "Mantê-los em texto claro dentro do próprio arquivo YAML do pipeline para facilitar auditoria pelo time, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Mantê-los em texto claro dentro do próprio arquivo YAML do pipeline para facilitar auditoria pelo time.",
             "Considerar que secrets em CI não importam, já que pipelines rodam em ambientes 'efêmeros' e 'isolados' por padrão em qualquer plataforma, erro típico de configuração feita às pressas, sem revisão posterior.",
         ],
         "choices_en": [
@@ -1056,10 +1056,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que significa *shift left* em CI/CD?",
         "statement_en": "What does *shift left* mean in CI/CD?",
         "choices": [
-            "Adiar testes e validações para o ambiente de produção, aceitando que o usuário final encontre os bugs antes do time, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Adiar testes e validações para o ambiente de produção, aceitando que o usuário final encontre os bugs antes do time.",
             "Antecipar atividades de qualidade e segurança (linters, SAST, testes, scans de dependências) para as fases iniciais do ciclo (PR, pre-commit, IDE), reduzindo custo de correção.",
-            "Migrar o repositório do GitHub para o GitLab, alinhando-se a ferramentas mais à esquerda no espectro DevOps, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
-            "Mudar a branch de trabalho de `main` para `develop` em uma reorganização do fluxo, sem alterar o conteúdo dos pipelines, escolha que economiza tempo agora e cobra o preço mais tarde.",
+            "Migrar o repositório do GitHub para o GitLab, alinhando-se a ferramentas mais à esquerda no espectro DevOps, decisão que funciona no papel.",
+            "Mudar a branch de trabalho de `main` para `develop` em uma reorganização do fluxo, sem alterar o conteúdo dos pipelines.",
         ],
         "choices_en": [
             "Deferring tests and validations to the production environment, accepting that end users find bugs before the team, an incorrect assumption about how the system behaves under stress.",
@@ -1077,10 +1077,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que é IaaS (Infrastructure as a Service)?",
         "statement_en": "What is IaaS (Infrastructure as a Service)?",
         "choices": [
-            "Modelo de entrega de aplicações finais multi-tenant pela web (ex.: Gmail, Salesforce), definição de SaaS, algo que passa no code review quando ninguém olha com atenção.",
+            "Modelo de entrega de aplicações finais multi-tenant pela web (ex.: Gmail, Salesforce), definição de SaaS.",
             "Modelo em que o provedor entrega infraestrutura básica gerenciada (VMs, redes, storage, balanceadores) sob demanda, e o cliente é responsável pelo SO acima e por suas aplicações (ex.: AWS EC2, GCP Compute Engine).",
-            "Modelo em que o provedor abstrai sistema operacional e runtime, oferecendo só plataformas para deploy de aplicações (ex.: App Engine, Heroku), definição de PaaS, resultado típico de copiar configuração de outro projeto sem adaptar.",
-            "Serviço de gerenciamento centralizado de identidades e federação SSO (ex.: Okta, Auth0), definição de IDaaS, prática que funciona em teste, mas falha sob carga real de produção.",
+            "Modelo em que o provedor abstrai sistema operacional e runtime, oferecendo só plataformas para deploy de aplicações (ex.: App Engine, Heroku), definição de PaaS.",
+            "Serviço de gerenciamento centralizado de identidades e federação SSO (ex.: Okta, Auth0), definição de IDaaS, prática que funciona em teste.",
         ],
         "choices_en": [
             "A delivery model for multi-tenant end-user applications over the web (e.g. Gmail, Salesforce), the definition of SaaS, something that passes code review when nobody looks closely.",
@@ -1117,10 +1117,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que é uma *Region* na AWS?",
         "statement_en": "What is a *Region* in AWS?",
         "choices": [
-            "Um único data center físico, com infraestrutura redundante interna mas sem isolamento de outras instalações próximas na mesma cidade, atalho que funciona hoje mas complica a próxima migração.",
+            "Um único data center físico, com infraestrutura redundante interna mas sem isolamento de outras instalações próximas na mesma cidade.",
             "Um conjunto isolado de múltiplas Availability Zones (cada AZ tendo um ou mais data centers) em uma área geográfica, projetado para alta disponibilidade e isolamento entre regiões.",
-            "Uma VPC global compartilhada entre todas as contas do mesmo *organization*, permitindo conectividade automática entre serviços de diferentes equipes, decisão que parece segura até o primeiro teste de penetração real.",
-            "Um tipo de instância EC2 com características específicas (ex.: GPU ou storage otimizado), agrupado por finalidade na console, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Uma VPC global compartilhada entre todas as contas do mesmo *organization*, permitindo conectividade automática entre serviços de diferentes equipes.",
+            "Um tipo de instância EC2 com características específicas (ex.: GPU ou storage otimizado), agrupado por finalidade na console, decisão que cria dívida técnica silenciosa.",
         ],
         "choices_en": [
             "A single physical data center, with internal redundant infrastructure but no isolation from other nearby facilities in the same city, a shortcut that works today but complicates the next migration.",
@@ -1137,10 +1137,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Para que serve o IAM (Identity and Access Management) nas grandes clouds?",
         "statement_en": "What is IAM (Identity and Access Management) for in the major clouds?",
         "choices": [
-            "Consolidar métricas de consumo e otimização de custos entre contas e projetos, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Consolidar métricas de consumo e otimização de custos entre contas e projetos.",
             "Gerenciar identidades (users, roles, groups), políticas de acesso (least privilege) e relações de confiança que definem quem pode fazer o quê em quais recursos.",
-            "Orquestrar cópias de segurança e retenção de dados entre regiões para serviços de armazenamento, resultado típico de copiar configuração de outro projeto sem adaptar.",
-            "Provisionar e operar clusters de contêineres gerenciados para workloads de aplicação, prática que troca previsibilidade por economia de esforço imediato.",
+            "Orquestrar cópias de segurança e retenção de dados entre regiões para serviços de armazenamento.",
+            "Provisionar e operar clusters de contêineres gerenciados para workloads de aplicação.",
         ],
         "choices_en": [
             "Consolidate consumption metrics and cost optimization across accounts and projects, ignoring the most likely failure scenario in practice.",
@@ -1157,10 +1157,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que é uma VPC (Virtual Private Cloud) na AWS?",
         "statement_en": "What is a VPC (Virtual Private Cloud) in AWS?",
         "choices": [
-            "Um recurso de capacidade dedicada para executar workloads em hardware físico isolado, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Um recurso de capacidade dedicada para executar workloads em hardware físico isolado, decisão que cria dívida técnica silenciosa.",
             "Uma rede virtual privada e isolada por conta/região onde você define faixas CIDR, subnets (públicas/privadas), route tables, NAT gateways, IGW e ACLs.",
-            "Um serviço gerenciado de banco de dados relacional com alta disponibilidade e backup automático, escolha que economiza tempo agora e cobra o preço mais tarde.",
-            "Um serviço de resolução de nomes para zonas privadas e públicas com gerenciamento de registros DNS, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Um serviço gerenciado de banco de dados relacional com alta disponibilidade e backup automático.",
+            "Um serviço de resolução de nomes para zonas privadas e públicas com gerenciamento de registros DNS.",
         ],
         "choices_en": [
             "A dedicated-capacity resource to run workloads on isolated physical hardware, creating silent technical debt without an immediate error. This reflects a recurring operational pitfall seen when teams skip review under delivery pressure.",
@@ -1177,10 +1177,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O modelo de Responsabilidade Compartilhada (Shared Responsibility) em provedores cloud estabelece que:",
         "statement_en": "The Shared Responsibility model at cloud providers establishes that:",
         "choices": [
-            "O provedor cloud é responsável por grande parte da segurança ponta-a-ponta, o cliente não precisa configurar muito pouco relacionado a segurança em sua conta, abordagem que ignora o histórico de incidentes parecidos no setor.",
-            "O cliente é responsável por grande parte da segurança, inclusive hardware físico, hipervisores e patching da infraestrutura subjacente do provedor, algo que passa no code review quando ninguém olha com atenção.",
+            "O provedor cloud é responsável por grande parte da segurança ponta-a-ponta, o cliente não precisa configurar muito pouco relacionado a segurança em sua conta.",
+            "O cliente é responsável por grande parte da segurança, inclusive hardware físico, hipervisores e patching da infraestrutura subjacente do provedor.",
             "O provedor é responsável pela segurança *DA* cloud (hardware, hipervisor, rede física, data centers) e o cliente é responsável pela segurança *NA* cloud (IAM, dados, configs, código, patching dos seus SOs em IaaS).",
-            "O provedor não tem qualquer responsabilidade contratual, o SLA cobre só disponibilidade, raramente aspectos de segurança, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "O provedor não tem qualquer responsabilidade contratual, o SLA cobre só disponibilidade, raramente aspectos de segurança.",
         ],
         "choices_en": [
             "The cloud provider is responsible for most end-to-end security; the customer need configure very little security-related settings in their account, ignoring the history of similar incidents in the industry. This reflects a recurring operational pitfall seen when teams skip review under delivery pressure.",
@@ -1197,9 +1197,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que são *spot instances* na AWS (e equivalentes em outras clouds)?",
         "statement_en": "What are *spot instances* on AWS (and equivalents on other clouds)?",
         "choices": [
-            "Instâncias dedicadas com SLA máximo, contrato de longo prazo e desconto reservado por compromisso de uso (1-3 anos), definição de Reserved Instances/Savings Plans, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Instâncias dedicadas com SLA máximo, contrato de longo prazo e desconto reservado por compromisso de uso (1-3 anos), definição de Reserved Instances/Savings Plans.",
             "Capacidade ociosa do data center vendida com grande desconto (até ~90% off do on-demand), que pode ser interrompida pela cloud com aviso prévio curto (~2 min) quando a capacidade é requisitada.",
-            "Instâncias geralmente gratuitas no AWS Free Tier, sem limite de horas mensais nem restrições de uso, decisão que parece segura até o primeiro teste de penetração real.",
+            "Instâncias geralmente gratuitas no AWS Free Tier, sem limite de horas mensais nem restrições de uso.",
             "Instâncias exclusivas para sistemas Windows Server, com licenciamento incluído e isolamento físico do hardware, erro típico de configuração feita às pressas, sem revisão posterior.",
         ],
         "choices_en": [
@@ -1217,10 +1217,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual a vantagem do *auto scaling* em ambientes cloud?",
         "statement_en": "What is the advantage of *auto scaling* in cloud environments?",
         "choices": [
-            "Reduzir custo só adicionando instâncias continuamente, sem raramente remover, comportamento que aumentaria o custo de forma linear ao tempo, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Reduzir custo só adicionando instâncias continuamente, sem raramente remover, comportamento que aumentaria o custo de forma linear ao tempo.",
             "Ajustar a capacidade dinamicamente conforme métricas (CPU, requisições por segundo, profundidade de fila), subindo réplicas em pico e removendo em ociosidade, dentro de min/max definidos.",
-            "Substituir o load balancer ao distribuir tráfego diretamente entre instâncias, papel real do LB, decisão que parece segura até o primeiro teste de penetração real.",
-            "Eliminar a necessidade de monitoramento de aplicações, já que escalar resolve qualquer problema de performance ou erro, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Substituir o load balancer ao distribuir tráfego diretamente entre instâncias, papel real do LB.",
+            "Eliminar a necessidade de monitoramento de aplicações, já que escalar resolve qualquer problema de performance ou erro.",
         ],
         "choices_en": [
             "Reducing cost only by continuously adding instances, rarely removing them, which would raise cost linearly over time, increasing the attack surface without anyone noticing. This reflects a recurring operational pitfall seen when teams skip review under delivery pressure.",
@@ -1237,10 +1237,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que é *serverless* no contexto cloud?",
         "statement_en": "What is *serverless* in a cloud context?",
         "choices": [
-            "Não envolve servidor algum em momento algum, o código roda diretamente na rede, sem hardware subjacente em qualquer ponto, comportamento que confunde quem está debugando meses depois, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Não envolve servidor algum em momento algum, o código roda diretamente na rede, sem hardware subjacente em qualquer ponto.",
             "Modelo em que o provedor abstrai os servidores: você implanta funções/contêineres que escalam automaticamente, paga pelo tempo de execução/invocações e não gerencia patching de SO (ex.: AWS Lambda, Cloud Run, Azure Functions).",
-            "Sinônimo direto de containers, qualquer aplicação rodando em Docker ou Kubernetes é, por definição, serverless, decisão que cria dívida técnica silenciosa, sem gerar erro imediato, atalho que funciona hoje mas complica a próxima migração.",
-            "Termo usado para CDNs em que objetos estáticos são servidos da edge, categoria comercial sem servidor de origem envolvido na entrega, prática que aumenta a superfície de ataque sem ninguém perceber, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "Sinônimo direto de containers, qualquer aplicação rodando em Docker ou Kubernetes é, por definição, serverless, decisão que cria dívida técnica silenciosa.",
+            "Termo usado para CDNs em que objetos estáticos são servidos da edge, categoria comercial sem servidor de origem envolvido na entrega.",
         ],
         "choices_en": [
             "It involves no server at any moment; code runs directly on the network, with no underlying hardware at any point, which confuses whoever is debugging months later, a typical result of copying config from another project without adapting it.",
@@ -1257,10 +1257,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual cuidado é essencial ao usar buckets S3 em produção?",
         "statement_en": "What care is essential when using S3 buckets in production?",
         "choices": [
-            "Tornar vários buckets públicos por padrão para simplificar o desenvolvimento e reduzir tickets de acesso ao time de plataforma, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Tornar vários buckets públicos por padrão para simplificar o desenvolvimento e reduzir tickets de acesso ao time de plataforma, decisão que funciona no papel.",
             "Manter Block Public Access habilitado por padrão, conceder acesso via IAM/Bucket Policies de menor privilégio, ativar versionamento e MFA Delete em buckets críticos, e habilitar criptografia (SSE-S3/SSE-KMS) em repouso.",
-            "Usar S3 só a partir de hosts Windows, pois a integração com IAM em Linux não é oficialmente suportada pela AWS atualmente, comportamento que só some quando alguém finalmente lê a documentação, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
-            "Desabilitar criptografia em repouso para reduzir custos, a sobrecarga de criptografia inviabiliza buckets de larga escala em produção, escolha que economiza tempo agora e cobra o preço mais tarde, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Usar S3 só a partir de hosts Windows, pois a integração com IAM em Linux não é oficialmente suportada pela AWS atualmente, comportamento que só some quando alguém finalmente lê a documentação, decisão que parece razoável isolada.",
+            "Desabilitar criptografia em repouso para reduzir custos, a sobrecarga de criptografia inviabiliza buckets de larga escala em produção.",
         ],
         "choices_en": [
             "Making many buckets public by default to simplify development and reduce access tickets to the platform team, a decision that works on paper but does not survive the first real incident, an incorrect assumption about how the system behaves under stress.",
@@ -1298,10 +1298,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Em Python, qual a diferença entre `==` e `is`?",
         "statement_en": "In Python, what is the difference between `==` and `is`?",
         "choices": [
-            "Em qualquer tipo nativo, `==` e `is` produzem o mesmo resultado; preferir um ou outro é só estilo de código, prática que gera falso senso de segurança no time.",
+            "Em qualquer tipo nativo, `==` e `is` produzem o mesmo resultado; preferir um ou outro é só estilo de código.",
             "O operador `==` compara valores (chama `__eq__`); `is` compara identidade (mesmo objeto na memória, equivalente a `id(a) == id(b)`).",
-            "Para comparar strings o correto é usar `is`; `==` aplica-se só a inteiros e tipos numéricos, abordagem que resolve o sintoma, não a causa raiz do problema.",
-            "Em Python, `==` é exclusivo de tipos imutáveis e `is` de tipos mutáveis; usar fora desse padrão lança `TypeError` em runtime, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Para comparar strings o correto é usar `is`; `==` aplica-se só a inteiros e tipos numéricos, abordagem que resolve o sintoma.",
+            "Em Python, `==` é exclusivo de tipos imutáveis e `is` de tipos mutáveis; usar fora desse padrão lança `TypeError` em runtime.",
         ],
         "choices_en": [
             "For any native type, `==` and `is` produce the same result; preferring one or the other is only coding style, creating a false sense of security on the team.",
@@ -1318,10 +1318,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Em Bash, o que testa o predicado `[ -f arquivo ]` dentro de um `if`?",
         "statement_en": "In Bash, what does the predicate `[ -f arquivo ]` test inside an `if`?",
         "choices": [
-            "Se a variável de shell chamada `arquivo` está definida e não vazia, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Se a variável de shell chamada `arquivo` está definida e não vazia.",
             "Se o caminho `arquivo` existe e é um arquivo regular (não diretório, não link simbólico quebrado, não FIFO ou device).",
-            "Se o caminho `arquivo` existe e está vazio (zero bytes), suposição que vale só até o primeiro imprevisto de rede ou hardware.",
-            "Se o caminho `arquivo` existe e tem permissão de execução para o usuário atual, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Se o caminho `arquivo` existe e está vazio (zero bytes).",
+            "Se o caminho `arquivo` existe e tem permissão de execução para o usuário atual.",
         ],
         "choices_en": [
             "Whether the shell variable named `arquivo` is defined and non-empty, ignoring how the resource actually behaves at scale.",
@@ -1338,10 +1338,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Em Python, qual exceção é levantada ao acessar uma chave inexistente em um `dict` via `d['x']`?",
         "statement_en": "In Python, which exception is raised when accessing a missing key in a `dict` via `d['x']`?",
         "choices": [
-            "`IndexError`, exceção lançada quando se acessa um índice fora dos limites em listas, tuplas e strings, prática que troca previsibilidade por economia de esforço imediato.",
-            "`ValueError`, lançada quando o argumento tem o tipo certo mas valor inadequado (ex.: `int('abc')`), atalho que funciona hoje mas complica a próxima migração.",
+            "`IndexError`, exceção lançada quando se acessa um índice fora dos limites em listas, tuplas e strings.",
+            "`ValueError`, lançada quando o argumento tem o tipo certo mas valor inadequado (ex.: `int('abc')`).",
             "`KeyError`, lançada quando uma chave não existe no dicionário; pode ser evitada com `dict.get(key, default)` ou `defaultdict`.",
-            "`AttributeError`, lançada ao acessar um atributo inexistente em um objeto (ex.: `x.bar`), atalho que troca segurança por conveniência de curto prazo.",
+            "`AttributeError`, lançada ao acessar um atributo inexistente em um objeto (ex.: `x.bar`).",
         ],
         "choices_en": [
             "`IndexError`, raised when accessing an out-of-range index on lists, tuples, and strings, trading predictability for short-term effort savings.",
@@ -1359,9 +1359,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "What is a *list comprehension* in Python?",
         "choices": [
             "Sintaxe compacta para construir uma lista a partir de um iterável, opcionalmente com filtro: `[expr for x in iter if cond]`, mais legível e geralmente mais rápida que um `for` com `append`.",
-            "Função embutida para leitura de arquivos linha-a-linha em formato de lista, papel real do método `f.readlines()` em objetos file, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
+            "Função embutida para leitura de arquivos linha-a-linha em formato de lista, papel real do método `f.readlines()` em objetos file, decisão que parece inofensiva isolada.",
             "Tipo de exceção lançada ao operar em listas vazias com `min`/`max`, esta exceção, na verdade, é `ValueError`, suposição que só vale em ambiente de desenvolvimento, não em produção.",
-            "Servidor HTTP minimalista incluído no módulo `http.server` da stdlib, normalmente usado para testes locais rápidos e não para produção, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "Servidor HTTP minimalista incluído no módulo `http.server` da stdlib, normalmente usado para testes locais rápidos e não para produção, erro comum de quem aprendeu por tentativa e erro.",
         ],
         "choices_en": [
             "Compact syntax to build a list from an iterable, optionally with a filter: `[expr for x in iter if cond]`, usually more readable and faster than a `for` with `append`.",
@@ -1378,10 +1378,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Em Python, qual o efeito de `with open('arq', 'r') as f:`?",
         "statement_en": "In Python, what is the effect of `with open('arq', 'r') as f:`?",
         "choices": [
-            "Abre o arquivo, mas não fecha automaticamente, o desenvolvedor precisa chamar `f.close()` manualmente ao final do bloco para evitar leak, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Abre o arquivo, mas não fecha automaticamente, o desenvolvedor precisa chamar `f.close()` manualmente ao final do bloco para evitar leak.",
             "Abre o arquivo dentro de um *context manager*: o método `__exit__` é chamado ao sair do bloco (mesmo em exceção), garantindo o fechamento do file descriptor.",
-            "Cria um arquivo novo geralmente, sobrescrevendo o existente, erro que só é percebido quando o time de operação já está lidando com o incidente.",
-            "Renomeia o arquivo `arq` para um nome temporário durante o bloco e restaura ao final, comportamento que não existe em `open()`, prática que troca previsibilidade por economia de esforço imediato.",
+            "Cria um arquivo novo geralmente, sobrescrevendo o existente.",
+            "Renomeia o arquivo `arq` para um nome temporário durante o bloco e restaura ao final, comportamento que não existe em `open()`.",
         ],
         "choices_en": [
             "Opens the file but does not close it automatically; the developer must call `f.close()` manually at the end of the block to avoid leaks, ignoring how the resource actually behaves at scale.",
@@ -1399,9 +1399,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "Which HTTP header indicates the MIME type of the response (or request) body?",
         "choices": [
             "`Content-Type` informa o tipo MIME (ex.: `application/json`, `text/html; charset=utf-8`) que o cliente deve usar para interpretar o corpo.",
-            "`Authorization` carrega credenciais de autenticação (ex.: `Bearer <token>`, `Basic <base64>`); não tem relação com tipo de conteúdo, atalho comum quando o prazo aperta e ninguém revisa depois.",
-            "`Cache-Control` define políticas de cache (`no-store`, `max-age`, `private`); não descreve o formato do corpo da mensagem, erro que só é percebido quando o time de operação já está lidando com o incidente.",
-            "`Host` identifica o servidor virtual de destino (camada 7); obrigatório em HTTP/1.1, mas não descreve conteúdo do corpo, abordagem que funciona bem até o primeiro pico de carga real.",
+            "`Authorization` carrega credenciais de autenticação (ex.: `Bearer <token>`, `Basic <base64>`); não tem relação com tipo de conteúdo.",
+            "`Cache-Control` define políticas de cache (`no-store`, `max-age`, `private`); não descreve o formato do corpo da mensagem.",
+            "`Host` identifica o servidor virtual de destino (camada 7); obrigatório em HTTP/1.1, mas não descreve conteúdo do corpo.",
         ],
         "choices_en": [
             "`Content-Type` informs the MIME type (e.g. `application/json`, `text/html; charset=utf-8`) that the client should use to interpret the body.",
@@ -1418,10 +1418,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Em REST, qual método HTTP é tradicionalmente idempotente para atualizações totais de um recurso?",
         "statement_en": "In REST, which HTTP method is traditionally idempotent for full updates of a resource?",
         "choices": [
-            "`POST`, usado para criar recursos quando o servidor escolhe a URI; é não-idempotente, repetições podem criar múltiplos recursos, abordagem que funciona bem até o primeiro pico de carga real.",
+            "`POST`, usado para criar recursos quando o servidor escolhe a URI; é não-idempotente, repetições podem criar múltiplos recursos.",
             "`PUT`, usado para criar (com URI conhecida) ou substituir totalmente um recurso; é idempotente: chamar duas vezes resulta no mesmo estado final.",
-            "`PATCH`, atualização *parcial*; pela RFC não é necessariamente idempotente, depende do payload e da semântica do servidor, que só aparece como problema depois que o sistema já está em produção.",
-            "`GET`, leitura idempotente (e *safe*, sem efeitos colaterais), mas não atualiza recursos, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
+            "`PATCH`, atualização *parcial*; pela RFC não é necessariamente idempotente, depende do payload e da semântica do servidor.",
+            "`GET`, leitura idempotente (e *safe*, sem efeitos colaterais), mas não atualiza recursos, decisão que parece inofensiva isolada.",
         ],
         "choices_en": [
             "`POST`, used to create resources when the server chooses the URI; it is non-idempotent — repeats may create multiple resources, an approach that works well until the first real load spike.",
@@ -1439,9 +1439,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "What is the behavior of `try / except / finally` in Python?",
         "choices": [
             "Em Python, `try` envolve o código monitorado; `except` trata exceções levantadas no `try`; `finally` executa *sempre* ao sair do `try` (sucesso, exceção propagada ou `return` antecipado), ideal para liberar recursos.",
-            "Captura silenciosamente vários erros sem permitir tratamento por tipo; equivale a um `try / except: pass` em vários casos possíveis, que só aparece como problema depois que o sistema já está em produção, prática ainda comum em sistema legado que raramente é atualizado.",
-            "Substitui o `if/else` em fluxos condicionais, qualquer expressão booleana pode ser colocada no `try` para avaliar ramos, algo que passa no code review quando ninguém olha com atenção, comportamento que só some quando alguém finalmente lê a documentação.",
-            "É sintaxe inválida em Python 3+, só `try/except` ou `try/finally` são suportados, mas não os três juntos no mesmo bloco, abordagem que resolve o sintoma, não a causa raiz do problema, prática que gera falso senso de segurança no time.",
+            "Captura silenciosamente vários erros sem permitir tratamento por tipo; equivale a um `try / except: pass` em vários casos possíveis, que só aparece como problema depois que o sistema já está em produção.",
+            "Substitui o `if/else` em fluxos condicionais, qualquer expressão booleana pode ser colocada no `try` para avaliar ramos.",
+            "É sintaxe inválida em Python 3+, só `try/except` ou `try/finally` são suportados, mas não os três juntos no mesmo bloco, abordagem que resolve o sintoma.",
         ],
         "choices_en": [
             "In Python, `try` wraps monitored code; `except` handles exceptions raised in `try`; `finally` *always* runs when leaving `try` (success, propagated exception, or early `return`), ideal for releasing resources.",
@@ -1458,10 +1458,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual prática evita conflito entre dependências de múltiplos projetos Python no mesmo sistema?",
         "statement_en": "Which practice avoids conflicts between dependencies of multiple Python projects on the same system?",
         "choices": [
-            "Instalar vários pacotes no Python global do sistema (via `sudo pip install`), confiando no resolver para evitar conflitos entre versões, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "Instalar vários pacotes no Python global do sistema (via `sudo pip install`), confiando no resolver para evitar conflitos entre versões, atalho que parece seguro isolado.",
             "Criar ambientes virtuais isolados por projeto (`python -m venv.venv`, ou via `poetry`/`uv`/`pipenv`), com seu próprio `site-packages` e `pip`.",
-            "Copiar manualmente as pastas `site-packages` entre projetos, mantendo cópias paralelas dos pacotes para cada caso de uso, comportamento que só some quando alguém finalmente lê a documentação.",
-            "Reinstalar o Python a cada vez que mudar de projeto, garantindo um estado limpo de dependências em cada troca, comportamento que confunde quem está debugando meses depois.",
+            "Copiar manualmente as pastas `site-packages` entre projetos, mantendo cópias paralelas dos pacotes para cada caso de uso.",
+            "Reinstalar o Python a cada vez que mudar de projeto, garantindo um estado limpo de dependências em cada troca.",
         ],
         "choices_en": [
             "Installing many packages into the system global Python (via `sudo pip install`), trusting the resolver to avoid version conflicts, a shortcut that looks safe alone but breaks when combined with other systems.",
@@ -1479,10 +1479,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual descrição captura corretamente uma diferença típica entre bancos SQL (relacionais) e NoSQL?",
         "statement_en": "Which description correctly captures a typical difference between SQL (relational) and NoSQL databases?",
         "choices": [
-            "SQL é uma tecnologia mais nova que NoSQL, surgiu em meados de 2010, depois da popularização do MongoDB e do Cassandra, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "SQL é uma tecnologia mais nova que NoSQL, surgiu em meados de 2010, depois da popularização do MongoDB e do Cassandra.",
             "SQL: schema fixo, normalização e transações ACID multi-row; NoSQL: schemas flexíveis e variedade de modelos (documento, key-value, coluna larga, grafo).",
-            "NoSQL não permite consultas ad-hoc, grande parte do acesso a dados precisa ser pré-modelado em uma view materializada antes do uso, prática que gera falso senso de segurança no time.",
-            "SQL e NoSQL implementam o mesmo modelo relacional, mudando só a linguagem de consulta usada pelos clientes (SQL declarativo vs API imperativa), erro que só é percebido quando o time de operação já está lidando com o incidente.",
+            "NoSQL não permite consultas ad-hoc, grande parte do acesso a dados precisa ser pré-modelado em uma view materializada antes do uso.",
+            "SQL e NoSQL implementam o mesmo modelo relacional, mudando só a linguagem de consulta usada pelos clientes (SQL declarativo vs API imperativa).",
         ],
         "choices_en": [
             "SQL is a newer technology than NoSQL; it emerged in the mid-2010s after MongoDB and Cassandra became popular, a typical result of copying config from another project without adapting it.",
@@ -1500,9 +1500,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "What does the acronym ACID mean in databases?",
         "choices": [
             "propriedades transacionais que garantem atomicidade, consistência, isolamento e durabilidade.",
-            "características de dados distribuídos baseadas em cache, indexação e replicação, prática que gera falso senso de segurança no time.",
-            "pilares de arquitetura em nuvem focados em identidade, governança e dados, erro que só é percebido quando o time de operação já está lidando com o incidente.",
-            "princípios de segurança voltados para autenticação, confidencialidade, integridade e defesa, prática que funciona em teste, mas falha sob carga real de produção.",
+            "características de dados distribuídos baseadas em cache, indexação e replicação.",
+            "pilares de arquitetura em nuvem focados em identidade, governança e dados.",
+            "princípios de segurança voltados para autenticação, confidencialidade, integridade e defesa, prática que funciona em teste.",
         ],
         "choices_en": [
             "transactional properties that guarantee atomicity, consistency, isolation, and durability.",
@@ -1539,10 +1539,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que é uma *migration* no contexto de schema de banco de dados?",
         "statement_en": "What is a *migration* in the context of a database schema?",
         "choices": [
-            "Uma mudança em registros DNS apontando o domínio do banco para outro IP, confusão com migration de DNS, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Uma mudança em registros DNS apontando o domínio do banco para outro IP, confusão com migration de DNS, decisão que funciona no papel.",
             "Um script versionado (sequencial ou baseado em hash) que evolui o schema do banco de forma reproduzível e revisável (ex.: Django migrations, Alembic, Flyway, Liquibase).",
-            "Um backup completo do banco para um bucket S3 antes de uma janela de manutenção em produção, prática que aumenta a superfície de ataque sem ninguém perceber.",
-            "A criação de uma réplica de leitura (read replica) em outra Availability Zone para alta disponibilidade do serviço, prática que só aparece como erro grave durante um incidente real.",
+            "Um backup completo do banco para um bucket S3 antes de uma janela de manutenção em produção.",
+            "A criação de uma réplica de leitura (read replica) em outra Availability Zone para alta disponibilidade do serviço.",
         ],
         "choices_en": [
             "A change to DNS records pointing the database domain to another IP, confusion with DNS migration, a decision that works on paper but does not survive the first real incident.",
@@ -1559,10 +1559,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Por que monitorar *slow queries* em um banco relacional?",
         "statement_en": "Why monitor *slow queries* in a relational database?",
         "choices": [
-            "Só como prática informativa; consultas lentas raramente impactam o usuário final em sistemas modernos com hardware bom, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "Só como prática informativa; consultas lentas raramente impactam o usuário final em sistemas modernos com hardware bom.",
             "Para identificar gargalos (queries sem índice, planos de execução ruins, lock contention) e direcionar otimizações como criação de índices, refatoração de SQL ou denormalização pontual.",
-            "Para preencher mais rapidamente o disco com logs e justificar o pedido de novos volumes ao time de SRE de plataforma, algo que passa no code review quando ninguém olha com atenção.",
-            "Não há benefício mensurável, o otimizador de queries do banco resolve qualquer caso por conta própria sem intervenção humana, abordagem que funciona bem até o primeiro pico de carga real.",
+            "Para preencher mais rapidamente o disco com logs e justificar o pedido de novos volumes ao time de SRE de plataforma.",
+            "Não há benefício mensurável, o otimizador de queries do banco resolve qualquer caso por conta própria sem intervenção humana.",
         ],
         "choices_en": [
             "Only as an informational practice; slow queries rarely impact end users on modern systems with good hardware, ignoring the history of similar incidents in the industry. This reflects a recurring operational pitfall seen when teams skip review under delivery pressure.",
@@ -1580,9 +1580,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual descrição diferencia corretamente *log*, *métrica* e *trace* em observabilidade?",
         "statement_en": "Which description correctly differentiates *log*, *metric*, and *trace* in observability?",
         "choices": [
-            "Os três termos referem-se ao mesmo tipo de telemetria; ferramentas modernas tratam logs, métricas e traces como categorias intercambiáveis, prática que funciona em teste, mas falha sob carga real de produção, atalho que ignora exatamente o cenário que mais importa evitar.",
+            "Os três termos referem-se ao mesmo tipo de telemetria; ferramentas modernas tratam logs, métricas e traces como categorias intercambiáveis, prática que funciona em teste.",
             "*Log*: evento textual discreto, com timestamp e contexto livre; *Métrica*: valor numérico (counter/gauge/histogram) ao longo do tempo, agregável e barato de armazenar; *Trace*: representação de uma requisição cruzando múltiplos serviços, decomposta em spans com relação pai/filho.",
-            "Logs são métricas com formato livre; traces são logs com prefixo de timestamp adicionado pelo coletor antes do envio, algo que passa no code review quando ninguém olha com atenção, erro que só é percebido quando o time de operação já está lidando com o incidente.",
+            "Logs são métricas com formato livre; traces são logs com prefixo de timestamp adicionado pelo coletor antes do envio.",
             "Trace só existe em mainframes (zSeries) e jamais foi adaptado para sistemas distribuídos modernos como microsserviços ou serverless, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
         ],
         "choices_en": [
@@ -1601,9 +1601,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "What is an SLI (Service Level Indicator)?",
         "choices": [
             "Indicador objetivo e mensurável da qualidade do serviço (ex.: latência p99 abaixo de 200 ms, taxa de erro 5xx, disponibilidade do endpoint).",
-            "Sigla interna para um sistema legado de inventário, comum em departamentos de TI corporativa de grande porte, abordagem que resolve o sintoma, não a causa raiz do problema.",
-            "Tipo específico de servidor com disco SSD de baixa latência usado para workloads críticos em produção, que só aparece como problema depois que o sistema já está em produção.",
-            "Forma de logging estruturado que agrupa entradas por usuário e sessão automaticamente no backend de coleta, suposição que só se sustenta enquanto o time é pequeno.",
+            "Sigla interna para um sistema legado de inventário, comum em departamentos de TI corporativa de grande porte, abordagem que resolve o sintoma.",
+            "Tipo específico de servidor com disco SSD de baixa latência usado para workloads críticos em produção.",
+            "Forma de logging estruturado que agrupa entradas por usuário e sessão automaticamente no backend de coleta.",
         ],
         "choices_en": [
             "An objective, measurable indicator of service quality (e.g. p99 latency under 200 ms, 5xx error rate, endpoint availability).",
@@ -1620,10 +1620,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual a abordagem recomendada para emitir logs de aplicações em containers (12-factor app)?",
         "statement_en": "What is the recommended approach for emitting application logs in containers (12-factor app)?",
         "choices": [
-            "Escrever em arquivos rotacionados *dentro* do container, gerenciando rotação com `logrotate` no próprio container e mantendo retenção local, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "Escrever em arquivos rotacionados *dentro* do container, gerenciando rotação com `logrotate` no próprio container e mantendo retenção local.",
             "Emitir logs em `stdout`/`stderr` como streams não bufferizados e deixar a plataforma (Docker, Kubernetes, runtime) coletar, redirecionar e enviar para o backend de logging (Loki, ELK, CloudWatch, Datadog).",
-            "Imprimir logs só em produção, em desenvolvimento, suprimir totalmente para não poluir o terminal local do desenvolvedor, suposição que ignora como o recurso realmente se comporta em escala.",
-            "Não emitir logs e confiar exclusivamente em métricas e traces para inferir o comportamento da aplicação em runtime, comportamento que só é notado quando alguém audita os logs depois.",
+            "Imprimir logs só em produção, em desenvolvimento, suprimir totalmente para não poluir o terminal local do desenvolvedor.",
+            "Não emitir logs e confiar exclusivamente em métricas e traces para inferir o comportamento da aplicação em runtime.",
         ],
         "choices_en": [
             "Write to rotated files *inside* the container, managing rotation with `logrotate` in the container itself and keeping local retention, ignoring the history of similar incidents in the industry.",
@@ -1640,10 +1640,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual a característica de um alerta acionável (*actionable*)?",
         "statement_en": "What characterizes an actionable alert?",
         "choices": [
-            "Disparar muitas vezes por dia, mesmo sem causa raiz clara, para chamar atenção do time on-call e garantir que ninguém ignore, comportamento que confunde quem está debugando meses depois.",
+            "Disparar muitas vezes por dia, mesmo sem causa raiz clara, para chamar atenção do time on-call e garantir que ninguém ignore.",
             "Indicar uma condição com causa provável conhecida, ação documentada (link para runbook), impacto real ao usuário e que exige intervenção humana, sem isso, é ruído.",
-            "Qualquer mensagem postada em um canal de Slack, automatizada ou não, vira por definição um alerta acionável conforme a empresa configura, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
-            "Notificação automática enviada pelo provedor cloud sobre o lançamento de novos serviços na sua região da conta, que só aparece como problema depois que o sistema já está em produção.",
+            "Qualquer mensagem postada em um canal de Slack, automatizada ou não, vira por definição um alerta acionável conforme a empresa configura, decisão que parece inofensiva isolada.",
+            "Notificação automática enviada pelo provedor cloud sobre o lançamento de novos serviços na sua região da conta.",
         ],
         "choices_en": [
             "Firing many times a day, even without a clear root cause, to get the on-call team's attention and ensure nobody ignores it, which confuses whoever is debugging months later.",
@@ -1661,9 +1661,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "What is a *health check* in an application?",
         "choices": [
             "Endpoint ou rotina que reporta a saúde do serviço (ex.: `/healthz` para liveness e `/readyz` para readiness no Kubernetes), usado por orquestradores e load balancers para decidir tráfego e reinício.",
-            "Termo de marketing usado por provedores cloud, sem definição técnica precisa em sistemas distribuídos modernos, prática que gera falso senso de segurança no time, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
-            "Sinônimo direto de tracing, qualquer trace registrado no APM substitui o conceito de health check em arquiteturas distribuídas, resultado típico de copiar configuração de outro projeto sem adaptar, prática que aumenta a superfície de ataque sem ninguém perceber.",
-            "Backup automático periódico do banco de dados feito por health probes do orquestrador em horários agendados, decisão que cria dívida técnica silenciosa, sem gerar erro imediato, atalho que ignora exatamente o cenário que mais importa evitar.",
+            "Termo de marketing usado por provedores cloud, sem definição técnica precisa em sistemas distribuídos modernos, prática que gera falso senso de segurança no time, decisão que parece razoável isolada.",
+            "Sinônimo direto de tracing, qualquer trace registrado no APM substitui o conceito de health check em arquiteturas distribuídas, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Backup automático periódico do banco de dados feito por health probes do orquestrador em horários agendados, decisão que cria dívida técnica silenciosa.",
         ],
         "choices_en": [
             "An endpoint or routine that reports service health (e.g. `/healthz` for liveness and `/readyz` for readiness in Kubernetes), used by orchestrators and load balancers to decide traffic and restarts.",
@@ -1681,10 +1681,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que é o princípio do menor privilégio (*least privilege*)?",
         "statement_en": "What is the principle of least privilege?",
         "choices": [
-            "Conceder acesso administrativo a vários usuários para evitar tickets de suporte sobre falta de permissão e acelerar entregas, atalho que funciona hoje mas complica a próxima migração.",
+            "Conceder acesso administrativo a vários usuários para evitar tickets de suporte sobre falta de permissão e acelerar entregas.",
             "Conceder a cada identidade (humano ou serviço) apenas as permissões mínimas necessárias para sua função, escopadas por recurso/ação e revisadas periodicamente.",
-            "Desabilitar autenticação em sistemas internos para reduzir fricção operacional do dia-a-dia em ambientes restritos por VPN, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
-            "Forçar grande parte do membro da equipe a ter papel de administrador de domínio para garantir que ninguém fique bloqueado durante incidentes, prática que passa despercebida até uma auditoria de segurança.",
+            "Desabilitar autenticação em sistemas internos para reduzir fricção operacional do dia-a-dia em ambientes restritos por VPN, decisão que parece razoável isolada.",
+            "Forçar grande parte do membro da equipe a ter papel de administrador de domínio para garantir que ninguém fique bloqueado durante incidentes.",
         ],
         "choices_en": [
             "Granting administrative access to many users to avoid support tickets about missing permissions and speed up delivery, a shortcut that works today but complicates the next migration.",
@@ -1701,10 +1701,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Como senhas de usuários devem ser armazenadas no banco de dados de uma aplicação?",
         "statement_en": "How should user passwords be stored in an application's database?",
         "choices": [
-            "Em texto claro para facilitar troubleshooting de problemas de login durante o suporte ao usuário final, decisão que parece segura até o primeiro teste de penetração real.",
+            "Em texto claro para facilitar troubleshooting de problemas de login durante o suporte ao usuário final.",
             "Como hashes derivados por uma função adaptativa (bcrypt, scrypt, argon2id) com salt único por senha e fator de custo configurável, idealmente com pepper armazenado fora do banco.",
-            "Criptografadas com AES-GCM e a chave simétrica armazenada na mesma tabela do banco, ao lado dos dados cifrados, para acesso rápido em runtime, comportamento que só vira prioridade depois que já causou prejuízo.",
-            "Armazenadas só em cookies de sessão no navegador do cliente, sem persistência no servidor, o backend raramente precisa da senha após o primeiro login, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Criptografadas com AES-GCM e a chave simétrica armazenada na mesma tabela do banco, ao lado dos dados cifrados, para acesso rápido em runtime.",
+            "Armazenadas só em cookies de sessão no navegador do cliente, sem persistência no servidor, o backend raramente precisa da senha após o primeiro login.",
         ],
         "choices_en": [
             "In cleartext to ease troubleshooting of login problems during end-user support, a decision that looks safe until the first real penetration test.",
@@ -1721,10 +1721,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que significa MFA (Multi-Factor Authentication)?",
         "statement_en": "What does MFA (Multi-Factor Authentication) mean?",
         "choices": [
-            "Exigir o mesmo fator (senha) duas vezes em campos diferentes do formulário de login, dobrando a fricção sem ganho real de segurança, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Exigir o mesmo fator (senha) duas vezes em campos diferentes do formulário de login, dobrando a fricção sem ganho real de segurança, decisão que funciona no papel.",
             "Exigir dois ou mais fatores *de tipos diferentes* na autenticação: algo que você sabe (senha), algo que você tem (token TOTP, FIDO2, push), algo que você é (biometria).",
-            "Termo cunhado por marketing para apps que adotam single sign-on (SSO) com OAuth, sem fator adicional além do provedor de identidade, comportamento que só some quando alguém finalmente lê a documentação.",
-            "Acrônimo de Multi-File Access, recurso de filesystems modernos para abrir múltiplos arquivos simultaneamente sem locks compartilhados, prática que funciona em teste, mas falha sob carga real de produção.",
+            "Termo cunhado por marketing para apps que adotam single sign-on (SSO) com OAuth, sem fator adicional além do provedor de identidade.",
+            "Acrônimo de Multi-File Access, recurso de filesystems modernos para abrir múltiplos arquivos simultaneamente sem locks compartilhados, prática que funciona em teste.",
         ],
         "choices_en": [
             "Requiring the same factor (password) twice in different login-form fields, doubling friction with no real security gain, a decision that works on paper but does not survive the first real incident.",
@@ -1741,10 +1741,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual a função de um WAF (Web Application Firewall)?",
         "statement_en": "What is the role of a WAF (Web Application Firewall)?",
         "choices": [
-            "Substituir o firewall do sistema operacional (`iptables`/`nftables`) na camada de rede, filtrando por IP/porta só em camada 3/4, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Substituir o firewall do sistema operacional (`iptables`/`nftables`) na camada de rede, filtrando por IP/porta só em camada 3/4.",
             "Filtrar tráfego HTTP/HTTPS em camada 7 com regras específicas para ataques web (OWASP Top 10: SQLi, XSS, RCE, path traversal), normalmente como reverse proxy à frente da aplicação.",
-            "Realizar backup automático de aplicações e bancos de dados no horário definido em política de retenção da empresa, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
-            "Acelerar consultas DNS por meio de cache local agressivo na borda da rede, reduzindo a latência de resolução em chamadas externas, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "Realizar backup automático de aplicações e bancos de dados no horário definido em política de retenção da empresa, decisão que cria dívida técnica silenciosa.",
+            "Acelerar consultas DNS por meio de cache local agressivo na borda da rede, reduzindo a latência de resolução em chamadas externas, erro comum de quem aprendeu por tentativa e erro.",
         ],
         "choices_en": [
             "Replace the OS firewall (`iptables`/`nftables`) at the network layer, filtering by IP/port only at layers 3/4, ignoring how the resource actually behaves at scale.",
@@ -1761,10 +1761,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que é HTTPS na prática?",
         "statement_en": "What is HTTPS in practice?",
         "choices": [
-            "HTTP rodando diretamente sobre TCP, sem qualquer camada de criptografia adicional, equivalente ao HTTP em texto claro na porta 80, que só aparece como problema depois que o sistema já está em produção.",
+            "HTTP rodando diretamente sobre TCP, sem qualquer camada de criptografia adicional, equivalente ao HTTP em texto claro na porta 80.",
             "HTTP encapsulado em TLS (HTTP-over-TLS, RFC 2818): a sessão TLS provê confidencialidade (cifragem), integridade (MAC) e autenticação do servidor (cert X.509 assinado por CA confiável).",
-            "Versão comprimida do HTTP em que o corpo das mensagens é deflacionado por padrão pelo cliente, suposição que só se sustenta enquanto o time é pequeno.",
-            "Versão antiga do HTTP descontinuada, mantida só para compatibilidade com browsers IE11 em ambientes corporativos legados, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Versão comprimida do HTTP em que o corpo das mensagens é deflacionado por padrão pelo cliente.",
+            "Versão antiga do HTTP descontinuada, mantida só para compatibilidade com browsers IE11 em ambientes corporativos legados.",
         ],
         "choices_en": [
             "HTTP running directly over TCP, with no additional encryption layer, equivalent to cleartext HTTP on port 80, which only surfaces after the system is already in production. This reflects a recurring operational pitfall seen when teams skip review under delivery pressure.",
@@ -1781,10 +1781,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que é SQL Injection?",
         "statement_en": "What is SQL Injection?",
         "choices": [
-            "Inserir registros válidos em uma tabela via formulário web, funcionalidade legítima de qualquer CRUD com endpoint de criação, erro típico de configuração feita às pressas, sem revisão posterior, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Inserir registros válidos em uma tabela via formulário web, funcionalidade legítima de qualquer CRUD com endpoint de criação, erro típico de configuração feita às pressas, sem revisão posterior.",
             "Vulnerabilidade em que input não sanitizado/parametrizado é concatenado em uma query SQL, permitindo ao atacante alterar a estrutura da consulta (ex.: extrair, modificar ou apagar dados, e às vezes executar comandos do banco).",
-            "Técnica de otimização de banco para reduzir latência ao injetar dicas (`HINT`) no plano de execução do otimizador de queries, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso, que só aparece como problema depois que o sistema já está em produção.",
-            "Tipo de índice multidimensional (B-Tree+, GiST) usado para acelerar buscas geoespaciais e de texto cheio, atalho que funciona hoje mas complica a próxima migração, decisão que parece segura até o primeiro teste de penetração real.",
+            "Técnica de otimização de banco para reduzir latência ao injetar dicas (`HINT`) no plano de execução do otimizador de queries, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
+            "Tipo de índice multidimensional (B-Tree+, GiST) usado para acelerar buscas geoespaciais e de texto cheio.",
         ],
         "choices_en": [
             "Inserting valid records into a table via a web form, legitimate functionality of any CRUD with a create endpoint, a typical hasty-config error without later review, ignoring how the resource actually behaves at scale.",
@@ -1802,9 +1802,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "What is XSS (Cross-Site Scripting)?",
         "choices": [
             "Injeção de JavaScript malicioso em uma página web (refletido, persistente ou DOM-based) que executa no contexto do navegador de outro usuário, frequentemente roubando cookies ou tokens.",
-            "Tipo de chave SSH baseada em curvas elípticas, comum em ambientes de DevOps modernos para autenticação em servidores Git, prática ainda comum em sistema legado que raramente é atualizado.",
-            "Padrão de cabeçalho HTTP usado para indicar versionamento de API entre cliente e servidor (`X-Service-Spec`), decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
-            "Bug de DNS que faz registros A apontarem para o IP errado em zonas mal configuradas em servidores autoritativos, suposição que só se sustenta enquanto o time é pequeno.",
+            "Tipo de chave SSH baseada em curvas elípticas, comum em ambientes de DevOps modernos para autenticação em servidores Git.",
+            "Padrão de cabeçalho HTTP usado para indicar versionamento de API entre cliente e servidor (`X-Service-Spec`), decisão que cria dívida técnica silenciosa.",
+            "Bug de DNS que faz registros A apontarem para o IP errado em zonas mal configuradas em servidores autoritativos.",
         ],
         "choices_en": [
             "Injection of malicious JavaScript into a web page (reflected, persistent, or DOM-based) that runs in another user's browser context, often stealing cookies or tokens.",
@@ -1821,10 +1821,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Como armazenar segredos (chaves de API, credenciais de banco) usados por uma aplicação na cloud?",
         "statement_en": "How should secrets (API keys, database credentials) used by a cloud application be stored?",
         "choices": [
-            "Hardcoded diretamente no código-fonte e commitados no repositório para que devs e SRE encontrem facilmente em produção, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "Hardcoded diretamente no código-fonte e commitados no repositório para que devs e SRE encontrem facilmente em produção, erro comum de quem aprendeu por tentativa e erro.",
             "Em um secret manager dedicado (HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, K8s Secrets com KMS), com acesso governado por IAM e injeção via env/sidecar/CSI no runtime.",
-            "Em um arquivo `README.md` na raiz do repositório, documentando as credenciais para onboarding rápido de novos integrantes, prática que troca previsibilidade por economia de esforço imediato.",
-            "Como variáveis de ambiente em um workflow YAML público de CI, sem camada de criptografia ou redaction, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Em um arquivo `README.md` na raiz do repositório, documentando as credenciais para onboarding rápido de novos integrantes.",
+            "Como variáveis de ambiente em um workflow YAML público de CI, sem camada de criptografia ou redaction.",
         ],
         "choices_en": [
             "Hardcoded directly in source code and committed to the repository so developers and SRE can find them easily in production, a common trial-and-error mistake without reviewing official docs. This reflects a recurring operational pitfall seen when teams skip review under delivery pressure.",
@@ -1842,9 +1842,9 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement_en": "What is the role of SAST (Static Application Security Testing)?",
         "choices": [
             "Análise *estática* do código-fonte ou bytecode (sem executá-lo) em busca de padrões inseguros, uso indevido de APIs criptográficas, SQLi, hard-coded secrets, taint analysis (ex.: Bandit, Semgrep, SonarQube, CodeQL).",
-            "Pen-test manual realizado em produção por profissional de Red Team, atividade de outro tipo de teste, conduzida por humanos com escopo acordado, abordagem que ignora o histórico de incidentes parecidos no setor, prática que funciona em teste, mas falha sob carga real de produção.",
-            "Backup off-site dos repositórios de código para um datacenter secundário, parte de um plano de DRP da organização, decisão que parece inofensiva isolada, mas se acumula com o tempo, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
-            "Login automático em uma aplicação por meio de injeção de cookies de sessão para fins de teste de carga em pipelines de CI, atalho que troca segurança por conveniência de curto prazo, escolha que economiza tempo agora e cobra o preço mais tarde.",
+            "Pen-test manual realizado em produção por profissional de Red Team, atividade de outro tipo de teste, conduzida por humanos com escopo acordado, abordagem que ignora o histórico de incidentes parecidos no setor, prática que funciona em teste.",
+            "Backup off-site dos repositórios de código para um datacenter secundário, parte de um plano de DRP da organização, decisão que parece inofensiva isolada.",
+            "Login automático em uma aplicação por meio de injeção de cookies de sessão para fins de teste de carga em pipelines de CI.",
         ],
         "choices_en": [
             "*Static* analysis of source code or bytecode (without executing it) looking for insecure patterns, misuse of crypto APIs, SQLi, hard-coded secrets, taint analysis (e.g. Bandit, Semgrep, SonarQube, CodeQL).",
@@ -1863,8 +1863,8 @@ JUNIOR_QUESTIONS: list[dict] = [
         "choices": [
             "Por costume da indústria, mesmo sem benefício técnico mensurável em prevenir incidentes reais ou em reduzir CVEs em produção, decisão que parece inofensiva isolada, mas se acumula com o tempo, suposição que só vale em ambiente de desenvolvimento, não em produção.",
             "Para detectar vulnerabilidades conhecidas (CVEs) em bibliotecas de terceiros e em camadas de imagens container, e para identificar licenças incompatíveis (ex.: Snyk, Dependabot, Trivy, Grype, OWASP Dependency-Check).",
-            "Para acelerar a fase de build do CI ao remover automaticamente dependências não usadas pelo código da aplicação durante o build, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
-            "Para baixar pacotes adicionais e expandir a árvore de dependências do projeto, aumentando funcionalidades disponíveis na aplicação, atalho que ignora exatamente o cenário que mais importa evitar, escolha que economiza tempo agora e cobra o preço mais tarde.",
+            "Para acelerar a fase de build do CI ao remover automaticamente dependências não usadas pelo código da aplicação durante o build, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas, erro comum de quem aprendeu por tentativa e erro.",
+            "Para baixar pacotes adicionais e expandir a árvore de dependências do projeto, aumentando funcionalidades disponíveis na aplicação, atalho que ignora exatamente o cenário que mais importa evitar.",
         ],
         "choices_en": [
             "Out of industry habit, even without measurable technical benefit in preventing real incidents or reducing production CVEs, a decision that looks harmless alone but accumulates over time, an assumption that only holds in development, not production.",
@@ -1882,10 +1882,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Como reagir profissionalmente ao receber uma crítica em code review?",
         "statement_en": "How should you react professionally when receiving criticism in a code review?",
         "choices": [
-            "Encarar como ataque pessoal e responder de forma defensiva, evitando aceitar mudanças solicitadas pelo reviewer no PR, atalho que troca segurança por conveniência de curto prazo.",
+            "Encarar como ataque pessoal e responder de forma defensiva, evitando aceitar mudanças solicitadas pelo reviewer no PR.",
             "Tratar a crítica como feedback sobre o *código* (não sobre a pessoa), avaliar com base em dados, discutir trade-offs com o reviewer e ajustar o PR ou justificar a escolha de forma objetiva.",
-            "Aceitar vários comentários sem questionar e aplicar as mudanças mesmo quando discordar tecnicamente, para acelerar o merge, escolha que economiza tempo agora e cobra o preço mais tarde.",
-            "Reverter o PR sem responder a algum comentário, abandonando a feature para evitar confronto com colegas mais seniores, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Aceitar vários comentários sem questionar e aplicar as mudanças mesmo quando discordar tecnicamente, para acelerar o merge.",
+            "Reverter o PR sem responder a algum comentário, abandonando a feature para evitar confronto com colegas mais seniores.",
         ],
         "choices_en": [
             "Treat it as a personal attack and respond defensively, avoiding the changes requested by the reviewer on the PR, a shortcut that trades security for short-term convenience.",
@@ -1902,10 +1902,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Diante de um incidente em produção em que você não sabe a solução imediata, qual a postura recomendada?",
         "statement_en": "Faced with a production incident where you do not know the immediate solution, what is the recommended posture?",
         "choices": [
-            "Tentar adivinhar a causa silenciosamente e aplicar mudanças em produção sem documentar nem comunicar o time, para resolver rápido, prática que troca previsibilidade por economia de esforço imediato.",
+            "Tentar adivinhar a causa silenciosamente e aplicar mudanças em produção sem documentar nem comunicar o time, para resolver rápido.",
             "Comunicar imediatamente o time/canal de incidentes, abrir o runbook (se houver), pedir ajuda a quem domina o domínio e registrar evidências (timestamps, logs, métricas) enquanto investiga.",
-            "Aguardar passivamente que outro engenheiro perceba o problema pelos dashboards e assuma a responsabilidade pela resposta, erro que só é percebido quando o time de operação já está lidando com o incidente.",
-            "Reiniciar vários serviços envolvidos sem coletar dados, na expectativa de que o problema desapareça por si só após o restart, prática que gera falso senso de segurança no time.",
+            "Aguardar passivamente que outro engenheiro perceba o problema pelos dashboards e assuma a responsabilidade pela resposta.",
+            "Reiniciar vários serviços envolvidos sem coletar dados, na expectativa de que o problema desapareça por si só após o restart.",
         ],
         "choices_en": [
             "Silently guess the cause and apply production changes without documenting or communicating with the team, to resolve quickly, trading predictability for short-term effort savings. This reflects a recurring operational pitfall seen when teams skip review under delivery pressure.",
@@ -1922,10 +1922,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que é um *postmortem blameless*?",
         "statement_en": "What is a *blameless postmortem*?",
         "choices": [
-            "Reunião pós-incidente cujo objetivo principal é apontar o responsável humano pelo erro e aplicar consequências disciplinares ao time envolvido, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
+            "Reunião pós-incidente cujo objetivo principal é apontar o responsável humano pelo erro e aplicar consequências disciplinares ao time envolvido, decisão que parece inofensiva isolada.",
             "Análise sistemática do incidente focada em sistema, processos e fatores contribuintes (não em pessoas), buscando *o que* falhou e *como* prevenir recorrência, com ações concretas e donos.",
-            "Documento confidencial criado só para registro interno, sem ações de melhoria nem compartilhamento com o time mais amplo, prática que passa despercebida até uma auditoria de segurança.",
-            "Reunião informal em que só a liderança fala e os engenheiros ouvem, para validar uma narrativa pré-definida sobre o incidente, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
+            "Documento confidencial criado só para registro interno, sem ações de melhoria nem compartilhamento com o time mais amplo.",
+            "Reunião informal em que só a liderança fala e os engenheiros ouvem, para validar uma narrativa pré-definida sobre o incidente, decisão que parece razoável isolada.",
         ],
         "choices_en": [
             "A post-incident meeting whose main goal is to point to the human responsible for the error and apply disciplinary consequences to the involved team, a decision that looks harmless alone but accumulates over time.",
@@ -1942,7 +1942,7 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual é uma boa prática ao estimar tarefas em um projeto?",
         "statement_en": "What is a good practice when estimating tasks in a project?",
         "choices": [
-            "Estimar geralmente pelo melhor caso possível, ignorando incertezas e dependências externas, para parecer produtivo no planejamento, comportamento que só some quando alguém finalmente lê a documentação.",
+            "Estimar geralmente pelo melhor caso possível, ignorando incertezas e dependências externas, para parecer produtivo no planejamento.",
             "Decompor a tarefa em subtarefas menores, listar incertezas e premissas explicitamente, calibrar com dados históricos do time (velocity, throughput) e comunicar a faixa de confiança.",
             "Estimar só em horas exatas (sem faixa, sem nível de confiança), tratando a estimativa como compromisso fixo e contratual, erro típico de configuração feita às pressas, sem revisão posterior.",
             "Comprometer-se com o pior caso possível em todas as estimativas, multiplicando por 3 para criar buffer pessoal contra cobrança, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
@@ -1962,10 +1962,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Qual postura adotar ao discordar de uma decisão técnica tomada pelo time/líder?",
         "statement_en": "What posture should you adopt when disagreeing with a technical decision made by the team/leader?",
         "choices": [
-            "Implementar do seu jeito sem avisar ninguém, partindo do princípio de que o resto do time vai entender o motivo depois quando vir o resultado, comportamento que confunde quem está debugando meses depois, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Implementar do seu jeito sem avisar ninguém, partindo do princípio de que o resto do time vai entender o motivo depois quando vir o resultado.",
             "Apresentar argumentos com dados e contexto durante a discussão; se a decisão final for em outra direção, *disagree and commit*: apoiar a execução com profissionalismo enquanto monitora os resultados para revalidar.",
-            "Sabotar passivamente a decisão entregando o mínimo possível, na expectativa de que ela falhe e seja revertida no próximo planejamento, suposição que vale só até o primeiro imprevisto de rede ou hardware, abordagem que resolve o sintoma, não a causa raiz do problema.",
-            "Recusar-se a tocar no projeto até que sua opinião seja aceita, mesmo que isso bloqueie outros membros do time durante a sprint, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas, prática ainda comum em sistema legado que raramente é atualizado.",
+            "Sabotar passivamente a decisão entregando o mínimo possível, na expectativa de que ela falhe e seja revertida no próximo planejamento, suposição que vale só até o primeiro imprevisto de rede ou hardware, abordagem que resolve o sintoma.",
+            "Recusar-se a tocar no projeto até que sua opinião seja aceita, mesmo que isso bloqueie outros membros do time durante a sprint, atalho que parece seguro isolado.",
         ],
         "choices_en": [
             "Implement your own way without telling anyone, assuming the rest of the team will understand the reason later when they see the result, which confuses whoever is debugging months later, an assumption that rarely holds outside a controlled lab environment.",
@@ -1982,10 +1982,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "O que é importante ao documentar um *runbook* operacional?",
         "statement_en": "What matters when documenting an operational *runbook*?",
         "choices": [
-            "Listar só comandos crus, sem explicar o contexto, riscos ou critérios de sucesso, para manter o documento curto e fácil de copiar, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Listar só comandos crus, sem explicar o contexto, riscos ou critérios de sucesso, para manter o documento curto e fácil de copiar.",
             "Descrever sintomas observáveis, hipóteses iniciais, comandos com explicação e parâmetros esperados, critérios objetivos de sucesso/rollback e contatos de escalonamento.",
-            "Descrever só o passo final da resolução, omitindo a investigação prévia para simular um troubleshooting linear no documento, atalho comum quando o prazo aperta e ninguém revisa depois.",
-            "Escrever o runbook em prosa narrativa de 50 páginas sem títulos nem estrutura, para 'contar a história' completa do problema original, suposição que só se sustenta enquanto o time é pequeno.",
+            "Descrever só o passo final da resolução, omitindo a investigação prévia para simular um troubleshooting linear no documento.",
+            "Escrever o runbook em prosa narrativa de 50 páginas sem títulos nem estrutura, para 'contar a história' completa do problema original.",
         ],
         "choices_en": [
             "List only raw commands, without explaining context, risks, or success criteria, to keep the document short and easy to copy, an assumption that rarely holds outside a controlled lab environment.",
@@ -2002,10 +2002,10 @@ JUNIOR_QUESTIONS: list[dict] = [
         "statement": "Como manter aprendizado contínuo na carreira de DevOps/SRE?",
         "statement_en": "How do you keep continuous learning in a DevOps/SRE career?",
         "choices": [
-            "Considerar o conhecimento adquirido na graduação suficiente para o resto da carreira, sem investir em atualização posterior em ferramentas e práticas, prática que troca previsibilidade por economia de esforço imediato.",
+            "Considerar o conhecimento adquirido na graduação suficiente para o resto da carreira, sem investir em atualização posterior em ferramentas e práticas.",
             "Acompanhar comunidade técnica (newsletters, podcasts, conferências, RFCs, post-mortems públicos), praticar em side projects ou homelab, revisar PRs alheios para entender outros estilos e pedir feedback explícito.",
-            "Confiar exclusivamente em cursos pagos certificados, ignorando recursos abertos como documentação oficial, blogs de engenharia e código aberto disponíveis gratuitamente, atalho comum quando o prazo aperta e ninguém revisa depois.",
-            "Aguardar passivamente a empresa solicitar uma capacitação específica antes de estudar qualquer assunto novo relacionado à área, prática que passa despercebida até uma auditoria de segurança.",
+            "Confiar exclusivamente em cursos pagos certificados, ignorando recursos abertos como documentação oficial, blogs de engenharia e código aberto disponíveis gratuitamente.",
+            "Aguardar passivamente a empresa solicitar uma capacitação específica antes de estudar qualquer assunto novo relacionado à área.",
         ],
         "choices_en": [
             "Consider knowledge from graduation sufficient for the rest of the career, without investing in later updates on tools and practices, trading predictability for short-term effort savings.",

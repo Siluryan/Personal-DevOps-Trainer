@@ -13,9 +13,9 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement_en": "In which scenario are microservices typically NOT the best starting choice?",
         "choices": [
             "Quando o domínio ainda é pequeno, a equipe é enxuta e os bounded contexts não estão claros, um monólito modular reduz custo cognitivo, operacional e permite refatoração mais barata até que os limites se estabilizem.",
-            "Microsserviços são geralmente superiores ao monólito em sistemas modernos; o tamanho do domínio influencia só a granularidade dos serviços, não a decisão de adotá-los desde o início, atalho que ignora exatamente o cenário que mais importa evitar.",
-            "Só em sistemas estáticos, sem alterações de requisitos; quando há mudança contínua, microsserviços são obrigatórios para isolar deploys e times entre features novas, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
-            "Quando a carga é alta, pois microsserviços introduzem overhead de rede; nessas situações, o monólito escala melhor verticalmente sem custo adicional de coordenação distribuída, abordagem que funciona bem até o primeiro pico de carga real.",
+            "Microsserviços são geralmente superiores ao monólito em sistemas modernos; o tamanho do domínio influencia só a granularidade dos serviços, não a decisão de adotá-los desde o início.",
+            "Só em sistemas estáticos, sem alterações de requisitos; quando há mudança contínua, microsserviços são obrigatórios para isolar deploys e times entre features novas.",
+            "Quando a carga é alta, pois microsserviços introduzem overhead de rede; nessas situações, o monólito escala melhor verticalmente sem custo adicional de coordenação distribuída.",
         ],
         "choices_en": [
             "When the domain is still small, the team is lean, and bounded contexts are unclear, a modular monolith lowers cognitive and operational cost and allows cheaper refactoring until boundaries stabilize.",
@@ -32,10 +32,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Quando o padrão Saga é apropriado em uma arquitetura de microsserviços?",
         "statement_en": "When is the Saga pattern appropriate in a microservices architecture?",
         "choices": [
-            "Para substituir as transações ACID locais dentro de cada serviço, eliminando a necessidade de banco transacional e simplificando o modelo de domínio em vários contextos, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Para substituir as transações ACID locais dentro de cada serviço, eliminando a necessidade de banco transacional e simplificando o modelo de domínio em vários contextos.",
             "Para coordenar uma operação que abrange múltiplos serviços, encadeando transações locais (cada uma com sua transação ACID) e definindo ações de compensação caso um passo intermediário falhe, aceitando consistência eventual.",
-            "Para garantir consistência forte entre serviços através de um coordenador 2PC (two-phase commit) que acumula locks distribuídos durante grande parte do fluxo da transação cross-service, decisão que parece segura até o primeiro teste de penetração real.",
-            "Para acelerar leituras em sistemas event-sourced, materializando projeções a partir do log de eventos sem efeitos colaterais transacionais entre os serviços envolvidos, prática que troca previsibilidade por economia de esforço imediato.",
+            "Para garantir consistência forte entre serviços através de um coordenador 2PC (two-phase commit) que acumula locks distribuídos durante grande parte do fluxo da transação cross-service.",
+            "Para acelerar leituras em sistemas event-sourced, materializando projeções a partir do log de eventos sem efeitos colaterais transacionais entre os serviços envolvidos.",
         ],
         "choices_en": [
             "To replace local ACID transactions inside each service, removing the need for a transactional database and simplifying the domain model across contexts — a typical result of copying configuration from another project without adapting.",
@@ -54,8 +54,8 @@ SENIOR_QUESTIONS: list[dict] = [
         "choices": [
             "São nomes diferentes para o mesmo padrão arquitetural; BFF é só como a comunidade JavaScript chama API Gateway quando ele é implementado em Node.js para servir frontends, suposição que raramente se sustenta fora do ambiente controlado de laboratório, suposição que só vale em ambiente de desenvolvimento, não em produção.",
             "API Gateway centraliza preocupações cross-cutting (auth, rate limit, roteamento) para múltiplos consumidores genéricos; BFF é uma camada específica por canal (web, mobile, parceiro) que agrega/transforma respostas para evitar over-fetch e adaptar contratos.",
-            "BFF substitui o frontend renderizando HTML no servidor, enquanto API Gateway é o que serve as APIs REST/JSON para consumo dos clientes finais via web ou mobile, prática ainda comum em sistema legado que raramente é atualizado, prática ainda comum em sistema legado que raramente é atualizado.",
-            "API Gateway é responsável por persistência cacheada de respostas e BFF é responsável por roteamento entre microsserviços de domínio com balanceamento de carga interno, decisão que parece inofensiva isolada, mas se acumula com o tempo, que só aparece como problema depois que o sistema já está em produção.",
+            "BFF substitui o frontend renderizando HTML no servidor, enquanto API Gateway é o que serve as APIs REST/JSON para consumo dos clientes finais via web ou mobile, prática ainda comum em sistema legado que raramente é atualizado.",
+            "API Gateway é responsável por persistência cacheada de respostas e BFF é responsável por roteamento entre microsserviços de domínio com balanceamento de carga interno, decisão que parece inofensiva isolada.",
         ],
         "choices_en": [
             "They are different names for the same architectural pattern; BFF is just how the JavaScript community calls an API Gateway when it is implemented in Node.js to serve frontends — an assumption that rarely holds outside a controlled lab environment and only holds in development, not production.",
@@ -92,10 +92,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Em quais condições aplicar CQRS é justificado?",
         "statement_en": "Under which conditions is applying CQRS justified?",
         "choices": [
-            "Em grande parte do CRUD, pois CQRS é evolução natural do design moderno e elimina a necessidade de repositórios genéricos compartilhados entre camadas de escrita e leitura, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
+            "Em grande parte do CRUD, pois CQRS é evolução natural do design moderno e elimina a necessidade de repositórios genéricos compartilhados entre camadas de escrita e leitura, decisão que parece inofensiva isolada.",
             "Quando há grande disparidade entre cargas/modelos de leitura e escrita, ou complexidade de domínio que se beneficia de modelos otimizados separados, e o time aceita o custo de manter projeções e consistência eventual entre eles.",
-            "Quando se quer reduzir custo de infraestrutura trivialmente, já que separar leitura e escrita permite remover réplicas read-only do banco principal de produção, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
-            "Só quando se adota event sourcing, pois CQRS é a camada de query exigida pelo event store; sem event sourcing, o padrão não traz benefício arquitetural relevante, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Quando se quer reduzir custo de infraestrutura trivialmente, já que separar leitura e escrita permite remover réplicas read-only do banco principal de produção, decisão que cria dívida técnica silenciosa.",
+            "Só quando se adota event sourcing, pois CQRS é a camada de query exigida pelo event store; sem event sourcing, o padrão não traz benefício arquitetural relevante.",
         ],
         "choices_en": [
             "For most CRUD, because CQRS is a natural evolution of modern design and removes the need for generic repositories shared between write and read layers — a decision that looks harmless in isolation but accumulates over time.",
@@ -112,10 +112,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Qual é a característica central do padrão Event Sourcing?",
         "statement_en": "What is the central characteristic of the Event Sourcing pattern?",
         "choices": [
-            "Salvar o estado atual diretamente em uma tabela versionada, registrando deltas em uma coluna JSON para reconstruir histórico de auditoria quando necessário pelo compliance, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Salvar o estado atual diretamente em uma tabela versionada, registrando deltas em uma coluna JSON para reconstruir histórico de auditoria quando necessário pelo compliance.",
             "Persistir uma sequência imutável e ordenada de eventos como fonte de verdade do sistema, derivando o estado atual por replay (com snapshots periódicos) e habilitando auditoria nativa e queries temporais.",
-            "Adotar um broker de mensagens (tipicamente Kafka) como única forma de comunicação entre serviços, eliminando o banco de dados como camada de persistência primária do sistema, comportamento que só vira prioridade depois que já causou prejuízo.",
-            "Eliminar logs operacionais da aplicação porque os eventos do domínio assumem o papel de auditoria, observabilidade e rastreio de erros runtime entre os serviços, suposição que só se sustenta enquanto o time é pequeno.",
+            "Adotar um broker de mensagens (tipicamente Kafka) como única forma de comunicação entre serviços, eliminando o banco de dados como camada de persistência primária do sistema.",
+            "Eliminar logs operacionais da aplicação porque os eventos do domínio assumem o papel de auditoria, observabilidade e rastreio de erros runtime entre os serviços.",
         ],
         "choices_en": [
             "Saving current state directly in a versioned table, recording deltas in a JSON column to rebuild audit history when compliance requires it — an assumption that rarely holds outside a controlled lab environment.",
@@ -132,10 +132,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como evitar o acoplamento via banco compartilhado entre microsserviços?",
         "statement_en": "How do you avoid coupling via a shared database between microservices?",
         "choices": [
-            "Manter um único banco para vários serviços, mas com schemas separados e foreign keys explícitas, garantindo integridade referencial centralizada entre domínios distintos, decisão que parece segura até o primeiro teste de penetração real.",
+            "Manter um único banco para vários serviços, mas com schemas separados e foreign keys explícitas, garantindo integridade referencial centralizada entre domínios distintos.",
             "Cada serviço é dono exclusivo do seu schema/banco; integração ocorre via APIs versionadas e eventos, sem JOINs cross-service nem leituras diretas em tabelas alheias por outros serviços.",
-            "Replicar manualmente as tabelas de cada serviço para um banco analítico central, permitindo que qualquer serviço consulte dados alheios sem impactar o operacional do dono, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
-            "Expor views materializadas cross-service no mesmo banco para consumidores; a view abstrai o schema interno e quebra o acoplamento físico das tabelas dos donos, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Replicar manualmente as tabelas de cada serviço para um banco analítico central, permitindo que qualquer serviço consulte dados alheios sem impactar o operacional do dono.",
+            "Expor views materializadas cross-service no mesmo banco para consumidores; a view abstrai o schema interno e quebra o acoplamento físico das tabelas dos donos.",
         ],
         "choices_en": [
             "Keep a single database for several services, but with separate schemas and explicit foreign keys, guaranteeing centralized referential integrity across distinct domains — a decision that looks safe until the first real penetration test.",
@@ -152,10 +152,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Para que serve o padrão Strangler Fig em modernização de sistemas?",
         "statement_en": "What is the Strangler Fig pattern for in system modernization?",
         "choices": [
-            "Funciona como uma camada anti-corrupção entre o domínio novo e o legado, traduzindo modelos para que o novo serviço não herde conceitos do código antigo durante a coexistência, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Funciona como uma camada anti-corrupção entre o domínio novo e o legado, traduzindo modelos para que o novo serviço não herde conceitos do código antigo durante a coexistência, decisão que cria dívida técnica silenciosa.",
             "Migrar de um monólito para microsserviços (ou nova plataforma) de forma incremental, roteando gradualmente partes do tráfego para novos componentes até que o legado possa ser desativado sem big bang.",
-            "Reescrever o sistema legado em paralelo, manter ambos rodando indefinidamente e deixar o cliente escolher qual versão usar via flag de feature persistente em produção, abordagem que ignora o cenário de falha mais provável na prática.",
-            "Encapsular o monólito existente atrás de um único API Gateway que injeta autenticação e rate limiting, mas mantém todas as rotas no mesmo binário do legado, decisão que parece segura até o primeiro teste de penetração real.",
+            "Reescrever o sistema legado em paralelo, manter ambos rodando indefinidamente e deixar o cliente escolher qual versão usar via flag de feature persistente em produção.",
+            "Encapsular o monólito existente atrás de um único API Gateway que injeta autenticação e rate limiting, mas mantém todas as rotas no mesmo binário do legado.",
         ],
         "choices_en": [
             "It works as an anti-corruption layer between the new domain and the legacy, translating models so the new service does not inherit concepts from old code during coexistence — a decision that creates silent technical debt without raising an immediate error.",
@@ -172,10 +172,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Por que idempotência em APIs é importante em sistemas distribuídos?",
         "statement_en": "Why is API idempotency important in distributed systems?",
         "choices": [
-            "É boa prática estética que indica código bem desenhado, mas o impacto operacional é marginal porque a maioria das redes corporativas é confiável o suficiente para evitar retentativas, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "É boa prática estética que indica código bem desenhado, mas o impacto operacional é marginal porque a maioria das redes corporativas é confiável o suficiente para evitar retentativas, decisão que cria dívida técnica silenciosa.",
             "Permite que retentativas (comuns em redes não confiáveis e timeouts) sejam aplicadas com segurança sem produzir efeitos colaterais duplicados em cobranças, eventos ou mutações de estado críticas.",
-            "Substitui o token de autenticação em chamadas repetidas, evitando que o mesmo usuário seja autorizado mais de uma vez para uma operação sensível dentro da mesma sessão, atalho que funciona hoje mas complica a próxima migração.",
-            "Aumenta a latência porque exige que o servidor mantenha estado de cada chamada, mas em troca elimina a necessidade de retry no cliente, simplificando o código aplicacional, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "Substitui o token de autenticação em chamadas repetidas, evitando que o mesmo usuário seja autorizado mais de uma vez para uma operação sensível dentro da mesma sessão.",
+            "Aumenta a latência porque exige que o servidor mantenha estado de cada chamada, mas em troca elimina a necessidade de retry no cliente, simplificando o código aplicacional, erro comum de quem aprendeu por tentativa e erro.",
         ],
         "choices_en": [
             "It is an aesthetic best practice that signals well-designed code, but operational impact is marginal because most corporate networks are reliable enough to avoid retries — a decision that creates silent technical debt without raising an immediate error.",
@@ -192,10 +192,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Para comunicação entre serviços internos críticos, com baixa latência e contratos explícitos, qual escolha é tipicamente mais adequada?",
         "statement_en": "For communication between critical internal services, with low latency and explicit contracts, which choice is typically more appropriate?",
         "choices": [
-            "REST sobre JSON em vários casos, pois é o padrão da indústria e qualquer otimização de protocolo é prematura para microsserviços internos modernos com SLAs típicos, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "REST sobre JSON em vários casos, pois é o padrão da indústria e qualquer otimização de protocolo é prematura para microsserviços internos modernos com SLAs típicos.",
             "gRPC com Protocol Buffers, oferecendo tipagem forte, multiplexação HTTP/2, contratos versionáveis e payloads binários compactos, com geração de stubs em múltiplas linguagens.",
-            "SOAP com WS-Security e contratos WSDL, que oferecem tipagem forte e governança superior por usar XML Schema validado em runtime em todas as chamadas inter-serviço, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
-            "GraphQL com subscriptions persistentes, pois HTTP/2 e payloads binários surgem como otimização natural quando o cliente especifica os campos exatos que precisa receber, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "SOAP com WS-Security e contratos WSDL, que oferecem tipagem forte e governança superior por usar XML Schema validado em runtime em todas as chamadas inter-serviço, decisão que funciona no papel.",
+            "GraphQL com subscriptions persistentes, pois HTTP/2 e payloads binários surgem como otimização natural quando o cliente especifica os campos exatos que precisa receber.",
         ],
         "choices_en": [
             "REST over JSON in many cases, because it is the industry standard and any protocol optimization is premature for modern internal microservices with typical SLAs — a common shortcut when the deadline is tight and nobody reviews afterward.",
@@ -214,8 +214,8 @@ SENIOR_QUESTIONS: list[dict] = [
         "choices": [
             "É uma boa prática para vários serviços compartilharem código comum (DTOs, helpers, exceções), maximizando reuso e reduzindo duplicação de código entre os times da organização, suposição que só vale em ambiente de desenvolvimento, não em produção.",
             "Manter um pequeno conjunto de modelo deliberadamente compartilhado entre dois bounded contexts colaborativos, versionado com cuidado, com mudanças coordenadas entre os times donos.",
-            "Substituir o monólito legado mantendo só o núcleo de regras de negócio em uma biblioteca central usada por vários bounded contexts via dependência forte coordenada, comportamento que só é notado quando alguém audita os logs depois.",
-            "Garantir zero coupling entre contextos, pois o kernel é versionado independentemente; cada contexto consome a versão que preferir sem coordenação direta entre os times, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Substituir o monólito legado mantendo só o núcleo de regras de negócio em uma biblioteca central usada por vários bounded contexts via dependência forte coordenada.",
+            "Garantir zero coupling entre contextos, pois o kernel é versionado independentemente; cada contexto consome a versão que preferir sem coordenação direta entre os times, decisão que funciona no papel.",
         ],
         "choices_en": [
             "It is a good practice for several services to share common code (DTOs, helpers, exceptions), maximizing reuse and reducing duplication across the organization's teams — an assumption that only holds in a development environment, not in production.",
@@ -232,10 +232,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Qual o propósito de uma Anti-Corruption Layer (ACL) em DDD?",
         "statement_en": "What is the purpose of an Anti-Corruption Layer (ACL) in DDD?",
         "choices": [
-            "Validar e cifrar dados sensíveis antes que cheguem ao banco de dados, complementando o uso de KMS com transformações de domínio aplicadas em todas as escritas críticas, prática ainda comum em sistema legado que raramente é atualizado.",
+            "Validar e cifrar dados sensíveis antes que cheguem ao banco de dados, complementando o uso de KMS com transformações de domínio aplicadas em todas as escritas críticas.",
             "Isolar um bounded context de modelos externos (legados ou de terceiros), traduzindo conceitos na fronteira para que o domínio interno não seja contaminado por estruturas estranhas ao seu modelo.",
-            "Substituir o IAM da plataforma por uma camada de autorização específica do domínio, traduzindo papéis externos para roles internas com mais granularidade contextual, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
-            "Camada de cache de respostas externas que evita acoplamento de latência entre serviços; o nome 'anti-corruption' refere-se à corrupção de cache em cenários de partição de rede, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Substituir o IAM da plataforma por uma camada de autorização específica do domínio, traduzindo papéis externos para roles internas com mais granularidade contextual, erro comum de quem aprendeu por tentativa e erro.",
+            "Camada de cache de respostas externas que evita acoplamento de latência entre serviços; o nome 'anti-corruption' refere-se à corrupção de cache em cenários de partição de rede.",
         ],
         "choices_en": [
             "Validate and encrypt sensitive data before it reaches the database, complementing KMS use with domain transformations applied on every critical write — a practice still common in a legacy system that is rarely updated.",
@@ -253,10 +253,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como escalar leitura em um Postgres altamente requisitado mantendo SLA?",
         "statement_en": "How do you scale reads on a heavily loaded Postgres while keeping SLA?",
         "choices": [
-            "Aumentar continuamente a instância do primário, ajustando shared_buffers e work_mem; bancos relacionais escalam verticalmente sem trade-offs significativos quando bem configurados, comportamento que só é notado quando alguém audita os logs depois.",
+            "Aumentar continuamente a instância do primário, ajustando shared_buffers e work_mem; bancos relacionais escalam verticalmente sem trade-offs significativos quando bem configurados.",
             "Combinar replicação para réplicas read-only, cache (Redis) com invalidação consistente, eventualmente CQRS com read models otimizados e particionamento (Citus, pgbouncer) quando saturação vertical for atingida.",
-            "Reescrever a aplicação em uma linguagem com runtime mais eficiente, pois o gargalo é tipicamente CPU da camada de aplicação e não do banco de dados subjacente, atalho que funciona hoje mas complica a próxima migração.",
-            "Reiniciar o banco em janela noturna para limpar bloat e reorganizar índices; é a forma mais eficiente de recuperar throughput de leitura sem mudanças arquiteturais profundas, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
+            "Reescrever a aplicação em uma linguagem com runtime mais eficiente, pois o gargalo é tipicamente CPU da camada de aplicação e não do banco de dados subjacente.",
+            "Reiniciar o banco em janela noturna para limpar bloat e reorganizar índices; é a forma mais eficiente de recuperar throughput de leitura sem mudanças arquiteturais profundas, decisão que parece razoável isolada.",
         ],
         "choices_en": [
             "Continuously enlarge the primary instance, tuning shared_buffers and work_mem; relational databases scale vertically without significant trade-offs when well configured — behavior that is only noticed when someone audits the logs later.",
@@ -273,10 +273,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Quando sharding é arquiteturalmente apropriado?",
         "statement_en": "When is sharding architecturally appropriate?",
         "choices": [
-            "Em grande parte do banco que cresce, pois sharding é evolução natural; sem ele o sistema não consegue absorver a inevitável tendência de crescimento de dados em qualquer aplicação SaaS, decisão que parece segura até o primeiro teste de penetração real.",
+            "Em grande parte do banco que cresce, pois sharding é evolução natural; sem ele o sistema não consegue absorver a inevitável tendência de crescimento de dados em qualquer aplicação SaaS.",
             "Quando volume e/ou throughput excedem o que um único nó suporta com segurança, e existe uma chave natural de distribuição (tenant_id, customer_id) com cardinalidade boa que evite hot shards.",
-            "Para tabelas pequenas que demandam baixa latência de leitura, distribuindo as poucas linhas em vários nós para paralelizar varreduras de índice em queries agregadas frequentes, prática que aumenta a superfície de ataque sem ninguém perceber.",
-            "Só durante migrações de dados entre clusters, como mecanismo temporário; em estado estável, o sharding deve ser desfeito para simplificar operação e backup unificado, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Para tabelas pequenas que demandam baixa latência de leitura, distribuindo as poucas linhas em vários nós para paralelizar varreduras de índice em queries agregadas frequentes.",
+            "Só durante migrações de dados entre clusters, como mecanismo temporário; em estado estável, o sharding deve ser desfeito para simplificar operação e backup unificado, abordagem que resolve o sintoma.",
         ],
         "choices_en": [
             "For most growing databases, because sharding is a natural evolution; without it the system cannot absorb the inevitable data-growth trend in any SaaS application — a decision that looks safe until the first real penetration test.",
@@ -295,8 +295,8 @@ SENIOR_QUESTIONS: list[dict] = [
         "choices": [
             "Configurar TTL infinito para chaves populares e atualizar manualmente em janela de manutenção; sem expiração não há estampida possível por definição em qualquer cenário de carga, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
             "Combinar single-flight (deduplicação de carregamento concorrente), jitter aleatório no TTL para descorrelacionar expirações entre chaves correlatas e refresh assíncrono em background antes do TTL expirar.",
-            "Apagar entradas aleatoriamente em horários distintos ao longo do dia, distribuindo a recarga ao longo do tempo; a aleatoriedade da remoção elimina a sincronia que causa o stampede, atalho comum quando o prazo aperta e ninguém revisa depois.",
-            "Remover a camada de cache e atender tudo direto do banco com pool de conexões maior, pois o problema é específico de caches em frente a bancos com latência alta, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Apagar entradas aleatoriamente em horários distintos ao longo do dia, distribuindo a recarga ao longo do tempo; a aleatoriedade da remoção elimina a sincronia que causa o stampede.",
+            "Remover a camada de cache e atender tudo direto do banco com pool de conexões maior, pois o problema é específico de caches em frente a bancos com latência alta.",
         ],
         "choices_en": [
             "Configure infinite TTL for popular keys and update manually in a maintenance window; without expiration there is by definition no stampede possible under any load scenario — behavior that creates a false alert or silences a real one, depending on the case.",
@@ -313,10 +313,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "O que significa backpressure em sistemas assíncronos?",
         "statement_en": "What does backpressure mean in asynchronous systems?",
         "choices": [
-            "Aplicar mais carga ao consumidor saturado para acelerá-lo via concorrência adicional; a pressão extra força o sistema a paralelizar operações pendentes na fila, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Aplicar mais carga ao consumidor saturado para acelerá-lo via concorrência adicional; a pressão extra força o sistema a paralelizar operações pendentes na fila.",
             "Mecanismo pelo qual o consumidor (ou pontos intermediários) sinaliza ao produtor para reduzir a taxa de envio, evitando que filas/buffers cresçam até causar OOM, perda de eventos ou colapso em cascata.",
-            "Aumentar o nível de logs e métricas no momento de saturação para que o operador possa ver onde está o gargalo do pipeline em tempo real durante o incidente, prática que passa despercebida até uma auditoria de segurança.",
-            "Falhas aleatórias controladas no consumidor, induzidas pelo orquestrador para forçar retentativas que se distribuem no tempo e suavizam o pico de carga inicial, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Aumentar o nível de logs e métricas no momento de saturação para que o operador possa ver onde está o gargalo do pipeline em tempo real durante o incidente.",
+            "Falhas aleatórias controladas no consumidor, induzidas pelo orquestrador para forçar retentativas que se distribuem no tempo e suavizam o pico de carga inicial.",
         ],
         "choices_en": [
             "Apply more load to the saturated consumer to speed it up via extra concurrency; the extra pressure forces the system to parallelize pending operations in the queue — an approach that ignores the failure scenario most likely in practice.",
@@ -353,10 +353,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Por que o padrão Bulkhead aumenta a resiliência de um serviço?",
         "statement_en": "Why does the Bulkhead pattern increase a service's resilience?",
         "choices": [
-            "Aumenta a latência média do sistema mas em troca permite que o circuit breaker abra mais cedo, encurtando o tempo de espera em chamadas que vão falhar com timeout esgotado, abordagem que funciona bem até o primeiro pico de carga real.",
+            "Aumenta a latência média do sistema mas em troca permite que o circuit breaker abra mais cedo, encurtando o tempo de espera em chamadas que vão falhar com timeout esgotado.",
             "Isola pools de recursos (threads, conexões, filas) por dependência ou classe de tráfego, de modo que a saturação ou falha de um pool não esgote os demais e derrube o serviço inteiro.",
-            "Substitui a estratégia de retry exponencial, pois o isolamento por compartimento já garante que tentativas não se acumulem em uma mesma fila e causem amplificação no upstream, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
-            "Restringe IPs de origem em camadas de rede separadas por dependência, atuando como uma WAF interna que impede que tráfego de uma feature contamine outra dentro do serviço, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Substitui a estratégia de retry exponencial, pois o isolamento por compartimento já garante que tentativas não se acumulem em uma mesma fila e causem amplificação no upstream, decisão que cria dívida técnica silenciosa.",
+            "Restringe IPs de origem em camadas de rede separadas por dependência, atuando como uma WAF interna que impede que tráfego de uma feature contamine outra dentro do serviço.",
         ],
         "choices_en": [
             "It raises average system latency but in exchange lets the circuit breaker open earlier, shortening wait time on calls that will fail with exhausted timeouts — an approach that works fine until the first real load spike.",
@@ -373,10 +373,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como funciona corretamente um circuit breaker?",
         "statement_en": "How does a circuit breaker work correctly?",
         "choices": [
-            "Permanece geralmente aberto em produção, garantindo que chamadas externas instáveis raramente cheguem ao serviço; é fechado manualmente em janela de manutenção para teste pontual, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Permanece geralmente aberto em produção, garantindo que chamadas externas instáveis raramente cheguem ao serviço; é fechado manualmente em janela de manutenção para teste pontual, abordagem que resolve o sintoma.",
             "Quando a taxa de erro/latência ultrapassa um limite, o breaker abre (Open) e curto-circuita chamadas, evitando cascata; após um timeout, vai a Half-Open para testar com tráfego limitado e fecha (Closed) se a saúde voltar.",
-            "Exige reset humano explícito após cada abertura, pois a recuperação automática poderia mascarar problemas estruturais da dependência sob falha intermitente recorrente, prática que passa despercebida até uma auditoria de segurança.",
-            "Funciona como um booleano simples (aberto/fechado) sem máquina de estados intermediária; o controle fino de recuperação é responsabilidade da camada de retry da aplicação, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "Exige reset humano explícito após cada abertura, pois a recuperação automática poderia mascarar problemas estruturais da dependência sob falha intermitente recorrente.",
+            "Funciona como um booleano simples (aberto/fechado) sem máquina de estados intermediária; o controle fino de recuperação é responsabilidade da camada de retry da aplicação.",
         ],
         "choices_en": [
             "It stays generally open in production, ensuring unstable external calls rarely reach the service; it is closed manually in a maintenance window for a point test — an approach that treats the symptom, not the root cause of the problem.",
@@ -393,10 +393,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como mitigar cold start em arquiteturas serverless sensíveis a latência?",
         "statement_en": "How do you mitigate cold start in latency-sensitive serverless architectures?",
         "choices": [
-            "Não há mitigação real possível; cold start é propriedade intrínseca de FaaS e a única opção é abandonar serverless e migrar tudo para containers persistentes ou VMs dedicadas, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Não há mitigação real possível; cold start é propriedade intrínseca de FaaS e a única opção é abandonar serverless e migrar tudo para containers persistentes ou VMs dedicadas.",
             "Combinar provisioned concurrency / pré-warming para funções críticas, runtimes leves (Go, Node, custom runtime), redução de dependências e arquitetura que tolere latência ocasional fora do hot path.",
-            "Usar runtimes pesados com mais bibliotecas pré-carregadas, pois o cold start é proporcional à frequência de invocação, não ao tamanho do bundle de inicialização da função, prática ainda comum em sistema legado que raramente é atualizado.",
-            "Esperar que o provedor de nuvem otimize o tempo de cold start ao longo do tempo; mitigações no código aplicacional são micro-otimizações que raramente compensam o esforço, que só aparece como problema depois que o sistema já está em produção.",
+            "Usar runtimes pesados com mais bibliotecas pré-carregadas, pois o cold start é proporcional à frequência de invocação, não ao tamanho do bundle de inicialização da função.",
+            "Esperar que o provedor de nuvem otimize o tempo de cold start ao longo do tempo; mitigações no código aplicacional são micro-otimizações que raramente compensam o esforço.",
         ],
         "choices_en": [
             "There is no real mitigation possible; cold start is an intrinsic FaaS property and the only option is to abandon serverless and move everything to persistent containers or dedicated VMs — a practice that expands the attack surface without anyone noticing.",
@@ -413,10 +413,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Para uma fila com SLA de processamento sob picos imprevisíveis, qual estratégia ajuda na sobrevivência?",
         "statement_en": "For a queue with a processing SLA under unpredictable peaks, which strategy helps survival?",
         "choices": [
-            "Drenar a fila o mais rápido possível adicionando workers indefinidamente; a fila existe só como mecanismo de transporte e não deve acumular mensagens em estado normal, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "Drenar a fila o mais rápido possível adicionando workers indefinidamente; a fila existe só como mecanismo de transporte e não deve acumular mensagens em estado normal.",
             "Buffer durável com workers escalados a partir de queue depth ou age da mensagem, idempotência no consumidor, DLQ para mensagens venenosas e backpressure no produtor quando aplicável.",
-            "Escalar workers horizontalmente é suficiente; idempotência e DLQ são otimizações desnecessárias quando o broker garante exactly-once semantics na entrega de eventos, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
-            "Eliminar a fila e fazer o produtor chamar o consumidor sincronamente, pois o acoplamento direto reduz a latência percebida e simplifica o reprocessamento de erros do fluxo, erro que só é percebido quando o time de operação já está lidando com o incidente.",
+            "Escalar workers horizontalmente é suficiente; idempotência e DLQ são otimizações desnecessárias quando o broker garante exactly-once semantics na entrega de eventos.",
+            "Eliminar a fila e fazer o produtor chamar o consumidor sincronamente, pois o acoplamento direto reduz a latência percebida e simplifica o reprocessamento de erros do fluxo.",
         ],
         "choices_en": [
             "Drain the queue as fast as possible by adding workers indefinitely; the queue exists only as a transport mechanism and should not accumulate messages in normal state — an approach that ignores the history of similar incidents in the industry.",
@@ -433,10 +433,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Em sistemas com replicação assíncrona, como tratar read-after-write para o usuário que acaba de escrever?",
         "statement_en": "In systems with asynchronous replication, how do you handle read-after-write for the user who just wrote?",
         "choices": [
-            "Aceitar inconsistência geralmente que houver replicação assíncrona; o usuário aprende a recarregar a página até que o dado apareça atualizado na réplica de leitura local, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Aceitar inconsistência geralmente que houver replicação assíncrona; o usuário aprende a recarregar a página até que o dado apareça atualizado na réplica de leitura local, abordagem que resolve o sintoma.",
             "Roteamento inteligente: sticky para o primário durante uma janela após a escrita, ou propagação de tokens/versões/LSN que o cliente envia na leitura para garantir read-your-writes via réplica suficientemente atualizada.",
             "Forçar o uso de SQLite em modo WAL no cliente recém-escrito; bancos embarcados eliminam a janela de inconsistência sem necessidade de roteamento entre primário e réplicas, erro típico de configuração feita às pressas, sem revisão posterior.",
-            "Não há solução possível com replicação assíncrona; a única alternativa é replicação síncrona em todas as réplicas, mesmo com o custo proibitivo de latência por operação, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
+            "Não há solução possível com replicação assíncrona; a única alternativa é replicação síncrona em todas as réplicas, mesmo com o custo proibitivo de latência por operação, decisão que parece inofensiva isolada.",
         ],
         "choices_en": [
             "Accept inconsistency whenever there is asynchronous replication; the user learns to reload the page until the data appears updated on the local read replica — an approach that treats the symptom, not the root cause of the problem.",
@@ -453,10 +453,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como resolver conflitos de escrita em sistemas eventualmente consistentes?",
         "statement_en": "How do you resolve write conflicts in eventually consistent systems?",
         "choices": [
-            "Ignorar conflitos e aceitavel pois as escritas convergem sozinhas ao longo do tempo em sistemas modernos, prática que troca previsibilidade por economia de esforço imediato.",
+            "Ignorar conflitos e aceitavel pois as escritas convergem sozinhas ao longo do tempo em sistemas modernos.",
             "Por meio de CRDTs quando o domínio se modela como tipo convergente, last-write-wins quando perda controlada de updates é aceitável, ou regras de merge específicas do domínio (carrinho, contadores).",
-            "Confiar exclusivamente em timestamps físicos do servidor para resolver: a escrita com timestamp mais recente geralmente vence, garantindo determinismo total entre os nós, escolha que economiza tempo agora e cobra o preço mais tarde.",
-            "Substituir o banco eventual por um banco fortemente consistente assim que conflitos aparecerem; CRDTs e LWW são paliativos para limitações da escolha original do storage, erro que só é percebido quando o time de operação já está lidando com o incidente.",
+            "Confiar exclusivamente em timestamps físicos do servidor para resolver: a escrita com timestamp mais recente geralmente vence, garantindo determinismo total entre os nós.",
+            "Substituir o banco eventual por um banco fortemente consistente assim que conflitos aparecerem; CRDTs e LWW são paliativos para limitações da escolha original do storage.",
         ],
         "choices_en": [
             "Ignore conflicts and accept that writes converge on their own over time in modern systems — a practice that trades predictability for immediate effort savings.",
@@ -475,8 +475,8 @@ SENIOR_QUESTIONS: list[dict] = [
         "choices": [
             "Manter geralmente uma única região com escalabilidade vertical agressiva, evitando complexidade de multi-region; CDN na borda resolve a latência percebida globalmente para qualquer caso, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
             "Geo-routing por proximidade do usuário, replicação multi-region (assíncrona ou via consensus por região), sharding por região home do usuário e arquitetura que aceita consistência eventual entre regiões.",
-            "DNS round robin entre regiões com mesmo dataset replicado síncrono em todas; o latency-based routing é uma micro-otimização sobre essa base já estabelecida pelo provider, prática que funciona em teste, mas falha sob carga real de produção.",
-            "Eliminar a latência via cache local em cada cliente, pois a única forma honesta de globalizar um stateful é tornando-o stateless via offline-first com sincronização eventual, atalho que ignora exatamente o cenário que mais importa evitar.",
+            "DNS round robin entre regiões com mesmo dataset replicado síncrono em todas; o latency-based routing é uma micro-otimização sobre essa base já estabelecida pelo provider, prática que funciona em teste.",
+            "Eliminar a latência via cache local em cada cliente, pois a única forma honesta de globalizar um stateful é tornando-o stateless via offline-first com sincronização eventual.",
         ],
         "choices_en": [
             "Generally keep a single region with aggressive vertical scaling, avoiding multi-region complexity; edge CDN solves perceived global latency for any case — behavior that creates a false alert or silences a real one, depending on the case.",
@@ -496,8 +496,8 @@ SENIOR_QUESTIONS: list[dict] = [
         "choices": [
             "RPO mede a latência percebida pelo usuário e RTO mede o throughput de transações por segundo durante a janela de degradação operacional após o incidente, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
             "RPO é a quantidade máxima tolerável de dado perdido (medida em tempo de janela) e RTO é o tempo máximo aceitável para restaurar o serviço a um estado operacional após o evento.",
-            "Ambos são equivalentes na prática e podem ser tratados pela mesma métrica de janela de backup; a diferença é só terminológica entre frameworks de continuidade distintos, atalho que troca segurança por conveniência de curto prazo.",
-            "RPO refere-se à quantidade de RAM disponível para failover e RTO à CPU necessária para sustentar a carga durante a operação em modo degradado regional, comportamento que só some quando alguém finalmente lê a documentação.",
+            "Ambos são equivalentes na prática e podem ser tratados pela mesma métrica de janela de backup; a diferença é só terminológica entre frameworks de continuidade distintos.",
+            "RPO refere-se à quantidade de RAM disponível para failover e RTO à CPU necessária para sustentar a carga durante a operação em modo degradado regional.",
         ],
         "choices_en": [
             "RPO measures user-perceived latency and RTO measures transactions-per-second throughput during the operational degradation window after the incident — behavior that creates a false alert or silences a real one, depending on the case.",
@@ -514,10 +514,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como descrever corretamente uma topologia active-passive entre regiões?",
         "statement_en": "How do you correctly describe an active-passive topology across regions?",
         "choices": [
-            "É um modelo obsoleto que não funciona em cloud moderna; grande parte da topologia multi-region séria precisa ser active-active para evitar capacidade ociosa cara em standby permanente, comportamento que só é notado quando alguém audita os logs depois.",
+            "É um modelo obsoleto que não funciona em cloud moderna; grande parte da topologia multi-region séria precisa ser active-active para evitar capacidade ociosa cara em standby permanente.",
             "Uma região atende todo o tráfego (active) enquanto a outra mantém infra e dados sincronizados em standby (warm/cold) e assume operação após failover, com RTO maior que active-active mas operação mais simples.",
-            "Ambas as regiões aceitam escritas concorrentes com resolução de conflitos via LWW; o termo 'passive' refere-se só a leitura, não escrita, na região secundária do par, abordagem que resolve o sintoma, não a causa raiz do problema.",
-            "Failover entre regiões é manual e exige reescrita do código da aplicação para apontar para a região secundária; não depende de DNS nem de health checks automatizados, prática que funciona em teste, mas falha sob carga real de produção.",
+            "Ambas as regiões aceitam escritas concorrentes com resolução de conflitos via LWW; o termo 'passive' refere-se só a leitura, não escrita, na região secundária do par, abordagem que resolve o sintoma.",
+            "Failover entre regiões é manual e exige reescrita do código da aplicação para apontar para a região secundária; não depende de DNS nem de health checks automatizados, prática que funciona em teste.",
         ],
         "choices_en": [
             "It is an obsolete model that does not work in modern cloud; most serious multi-region topologies need to be active-active to avoid expensive idle standby capacity — behavior that is only noticed when someone audits the logs later.",
@@ -534,9 +534,9 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Quais aspectos um failover automático precisa endereçar para ser seguro?",
         "statement_en": "Which aspects must automatic failover address to be safe?",
         "choices": [
-            "Atualizar o registro DNS para o IP da réplica é suficiente, pois o cliente reconectará automaticamente e o estado do banco se replicará a partir do novo primário sem intervenção, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Atualizar o registro DNS para o IP da réplica é suficiente, pois o cliente reconectará automaticamente e o estado do banco se replicará a partir do novo primário sem intervenção.",
             "Detecção confiável da falha (com quórum para evitar split-brain), promoção da réplica com sincronização verificada, reorientação de tráfego (DNS/anycast/service discovery) e replay/replicação consistente do estado pendente.",
-            "Reconfigurar IPs flutuantes na camada de rede e deixar a aplicação continuar; o banco resolve consistência interna via WAL replay sem coordenação externa explícita necessária, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "Reconfigurar IPs flutuantes na camada de rede e deixar a aplicação continuar; o banco resolve consistência interna via WAL replay sem coordenação externa explícita necessária, atalho que parece seguro isolado.",
             "Confiar no autoscaling do orquestrador, que detecta o pod não-saudável e sobe outro; failover regional é só um caso particular tratado pela mesma máquina de auto-recovery, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
         ],
         "choices_en": [
@@ -555,9 +555,9 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement_en": "Under what condition is a backup effectively useful in a DR plan?",
         "choices": [
             "Quando é testado regularmente em restore real (não apenas verificação de checksum), com o procedimento ensaiado e documentado, e o RTO/RPO observados são aceitáveis para o negócio.",
-            "Quando simplesmente existe e é gerado por job agendado; a presença do arquivo de backup é o que conta para auditorias e checklists de DR planning corporativo, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
-            "Quando está criptografado em repouso com chave gerenciada por KMS; a confidencialidade do backup é o requisito que distingue um backup utilizável de um inutilizável em DR, que só aparece como problema depois que o sistema já está em produção.",
-            "Quando é gerado diariamente em S3 com lifecycle automático para Glacier; a periodicidade é a métrica que determina utilidade efetiva no momento do incidente real, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
+            "Quando simplesmente existe e é gerado por job agendado; a presença do arquivo de backup é o que conta para auditorias e checklists de DR planning corporativo, decisão que parece inofensiva isolada.",
+            "Quando está criptografado em repouso com chave gerenciada por KMS; a confidencialidade do backup é o requisito que distingue um backup utilizável de um inutilizável em DR.",
+            "Quando é gerado diariamente em S3 com lifecycle automático para Glacier; a periodicidade é a métrica que determina utilidade efetiva no momento do incidente real.",
         ],
         "choices_en": [
             "When it is regularly tested with a real restore (not just checksum verification), with a rehearsed and documented procedure, and observed RTO/RPO are acceptable to the business.",
@@ -574,10 +574,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como mitigar um desastre regional sem impacto significativo na disponibilidade?",
         "statement_en": "How do you mitigate a regional disaster without significant availability impact?",
         "choices": [
-            "Snapshots locais frequentes na mesma região são suficientes, pois desastres regionais inteiros são extremamente raros e o custo de multi-region não compensa o investimento, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Snapshots locais frequentes na mesma região são suficientes, pois desastres regionais inteiros são extremamente raros e o custo de multi-region não compensa o investimento, abordagem que resolve o sintoma.",
             "Multi-region com replicação contínua dos dados e capacidade pre-warmed na região DR (warm standby ou pilot light), runbooks de failover ensaiados e DNS/anycast para redirecionar tráfego rapidamente.",
             "Manter grande parte da infraestrutura em uma única AZ otimiza latência interna; a redundância dentro da AZ via réplicas locais cobre a maior parte dos cenários reais de falha em campo, erro típico de configuração feita às pressas, sem revisão posterior.",
-            "Confiar no provider de nuvem para failover transparente entre regiões; serviços gerenciados modernos resolvem desastres regionais sem intervenção do cliente nos serviços críticos, comportamento que só some quando alguém finalmente lê a documentação.",
+            "Confiar no provider de nuvem para failover transparente entre regiões; serviços gerenciados modernos resolvem desastres regionais sem intervenção do cliente nos serviços críticos.",
         ],
         "choices_en": [
             "Frequent local snapshots in the same region are enough, because whole-region disasters are extremely rare and multi-region cost does not repay the investment — an approach that treats the symptom, not the root cause of the problem.",
@@ -594,10 +594,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como garantir consistência ao alternar tráfego para a região secundária?",
         "statement_en": "How do you ensure consistency when switching traffic to the secondary region?",
         "choices": [
-            "Trocar o registro DNS e deixar que o cliente lide com qualquer inconsistência transitória; sistemas modernos toleram pequenas janelas sem garantia formal de consistência, prática que funciona em teste, mas falha sob carga real de produção.",
+            "Trocar o registro DNS e deixar que o cliente lide com qualquer inconsistência transitória; sistemas modernos toleram pequenas janelas sem garantia formal de consistência, prática que funciona em teste.",
             "Promover a réplica após validar lag/replication health, congelar (ou drenar) escritas no primário durante o cutover, redirecionar tráfego com health checks e só então permitir escritas no secundário, registrando o ponto exato da transição.",
-            "Reescrever a aplicação para apontar diretamente para a região secundária geralmente que houver alerta; o redeploy é o procedimento real e seguro de failover entre regiões, abordagem que resolve o sintoma, não a causa raiz do problema.",
-            "Habilitar escritas em ambas as regiões durante a transição para evitar downtime; conflitos resultantes são resolvidos automaticamente via timestamp do servidor de origem, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Reescrever a aplicação para apontar diretamente para a região secundária geralmente que houver alerta; o redeploy é o procedimento real e seguro de failover entre regiões, abordagem que resolve o sintoma.",
+            "Habilitar escritas em ambas as regiões durante a transição para evitar downtime; conflitos resultantes são resolvidos automaticamente via timestamp do servidor de origem, decisão que cria dívida técnica silenciosa.",
         ],
         "choices_en": [
             "Change the DNS record and let the client handle any transient inconsistency; modern systems tolerate small windows without formal consistency guarantees — a practice that works in testing but fails under real production load.",
@@ -614,10 +614,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como reduzir blast radius de uma mudança em produção?",
         "statement_en": "How do you reduce the blast radius of a production change?",
         "choices": [
-            "Realizar deploy global instantâneo é mais seguro porque qualquer regressão é detectada uniformemente em vários usuários, facilitando o diagnóstico estatístico do problema, atalho que funciona hoje mas complica a próxima migração.",
+            "Realizar deploy global instantâneo é mais seguro porque qualquer regressão é detectada uniformemente em vários usuários, facilitando o diagnóstico estatístico do problema.",
             "Adotar canary regional com gating em SLOs, feature flags com default seguro, rollback automático em SLO breach e separação física por accounts/projects/clusters para limitar impacto cross-tenant ou cross-domain.",
-            "Concentrar deploys em janela noturna de baixa carga, pois assim o impacto de uma regressão atinge menos usuários por unidade de tempo de deploy executado em produção, suposição que só se sustenta enquanto o time é pequeno.",
-            "Confiar em CI/CD com testes automatizados elimina a necessidade de canary; quando os testes passam, o impacto em produção é estatisticamente desprezível na maioria das releases, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "Concentrar deploys em janela noturna de baixa carga, pois assim o impacto de uma regressão atinge menos usuários por unidade de tempo de deploy executado em produção.",
+            "Confiar em CI/CD com testes automatizados elimina a necessidade de canary; quando os testes passam, o impacto em produção é estatisticamente desprezível na maioria das releases.",
         ],
         "choices_en": [
             "Instant global deploy is safer because any regression is detected uniformly across many users, easing statistical diagnosis of the problem — a shortcut that works today but complicates the next migration.",
@@ -634,10 +634,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Qual o objetivo central do chaos engineering como prática?",
         "statement_en": "What is the central goal of chaos engineering as a practice?",
         "choices": [
-            "Quebrar produção sem aviso para forçar o time on-call a melhorar runbooks; o efeito surpresa é o que diferencia chaos engineering de testes tradicionais e jogos de plantão, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Quebrar produção sem aviso para forçar o time on-call a melhorar runbooks; o efeito surpresa é o que diferencia chaos engineering de testes tradicionais e jogos de plantão, decisão que funciona no papel.",
             "Injeção controlada e hipótese-driven de falhas em ambientes representativos para validar empiricamente a resiliência do sistema, descobrir pontos cegos e fortalecer pressupostos antes do incidente real.",
-            "Aumentar o número de incidentes em produção para gerar mais dados estatísticos que treinem modelos de detecção de anomalias automatizados via machine learning interno, algo que passa no code review quando ninguém olha com atenção.",
-            "Substituir testes unitários e de integração tradicionais por experimentos de chaos, que cobrem vários cenários relevantes incluindo lógica de negócio do domínio aplicacional, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "Aumentar o número de incidentes em produção para gerar mais dados estatísticos que treinem modelos de detecção de anomalias automatizados via machine learning interno.",
+            "Substituir testes unitários e de integração tradicionais por experimentos de chaos, que cobrem vários cenários relevantes incluindo lógica de negócio do domínio aplicacional.",
         ],
         "choices_en": [
             "Break production without warning to force the on-call team to improve runbooks; surprise is what distinguishes chaos engineering from traditional tests and game days — a decision that works on paper but does not survive the first real incident.",
@@ -654,9 +654,9 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Em uma região com múltiplas AZs, qual prática evita single point of failure?",
         "statement_en": "In a region with multiple AZs, which practice avoids a single point of failure?",
         "choices": [
-            "Concentrar vários recursos na AZ com menor latência inter-serviço; a redundância intra-AZ via instâncias maiores absorve a maior parte das falhas observadas em campo na prática, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Concentrar vários recursos na AZ com menor latência inter-serviço; a redundância intra-AZ via instâncias maiores absorve a maior parte das falhas observadas em campo na prática.",
             "Distribuir réplicas e instâncias por múltiplas AZs com load balancing entre elas, health checks ativos e bancos com quórum (Multi-AZ síncrono ou Aurora-like) para tolerar perda de uma AZ inteira.",
-            "Usar só serviços gerenciados pelo provider sem se preocupar com topologia de AZ; o provider abstrai esses detalhes internamente em vários serviços oferecidos como managed, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Usar só serviços gerenciados pelo provider sem se preocupar com topologia de AZ; o provider abstrai esses detalhes internamente em vários serviços oferecidos como managed, abordagem que resolve o sintoma.",
             "Backups frequentes para outra região cobrem o cenário de falha de AZ porque permitem restore rápido em qualquer outra AZ disponível na mesma região imediatamente após incidente, suposição que só vale em ambiente de desenvolvimento, não em produção.",
         ],
         "choices_en": [
@@ -674,10 +674,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como garantir continuidade operacional efetiva durante incidentes em produção?",
         "statement_en": "How do you ensure effective operational continuity during production incidents?",
         "choices": [
-            "Configurar mais alertas no Slack do time, pois a velocidade de notificação é o fator dominante em MTTR; o resto é overhead processual desnecessário em incidentes ágeis, atalho que troca segurança por conveniência de curto prazo.",
+            "Configurar mais alertas no Slack do time, pois a velocidade de notificação é o fator dominante em MTTR; o resto é overhead processual desnecessário em incidentes ágeis.",
             "Plano de incidente formal com on-call rotativo, papéis definidos (IC, scribe, comms), runbooks atualizados, comunicação interna e externa preparada e postmortem blameless após para aprendizado sistêmico.",
-            "Ad-hoc improvisado pelo engenheiro mais experiente disponível; estrutura formal de incidente atrapalha quando o engenheiro já conhece o sistema profundamente em vários domínios afetados, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
-            "Resolver isoladamente sem envolver outras equipes para evitar ruído; a transparência cross-team é um nice-to-have que retarda a resolução em incidentes graves de impacto regional, erro que só é percebido quando o time de operação já está lidando com o incidente.",
+            "Ad-hoc improvisado pelo engenheiro mais experiente disponível; estrutura formal de incidente atrapalha quando o engenheiro já conhece o sistema profundamente em vários domínios afetados.",
+            "Resolver isoladamente sem envolver outras equipes para evitar ruído; a transparência cross-team é um nice-to-have que retarda a resolução em incidentes graves de impacto regional.",
         ],
         "choices_en": [
             "Configure more Slack alerts for the team, because notification speed is the dominant MTTR factor; the rest is unnecessary process overhead in agile incidents — a shortcut that trades security for short-term convenience.",
@@ -695,10 +695,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Qual é a premissa central da arquitetura Zero Trust?",
         "statement_en": "What is the central premise of Zero Trust architecture?",
         "choices": [
-            "A rede interna corporativa é confiável porque já passou pelo perímetro; Zero Trust só formaliza esse modelo com mais logging e auditoria nas fronteiras de saída entre datacenter e cloud, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "A rede interna corporativa é confiável porque já passou pelo perímetro; Zero Trust só formaliza esse modelo com mais logging e auditoria nas fronteiras de saída entre datacenter e cloud, atalho que parece seguro isolado.",
             "Não confiar implicitamente em rede ou origem (interno vs externo); cada requisição é autenticada e autorizada com base em identidade do usuário/workload, postura do dispositivo e contexto, com verificação contínua.",
-            "VPN corporativa é a defesa primária; Zero Trust é o conjunto de políticas que governam quem pode estabelecer o túnel VPN inicial até a rede interna do datacenter, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
-            "Eliminar IAM e substituí-lo por mTLS entre vários serviços; a identidade criptográfica de cada workload já garante o modelo Zero Trust por completo sem necessidade de authz, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "VPN corporativa é a defesa primária; Zero Trust é o conjunto de políticas que governam quem pode estabelecer o túnel VPN inicial até a rede interna do datacenter, decisão que parece razoável isolada.",
+            "Eliminar IAM e substituí-lo por mTLS entre vários serviços; a identidade criptográfica de cada workload já garante o modelo Zero Trust por completo sem necessidade de authz, abordagem que resolve o sintoma.",
         ],
         "choices_en": [
             "The corporate internal network is trusted because it already passed the perimeter; Zero Trust only formalizes that model with more logging and auditing at exit boundaries between datacenter and cloud — a shortcut that looks safe in isolation but breaks when combined with other systems.",
@@ -715,10 +715,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Que problema workload identity (ex.: SPIFFE/SPIRE) resolve em sistemas distribuídos?",
         "statement_en": "What problem does workload identity (e.g. SPIFFE/SPIRE) solve in distributed systems?",
         "choices": [
-            "Reduz latência de rede entre serviços ao consolidar handshake TLS em uma única conexão de longa duração reaproveitada por vários pods do cluster Kubernetes ativo, prática que gera falso senso de segurança no time.",
+            "Reduz latência de rede entre serviços ao consolidar handshake TLS em uma única conexão de longa duração reaproveitada por vários pods do cluster Kubernetes ativo.",
             "Atribui identidade criptográfica verificável a cada workload (SPIFFE ID + SVID), eliminando segredos estáticos compartilhados para autenticação serviço-a-serviço e habilitando mTLS automático com rotação curta.",
-            "Aumenta o throughput total da malha de serviço ao substituir HTTP/1.1 por HTTP/3, com identidade derivada das credenciais do nó hospedeiro de cada workload na fabric, prática ainda comum em sistema legado que raramente é atualizado.",
-            "Substitui o KMS para criptografia em repouso, gerando chaves de envelope a partir do SVID do workload; o uso para mTLS é um efeito colateral secundário em cenários de service mesh, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "Aumenta o throughput total da malha de serviço ao substituir HTTP/1.1 por HTTP/3, com identidade derivada das credenciais do nó hospedeiro de cada workload na fabric.",
+            "Substitui o KMS para criptografia em repouso, gerando chaves de envelope a partir do SVID do workload; o uso para mTLS é um efeito colateral secundário em cenários de service mesh.",
         ],
         "choices_en": [
             "It reduces inter-service network latency by consolidating the TLS handshake into a single long-lived connection reused by many pods in the active Kubernetes cluster — a practice that creates a false sense of security on the team.",
@@ -735,10 +735,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Em ambientes regulados (PCI-DSS, LGPD, HIPAA), quais elementos a arquitetura deve incluir?",
         "statement_en": "In regulated environments (PCI-DSS, LGPD, HIPAA), which elements must the architecture include?",
         "choices": [
-            "Firewall corporativo bem configurado é o controle dominante; demais práticas como criptografia e logs imutáveis são otimizações marginais para passar auditoria sem reprovação, algo que passa no code review quando ninguém olha com atenção.",
+            "Firewall corporativo bem configurado é o controle dominante; demais práticas como criptografia e logs imutáveis são otimizações marginais para passar auditoria sem reprovação.",
             "Segregação de dados/ambientes por sensibilidade, audit logs imutáveis com retenção apropriada, criptografia em trânsito e repouso, controle de acesso granular auditável, retenção/eliminação programada e direito ao esquecimento implementado.",
             "Permissões públicas com auditoria forte, pois rastreabilidade do acesso é o requisito real; restrição de acesso é um anti-padrão que dificulta investigação de incidentes em pós-mortem, erro típico de configuração feita às pressas, sem revisão posterior.",
-            "Web Application Firewall na borda cobre a maioria dos requisitos de compliance modernos; controles internos são responsabilidade do provedor de cloud em ambientes managed, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Web Application Firewall na borda cobre a maioria dos requisitos de compliance modernos; controles internos são responsabilidade do provedor de cloud em ambientes managed.",
         ],
         "choices_en": [
             "A well-configured corporate firewall is the dominant control; other practices like encryption and immutable logs are marginal optimizations to pass audit without failure — something that slips through code review when nobody looks carefully.",
@@ -775,10 +775,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "O que caracteriza BYOK (Bring Your Own Key) em criptografia gerenciada por cloud?",
         "statement_en": "What characterizes BYOK (Bring Your Own Key) in cloud-managed encryption?",
         "choices": [
-            "É a solução de DNS gerenciada pelo provider que permite ao cliente trazer seu próprio domínio raiz para serviços de nuvem com TLS automaticamente provisionado em vários endpoints, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "É a solução de DNS gerenciada pelo provider que permite ao cliente trazer seu próprio domínio raiz para serviços de nuvem com TLS automaticamente provisionado em vários endpoints, decisão que cria dívida técnica silenciosa.",
             "O cliente fornece e mantém o controle sobre a chave-mestre (tipicamente HSM-backed), que é importada para o KMS do provider para uso, com auditoria e capacidade de revogação pelo cliente.",
-            "É um sistema de backup automático em que o cliente fornece sua própria estratégia de retenção e ciclo de vida das chaves geradas pelo provider em todas as regiões disponíveis, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
-            "Equivale operacionalmente a KMS-managed; a única diferença é a label de marketing utilizada pelo provider para destacar a capacidade já existente em vários planos comerciais, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "É um sistema de backup automático em que o cliente fornece sua própria estratégia de retenção e ciclo de vida das chaves geradas pelo provider em todas as regiões disponíveis, decisão que parece inofensiva isolada.",
+            "Equivale operacionalmente a KMS-managed; a única diferença é a label de marketing utilizada pelo provider para destacar a capacidade já existente em vários planos comerciais, decisão que funciona no papel.",
         ],
         "choices_en": [
             "It is the provider's managed DNS solution that lets the customer bring their own root domain for cloud services with TLS automatically provisioned on most endpoints — a decision that creates silent technical debt without raising an immediate error.",
@@ -795,10 +795,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como defender a cadeia de suprimento de software contra ataques tipo SolarWinds?",
         "statement_en": "How do you defend the software supply chain against SolarWinds-style attacks?",
         "choices": [
-            "Confiar no registry oficial e em pacotes amplamente baixados; popularidade é proxy razoável para confiabilidade de cadeia de suprimento na prática moderna do ecossistema open-source, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "Confiar no registry oficial e em pacotes amplamente baixados; popularidade é proxy razoável para confiabilidade de cadeia de suprimento na prática moderna do ecossistema open-source, atalho que parece seguro isolado.",
             "Geração de SBOM, assinatura/atestação de artefatos (SLSA, in-toto, Sigstore/cosign), verificação no admission controller, build em ambiente isolado/reproduzível e pin de dependências por hash criptográfico.",
-            "Forçar HTTPS em grande parte do tráfego de download de dependências; a transport security cobre a maioria dos vetores reais de comprometimento de supply chain identificados em incidentes recentes, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
-            "Pinar a versão exata de cada dependência é suficiente, pois identificadores imutáveis garantem que o artefato baixado é o mesmo entre builds consecutivos da pipeline, prática que passa despercebida até uma auditoria de segurança.",
+            "Forçar HTTPS em grande parte do tráfego de download de dependências; a transport security cobre a maioria dos vetores reais de comprometimento de supply chain identificados em incidentes recentes.",
+            "Pinar a versão exata de cada dependência é suficiente, pois identificadores imutáveis garantem que o artefato baixado é o mesmo entre builds consecutivos da pipeline.",
         ],
         "choices_en": [
             "Trust the official registry and widely downloaded packages; popularity is a reasonable proxy for supply-chain reliability in modern open-source ecosystem practice — a shortcut that looks safe in isolation but breaks when combined with other systems.",
@@ -815,10 +815,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Para detecção de comprometimento, qual sinal traz mais valor sustentável?",
         "statement_en": "For compromise detection, which signal brings the most sustainable value?",
         "choices": [
-            "Logs de firewall perimetral; o controle do tráfego norte-sul é o sinal dominante porque a maior parte dos ataques entra ou sai pela borda do datacenter corporativo registrado, comportamento que só é notado quando alguém audita os logs depois.",
+            "Logs de firewall perimetral; o controle do tráfego norte-sul é o sinal dominante porque a maior parte dos ataques entra ou sai pela borda do datacenter corporativo registrado.",
             "Telemetria comportamental rica (eBPF, EDR, audit logs syscall-level), correlacionada entre fontes, com baseline de comportamento normal por workload e detecção de desvios além de assinaturas estáticas.",
-            "Antivírus tradicional baseado em assinaturas em vários hosts; a base de assinaturas atualizada cobre os vetores conhecidos com baixa carga operacional adicional para o time, suposição que só se sustenta enquanto o time é pequeno.",
-            "Descartar logs verbosos para reduzir custo de SIEM; a maioria das detecções relevantes ocorre em alertas de alta confiança configurados manualmente pelo time de segurança, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "Antivírus tradicional baseado em assinaturas em vários hosts; a base de assinaturas atualizada cobre os vetores conhecidos com baixa carga operacional adicional para o time.",
+            "Descartar logs verbosos para reduzir custo de SIEM; a maioria das detecções relevantes ocorre em alertas de alta confiança configurados manualmente pelo time de segurança.",
         ],
         "choices_en": [
             "Perimeter firewall logs; north-south traffic control is the dominant signal because most attacks enter or leave through the corporate datacenter edge — behavior that is only noticed when someone audits the logs later.",
@@ -837,8 +837,8 @@ SENIOR_QUESTIONS: list[dict] = [
         "choices": [
             "É inevitável que privilégios sejam roubados eventualmente, então JIT é só uma forma de auditoria post-hoc; o controle real está em rotação periódica de senhas administrativas, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
             "Permissões elevadas são concedidas por janela limitada de tempo, com aprovação (humana ou política) e auditoria, reduzindo permissões persistentes (zero standing privileges) e a superfície de comprometimento de credenciais.",
-            "Conceder permissões de admin permanente para reduzir atrito operacional; auditoria forte compensa a ausência de elevação temporária com mesmo nível de proteção em ambientes maduros, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
-            "Operar sem controle de acesso interno em ambientes de desenvolvimento, pois o blast radius é pequeno e o overhead processual atrapalha velocidade do time de engenharia, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "Conceder permissões de admin permanente para reduzir atrito operacional; auditoria forte compensa a ausência de elevação temporária com mesmo nível de proteção em ambientes maduros, decisão que parece razoável isolada.",
+            "Operar sem controle de acesso interno em ambientes de desenvolvimento, pois o blast radius é pequeno e o overhead processual atrapalha velocidade do time de engenharia.",
         ],
         "choices_en": [
             "Privileges will inevitably be stolen eventually, so JIT is only a form of post-hoc audit; the real control is periodic rotation of administrative passwords — behavior that creates a false alert or silences a real one, depending on the case.",
@@ -855,10 +855,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como reduzir o risco de exfiltração de dados via DNS tunneling?",
         "statement_en": "How do you reduce data-exfiltration risk via DNS tunneling?",
         "choices": [
-            "Liberar resolução para qualquer servidor DNS público (1.1.1.1, 8.8.8.8) para diluir o tráfego; centralizar DNS interno cria um único ponto de visibilidade que o atacante explora em pivot, atalho que funciona hoje mas complica a próxima migração.",
+            "Liberar resolução para qualquer servidor DNS público (1.1.1.1, 8.8.8.8) para diluir o tráfego; centralizar DNS interno cria um único ponto de visibilidade que o atacante explora em pivot.",
             "Forçar resolução via servidores DNS controlados (saída restrita), bloqueio/alerta de domínios suspeitos via threat intel, monitoramento de queries longas/anômalas e DNSSEC quando aplicável para integridade.",
-            "Confiar exclusivamente em /etc/hosts em vários hosts gerenciados, sem servidor DNS interno; arquivos estáticos eliminam por construção qualquer canal de exfiltração via resolução, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
-            "Não logar queries DNS para reduzir custo de armazenamento; o ruído é alto demais para detecção útil, e ferramentas de rede genéricas cobrem o vetor sem necessidade de visibilidade de DNS, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Confiar exclusivamente em /etc/hosts em vários hosts gerenciados, sem servidor DNS interno; arquivos estáticos eliminam por construção qualquer canal de exfiltração via resolução.",
+            "Não logar queries DNS para reduzir custo de armazenamento; o ruído é alto demais para detecção útil, e ferramentas de rede genéricas cobrem o vetor sem necessidade de visibilidade de DNS, decisão que funciona no papel.",
         ],
         "choices_en": [
             "Allow resolution to any public DNS server (1.1.1.1, 8.8.8.8) to dilute traffic; centralizing internal DNS creates a single visibility point that the attacker exploits in pivot — a shortcut that works today but complicates the next migration.",
@@ -875,10 +875,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Em uma arquitetura Zero Trust em Kubernetes, quais controles são fundamentais em conjunto?",
         "statement_en": "In a Zero Trust architecture on Kubernetes, which controls are fundamental together?",
         "choices": [
-            "Bastam segmentação de namespaces e labels descritivos; a separação lógica do K8s já garante isolamento adequado para a maior parte dos cenários internos sem necessidade de controles adicionais, comportamento que confunde quem está debugando meses depois.",
+            "Bastam segmentação de namespaces e labels descritivos; a separação lógica do K8s já garante isolamento adequado para a maior parte dos cenários internos sem necessidade de controles adicionais.",
             "mTLS entre serviços via service mesh ou SPIFFE, NetworkPolicies default-deny, autorização por identidade (não por IP), admission controllers (OPA/Kyverno) e Pod Security Standards aplicados a workloads.",
-            "RBAC do Kubernetes cobre o modelo Zero Trust por completo; controles de rede e malha são otimizações desnecessárias quando o RBAC está bem configurado em vários namespaces, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
-            "Pod Security Standards aplicado uniformemente é suficiente; identidade entre serviços e políticas de rede são responsabilidade do CNI gerenciado pelo provider de Kubernetes, prática que passa despercebida até uma auditoria de segurança.",
+            "RBAC do Kubernetes cobre o modelo Zero Trust por completo; controles de rede e malha são otimizações desnecessárias quando o RBAC está bem configurado em vários namespaces.",
+            "Pod Security Standards aplicado uniformemente é suficiente; identidade entre serviços e políticas de rede são responsabilidade do CNI gerenciado pelo provider de Kubernetes.",
         ],
         "choices_en": [
             "Namespace segmentation and descriptive labels are enough; K8s logical separation already guarantees adequate isolation for most internal scenarios without additional controls — behavior that confuses whoever is debugging months later.",
@@ -896,10 +896,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Qual o propósito de um error budget em práticas SRE?",
         "statement_en": "What is the purpose of an error budget in SRE practices?",
         "choices": [
-            "Eliminar bugs no software através de pressão sobre o time; quanto menor o budget consumido, melhor a qualidade percebida pelo cliente do produto em todas as métricas operacionais, comportamento que só é notado quando alguém audita os logs depois.",
+            "Eliminar bugs no software através de pressão sobre o time; quanto menor o budget consumido, melhor a qualidade percebida pelo cliente do produto em todas as métricas operacionais.",
             "Permitir um trade-off explícito entre velocidade de entrega e confiabilidade: enquanto há budget (gap entre SLO e desempenho real), o time prioriza features; quando se esgota, prioriza estabilidade.",
-            "Definir uma métrica de marketing externa para usar em SLA contratual com clientes pagantes, traduzindo budget em créditos de serviço para comunicação comercial uniforme, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
-            "Substituir SLOs por uma métrica única consolidada que represente saúde geral do produto; budget é evolução natural que torna SLOs individuais redundantes em organizações maduras, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "Definir uma métrica de marketing externa para usar em SLA contratual com clientes pagantes, traduzindo budget em créditos de serviço para comunicação comercial uniforme.",
+            "Substituir SLOs por uma métrica única consolidada que represente saúde geral do produto; budget é evolução natural que torna SLOs individuais redundantes em organizações maduras, erro comum de quem aprendeu por tentativa e erro.",
         ],
         "choices_en": [
             "Eliminate bugs in software through pressure on the team; the less budget consumed, the better the quality perceived by the product's customer across all operational metrics — behavior that is only noticed when someone audits the logs later.",
@@ -916,10 +916,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "O que torna um SLO efetivo na prática?",
         "statement_en": "What makes an SLO effective in practice?",
         "choices": [
-            "Almejar 100% de disponibilidade como SLO, pois qualquer alvo abaixo disso comunica que o time aceita falha, deteriorando confiança e cultura de qualidade entre engenheiros, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Almejar 100% de disponibilidade como SLO, pois qualquer alvo abaixo disso comunica que o time aceita falha, deteriorando confiança e cultura de qualidade entre engenheiros, decisão que funciona no papel.",
             "Refletir a experiência do usuário em métricas mensuráveis (idealmente request-based ou window-based), ser simples o bastante para gerar consenso e produzir ações claras quando violado, com janela e percentil bem definidos.",
-            "Definir um SLO único e global para grande parte da plataforma, evitando proliferação de métricas; a simplicidade reduz alert fatigue e ambiguidade de prioridades operacionais entre times, atalho que ignora exatamente o cenário que mais importa evitar.",
-            "Trabalhar só com média de latência e taxa de erro agregadas; percentis (p99, p99.9) são overhead estatístico que raramente muda decisões na prática operacional cotidiana, atalho que troca segurança por conveniência de curto prazo.",
+            "Definir um SLO único e global para grande parte da plataforma, evitando proliferação de métricas; a simplicidade reduz alert fatigue e ambiguidade de prioridades operacionais entre times.",
+            "Trabalhar só com média de latência e taxa de erro agregadas; percentis (p99, p99.9) são overhead estatístico que raramente muda decisões na prática operacional cotidiana.",
         ],
         "choices_en": [
             "Aim for 100% availability as the SLO, because any lower target communicates that the team accepts failure, eroding trust and quality culture among engineers — a decision that works on paper but does not survive the first real incident.",
@@ -936,10 +936,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como definir corretamente toil no contexto SRE?",
         "statement_en": "How do you correctly define toil in an SRE context?",
         "choices": [
-            "Toil é positivo porque conecta SREs ao funcionamento real do sistema; reduzir toil afasta o time da operação e enfraquece o conhecimento operacional acumulado em incidentes, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
+            "Toil é positivo porque conecta SREs ao funcionamento real do sistema; reduzir toil afasta o time da operação e enfraquece o conhecimento operacional acumulado em incidentes.",
             "Trabalho operacional manual, repetitivo, automatizável, sem valor agregado de longo prazo e que escala linearmente com o tamanho do serviço; SRE busca medir e reduzir via engenharia.",
-            "É a métrica que substitui SLO em times maduros, pois reflete diretamente a saúde operacional sem depender da experiência específica do usuário final do produto entregue, abordagem que resolve o sintoma, não a causa raiz do problema.",
-            "É uma métrica de negócio comparável a NPS ou churn; serve para comunicar à liderança o impacto operacional em termos de receita afetada por incidentes recorrentes da plataforma, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "É a métrica que substitui SLO em times maduros, pois reflete diretamente a saúde operacional sem depender da experiência específica do usuário final do produto entregue, abordagem que resolve o sintoma.",
+            "É uma métrica de negócio comparável a NPS ou churn; serve para comunicar à liderança o impacto operacional em termos de receita afetada por incidentes recorrentes da plataforma.",
         ],
         "choices_en": [
             "Toil is positive because it connects SREs to real system operation; reducing toil distances the team from operations and weakens operational knowledge accumulated in incidents — an assumption that holds only until the first network or hardware surprise.",
@@ -956,10 +956,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Qual o foco principal de um postmortem blameless?",
         "statement_en": "What is the main focus of a blameless postmortem?",
         "choices": [
-            "Identificar publicamente o engenheiro responsável pela mudança que causou o incidente, para reforçar accountability individual e desincentivar reincidência similar no futuro, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Identificar publicamente o engenheiro responsável pela mudança que causou o incidente, para reforçar accountability individual e desincentivar reincidência similar no futuro, decisão que cria dívida técnica silenciosa.",
             "Aprendizado sistêmico sobre as causas (técnicas, processuais e organizacionais) que permitiram o incidente, com ações corretivas priorizadas, prevenção de recorrência e compartilhamento amplo das lições.",
-            "Demitir o engenheiro responsável após o terceiro postmortem em que aparece como autor da mudança; cultura justa exige consequências individuais claras para reincidentes, suposição que ignora como o recurso realmente se comporta em escala.",
-            "Documentar melhorias de UI/UX dos dashboards usados durante a resposta, pois o gap principal em incidentes está geralmente na visualização das métricas em tempo real, atalho que troca segurança por conveniência de curto prazo.",
+            "Demitir o engenheiro responsável após o terceiro postmortem em que aparece como autor da mudança; cultura justa exige consequências individuais claras para reincidentes.",
+            "Documentar melhorias de UI/UX dos dashboards usados durante a resposta, pois o gap principal em incidentes está geralmente na visualização das métricas em tempo real.",
         ],
         "choices_en": [
             "Publicly identify the engineer responsible for the change that caused the incident, to reinforce individual accountability and discourage similar recurrence in the future — a decision that creates silent technical debt without raising an immediate error.",
@@ -976,10 +976,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Para decidir se uma mudança deve seguir para produção, quais sinais um time SRE costuma considerar?",
         "statement_en": "To decide whether a change should proceed to production, which signals does an SRE team typically consider?",
         "choices": [
-            "A opinião do desenvolvedor responsável pela mudança, pois é quem tem mais contexto técnico do código alterado e do impacto provável em produção sobre os usuários, comportamento que só é notado quando alguém audita os logs depois.",
+            "A opinião do desenvolvedor responsável pela mudança, pois é quem tem mais contexto técnico do código alterado e do impacto provável em produção sobre os usuários.",
             "Estado atual do error budget, blast radius esperado, reversibilidade do change, qualidade dos testes/feature flags e maturidade da observability para detectar regressão durante o rollout.",
-            "Sorteio rotativo entre engenheiros do time para evitar viés humano, com mudança aprovada quando o sorteado não objetar dentro de uma janela curta predefinida, decisão que parece segura até o primeiro teste de penetração real.",
-            "A cor do gráfico de latência no dashboard durante a janela; se está verde, a janela está autorizada a seguir até a próxima oscilação relevante observada na métrica, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Sorteio rotativo entre engenheiros do time para evitar viés humano, com mudança aprovada quando o sorteado não objetar dentro de uma janela curta predefinida.",
+            "A cor do gráfico de latência no dashboard durante a janela; se está verde, a janela está autorizada a seguir até a próxima oscilação relevante observada na métrica, decisão que funciona no papel.",
         ],
         "choices_en": [
             "The opinion of the developer responsible for the change, because they have the most technical context on the altered code and the likely production impact on users — behavior that is only noticed when someone audits the logs later.",
@@ -996,10 +996,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Em que se baseia capacity planning maduro?",
         "statement_en": "What is mature capacity planning based on?",
         "choices": [
-            "Em estimativa intuitiva da liderança técnica, baseada em experiência prévia e ajustada por sentimento de risco; planejamento detalhado é overhead em ambientes elásticos modernos da cloud, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Em estimativa intuitiva da liderança técnica, baseada em experiência prévia e ajustada por sentimento de risco; planejamento detalhado é overhead em ambientes elásticos modernos da cloud, decisão que cria dívida técnica silenciosa.",
             "Modelos de demanda (linear, sazonais, picos previsíveis), headroom adequado por tier, testes de carga representativos, custo unitário e composição entre acquisition (RIs/SP) e elasticidade on-demand.",
-            "Em só um mês de histórico de métricas, pois sazonalidade longa é raramente representativa do comportamento futuro em ambientes de mudança constante e crescimento acelerado, suposição que ignora como o recurso realmente se comporta em escala.",
-            "Em compras únicas anuais de capacidade reservada, dimensionadas para cobrir o pico observado, deixando elasticidade da cloud como buffer secundário em casos extremos, atalho que troca segurança por conveniência de curto prazo.",
+            "Em só um mês de histórico de métricas, pois sazonalidade longa é raramente representativa do comportamento futuro em ambientes de mudança constante e crescimento acelerado.",
+            "Em compras únicas anuais de capacidade reservada, dimensionadas para cobrir o pico observado, deixando elasticidade da cloud como buffer secundário em casos extremos.",
         ],
         "choices_en": [
             "On intuitive estimates from technical leadership, based on prior experience and adjusted by risk feeling; detailed planning is overhead in modern elastic cloud environments — a decision that creates silent technical debt without raising an immediate error.",
@@ -1016,10 +1016,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "O que torna um on-call sustentável em times SRE?",
         "statement_en": "What makes on-call sustainable in SRE teams?",
         "choices": [
-            "Plantão fixo com a mesma pessoa, pois familiaridade com os alertas reduz drasticamente o tempo de diagnóstico e resposta a incidentes recorrentes da plataforma operada, prática que gera falso senso de segurança no time.",
+            "Plantão fixo com a mesma pessoa, pois familiaridade com os alertas reduz drasticamente o tempo de diagnóstico e resposta a incidentes recorrentes da plataforma operada.",
             "Rotação justa, alertas acionáveis (sem ruído), runbooks atualizados, follow-the-sun quando possível, compensação adequada e tempo de recuperação após plantão para evitar burnout.",
-            "Bônus financeiro generoso compensa qualquer fadiga; a métrica relevante é a remuneração adicional pelo plantão, não a estrutura processual em torno dele para o time, que só aparece como problema depois que o sistema já está em produção.",
-            "Não acionar engenheiros fora do horário de trabalho e tratar incidentes só no próximo dia útil; o sistema deve sobreviver sozinho até a equipe retornar de manhã, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Bônus financeiro generoso compensa qualquer fadiga; a métrica relevante é a remuneração adicional pelo plantão, não a estrutura processual em torno dele para o time.",
+            "Não acionar engenheiros fora do horário de trabalho e tratar incidentes só no próximo dia útil; o sistema deve sobreviver sozinho até a equipe retornar de manhã, decisão que cria dívida técnica silenciosa.",
         ],
         "choices_en": [
             "Fixed duty with the same person, because familiarity with alerts drastically reduces diagnosis and response time for recurring incidents on the operated platform — a practice that creates a false sense of security on the team.",
@@ -1036,10 +1036,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "MTTR (Mean Time To Recovery) é otimizado por quais fatores?",
         "statement_en": "MTTR (Mean Time To Recovery) is optimized by which factors?",
         "choices": [
-            "Sorte do operador on-call em encontrar a causa raiz no log certo; a maior parte da redução de MTTR vem de experiência individual acumulada do time ao longo dos anos, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Sorte do operador on-call em encontrar a causa raiz no log certo; a maior parte da redução de MTTR vem de experiência individual acumulada do time ao longo dos anos.",
             "Detecção rápida via alertas alinhados a SLO, diagnóstico assistido (dashboards opinionated, runbooks, distributed tracing) e ações de mitigação automatizáveis (rollback, scaling, traffic shifting) com permissão pré-aprovada.",
-            "Esperar que o sistema se auto-recupere via retry e failover; intervir reduz pouco o MTTR e aumenta risco de erro humano durante a janela de incidente em produção, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
-            "Aumentar o número de alertas configurados, pois cobertura maior diminui o tempo de detecção; ferramentas de diagnóstico são otimização secundária após cobertura completa, atalho que ignora exatamente o cenário que mais importa evitar.",
+            "Esperar que o sistema se auto-recupere via retry e failover; intervir reduz pouco o MTTR e aumenta risco de erro humano durante a janela de incidente em produção.",
+            "Aumentar o número de alertas configurados, pois cobertura maior diminui o tempo de detecção; ferramentas de diagnóstico são otimização secundária após cobertura completa.",
         ],
         "choices_en": [
             "Luck of the on-call operator finding the root cause in the right log; most MTTR reduction comes from individual experience the team accumulates over years — an incorrect assumption about how the system really behaves under stress.",
@@ -1056,10 +1056,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Para que servem game days em organizações com prática SRE madura?",
         "statement_en": "What are game days for in organizations with mature SRE practice?",
         "choices": [
-            "Reuniões corporativas trimestrais para alinhamento de roadmap entre times de plataforma e produto, com foco em prioridades de orçamento e contratação para o próximo trimestre, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Reuniões corporativas trimestrais para alinhamento de roadmap entre times de plataforma e produto, com foco em prioridades de orçamento e contratação para o próximo trimestre.",
             "Simular incidentes em ambiente realista (idealmente staging com tráfego de produção espelhado) para treinar processos de incident response, ferramentas, comunicação e descobrir gaps em runbooks/observability.",
-            "Eventos de team building com objetivo principal de coesão social; aprendizado técnico é efeito colateral nice-to-have e não a métrica de sucesso do exercício realizado, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
-            "Alternativa moderna a backups testados; o exercício de simular falha cobre a verificação de restore sem custo adicional de gerar e validar snapshots periódicos do banco, atalho que troca segurança por conveniência de curto prazo.",
+            "Eventos de team building com objetivo principal de coesão social; aprendizado técnico é efeito colateral nice-to-have e não a métrica de sucesso do exercício realizado.",
+            "Alternativa moderna a backups testados; o exercício de simular falha cobre a verificação de restore sem custo adicional de gerar e validar snapshots periódicos do banco.",
         ],
         "choices_en": [
             "Quarterly corporate meetings for roadmap alignment between platform and product teams, focused on budget and hiring priorities for the next quarter — an assumption that ignores how the resource really behaves at scale.",
@@ -1076,10 +1076,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Para que servem service catalogs com ownership claro em organizações grandes?",
         "statement_en": "What are service catalogs with clear ownership for in large organizations?",
         "choices": [
-            "Burocracia organizacional para satisfazer auditoria; em times pequenos, a comunicação direta entre engenheiros substitui completamente a necessidade de catálogo formal de serviços, prática que troca previsibilidade por economia de esforço imediato.",
+            "Burocracia organizacional para satisfazer auditoria; em times pequenos, a comunicação direta entre engenheiros substitui completamente a necessidade de catálogo formal de serviços.",
             "Acelerar resposta a incidentes via discovery do dono e dependências, definir responsabilidade por SLO/segurança/qualidade de cada serviço e habilitar tooling consistente (cost, compliance, on-call) por serviço.",
-            "Esconder informação interna entre times com diferentes níveis de senioridade, evitando que projetos imaturos sejam questionados antes do lançamento oficial em produção, escolha que economiza tempo agora e cobra o preço mais tarde.",
-            "Geração de relatórios mensais para liderança sobre headcount alocado por produto; ownership é uma métrica de RH antes de ser uma métrica técnica em escala, atalho que troca segurança por conveniência de curto prazo.",
+            "Esconder informação interna entre times com diferentes níveis de senioridade, evitando que projetos imaturos sejam questionados antes do lançamento oficial em produção.",
+            "Geração de relatórios mensais para liderança sobre headcount alocado por produto; ownership é uma métrica de RH antes de ser uma métrica técnica em escala.",
         ],
         "choices_en": [
             "Organizational bureaucracy to satisfy audit; in small teams, direct communication among engineers completely replaces the need for a formal service catalog — a practice that trades predictability for immediate effort savings.",
@@ -1097,10 +1097,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Qual é o objetivo central da disciplina FinOps em cloud?",
         "statement_en": "What is the central goal of the FinOps discipline in cloud?",
         "choices": [
-            "Reduzir o custo a qualquer preço, mesmo sacrificando disponibilidade e velocidade de entrega; FinOps é primariamente um exercício de corte orçamentário em organizações maduras, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Reduzir o custo a qualquer preço, mesmo sacrificando disponibilidade e velocidade de entrega; FinOps é primariamente um exercício de corte orçamentário em organizações maduras, abordagem que resolve o sintoma.",
             "Maximizar o valor de cada unidade de gasto em cloud através de visibilidade granular, otimização contínua e cultura de responsabilidade compartilhada entre engenharia, finanças e produto.",
-            "É um termo de marketing usado por consultorias para vender o mesmo serviço de cost management dos provedores; em essência não há prática nova além do nome comercial, escolha que economiza tempo agora e cobra o preço mais tarde.",
-            "Eliminar dependência de cloud através de repatriação para datacenter próprio, único caminho para manter custo previsível em escala empresarial sem surpresas no fechamento mensal, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "É um termo de marketing usado por consultorias para vender o mesmo serviço de cost management dos provedores; em essência não há prática nova além do nome comercial.",
+            "Eliminar dependência de cloud através de repatriação para datacenter próprio, único caminho para manter custo previsível em escala empresarial sem surpresas no fechamento mensal, erro comum de quem aprendeu por tentativa e erro.",
         ],
         "choices_en": [
             "Cut cost at any price, even sacrificing availability and delivery speed; FinOps is primarily a budget-cutting exercise in mature organizations — an approach that treats the symptom, not the root cause of the problem.",
@@ -1117,10 +1117,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como reduzir custo de cloud sem afetar disponibilidade?",
         "statement_en": "How do you reduce cloud cost without affecting availability?",
         "choices": [
-            "Apagar instâncias produtivas com baixa utilização aparente; se ninguém reclamar nas primeiras horas, a redução foi segura e pode ser permanente sem necessidade de análise prévia, atalho que funciona hoje mas complica a próxima migração.",
+            "Apagar instâncias produtivas com baixa utilização aparente; se ninguém reclamar nas primeiras horas, a redução foi segura e pode ser permanente sem necessidade de análise prévia.",
             "Right-sizing baseado em utilização real, savings plans/RIs para baseline previsível, spot/preemptible para workloads tolerantes a interrupção, autoscaling com SLO-aware policies e remoção de recursos órfãos (zumbis).",
-            "Migrar manualmente para outro provedor com preço de tabela mais baixo; ganhos de cost arbitrage superam o custo de migração na maioria dos casos quando bem planejados pelo time, prática ainda comum em sistema legado que raramente é atualizado.",
-            "Não há ação possível sem afetar disponibilidade: cost e availability são trade-offs estritamente opostos em arquitetura de cloud moderna gerenciada pelo provider escolhido, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
+            "Migrar manualmente para outro provedor com preço de tabela mais baixo; ganhos de cost arbitrage superam o custo de migração na maioria dos casos quando bem planejados pelo time.",
+            "Não há ação possível sem afetar disponibilidade: cost e availability são trade-offs estritamente opostos em arquitetura de cloud moderna gerenciada pelo provider escolhido, decisão que parece inofensiva isolada.",
         ],
         "choices_en": [
             "Terminate production instances with apparently low utilization; if nobody complains in the first hours, the cut was safe and can be permanent without prior analysis — a shortcut that works today but complicates the next migration.",
@@ -1137,10 +1137,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Por que tagging consistente em recursos cloud é crítico para FinOps e governança?",
         "statement_en": "Why is consistent tagging on cloud resources critical for FinOps and governance?",
         "choices": [
-            "Só para fins estéticos no console do provider; o gasto agregado da conta já oferece visibilidade suficiente para decisões financeiras de nível alto na organização, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
+            "Só para fins estéticos no console do provider; o gasto agregado da conta já oferece visibilidade suficiente para decisões financeiras de nível alto na organização, decisão que parece razoável isolada.",
             "Permite atribuir custo por time/produto/ambiente (chargeback/showback), aplicar políticas automatizadas (lifecycle, segurança, compliance) e responder a perguntas de auditoria sem reverse-engineering de inventário.",
-            "Para otimizar latência de roteamento entre serviços, pois tags podem ser usadas como hint pelo load balancer global do provedor de nuvem em cenários de tráfego entre regiões, que só aparece como problema depois que o sistema já está em produção.",
-            "Para acelerar pulls de imagens em registry pelo agendador do Kubernetes, que prioriza recursos com tags conhecidas em decisões de placement de pods em produção, erro que só é percebido quando o time de operação já está lidando com o incidente.",
+            "Para otimizar latência de roteamento entre serviços, pois tags podem ser usadas como hint pelo load balancer global do provedor de nuvem em cenários de tráfego entre regiões.",
+            "Para acelerar pulls de imagens em registry pelo agendador do Kubernetes, que prioriza recursos com tags conhecidas em decisões de placement de pods em produção.",
         ],
         "choices_en": [
             "Only for aesthetic purposes in the provider console; the account's aggregate spend already offers enough visibility for high-level financial decisions in the organization — a decision that looks reasonable in isolation but breaks the architecture as a whole.",
@@ -1157,10 +1157,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como o custo de egress em cloud impacta arquitetura?",
         "statement_en": "How does cloud egress cost impact architecture?",
         "choices": [
-            "Egress é gratuito na maioria dos provedores modernos como diferencial competitivo; a otimização de transferência de dados é prioridade baixa em design arquitetural cloud-native, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Egress é gratuito na maioria dos provedores modernos como diferencial competitivo; a otimização de transferência de dados é prioridade baixa em design arquitetural cloud-native.",
             "Tipicamente significativamente mais caro que ingress (ingress costuma ser gratuito) e cobrado por GB transferido cross-region/internet; arquitete para minimizar via CDN, caching, data locality e reduzir chatter inter-region.",
-            "Transferência de dados não impacta custos significativos comparado a compute e storage; é um item de linha menor que pode ser ignorado em estimativas iniciais de orçamento da plataforma, atalho que ignora exatamente o cenário que mais importa evitar.",
-            "Egress só importa em arquiteturas multi-cloud explícitas; em uma única conta de cloud, grande parte do tráfego permanece interno e gratuito por padrão sem cobrança adicional, prática ainda comum em sistema legado que raramente é atualizado.",
+            "Transferência de dados não impacta custos significativos comparado a compute e storage; é um item de linha menor que pode ser ignorado em estimativas iniciais de orçamento da plataforma.",
+            "Egress só importa em arquiteturas multi-cloud explícitas; em uma única conta de cloud, grande parte do tráfego permanece interno e gratuito por padrão sem cobrança adicional.",
         ],
         "choices_en": [
             "Egress is free on most modern providers as a competitive differentiator; optimizing data transfer is low priority in cloud-native architectural design — a practice that expands the attack surface without anyone noticing.",
@@ -1177,10 +1177,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Quando storage tiering (hot/cool/archive) traz benefício real?",
         "statement_en": "When does storage tiering (hot/cool/archive) bring real benefit?",
         "choices": [
-            "Só quando vários dados são quentes; a uniformidade de acesso é o requisito para que o storage class scheduler do provider tome decisões eficientes em movimentação automática, prática que funciona em teste, mas falha sob carga real de produção.",
+            "Só quando vários dados são quentes; a uniformidade de acesso é o requisito para que o storage class scheduler do provider tome decisões eficientes em movimentação automática, prática que funciona em teste.",
             "Quando há padrão de acesso conhecido com porções de dados raramente lidas (ou só auditadas), permitindo lifecycle policies que migram para tiers mais baratos com latência de acesso aceitável para aquele uso.",
-            "Tiering é desnecessário porque storage é commodity barata; o ganho marginal não justifica a complexidade adicional do lifecycle management em ambientes de pequeno e médio porte, prática que aumenta a superfície de ataque sem ninguém perceber.",
-            "Aplicável só para imagens e mídia binária pesada; tabelas estruturadas e logs textuais não se beneficiam do desbalanceamento de acesso entre classes de storage frio, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "Tiering é desnecessário porque storage é commodity barata; o ganho marginal não justifica a complexidade adicional do lifecycle management em ambientes de pequeno e médio porte.",
+            "Aplicável só para imagens e mídia binária pesada; tabelas estruturadas e logs textuais não se beneficiam do desbalanceamento de acesso entre classes de storage frio, erro comum de quem aprendeu por tentativa e erro.",
         ],
         "choices_en": [
             "Only when most data is hot; access uniformity is the requirement for the provider's storage class scheduler to make efficient automatic movement decisions — a practice that works in testing but fails under real production load.",
@@ -1197,10 +1197,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Quando reservar capacidade (RI/Savings Plan) é vantajoso?",
         "statement_en": "When is reserving capacity (RI/Savings Plan) advantageous?",
         "choices": [
-            "Quando o workload é altamente imprevisível, pois RIs absorvem a variabilidade ao garantir capacidade reservada disponível em qualquer momento de pico inesperado da carga, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Quando o workload é altamente imprevisível, pois RIs absorvem a variabilidade ao garantir capacidade reservada disponível em qualquer momento de pico inesperado da carga.",
             "Quando há baseline previsível de uso por 1-3 anos para a família/região alvo; o desconto vs on-demand compensa o compromisso, e elasticidade fica para spot/on-demand acima do baseline.",
             "Só em ambientes de desenvolvimento, onde uso é mais consistente; produção tem variabilidade alta demais para se beneficiar de compromissos longos com o provider de cloud, erro típico de configuração feita às pressas, sem revisão posterior.",
-            "Raramente é vantajoso: RIs criam vendor lock-in financeiro que reduz negociação futura com o provider; melhor manter tudo on-demand para flexibilidade contratual permanente, prática que gera falso senso de segurança no time.",
+            "Raramente é vantajoso: RIs criam vendor lock-in financeiro que reduz negociação futura com o provider; melhor manter tudo on-demand para flexibilidade contratual permanente.",
         ],
         "choices_en": [
             "When the workload is highly unpredictable, because RIs absorb variability by guaranteeing reserved capacity available at any unexpected load peak — an approach that ignores the failure scenario most likely in practice.",
@@ -1217,10 +1217,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como controlar o custo crescente de observabilidade (logs, métricas, traces)?",
         "statement_en": "How do you control the growing cost of observability (logs, metrics, traces)?",
         "choices": [
-            "Logar tudo em DEBUG geralmente, pois a economia de troubleshooting futuro compensa o gasto adicional com armazenamento e processamento de telemetria gerada por vários serviços, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Logar tudo em DEBUG geralmente, pois a economia de troubleshooting futuro compensa o gasto adicional com armazenamento e processamento de telemetria gerada por vários serviços.",
             "Definir níveis de log apropriados por ambiente, sampling adaptativo em traces, drop de ruído conhecido, métricas com cardinalidade controlada (limitar labels de alta cardinalidade) e tiers de retenção alinhados ao uso.",
-            "Trocar de provider de observability quando o custo cresce; a única alavanca real é negociação comercial, não engenharia da telemetria emitida pelos serviços de produção, atalho que ignora exatamente o cenário que mais importa evitar.",
-            "Não há alavanca eficaz; o custo de observability é proporcional ao tamanho do sistema observado e aceita-se como custo fixo do serviço sem possibilidade de otimização técnica, prática que funciona em teste, mas falha sob carga real de produção.",
+            "Trocar de provider de observability quando o custo cresce; a única alavanca real é negociação comercial, não engenharia da telemetria emitida pelos serviços de produção.",
+            "Não há alavanca eficaz; o custo de observability é proporcional ao tamanho do sistema observado e aceita-se como custo fixo do serviço sem possibilidade de otimização técnica, prática que funciona em teste.",
         ],
         "choices_en": [
             "Log everything at DEBUG generally, because future troubleshooting savings repay the extra spend on storage and processing of telemetry generated by most services — an incorrect assumption about how the system really behaves under stress.",
@@ -1237,10 +1237,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como diferenciar showback e chargeback em modelos FinOps?",
         "statement_en": "How do you differentiate showback and chargeback in FinOps models?",
         "choices": [
-            "Os dois são termos equivalentes que descrevem o mesmo processo de relatório de custos; a diferença é só de tradução entre frameworks corporativos europeus e americanos, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "Os dois são termos equivalentes que descrevem o mesmo processo de relatório de custos; a diferença é só de tradução entre frameworks corporativos europeus e americanos.",
             "Showback expõe custo aos times consumidores para conscientização sem impacto orçamentário direto; chargeback cobra efetivamente do orçamento do time, criando incentivo financeiro forte e responsabilização por gasto.",
-            "Chargeback é um modelo legado deprecado em organizações modernas, substituído integralmente por showback como prática FinOps recomendada em frameworks atualizados de mercado, prática que aumenta a superfície de ataque sem ninguém perceber.",
-            "São ferramentas de marketing dos provedores de cloud para venda de pacotes empresariais; em essência, ambas se reduzem a relatório de billing tradicional sem diferença real, atalho que troca segurança por conveniência de curto prazo.",
+            "Chargeback é um modelo legado deprecado em organizações modernas, substituído integralmente por showback como prática FinOps recomendada em frameworks atualizados de mercado.",
+            "São ferramentas de marketing dos provedores de cloud para venda de pacotes empresariais; em essência, ambas se reduzem a relatório de billing tradicional sem diferença real.",
         ],
         "choices_en": [
             "Both are equivalent terms describing the same cost-reporting process; the difference is only translation between European and American corporate frameworks — a common shortcut when the deadline is tight and nobody reviews afterward.",
@@ -1260,8 +1260,8 @@ SENIOR_QUESTIONS: list[dict] = [
         "choices": [
             "Na taxonomia dos 6 Rs costuma-se listar `Rehost` (lift-and-shift) — `Replatform` (lift-tweak-and-shift) — `Repurchase` (SaaS) — `Refactor`/`Re-architect` — `Retain` (permanecer on-prem) — `Rebuild` (reescrever o sistema de ponta a ponta), suposição que só vale em ambiente de desenvolvimento, não em produção.",
             "Na taxonomia dos 6 Rs costuma-se listar `Rehost` (lift-and-shift) — `Replatform` (lift-tweak-and-shift) — `Repurchase` (SaaS) — `Refactor`/`Re-architect` — `Retain` (permanecer on-prem) — `Retire` (descontinuar); materiais de mercado acrescentam `Relocate` como sétimo eixo em vários programas.",
-            "Na taxonomia dos 6 Rs costuma-se listar `Rehost` (lift-and-shift) — `Replatform` (lift-tweak-and-shift) — `Replace` (trocar por produto equivalente) — `Refactor`/`Re-architect` — `Retain` (permanecer on-prem) — `Retire` (descontinuar), abordagem que funciona bem até o primeiro pico de carga real.",
-            "Na taxonomia dos 6 Rs costuma-se listar `Rehost` (lift-and-shift) — `Replatform` (lift-tweak-and-shift) — `Repurchase` (SaaS) — `Rewrite` (reescrever do zero sem reuso) — `Retain` (permanecer on-prem) — `Retire` (descontinuar), atalho que troca segurança por conveniência de curto prazo.",
+            "Na taxonomia dos 6 Rs costuma-se listar `Rehost` (lift-and-shift) — `Replatform` (lift-tweak-and-shift) — `Replace` (trocar por produto equivalente) — `Refactor`/`Re-architect` — `Retain` (permanecer on-prem) — `Retire` (descontinuar).",
+            "Na taxonomia dos 6 Rs costuma-se listar `Rehost` (lift-and-shift) — `Replatform` (lift-tweak-and-shift) — `Repurchase` (SaaS) — `Rewrite` (reescrever do zero sem reuso) — `Retain` (permanecer on-prem) — `Retire` (descontinuar).",
         ],
         "choices_en": [
             "In the 6 Rs taxonomy one typically lists `Rehost` (lift-and-shift) — `Replatform` (lift-tweak-and-shift) — `Repurchase` (SaaS) — `Refactor`/`Re-architect` — `Retain` (stay on-prem) — `Rebuild` (rewrite the system end to end) — an assumption that only holds in a development environment, not in production.",
@@ -1278,10 +1278,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Qual a principal vantagem de uma migração lift-and-shift?",
         "statement_en": "What is the main advantage of a lift-and-shift migration?",
         "choices": [
-            "Otimização imediata de custos via consumo elástico nativo da cloud; o lift-and-shift já entrega a economia esperada de cloud sem necessidade de refactor adicional posterior na arquitetura, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Otimização imediata de custos via consumo elástico nativo da cloud; o lift-and-shift já entrega a economia esperada de cloud sem necessidade de refactor adicional posterior na arquitetura.",
             "Velocidade de execução e baixo risco inicial: o workload migra com mudanças mínimas, permitindo desocupar datacenter ou cumprir prazo regulatório, com otimização adiada para fases posteriores (post-migration).",
-            "Eliminar o custo de operação ao transferir responsabilidade para o provider de cloud; lift-and-shift inclui automaticamente conversão para serviços gerenciados durante o processo de migração, atalho que funciona hoje mas complica a próxima migração.",
-            "Substituir a cloud por outro modelo de operação reduzindo dependência do provider atual via portabilidade automática entre clouds depois da migração ser concluída, comportamento que confunde quem está debugando meses depois.",
+            "Eliminar o custo de operação ao transferir responsabilidade para o provider de cloud; lift-and-shift inclui automaticamente conversão para serviços gerenciados durante o processo de migração.",
+            "Substituir a cloud por outro modelo de operação reduzindo dependência do provider atual via portabilidade automática entre clouds depois da migração ser concluída.",
         ],
         "choices_en": [
             "Immediate cost optimization via native cloud elastic consumption; lift-and-shift already delivers the expected cloud savings without needing later architectural refactor — an assumption that rarely holds outside a controlled lab environment.",
@@ -1298,10 +1298,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como migrar bancos de dados com mínimo downtime entre ambientes?",
         "statement_en": "How do you migrate databases with minimal downtime between environments?",
         "choices": [
-            "Backup completo em janela noturna seguido de restore manual no destino; downtime curto de poucas horas é aceitável para a maioria dos sistemas em janelas planejadas com clientes, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "Backup completo em janela noturna seguido de restore manual no destino; downtime curto de poucas horas é aceitável para a maioria dos sistemas em janelas planejadas com clientes.",
             "Replicação contínua (logical via CDC, ou physical) entre origem e destino, validação de paridade, cutover planejado em janela curta com freeze de escrita e fallback ensaiado em caso de problema durante o switchover.",
-            "Mudar o IP do servidor antigo para o novo após restore inicial; o cliente reconectará automaticamente sem necessidade de coordenação adicional entre aplicação e camada de dados, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
-            "Aplicar dump/restore direto em produção sem replicação intermediária; ferramentas modernas de banco lidam com inconsistência transitória de forma transparente entre primário e secundário, prática ainda comum em sistema legado que raramente é atualizado.",
+            "Mudar o IP do servidor antigo para o novo após restore inicial; o cliente reconectará automaticamente sem necessidade de coordenação adicional entre aplicação e camada de dados, atalho que parece seguro isolado.",
+            "Aplicar dump/restore direto em produção sem replicação intermediária; ferramentas modernas de banco lidam com inconsistência transitória de forma transparente entre primário e secundário.",
         ],
         "choices_en": [
             "Full backup in a nightly window followed by manual restore at the destination; a short downtime of a few hours is acceptable for most systems in planned windows with customers — a common shortcut when the deadline is tight and nobody reviews afterward.",
@@ -1318,10 +1318,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Ao migrar uma frota para Kubernetes, por onde tipicamente é melhor começar?",
         "statement_en": "When migrating a fleet to Kubernetes, where is it typically best to start?",
         "choices": [
-            "Pelo serviço crítico do core, pois ele exige a melhor solução desde o início; resolver o caso difícil primeiro torna trivial migrar os demais workloads que dependem dele, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "Pelo serviço crítico do core, pois ele exige a melhor solução desde o início; resolver o caso difícil primeiro torna trivial migrar os demais workloads que dependem dele, erro comum de quem aprendeu por tentativa e erro.",
             "Workloads stateless de menor criticidade para validar pipeline CI/CD, observability, operação e padrões de plataforma antes de mover sistemas críticos ou stateful que exigem maturidade operacional consolidada.",
-            "Migrar tudo de uma vez em janela única para evitar período prolongado de operação dual; coexistência por meses gera mais custo do que big bang concentrado em fim de semana, algo que passa no code review quando ninguém olha com atenção.",
-            "Manter um POC indefinidamente em paralelo, sem comprometer com cutover real; a aprendizagem do POC é o objetivo principal antes de qualquer migração comprometida em prazo, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Migrar tudo de uma vez em janela única para evitar período prolongado de operação dual; coexistência por meses gera mais custo do que big bang concentrado em fim de semana.",
+            "Manter um POC indefinidamente em paralelo, sem comprometer com cutover real; a aprendizagem do POC é o objetivo principal antes de qualquer migração comprometida em prazo, decisão que funciona no papel.",
         ],
         "choices_en": [
             "With the critical core service, because it demands the best solution from the start; solving the hard case first makes migrating other dependent workloads trivial — a common mistake from learning by trial and error without reviewing official docs.",
@@ -1338,10 +1338,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Em migrações grandes, qual abordagem de governança é mais efetiva?",
         "statement_en": "In large migrations, which governance approach is most effective?",
         "choices": [
-            "Decisão única e detalhada no início do programa, com plano fixo executado sem revisão; mudanças no plano sinalizam falha de planejamento inicial do programa de transformação, decisão que parece segura até o primeiro teste de penetração real.",
+            "Decisão única e detalhada no início do programa, com plano fixo executado sem revisão; mudanças no plano sinalizam falha de planejamento inicial do programa de transformação.",
             "Roadmap iterativo por waves, KPIs/saúde por onda (custo, downtime, paridade funcional), riscos atualizados continuamente, change management estruturado, comunicação clara aos stakeholders e treinamento dos times receivers.",
-            "Não comunicar progresso para evitar pressão externa; o time técnico entrega quando estiver pronto, e relatórios intermediários geram ruído desnecessário no projeto de migração, abordagem que ignora o cenário de falha mais provável na prática.",
-            "Tratar como projeto puramente técnico, deixando aspectos organizacionais (treinamento, mudança cultural, papéis) para depois da entrega da plataforma técnica completa em produção, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "Não comunicar progresso para evitar pressão externa; o time técnico entrega quando estiver pronto, e relatórios intermediários geram ruído desnecessário no projeto de migração.",
+            "Tratar como projeto puramente técnico, deixando aspectos organizacionais (treinamento, mudança cultural, papéis) para depois da entrega da plataforma técnica completa em produção, atalho que parece seguro isolado.",
         ],
         "choices_en": [
             "A single detailed decision at the start of the program, with a fixed plan executed without revision; plan changes signal failure of the transformation program's initial planning — a decision that looks safe until the first real penetration test.",
@@ -1358,10 +1358,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como deve ser planejado o rollback em uma migração crítica?",
         "statement_en": "How should rollback be planned in a critical migration?",
         "choices": [
-            "Existir só no documento de runbook como controle formal para auditoria; na prática, o rollback raramente é necessário em migrações bem planejadas pelo time de plataforma, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "Existir só no documento de runbook como controle formal para auditoria; na prática, o rollback raramente é necessário em migrações bem planejadas pelo time de plataforma.",
             "Procedimento ensaiado em ambiente espelho, com checkpoints claros que indicam o ponto sem retorno (point of no return), dados sincronizados de volta para o legado e janela definida em que o rollback ainda é viável.",
-            "Improvisar no momento, pois cada migração é única e o rollback real depende muito do estado encontrado durante o cutover; pré-planejar é overhead que raramente compensa o esforço, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
-            "Não há necessidade de rollback formal: se a migração falhar, o sistema legado simplesmente continua funcionando até a próxima janela de tentativa em fim de semana posterior, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "Improvisar no momento, pois cada migração é única e o rollback real depende muito do estado encontrado durante o cutover; pré-planejar é overhead que raramente compensa o esforço.",
+            "Não há necessidade de rollback formal: se a migração falhar, o sistema legado simplesmente continua funcionando até a próxima janela de tentativa em fim de semana posterior.",
         ],
         "choices_en": [
             "Exist only in the runbook document as a formal control for audit; in practice rollback is rarely needed in migrations well planned by the platform team — an approach that ignores the history of similar incidents in the industry.",
@@ -1378,10 +1378,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como decidir entre managed service e self-hosted após uma migração?",
         "statement_en": "How do you decide between managed service and self-hosted after a migration?",
         "choices": [
-            "Geralmente escolher self-hosted para máxima flexibilidade; serviços gerenciados criam vendor lock-in inaceitável e custos imprevisíveis a longo prazo independente do contexto operacional, comportamento que só some quando alguém finalmente lê a documentação.",
+            "Geralmente escolher self-hosted para máxima flexibilidade; serviços gerenciados criam vendor lock-in inaceitável e custos imprevisíveis a longo prazo independente do contexto operacional.",
             "Avaliar TCO completo (não só licença), expertise interna, requisitos de compliance/controle/portabilidade, SLAs do managed e maturidade da abstração; managed reduz toil mas adiciona acoplamento ao provider.",
-            "Geralmente escolher managed: provedores de cloud têm equipes mais especializadas que qualquer time interno e operação managed é estritamente superior em qualquer dimensão técnica, atalho que ignora exatamente o cenário que mais importa evitar.",
-            "Decisão sem critério formal, baseada em preferência do arquiteto que faz o desenho inicial; a escolha é facilmente revertida em refatoração futura se necessário pelo produto, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Geralmente escolher managed: provedores de cloud têm equipes mais especializadas que qualquer time interno e operação managed é estritamente superior em qualquer dimensão técnica.",
+            "Decisão sem critério formal, baseada em preferência do arquiteto que faz o desenho inicial; a escolha é facilmente revertida em refatoração futura se necessário pelo produto.",
         ],
         "choices_en": [
             "Generally choose self-hosted for maximum flexibility; managed services create unacceptable vendor lock-in and unpredictable long-term costs regardless of operational context — behavior that only goes away when someone finally reads the documentation.",
@@ -1399,9 +1399,9 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement_en": "Which error is recurring when migrating from on-prem to cloud?",
         "choices": [
             "Subestimar diferenças de modelo de custo e performance: padrões de IOPS, egress entre AZs/regions, dimensionamento elástico vs fixo e licenciamento mudam premissas, gerando surpresas de fatura e regressão de SLA.",
-            "Comprar mais hardware físico para o on-prem como fallback; a redundância dual prolonga a migração e duplica custos sem ganho técnico significativo durante a transição, prática que troca previsibilidade por economia de esforço imediato.",
+            "Comprar mais hardware físico para o on-prem como fallback; a redundância dual prolonga a migração e duplica custos sem ganho técnico significativo durante a transição.",
             "Renomear servidores físicos para alinhar com a nomenclatura da cloud; a inconsistência de nomes é a fonte principal de confusão pós-migração entre os times técnicos, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
-            "Aplicar Terraform desde o primeiro dia em grande parte do recurso; IaC prematura adiciona overhead que mascara problemas reais até estabilização do estado migrado da plataforma, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Aplicar Terraform desde o primeiro dia em grande parte do recurso; IaC prematura adiciona overhead que mascara problemas reais até estabilização do estado migrado da plataforma, abordagem que resolve o sintoma.",
         ],
         "choices_en": [
             "Underestimating differences in cost and performance model: IOPS patterns, egress between AZs/regions, elastic vs fixed sizing, and licensing change assumptions, generating bill surprises and SLA regression.",
@@ -1419,10 +1419,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "O que torna um ADR (Architecture Decision Record) útil ao longo do tempo?",
         "statement_en": "What makes an ADR (Architecture Decision Record) useful over time?",
         "choices": [
-            "Documentação por documentação, exigida em check-list de compliance; o conteúdo importa pouco, basta existir um arquivo registrado para o requisito ser atendido pela auditoria interna, que só aparece como problema depois que o sistema já está em produção.",
+            "Documentação por documentação, exigida em check-list de compliance; o conteúdo importa pouco, basta existir um arquivo registrado para o requisito ser atendido pela auditoria interna.",
             "Registrar contexto da decisão, opções consideradas com prós/contras, decisão tomada e consequências esperadas, versionado junto ao código, permitindo que futuros times entendam por que algo foi feito antes de tentar mudar.",
-            "Wiki opcional onde alguns times escrevem decisões importantes; a maioria das decisões reais é tomada em chats e não precisa de documentação formal estruturada para preservar contexto, abordagem que resolve o sintoma, não a causa raiz do problema.",
-            "Substituir o código fonte como artefato canônico do sistema; sistemas modernos derivam o código a partir do ADR mantido como fonte de verdade declarativa entre os times, prática que só aparece como erro grave durante um incidente real.",
+            "Wiki opcional onde alguns times escrevem decisões importantes; a maioria das decisões reais é tomada em chats e não precisa de documentação formal estruturada para preservar contexto, abordagem que resolve o sintoma.",
+            "Substituir o código fonte como artefato canônico do sistema; sistemas modernos derivam o código a partir do ADR mantido como fonte de verdade declarativa entre os times.",
         ],
         "choices_en": [
             "Documentation for documentation's sake, required on a compliance checklist; content matters little — existence of a registered file is enough for the requirement to be met by internal audit — that only shows up as a problem after the system is already in production.",
@@ -1459,10 +1459,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como abordar cross-team alignment ao construir uma plataforma interna?",
         "statement_en": "How do you approach cross-team alignment when building an internal platform?",
         "choices": [
-            "Mandato top-down sem escuta dos times consumidores, garantindo padronização rápida; ouvir requisitos individuais inviabiliza qualquer convergência arquitetural sustentável da plataforma, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Mandato top-down sem escuta dos times consumidores, garantindo padronização rápida; ouvir requisitos individuais inviabiliza qualquer convergência arquitetural sustentável da plataforma, decisão que funciona no papel.",
             "Tratar como produto: descobrir necessidades reais dos times consumidores, oferecer golden paths e paved roads opcionais, medir adoção e satisfação e iterar baseado em feedback, evitando mandato top-down sem validação.",
-            "Forçar uso compulsório por política corporativa, com penalidades para times que não migrarem; adesão voluntária leva à fragmentação e inconsistência entre times de engenharia, atalho que ignora exatamente o cenário que mais importa evitar.",
-            "Construir sem governança nem visão de produto, deixando que cada time fork a plataforma para sua necessidade; centralização é anti-padrão moderno em organizações descentralizadas modernas, abordagem que funciona bem até o primeiro pico de carga real.",
+            "Forçar uso compulsório por política corporativa, com penalidades para times que não migrarem; adesão voluntária leva à fragmentação e inconsistência entre times de engenharia.",
+            "Construir sem governança nem visão de produto, deixando que cada time fork a plataforma para sua necessidade; centralização é anti-padrão moderno em organizações descentralizadas modernas.",
         ],
         "choices_en": [
             "Top-down mandate without listening to consuming teams, ensuring fast standardization; listening to individual requirements makes any sustainable architectural convergence of the platform impossible — a decision that works on paper but does not survive the first real incident.",
@@ -1479,10 +1479,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como evitar 'big design up front' problemático em projetos arquiteturais?",
         "statement_en": "How do you avoid problematic 'big design up front' in architectural projects?",
         "choices": [
-            "Geralmente fazer BDUF detalhado para reduzir retrabalho; documento de arquitetura completo antes do código é prática básica de engenharia profissional aplicada em vários projetos sérios, prática que gera falso senso de segurança no time.",
+            "Geralmente fazer BDUF detalhado para reduzir retrabalho; documento de arquitetura completo antes do código é prática básica de engenharia profissional aplicada em vários projetos sérios.",
             "Decompor em incrementos com feedback rápido, adiar decisões irreversíveis até reunir informação suficiente, manter optionality (real options thinking) e validar pressupostos com protótipos antes de comprometer com escolhas caras.",
-            "Pular qualquer design e começar a codificar imediatamente; arquitetura emerge do código em desenvolvimentos iterativos modernos sem necessidade explícita de design intencional inicial, prática que funciona em teste, mas falha sob carga real de produção.",
-            "Decidir tudo em sessão única de um dia com grande parte da liderança técnica presente, fechando todas as escolhas para evitar revisitar; velocidade compensa imprecisão em estágios iniciais, que só aparece como problema depois que o sistema já está em produção.",
+            "Pular qualquer design e começar a codificar imediatamente; arquitetura emerge do código em desenvolvimentos iterativos modernos sem necessidade explícita de design intencional inicial, prática que funciona em teste.",
+            "Decidir tudo em sessão única de um dia com grande parte da liderança técnica presente, fechando todas as escolhas para evitar revisitar; velocidade compensa imprecisão em estágios iniciais.",
         ],
         "choices_en": [
             "Generally do detailed BDUF to reduce rework; a complete architecture document before code is basic professional engineering practice applied across many serious projects — a practice that creates a false sense of security on the team.",
@@ -1499,10 +1499,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Ao propor uma mudança arquitetural grande, por onde começar para conseguir adesão?",
         "statement_en": "When proposing a large architectural change, where do you start to get buy-in?",
         "choices": [
-            "Implementar a mudança antes de comunicar para evitar discussão prematura; resultado funcional é a melhor forma de convencer ceticismo organizacional após o fato consumado já em produção, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Implementar a mudança antes de comunicar para evitar discussão prematura; resultado funcional é a melhor forma de convencer ceticismo organizacional após o fato consumado já em produção.",
             "Diagnóstico claro do problema (com dados), custos do status quo, opções avaliadas com trade-offs explícitos, recomendação com ROI ajustado a risco, plano de execução e riscos de rollback, em formato compatível com público técnico e executivo.",
-            "Slides bonitos com visualizações modernas e poucos números, focando narrativa inspiracional; detalhes técnicos atrapalham na conversa de buy-in executivo durante o pitch principal, algo que passa no code review quando ninguém olha com atenção.",
-            "Pular o diagnóstico e ir direto à proposta de solução; o problema é evidente para quem está no time e exposição prolongada vira procrastinação no andamento da iniciativa, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Slides bonitos com visualizações modernas e poucos números, focando narrativa inspiracional; detalhes técnicos atrapalham na conversa de buy-in executivo durante o pitch principal.",
+            "Pular o diagnóstico e ir direto à proposta de solução; o problema é evidente para quem está no time e exposição prolongada vira procrastinação no andamento da iniciativa, decisão que funciona no papel.",
         ],
         "choices_en": [
             "Implement the change before communicating to avoid premature discussion; a working result is the best way to convince organizational skepticism after the fact is already in production — an approach that ignores the failure scenario most likely in practice.",
@@ -1519,10 +1519,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "O que caracteriza mentoria efetiva de engenheiros mais juniors?",
         "statement_en": "What characterizes effective mentoring of more junior engineers?",
         "choices": [
-            "Resolver problemas técnicos por eles para garantir velocidade do time; ensinar ativamente atrasa entregas e o aprendizado virá com tempo de exposição passiva ao código existente, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "Resolver problemas técnicos por eles para garantir velocidade do time; ensinar ativamente atrasa entregas e o aprendizado virá com tempo de exposição passiva ao código existente, erro comum de quem aprendeu por tentativa e erro.",
             "Aumentar autonomia gradualmente conforme demonstração de competência, fornecer contexto de decisões (porquê, não só como), feedback frequente e específico e desafiar dentro de um ambiente de segurança psicológica.",
-            "Apontar erros publicamente em revisão de código para que outros aprendam pelo exemplo; exposição pública é a forma mais eficaz de fixar boas práticas de engenharia entre o time, prática que funciona em teste, mas falha sob carga real de produção.",
-            "Manter juniors em tarefas isoladas e simples até atingirem maturidade técnica; envolvê-los cedo em decisões complexas gera ansiedade e baixa qualidade nas entregas iniciais, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "Apontar erros publicamente em revisão de código para que outros aprendam pelo exemplo; exposição pública é a forma mais eficaz de fixar boas práticas de engenharia entre o time, prática que funciona em teste.",
+            "Manter juniors em tarefas isoladas e simples até atingirem maturidade técnica; envolvê-los cedo em decisões complexas gera ansiedade e baixa qualidade nas entregas iniciais.",
         ],
         "choices_en": [
             "Solve technical problems for them to guarantee team velocity; actively teaching slows delivery and learning will come with time of passive exposure to existing code — a common mistake from learning by trial and error without reviewing official docs.",
@@ -1539,10 +1539,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como avaliar build vs buy de uma capability técnica?",
         "statement_en": "How do you evaluate build vs buy for a technical capability?",
         "choices": [
-            "Só o custo de licença anual visível; o resto é ruído contábil que não afeta a decisão estratégica em horizonte de planejamento de 1 ano da unidade de negócio responsável, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Só o custo de licença anual visível; o resto é ruído contábil que não afeta a decisão estratégica em horizonte de planejamento de 1 ano da unidade de negócio responsável, decisão que funciona no papel.",
             "Considerar TCO real (incluindo manutenção, atualização, suporte e oportunidade), vantagem estratégica diferenciada vs commodity, time-to-value, controle/portabilidade, maturidade interna do time e alinhamento com prioridades estratégicas.",
-            "Só a tecnologia em si: build se a stack interna domina o problema, buy caso contrário; aspectos de negócio são consequência da escolha técnica feita no início do projeto, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
-            "Decisão sem critério formal, ditada pela preferência do arquiteto chefe; a estratégia se adapta posteriormente à escolha técnica que ele preferir defender em fóruns internos, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
+            "Só a tecnologia em si: build se a stack interna domina o problema, buy caso contrário; aspectos de negócio são consequência da escolha técnica feita no início do projeto.",
+            "Decisão sem critério formal, ditada pela preferência do arquiteto chefe; a estratégia se adapta posteriormente à escolha técnica que ele preferir defender em fóruns internos, decisão que parece inofensiva isolada.",
         ],
         "choices_en": [
             "Only the visible annual license cost; the rest is accounting noise that does not affect the strategic decision on a 1-year planning horizon of the responsible business unit — a decision that works on paper but does not survive the first real incident.",
@@ -1559,10 +1559,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como promover engenharia de qualidade em escala numa organização grande?",
         "statement_en": "How do you promote quality engineering at scale in a large organization?",
         "choices": [
-            "Só testar manualmente em janelas de QA dedicadas; automação é complemento opcional para validar regressões nos pontos mais críticos do produto durante release cycles definidos, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Só testar manualmente em janelas de QA dedicadas; automação é complemento opcional para validar regressões nos pontos mais críticos do produto durante release cycles definidos.",
             "Combinar code review eficaz, automação ampla de testes (unit, integração, contract), golden paths/templates, métricas DORA monitoradas, cultura blameless e investimento contínuo em developer experience da plataforma interna.",
-            "Terceirizar QA para fornecedor externo, mantendo o time interno focado só em features; qualidade é commodity entregue mais barata fora da empresa por especialistas dedicados, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
-            "Não investir explicitamente em qualidade, confiando que engenheiros seniores naturalmente produzem código de qualidade alta sem processo estruturado de revisão e automação contínua, algo que passa no code review quando ninguém olha com atenção.",
+            "Terceirizar QA para fornecedor externo, mantendo o time interno focado só em features; qualidade é commodity entregue mais barata fora da empresa por especialistas dedicados, decisão que cria dívida técnica silenciosa.",
+            "Não investir explicitamente em qualidade, confiando que engenheiros seniores naturalmente produzem código de qualidade alta sem processo estruturado de revisão e automação contínua.",
         ],
         "choices_en": [
             "Only manual testing in dedicated QA windows; automation is an optional complement to validate regressions at the product's most critical points during defined release cycles — an assumption that ignores how the resource really behaves at scale.",
@@ -1580,10 +1580,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Qual a leitura correta do teorema CAP em sistemas distribuídos modernos?",
         "statement_en": "What is the correct reading of the CAP theorem in modern distributed systems?",
         "choices": [
-            "Em condições normais de operação, é possível garantir simultaneamente Consistência, Disponibilidade e tolerância a Partição; o teorema só vale durante falha catastrófica de hardware no datacenter, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
+            "Em condições normais de operação, é possível garantir simultaneamente Consistência, Disponibilidade e tolerância a Partição; o teorema só vale durante falha catastrófica de hardware no datacenter.",
             "Quando ocorre uma partição de rede entre nós, o sistema precisa escolher entre permanecer Consistente (CP) e rejeitar requisições nos nós isolados, ou permanecer Disponível (AP) e aceitar leituras possivelmente desatualizadas.",
-            "CAP afirma que sistemas distribuídos sacrificam Disponibilidade em troca de Latência baixa, dado que partições de rede são raras o suficiente para serem ignoradas em design moderno cloud, prática que passa despercebida até uma auditoria de segurança.",
-            "CAP é uma propriedade que se escolhe no design inicial e não muda em runtime; um sistema declarado CP raramente exibe comportamento AP, mesmo sob partições parciais ou tunable consistency configurada, algo que passa no code review quando ninguém olha com atenção.",
+            "CAP afirma que sistemas distribuídos sacrificam Disponibilidade em troca de Latência baixa, dado que partições de rede são raras o suficiente para serem ignoradas em design moderno cloud.",
+            "CAP é uma propriedade que se escolhe no design inicial e não muda em runtime; um sistema declarado CP raramente exibe comportamento AP, mesmo sob partições parciais ou tunable consistency configurada.",
         ],
         "choices_en": [
             "Under normal operating conditions it is possible to guarantee Consistency, Availability, and Partition tolerance simultaneously; the theorem only applies during catastrophic hardware failure in the datacenter — an assumption that holds only until the first network or hardware surprise.",
@@ -1600,10 +1600,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como o teorema PACELC estende a discussão de CAP?",
         "statement_en": "How does the PACELC theorem extend the CAP discussion?",
         "choices": [
-            "Substitui CAP integralmente nos modelos modernos, declarando que o teorema clássico é obsoleto frente a redes distribuídas atuais com baixa probabilidade de partição em datacenter, suposição que só se sustenta enquanto o time é pequeno.",
+            "Substitui CAP integralmente nos modelos modernos, declarando que o teorema clássico é obsoleto frente a redes distribuídas atuais com baixa probabilidade de partição em datacenter.",
             "Durante uma partição (P), escolha entre Disponibilidade e Consistência (igual CAP); else (E), no estado normal, há ainda um trade-off entre Latência e Consistência (PA/EL, PC/EC, etc.).",
-            "É uma especificação aplicável só a sistemas Java EE em razão da estrutura de seus drivers JDBC; bancos não-Java seguem o modelo CAP original sem extensão necessária ao raciocínio, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
-            "Durante a partição, escolhe-se entre Latência e Consistência; é fora da partição que se decide entre Disponibilidade e Consistência conforme o tipo de operação executada, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "É uma especificação aplicável só a sistemas Java EE em razão da estrutura de seus drivers JDBC; bancos não-Java seguem o modelo CAP original sem extensão necessária ao raciocínio.",
+            "Durante a partição, escolhe-se entre Latência e Consistência; é fora da partição que se decide entre Disponibilidade e Consistência conforme o tipo de operação executada.",
         ],
         "choices_en": [
             "It fully replaces CAP in modern models, declaring the classic theorem obsolete given current distributed networks with low partition probability in the datacenter — an assumption that only holds while the team is small.",
@@ -1620,10 +1620,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como comparar eventually consistent e strongly consistent na prática?",
         "statement_en": "How do you compare eventually consistent and strongly consistent in practice?",
         "choices": [
-            "Eventually consistent é geralmente pior porque expõe estados transitórios ao usuário; sistemas modernos fortes em consistência cobrem vários casos de uso a custo aceitável em hardware atual, erro que só é percebido quando o time de operação já está lidando com o incidente.",
+            "Eventually consistent é geralmente pior porque expõe estados transitórios ao usuário; sistemas modernos fortes em consistência cobrem vários casos de uso a custo aceitável em hardware atual.",
             "Eventually consistent escala melhor (latência e throughput) e tolera partições com mais graça, mas exige cuidado de UX e lógica para conflitos; strong é mais simples para o desenvolvedor mas custa latência, throughput e disponibilidade sob partição.",
-            "Strong é geralmente melhor para qualquer caso de uso porque elimina classes inteiras de bugs derivados de inconsistência; o custo extra é desprezível em hardware moderno e redes baixa latência, comportamento que só é notado quando alguém audita os logs depois.",
-            "Não há diferença prática observável em sistemas reais; a maioria dos databases modernos opera com tunable consistency que torna a escolha invisível ao desenvolvedor durante operação cotidiana, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Strong é geralmente melhor para qualquer caso de uso porque elimina classes inteiras de bugs derivados de inconsistência; o custo extra é desprezível em hardware moderno e redes baixa latência.",
+            "Não há diferença prática observável em sistemas reais; a maioria dos databases modernos opera com tunable consistency que torna a escolha invisível ao desenvolvedor durante operação cotidiana.",
         ],
         "choices_en": [
             "Eventually consistent is generally worse because it exposes transient states to the user; modern systems strong on consistency cover most use cases at acceptable cost on current hardware — an error that is only noticed when the ops team is already handling the incident.",
@@ -1640,10 +1640,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como avaliar polyglot persistence vs single store?",
         "statement_en": "How do you evaluate polyglot persistence vs single store?",
         "choices": [
-            "Geralmente poliglota desde o primeiro dia, pois cada caso de uso encontra seu store ideal; consolidar em um único banco limita arquitetonicamente o sistema e suas opções futuras de escala, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "Geralmente poliglota desde o primeiro dia, pois cada caso de uso encontra seu store ideal; consolidar em um único banco limita arquitetonicamente o sistema e suas opções futuras de escala.",
             "Diversidade de stores pode otimizar ferramenta para padrão de acesso (KV, doc, grafo, search, time-series), mas adiciona custo operacional, cognitivo e de pipelines de sincronização, comece simples e introduza apenas com motivo claro.",
-            "Geralmente um único store relacional para tudo, pois flexibilidade do SQL cobre 95% dos casos com menor custo operacional e cognitivo total para times de engenharia médios em produção, prática que gera falso senso de segurança no time.",
-            "Não há trade-off real porque managed databases modernos eliminam o overhead operacional do polyglot; a escolha é puramente estética hoje sem impacto operacional relevante, prática que troca previsibilidade por economia de esforço imediato.",
+            "Geralmente um único store relacional para tudo, pois flexibilidade do SQL cobre 95% dos casos com menor custo operacional e cognitivo total para times de engenharia médios em produção.",
+            "Não há trade-off real porque managed databases modernos eliminam o overhead operacional do polyglot; a escolha é puramente estética hoje sem impacto operacional relevante.",
         ],
         "choices_en": [
             "Generally polyglot from day one, because each use case finds its ideal store; consolidating in a single database architecturally limits the system and its future scale options — a decision that ignores exactly why the recommended practice exists.",
@@ -1660,10 +1660,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como comparar sync RPC e async messaging para integração entre serviços?",
         "statement_en": "How do you compare sync RPC and async messaging for integration between services?",
         "choices": [
-            "Os dois são equivalentes em capacidade; a escolha é estilística e os trade-offs reais aparecem só em arquiteturas exóticas com requisitos não-funcionais extremos de latência, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Os dois são equivalentes em capacidade; a escolha é estilística e os trade-offs reais aparecem só em arquiteturas exóticas com requisitos não-funcionais extremos de latência, decisão que funciona no papel.",
             "Sync (HTTP/gRPC) é simples, baixa latência por chamada e adequado para queries; async (filas/eventos) desacopla temporalmente, melhora resiliência e absorve picos, ao custo de complexidade adicional (idempotência, ordering, observability).",
-            "Async é geralmente pior porque introduz inconsistência observável e dificulta debug; integração sync entre vários serviços é o padrão mais previsível em produção corporativa moderna, escolha que economiza tempo agora e cobra o preço mais tarde.",
-            "Não há diferença operacional relevante; load balancers modernos abstraem a escolha de transporte e o time de aplicação não percebe o paradigma subjacente em runtime real, prática que só aparece como erro grave durante um incidente real.",
+            "Async é geralmente pior porque introduz inconsistência observável e dificulta debug; integração sync entre vários serviços é o padrão mais previsível em produção corporativa moderna.",
+            "Não há diferença operacional relevante; load balancers modernos abstraem a escolha de transporte e o time de aplicação não percebe o paradigma subjacente em runtime real.",
         ],
         "choices_en": [
             "Both are equivalent in capability; the choice is stylistic and real trade-offs appear only in exotic architectures with extreme non-functional latency requirements — a decision that works on paper but does not survive the first real incident.",
@@ -1682,8 +1682,8 @@ SENIOR_QUESTIONS: list[dict] = [
         "choices": [
             "Silo é geralmente melhor porque elimina o risco de noisy neighbor; o custo extra é absorvido pelo upselling para tier premium dos tenants pagantes em planos comerciais corporativos, abordagem que ignora o histórico de incidentes parecidos no setor, erro típico de configuração feita às pressas, sem revisão posterior.",
             "Silo: isolamento máximo (recursos dedicados por tenant), maior custo unitário e overhead operacional; Pool: compartilhamento eficiente, custo unitário menor, mas exige defesa explícita contra noisy neighbor (quotas, throttling, isolamento por pool).",
-            "Pool é geralmente melhor porque maximiza utilização de recursos; isolamento por silo é uma estratégia legada inviável em SaaS competitivo moderno em qualquer nicho de mercado, prática que gera falso senso de segurança no time, comportamento que só é notado quando alguém audita os logs depois.",
-            "Não há diferença observável quando o sistema é bem instrumentado; observability ativa absorve qualquer ineficiência do modelo escolhido em runtime real de produção corporativa, prática que gera falso senso de segurança no time, que só aparece como problema depois que o sistema já está em produção.",
+            "Pool é geralmente melhor porque maximiza utilização de recursos; isolamento por silo é uma estratégia legada inviável em SaaS competitivo moderno em qualquer nicho de mercado.",
+            "Não há diferença observável quando o sistema é bem instrumentado; observability ativa absorve qualquer ineficiência do modelo escolhido em runtime real de produção corporativa.",
         ],
         "choices_en": [
             "Silo is generally better because it eliminates noisy-neighbor risk; the extra cost is absorbed by upselling paying tenants to the premium corporate commercial tier — an approach that ignores the history of similar incidents in the industry, a typical error from a rushed configuration with no later review.",
@@ -1700,10 +1700,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como comparar bancos schemaless e schemaful do ponto de vista evolutivo?",
         "statement_en": "How do you compare schemaless and schemaful databases from an evolutionary viewpoint?",
         "choices": [
-            "Schemaless é vencedor universal em desenvolvimento moderno, pois flexibilidade total compensa qualquer inconsistência local; schemaful é resquício relacional ultrapassado em arquiteturas event-driven, que só aparece como problema depois que o sistema já está em produção, abordagem que funciona bem até o primeiro pico de carga real.",
+            "Schemaless é vencedor universal em desenvolvimento moderno, pois flexibilidade total compensa qualquer inconsistência local; schemaful é resquício relacional ultrapassado em arquiteturas event-driven, que só aparece como problema depois que o sistema já está em produção.",
             "Schemaless agiliza prototipagem mas a ausência de contrato leva a inconsistência crescente e validação espalhada na aplicação; schemaful traz garantia explícita ao custo de migrações coordenadas, bancos modernos oferecem JSON validation/JSON schema híbridos para suavizar.",
-            "Não há trade-off significativo; bancos modernos uniformizam comportamento entre os dois modelos via camadas ORM que abstraem a diferença entre os times de aplicação e plataforma, prática que passa despercebida até uma auditoria de segurança, abordagem que resolve o sintoma, não a causa raiz do problema.",
-            "Schemaful é deprecated em arquiteturas event-driven contemporâneas; quando se trabalha com eventos imutáveis, schemaless é a única escolha consistente com o paradigma de imutabilidade, comportamento que só vira prioridade depois que já causou prejuízo, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Não há trade-off significativo; bancos modernos uniformizam comportamento entre os dois modelos via camadas ORM que abstraem a diferença entre os times de aplicação e plataforma, prática que passa despercebida até uma auditoria de segurança, abordagem que resolve o sintoma.",
+            "Schemaful é deprecated em arquiteturas event-driven contemporâneas; quando se trabalha com eventos imutáveis, schemaless é a única escolha consistente com o paradigma de imutabilidade, comportamento que só vira prioridade depois que já causou prejuízo.",
         ],
         "choices_en": [
             "Schemaless is the universal winner in modern development, because total flexibility compensates for any local inconsistency; schemaful is an outdated relational leftover in event-driven architectures — that only shows up as a problem after the system is already in production, an approach that works fine until the first real load spike.",
@@ -1720,10 +1720,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como avaliar vendor lock-in vs uso de managed services 'best of breed'?",
         "statement_en": "How do you evaluate vendor lock-in vs use of 'best of breed' managed services?",
         "choices": [
-            "Geralmente evitar lock-in usando só tecnologias open-source; portabilidade é princípio inegociável independente do custo de oportunidade no tempo presente para o produto entregue, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Geralmente evitar lock-in usando só tecnologias open-source; portabilidade é princípio inegociável independente do custo de oportunidade no tempo presente para o produto entregue, abordagem que resolve o sintoma.",
             "Comparar valor entregue (velocidade, SLA, integração nativa) contra custo futuro de portabilidade; em muitos casos, o lock-in é aceitável porque o ganho concreto excede o custo hipotético de migração futura, registre a decisão em ADR com hipóteses.",
-            "Lock-in é gratuito em provedores modernos porque oferecem APIs compatíveis com padrões abertos; preocupação com portabilidade é um problema dos anos 2000 sem relevância atual, prática que funciona em teste, mas falha sob carga real de produção.",
-            "Não importa porque a maioria dos sistemas é descontinuado antes de qualquer migração entre clouds; otimizar para velocidade ignora portabilidade legitimamente em qualquer cenário corporativo, algo que passa no code review quando ninguém olha com atenção.",
+            "Lock-in é gratuito em provedores modernos porque oferecem APIs compatíveis com padrões abertos; preocupação com portabilidade é um problema dos anos 2000 sem relevância atual, prática que funciona em teste.",
+            "Não importa porque a maioria dos sistemas é descontinuado antes de qualquer migração entre clouds; otimizar para velocidade ignora portabilidade legitimamente em qualquer cenário corporativo.",
         ],
         "choices_en": [
             "Generally avoid lock-in using only open-source technologies; portability is a non-negotiable principle regardless of opportunity cost in the present for the delivered product — an approach that treats the symptom, not the root cause of the problem.",
@@ -1740,10 +1740,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como caracterizar corretamente um 'distributed monolith'?",
         "statement_en": "How do you correctly characterize a 'distributed monolith'?",
         "choices": [
-            "É um objetivo arquitetural válido para times pequenos: ter o sistema grande parte do descrito como um único conjunto coordenado simplifica raciocínio sobre o sistema completo em escala de equipe, prática que só aparece como erro grave durante um incidente real, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "É um objetivo arquitetural válido para times pequenos: ter o sistema grande parte do descrito como um único conjunto coordenado simplifica raciocínio sobre o sistema completo em escala de equipe.",
             "Anti-padrão em que vários serviços estão fortemente acoplados (compartilhando schemas, releases sincronizadas, contratos frágeis) e precisam ser deployados juntos, herdando a complexidade operacional dos microsserviços sem entregar autonomia de time ou release independente.",
-            "Equivale a microsserviços bem feitos quando os serviços compartilham um pipeline de deploy; coordenação reduz drift entre versões e melhora consistência geral entre os componentes do sistema, abordagem que ignora o cenário de falha mais provável na prática, abordagem que funciona bem até o primeiro pico de carga real.",
-            "É uma arquitetura aceitável em qualquer cenário onde o time tem operação madura, pois a complexidade extra do distribuído é compensada por governança forte aplicada uniformemente sobre o sistema, prática que gera falso senso de segurança no time, comportamento que só é notado quando alguém audita os logs depois.",
+            "Equivale a microsserviços bem feitos quando os serviços compartilham um pipeline de deploy; coordenação reduz drift entre versões e melhora consistência geral entre os componentes do sistema, abordagem que ignora o cenário de falha mais provável na prática.",
+            "É uma arquitetura aceitável em qualquer cenário onde o time tem operação madura, pois a complexidade extra do distribuído é compensada por governança forte aplicada uniformemente sobre o sistema.",
         ],
         "choices_en": [
             "It is a valid architectural goal for small teams: having most of the system described as a single coordinated set simplifies reasoning about the complete system at team scale — a practice that only shows up as a serious error during a real incident, an approach that ignores the history of similar incidents in the industry.",
@@ -1760,10 +1760,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "O que implica o princípio de defesa em profundidade?",
         "statement_en": "What does the defense-in-depth principle imply?",
         "choices": [
-            "Uma única camada de defesa robusta é suficiente quando bem implementada; sobreposição de controles aumenta complexidade sem ganho de segurança real em ambientes auditados modernos, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
+            "Uma única camada de defesa robusta é suficiente quando bem implementada; sobreposição de controles aumenta complexidade sem ganho de segurança real em ambientes auditados modernos, decisão que parece inofensiva isolada.",
             "Múltiplas camadas independentes de controle (rede, identidade, aplicação, dados, runtime) com sobreposição mínima de hipóteses, de modo que falha ou bypass em uma camada não comprometa o todo do sistema.",
             "Só firewall perimetral bem configurado, pois controla todo o tráfego norte-sul; controles internos são redundantes em rede corporativa segregada por VLAN tradicional, suposição que só vale em ambiente de desenvolvimento, não em produção.",
-            "Só IAM forte com MFA universal; identidade é o único perímetro relevante em arquitetura cloud, e camadas de rede são legado de datacenter sem aplicação em deploys cloud-native, prática que passa despercebida até uma auditoria de segurança.",
+            "Só IAM forte com MFA universal; identidade é o único perímetro relevante em arquitetura cloud, e camadas de rede são legado de datacenter sem aplicação em deploys cloud-native.",
         ],
         "choices_en": [
             "A single robust defense layer is enough when well implemented; overlapping controls increase complexity without real security gain in modern audited environments — a decision that looks harmless in isolation but accumulates over time.",
@@ -1781,10 +1781,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Para alta disponibilidade dentro de uma região AWS, quais práticas se combinam?",
         "statement_en": "For high availability within an AWS region, which practices combine?",
         "choices": [
-            "Concentrar tudo em uma única AZ otimiza latência intra-VPC; redundância é overhead que custa mais do que o downtime acumulado por ano em prática operacional cotidiana, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
+            "Concentrar tudo em uma única AZ otimiza latência intra-VPC; redundância é overhead que custa mais do que o downtime acumulado por ano em prática operacional cotidiana, decisão que parece inofensiva isolada.",
             "Distribuir workloads em múltiplas AZs com auto-scaling groups, ELB com health checks ativos, dados replicados (RDS Multi-AZ síncrono, S3 com 11 noves de durabilidade) e configuração resistente a perda de uma AZ inteira.",
-            "Usar uma região distante como secundário ativo, sem multi-AZ na primária; latência inter-region absorvida pelo CDN de borda compensa qualquer ganho local da redundância intra-region, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
-            "Backups frequentes substituem multi-AZ; em caso de falha, o restore é rápido o suficiente para que o impacto fique dentro do SLO da maioria dos serviços críticos em campo, comportamento que só é notado quando alguém audita os logs depois.",
+            "Usar uma região distante como secundário ativo, sem multi-AZ na primária; latência inter-region absorvida pelo CDN de borda compensa qualquer ganho local da redundância intra-region, decisão que funciona no papel.",
+            "Backups frequentes substituem multi-AZ; em caso de falha, o restore é rápido o suficiente para que o impacto fique dentro do SLO da maioria dos serviços críticos em campo.",
         ],
         "choices_en": [
             "Concentrating everything in a single AZ optimizes intra-VPC latency; redundancy is overhead that costs more than cumulative downtime per year in day-to-day operational practice — a decision that looks harmless in isolation but accumulates over time.",
@@ -1801,10 +1801,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Em arquitetura serverless event-driven, qual é a vantagem chave operacionalmente?",
         "statement_en": "In event-driven serverless architecture, what is the key operational advantage?",
         "choices": [
-            "Custo fixo previsível independente da carga, ideal para orçamento corporativo; serverless cobra por mês fixo independente do número de invocações reais ocorridas no período de billing, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Custo fixo previsível independente da carga, ideal para orçamento corporativo; serverless cobra por mês fixo independente do número de invocações reais ocorridas no período de billing.",
             "Escalabilidade automática proporcional ao volume de eventos, custo proporcional ao uso (sem capacidade ociosa), redução de toil operacional (sem patching de OS, sem capacity planning de baseline) e isolamento natural por evento.",
-            "Necessidade de OS dedicado por função, garantindo isolamento de execução; provider executa cada função em VM exclusiva durante grande parte do ciclo de vida da invocação até o completion, prática que funciona em teste, mas falha sob carga real de produção.",
-            "Eliminação completa de orquestração; cada função executa autonomamente sem coordenação, e o framework substitui a necessidade de message broker entre eventos do sistema completo, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "Necessidade de OS dedicado por função, garantindo isolamento de execução; provider executa cada função em VM exclusiva durante grande parte do ciclo de vida da invocação até o completion, prática que funciona em teste.",
+            "Eliminação completa de orquestração; cada função executa autonomamente sem coordenação, e o framework substitui a necessidade de message broker entre eventos do sistema completo.",
         ],
         "choices_en": [
             "Predictable fixed cost independent of load, ideal for corporate budget; serverless charges a fixed monthly fee regardless of the number of real invocations in the billing period — an assumption that ignores how the resource really behaves at scale.",
@@ -1821,10 +1821,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Em uma arquitetura híbrida (on-prem + cloud), quais elementos exigem cuidado conjunto?",
         "statement_en": "In a hybrid architecture (on-prem + cloud), which elements need joint care?",
         "choices": [
-            "Internet pública via TLS é suficiente para qualquer cenário híbrido; conectividade dedicada é overkill caro para tráfego que pode ser cifrado em camada 7 com zero trust aplicado, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "Internet pública via TLS é suficiente para qualquer cenário híbrido; conectividade dedicada é overkill caro para tráfego que pode ser cifrado em camada 7 com zero trust aplicado, erro comum de quem aprendeu por tentativa e erro.",
             "Conectividade dedicada (Direct Connect / ExpressRoute / Interconnect ou IPsec robusto), DNS coerente entre ambientes, IAM federado (SSO/SAML/OIDC), data gravity considerada e estratégia clara de fronteira (qual workload mora onde e por que).",
-            "Só VPN doméstica do escritório do time de plataforma; o restante da empresa acessa por TLS público, simplificando o modelo operacional para times de produto e dados, atalho que ignora exatamente o cenário que mais importa evitar.",
-            "Híbrido não exige requisitos especiais quando o sistema é bem desenhado; basta tratar cada lado como deploy separado com APIs públicas entre si e roteamento via load balancer global, suposição que só se sustenta enquanto o time é pequeno.",
+            "Só VPN doméstica do escritório do time de plataforma; o restante da empresa acessa por TLS público, simplificando o modelo operacional para times de produto e dados.",
+            "Híbrido não exige requisitos especiais quando o sistema é bem desenhado; basta tratar cada lado como deploy separado com APIs públicas entre si e roteamento via load balancer global.",
         ],
         "choices_en": [
             "Public internet via TLS is enough for any hybrid scenario; dedicated connectivity is expensive overkill for traffic that can be encrypted at layer 7 with zero trust applied — a common mistake from learning by trial and error without reviewing official docs.",
@@ -1843,8 +1843,8 @@ SENIOR_QUESTIONS: list[dict] = [
         "choices": [
             "Reduz drasticamente a latência ao usuário final ao distribuir cargas entre os provedores; o ganho de performance compensa qualquer overhead operacional acumulado durante a operação contínua, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
             "Duplicação de skills/ferramentas, custo de egress entre clouds, complexidade de identidade federada, conectividade dedicada e divergência de serviços gerenciados que impedem aproveitamento profundo de cada provider.",
-            "Multi-cloud é estritamente mais barato porque permite arbitragem de preços entre provedores; o tooling moderno absorve boa parte do overhead operacional entre clouds modernas comparáveis, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
-            "Não tem desvantagens; é boa prática moderna que grande parte da organização deveria adotar para evitar vendor lock-in independentemente do estágio do produto e maturidade do time engenheiro, prática que passa despercebida até uma auditoria de segurança.",
+            "Multi-cloud é estritamente mais barato porque permite arbitragem de preços entre provedores; o tooling moderno absorve boa parte do overhead operacional entre clouds modernas comparáveis, decisão que parece razoável isolada.",
+            "Não tem desvantagens; é boa prática moderna que grande parte da organização deveria adotar para evitar vendor lock-in independentemente do estágio do produto e maturidade do time engenheiro.",
         ],
         "choices_en": [
             "It drastically reduces end-user latency by distributing load across providers; the performance gain compensates any operational overhead accumulated during continuous operation — behavior that creates a false alert or silences a real one, depending on the case.",
@@ -1861,10 +1861,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como garantir governança de IAM em escala em uma organização grande?",
         "statement_en": "How do you ensure IAM governance at scale in a large organization?",
         "choices": [
-            "Cada time emite suas próprias credenciais long-lived com permissões amplas; descentralização acelera o trabalho dos times sem necessidade de aprovação central para casos do dia-a-dia, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Cada time emite suas próprias credenciais long-lived com permissões amplas; descentralização acelera o trabalho dos times sem necessidade de aprovação central para casos do dia-a-dia, decisão que cria dívida técnica silenciosa.",
             "Federação SSO/IDP central (Okta, Entra ID), modelo RBAC/ABAC documentado, revisões periódicas de acesso (access reviews), just-in-time access para elevações temporárias e auditoria contínua dos eventos de identidade e autorização.",
-            "Usar a credencial root da conta para todas as operações sensíveis, com rotação periódica via vault interno; root é a forma mais auditável de operação em ambientes regulados internamente, atalho que troca segurança por conveniência de curto prazo.",
-            "Implementar IAM forte sem auditoria automatizada, pois access reviews manuais cobrem o requisito regulatório com menor investimento em tooling adicional para times pequenos, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Usar a credencial root da conta para todas as operações sensíveis, com rotação periódica via vault interno; root é a forma mais auditável de operação em ambientes regulados internamente.",
+            "Implementar IAM forte sem auditoria automatizada, pois access reviews manuais cobrem o requisito regulatório com menor investimento em tooling adicional para times pequenos.",
         ],
         "choices_en": [
             "Each team issues its own long-lived credentials with broad permissions; decentralization speeds team work without needing central approval for day-to-day cases — a decision that creates silent technical debt without raising an immediate error.",
@@ -1881,10 +1881,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como segregar contas/projetos para diferentes ambientes em cloud moderna?",
         "statement_en": "How do you segregate accounts/projects for different environments in modern cloud?",
         "choices": [
-            "Manter tudo em uma única conta com tags por ambiente; multi-conta cria fricção operacional sem benefício real além de uma fronteira contábil cosmética da organização interna, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "Manter tudo em uma única conta com tags por ambiente; multi-conta cria fricção operacional sem benefício real além de uma fronteira contábil cosmética da organização interna.",
             "Hierarquia formal com AWS Organizations / GCP Folders / Azure Management Groups, SCPs/Org Policies aplicadas a OUs, separação por dev/stage/prod e por workload sensível, com networking e billing alinhados à hierarquia.",
-            "Só sub-pastas no console do provider (que não existem como controle de segurança) para separar visualmente; o controle real fica no IAM da conta única usado pela organização, comportamento que só some quando alguém finalmente lê a documentação.",
-            "Não segregar é aceitável em organizações pequenas; a fronteira de conta é overhead burocrático que pode ser substituído por VPC isolation interna em qualquer caso prático, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Só sub-pastas no console do provider (que não existem como controle de segurança) para separar visualmente; o controle real fica no IAM da conta única usado pela organização.",
+            "Não segregar é aceitável em organizações pequenas; a fronteira de conta é overhead burocrático que pode ser substituído por VPC isolation interna em qualquer caso prático.",
         ],
         "choices_en": [
             "Keep everything in a single account with tags per environment; multi-account creates operational friction with no real benefit beyond a cosmetic accounting boundary of the internal organization — a common shortcut when the deadline is tight and nobody reviews afterward.",
@@ -1901,10 +1901,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Para cargas regulamentadas (ex.: PCI-DSS), qual abordagem é mais eficiente em cloud?",
         "statement_en": "For regulated workloads (e.g. PCI-DSS), which approach is most efficient in cloud?",
         "choices": [
-            "Misturar workloads regulados e não-regulados na mesma VPC com tags PCI nos recursos sensíveis; auditoria mapeia o escopo por filtros de tags efetivamente durante visitas anuais regulatórias, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Misturar workloads regulados e não-regulados na mesma VPC com tags PCI nos recursos sensíveis; auditoria mapeia o escopo por filtros de tags efetivamente durante visitas anuais regulatórias.",
             "Isolar workloads regulados em VPC/contas/projetos dedicados (cardholder data environment), com controles compensatórios (criptografia, IDS/IPS, log imutável, segmentação de rede) e escopo de auditoria reduzido por arquitetura.",
-            "Não segregar e confiar no compliance certification do provider; a certificação herdada cobre vários controles do cliente quando o provider é PCI-certificado em infraestrutura compartilhada, prática que funciona em teste, mas falha sob carga real de produção.",
-            "Só perímetro de firewall robusto e WAF pública; os controles compensatórios internos são redundantes quando a borda está adequadamente endurecida com regras atualizadas, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "Não segregar e confiar no compliance certification do provider; a certificação herdada cobre vários controles do cliente quando o provider é PCI-certificado em infraestrutura compartilhada, prática que funciona em teste.",
+            "Só perímetro de firewall robusto e WAF pública; os controles compensatórios internos são redundantes quando a borda está adequadamente endurecida com regras atualizadas.",
         ],
         "choices_en": [
             "Mix regulated and non-regulated workloads in the same VPC with PCI tags on sensitive resources; audit maps scope via tag filters effectively during annual regulatory visits — an approach that ignores the failure scenario most likely in practice.",
@@ -1921,9 +1921,9 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como projetar para 99,99% de disponibilidade anual?",
         "statement_en": "How do you design for 99.99% annual availability?",
         "choices": [
-            "Single instance vertical robusta basta para a maioria dos casos; 99,99% é alcançado por hardware confiável e o overhead de redundância raramente compensa em sistemas pequenos, prática que funciona em teste, mas falha sob carga real de produção.",
+            "Single instance vertical robusta basta para a maioria dos casos; 99,99% é alcançado por hardware confiável e o overhead de redundância raramente compensa em sistemas pequenos, prática que funciona em teste.",
             "Multi-AZ por padrão com replicação síncrona crítica, deploy automatizado seguro (canary, rollback automático), observability robusta com SLOs alinhados, error budget e runbooks/DR ensaiados em game days regulares.",
-            "Backup mensal de grande parte da infraestrutura é suficiente para SLA de 99,99% porque restore rápido absorve o impacto da maioria dos eventos não previstos em produção corporativa, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Backup mensal de grande parte da infraestrutura é suficiente para SLA de 99,99% porque restore rápido absorve o impacto da maioria dos eventos não previstos em produção corporativa.",
             "Improvisar em incidentes via expertise do time; engenheiros experientes resolvem qualquer evento dentro da janela necessária para manter o SLO anual em sistemas distribuídos, erro típico de configuração feita às pressas, sem revisão posterior.",
         ],
         "choices_en": [
@@ -1941,10 +1941,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Para um data lake corporativo moderno, qual padrão domina?",
         "statement_en": "For a modern corporate data lake, which pattern dominates?",
         "choices": [
-            "Só data warehouses tradicionais relacionais; lakes geram inconsistência por falta de schema enforcement e não escalam para casos de BI sérios em organizações modernas com governança, prática que gera falso senso de segurança no time.",
+            "Só data warehouses tradicionais relacionais; lakes geram inconsistência por falta de schema enforcement e não escalam para casos de BI sérios em organizações modernas com governança.",
             "Object storage barato como base, camadas lógicas (raw, curated, semantic/serving), formatos abertos (Parquet, ORC) com metadata layer (Iceberg, Delta, Hudi) e catálogo unificado (Glue, Unity Catalog) com lineage e governança.",
-            "Manter cópias separadas por ferramenta de consumo (uma para Spark, outra para Tableau, outra para o time de ML); duplicação garante isolamento de SLA entre as ferramentas e times, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
-            "Sem governança formal nem catálogo; engenheiros de dados conhecem os datasets relevantes informalmente e documentação adicional é overhead em times pequenos sem impacto em produtividade, comportamento que só é notado quando alguém audita os logs depois.",
+            "Manter cópias separadas por ferramenta de consumo (uma para Spark, outra para Tableau, outra para o time de ML); duplicação garante isolamento de SLA entre as ferramentas e times.",
+            "Sem governança formal nem catálogo; engenheiros de dados conhecem os datasets relevantes informalmente e documentação adicional é overhead em times pequenos sem impacto em produtividade.",
         ],
         "choices_en": [
             "Only traditional relational data warehouses; lakes generate inconsistency from lack of schema enforcement and do not scale for serious BI cases in modern organizations with governance — a practice that creates a false sense of security on the team.",
@@ -1961,10 +1961,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como reduzir latência global em aplicações user-facing?",
         "statement_en": "How do you reduce global latency in user-facing applications?",
         "choices": [
-            "Concentrar tudo em uma única região central globalmente; latência cross-region é absorvida pelo TCP/HTTP3 moderno sem necessidade de distribuição física da infraestrutura entre regiões, abordagem que funciona bem até o primeiro pico de carga real.",
+            "Concentrar tudo em uma única região central globalmente; latência cross-region é absorvida pelo TCP/HTTP3 moderno sem necessidade de distribuição física da infraestrutura entre regiões.",
             "Edge caching via CDN para assets e respostas idempotentes, regional API gateways para terminação TLS próxima ao usuário, replicação para read replicas regionais e write coordenado via primário com geo-routing inteligente.",
-            "Configurar DNS estático com TTL alto apontando para o IP da única região; cache DNS no cliente reduz overhead de resolução em picos de tráfego e latência percebida pelo usuário final, atalho que funciona hoje mas complica a próxima migração.",
-            "Não há cuidado especial necessário em apps modernos; frameworks de UI assíncronos absorvem latência via skeleton screens e otimismo de UI durante operação no cliente final, que só aparece como problema depois que o sistema já está em produção.",
+            "Configurar DNS estático com TTL alto apontando para o IP da única região; cache DNS no cliente reduz overhead de resolução em picos de tráfego e latência percebida pelo usuário final.",
+            "Não há cuidado especial necessário em apps modernos; frameworks de UI assíncronos absorvem latência via skeleton screens e otimismo de UI durante operação no cliente final.",
         ],
         "choices_en": [
             "Concentrate everything in a single central global region; cross-region latency is absorbed by modern TCP/HTTP3 without needing physical distribution of infrastructure across regions — an approach that works fine until the first real load spike.",
@@ -1981,10 +1981,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Em K8s gerenciado (EKS/GKE/AKS), o que continua sendo responsabilidade do cliente?",
         "statement_en": "On managed K8s (EKS/GKE/AKS), what remains the customer's responsibility?",
         "choices": [
-            "Só a aplicação em si; tudo abaixo dos containers é responsabilidade integral do provider, incluindo RBAC, manifests e políticas de rede do cluster gerenciado entregue, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
+            "Só a aplicação em si; tudo abaixo dos containers é responsabilidade integral do provider, incluindo RBAC, manifests e políticas de rede do cluster gerenciado entregue, decisão que parece razoável isolada.",
             "Workloads e suas configurações, RBAC interno do cluster, NetworkPolicies, manifests/GitOps, observability dos pods, segurança em runtime (admission, image scan, PSS), cost tracking e operação dos addons (ingress, service mesh).",
-            "Tudo é responsabilidade do provider quando o cluster é gerenciado; RBAC, observability e segurança em runtime são serviços inclusos no preço do plano managed kubernetes, prática que gera falso senso de segurança no time.",
-            "Só instalar o cluster e contratar o plano; o provider opera workloads, networking e segurança a partir do momento da entrega do control plane do cluster pago, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Tudo é responsabilidade do provider quando o cluster é gerenciado; RBAC, observability e segurança em runtime são serviços inclusos no preço do plano managed kubernetes.",
+            "Só instalar o cluster e contratar o plano; o provider opera workloads, networking e segurança a partir do momento da entrega do control plane do cluster pago.",
         ],
         "choices_en": [
             "Only the application itself; everything below containers is fully the provider's responsibility, including RBAC, manifests, and network policies of the delivered managed cluster — a decision that looks reasonable in isolation but breaks the architecture as a whole.",
@@ -2001,10 +2001,10 @@ SENIOR_QUESTIONS: list[dict] = [
         "statement": "Como arquitetar CI/CD seguro entre múltiplos ambientes?",
         "statement_en": "How do you architect secure CI/CD across multiple environments?",
         "choices": [
-            "Reutilizar credenciais entre prod e dev para simplificar pipelines; rotação periódica via vault central reduz risco a um nível operacionalmente aceitável para times com governança madura, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Reutilizar credenciais entre prod e dev para simplificar pipelines; rotação periódica via vault central reduz risco a um nível operacionalmente aceitável para times com governança madura, decisão que funciona no papel.",
             "OIDC trust por ambiente (sem credenciais long-lived em CI), runners segregados por sensibilidade, secret managers separados por ambiente, aprovações manuais (com auditoria) em prod, branch protection e atestação dos artefatos promovidos.",
-            "Só a senha pessoal do líder técnico habilitada para deploy em prod, com escalabilidade humana garantindo controle adicional sobre cada release via gate manual obrigatório, atalho que troca segurança por conveniência de curto prazo.",
-            "Não segregar runners nem secrets entre ambientes; pipelines uniformes simplificam manutenção e a separação por ambiente é overhead organizacional que atrasa releases entre times, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "Só a senha pessoal do líder técnico habilitada para deploy em prod, com escalabilidade humana garantindo controle adicional sobre cada release via gate manual obrigatório.",
+            "Não segregar runners nem secrets entre ambientes; pipelines uniformes simplificam manutenção e a separação por ambiente é overhead organizacional que atrasa releases entre times.",
         ],
         "choices_en": [
             "Reuse credentials between prod and dev to simplify pipelines; periodic rotation via central vault reduces risk to an operationally acceptable level for teams with mature governance — a decision that works on paper but does not survive the first real incident.",

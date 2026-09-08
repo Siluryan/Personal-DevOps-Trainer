@@ -12,9 +12,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Qual é o objeto schedulável mais básico no Kubernetes?",
         "statement_en": "What is the most basic schedulable object in Kubernetes?",
         "choices": [
-            "O scheduler aloca diretamente cada `Container` como unidade independente da API do Kubernetes, atalho que ignora exatamente o cenário que mais importa evitar.",
+            "O scheduler aloca diretamente cada `Container` como unidade independente da API do Kubernetes.",
             "O `Pod` é a menor unidade schedulável; o scheduler associa esse recurso a um nó e os containers dentro dele compartilham rede e volumes.",
-            "O `ReplicaSet` é o objeto schedulável básico, pois define o número de réplicas e distribui cada réplica nos nós do cluster, erro que só é percebido quando o time de operação já está lidando com o incidente.",
+            "O `ReplicaSet` é o objeto schedulável básico, pois define o número de réplicas e distribui cada réplica nos nós do cluster.",
             "O `Deployment` é o objeto schedulável básico, pois representa a aplicação e controla a alocação dos recursos nos nós, suposição que só vale em ambiente de desenvolvimento, não em produção.",
         ],
         "choices_en": [
@@ -32,10 +32,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Qual a diferença prática entre `Deployment` e `StatefulSet`?",
         "statement_en": "What is the practical difference between `Deployment` and `StatefulSet`?",
         "choices": [
-            "No uso típico, o `StatefulSet` cria pods sem identidade estável e o `Deployment` é preferido para bancos com PVC dedicado por réplica, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "No uso típico, o `StatefulSet` cria pods sem identidade estável e o `Deployment` é preferido para bancos com PVC dedicado por réplica, atalho que parece seguro isolado.",
             "O `Deployment` trata pods como intercambiáveis e sem identidade fixa; `StatefulSet` mantém ordinal estável, hostname previsível (`pod-0`, `pod-1`) e um PVC dedicado por réplica, ideal para sistemas com estado como bancos.",
-            "Ambos preservam identidade estável dos pods; a única diferença é que `StatefulSet` exige um Service do tipo `LoadBalancer` e `Deployment` exige um Service do tipo `ClusterIP`, suposição que ignora como o recurso realmente se comporta em escala.",
-            "O `Deployment` é o recurso recomendado para workloads stateful, enquanto o `StatefulSet` funciona como um `DaemonSet` simplificado (um pod por nó), abordagem que funciona bem até o primeiro pico de carga real.",
+            "Ambos preservam identidade estável dos pods; a única diferença é que `StatefulSet` exige um Service do tipo `LoadBalancer` e `Deployment` exige um Service do tipo `ClusterIP`.",
+            "O `Deployment` é o recurso recomendado para workloads stateful, enquanto o `StatefulSet` funciona como um `DaemonSet` simplificado (um pod por nó).",
         ],
         "choices_en": [
             "In typical use, `StatefulSet` creates pods without stable identity and `Deployment` is preferred for databases with a dedicated PVC per replica, a shortcut that looks safe in isolation but breaks when combined with other systems.",
@@ -52,10 +52,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Para que serve um `Service` do tipo `ClusterIP`?",
         "statement_en": "What is a `ClusterIP` `Service` for?",
         "choices": [
-            "Aloca uma porta alta em vários nós (30000-32767) e expõe o Service externamente através do IP de qualquer nó do cluster, suposição que só se sustenta enquanto o time é pequeno.",
-            "Provisiona um load balancer L4 no provedor de nuvem com IP público, integrando ao Service via controller específico (ex.: `aws-load-balancer-controller`), algo que passa no code review quando ninguém olha com atenção.",
+            "Aloca uma porta alta em vários nós (30000-32767) e expõe o Service externamente através do IP de qualquer nó do cluster.",
+            "Provisiona um load balancer L4 no provedor de nuvem com IP público, integrando ao Service via controller específico (ex.: `aws-load-balancer-controller`).",
             "Atribui um IP virtual estável dentro do cluster e balanceia tráfego entre os pods que casam com o `selector`; é o tipo padrão e só é alcançável internamente.",
-            "Cria uma rota L7 no Ingress Controller para mapear hostnames externos a backends, com terminação TLS no proxy reverso, prática que passa despercebida até uma auditoria de segurança.",
+            "Cria uma rota L7 no Ingress Controller para mapear hostnames externos a backends, com terminação TLS no proxy reverso.",
         ],
         "choices_en": [
             "It allocates a high port on several nodes (30000-32767) and exposes the Service externally through any node's IP, an assumption that only holds while the team is small.",
@@ -73,9 +73,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "What is a `ConfigMap` and how does it differ from other objects?",
         "choices": [
             "Objeto da API que armazena dados de configuração não sensíveis em pares chave/valor, podendo ser consumido como variável de ambiente, argumento de linha de comando ou volume montado pelos pods.",
-            "Objeto que armazena dados sensíveis (senhas, tokens) codificados em base64, com criptografia em repouso ativada por padrão a partir do K8s 1.20, comportamento que confunde quem está debugando meses depois.",
-            "Recurso que define um novo tipo de objeto na API do Kubernetes (`CustomResourceDefinition`), permitindo que controllers customizados o reconciliem, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
-            "Objeto que mantém o mapeamento entre `Service` e seus pods, atualizado pelo `kube-controller-manager` quando o `selector` muda, que só aparece como problema depois que o sistema já está em produção.",
+            "Objeto que armazena dados sensíveis (senhas, tokens) codificados em base64, com criptografia em repouso ativada por padrão a partir do K8s 1.20.",
+            "Recurso que define um novo tipo de objeto na API do Kubernetes (`CustomResourceDefinition`), permitindo que controllers customizados o reconciliem, atalho que parece seguro isolado.",
+            "Objeto que mantém o mapeamento entre `Service` e seus pods, atualizado pelo `kube-controller-manager` quando o `selector` muda.",
         ],
         "choices_en": [
             "An API object that stores non-sensitive configuration data as key/value pairs, consumable as environment variables, command-line arguments, or a volume mounted by pods.",
@@ -93,7 +93,7 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "What is the difference between livenessProbe and readinessProbe?",
         "choices": [
             "Readiness reinicia o container quando falha, enquanto liveness só remove o pod dos endpoints, erro típico de configuração feita às pressas, sem revisão posterior.",
-            "Liveness verifica se o pod esta pronto para trafego, enquanto readiness detecta travamento e reinicia, algo que passa no code review quando ninguém olha com atenção.",
+            "Liveness verifica se o pod esta pronto para trafego, enquanto readiness detecta travamento e reinicia.",
             "Liveness detecta travamento e pode reiniciar o container, enquanto readiness controla entrada e saida dos endpoints.",
             "Liveness e readiness tem o mesmo efeito, mudando só o protocolo do probe, suposição que só vale em ambiente de desenvolvimento, não em produção.",
         ],
@@ -113,9 +113,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "What is the role of an `Ingress` in Kubernetes?",
         "choices": [
             "Recurso da API que define regras L7 (host/path) roteadas para `Services` por um `Ingress Controller` (ex.: NGINX, Traefik), suportando terminação TLS e cabeçalhos customizados.",
-            "Tipo especial de `Service` que provisiona automaticamente um load balancer público no provedor de nuvem e distribui tráfego entre pods em camada 4, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
-            "Recurso deprecated em K8s 1.22+ e substituído integralmente pelo `Gateway API`; novos clusters não devem mais utilizá-lo, resultado típico de copiar configuração de outro projeto sem adaptar.",
-            "Objeto que define quais pods podem aceitar conexões de quais origens com base em labels e namespaces, restringindo tráfego intra-cluster, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
+            "Tipo especial de `Service` que provisiona automaticamente um load balancer público no provedor de nuvem e distribui tráfego entre pods em camada 4.",
+            "Recurso deprecated em K8s 1.22+ e substituído integralmente pelo `Gateway API`; novos clusters não devem mais utilizá-lo.",
+            "Objeto que define quais pods podem aceitar conexões de quais origens com base em labels e namespaces, restringindo tráfego intra-cluster, decisão que parece razoável isolada.",
         ],
         "choices_en": [
             "An API resource that defines L7 rules (host/path) routed to `Services` by an `Ingress Controller` (e.g. NGINX, Traefik), supporting TLS termination and custom headers.",
@@ -132,9 +132,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Sobre requests e limits em recursos de um Pod, qual afirmacao esta correta?",
         "statement_en": "About requests and limits on Pod resources, which statement is correct?",
         "choices": [
-            "No agendamento, limits atua como reserva minima e requests define o teto em runtime, comportamento que confunde quem está debugando meses depois.",
-            "Requests e limits sao equivalentes na pratica, mudando só o nome por compatibilidade, prática que gera falso senso de segurança no time.",
-            "Requests vale só para memoria e limits vale só para CPU no manifesto, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "No agendamento, limits atua como reserva minima e requests define o teto em runtime.",
+            "Requests e limits sao equivalentes na pratica, mudando só o nome por compatibilidade.",
+            "Requests vale só para memoria e limits vale só para CPU no manifesto, erro comum de quem aprendeu por tentativa e erro.",
             "Requests guia o scheduler no agendamento, e limits define teto de uso aplicado pelo kernel.",
         ],
         "choices_en": [
@@ -173,9 +173,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "How do you autoscale Pods based on custom metrics (e.g. SQS queue size)?",
         "choices": [
             "Configurar `HPA` com um adapter de métricas externas (ex.: `prometheus-adapter` via API `external.metrics.k8s.io`) ou utilizar `KEDA`, que oferece scalers prontos para SQS, Kafka, Redis etc.",
-            "Usar `VPA` (Vertical Pod Autoscaler), que ajusta automaticamente requests/limits dos pods em função de métricas customizadas como queue length, erro que só é percebido quando o time de operação já está lidando com o incidente.",
-            "Habilitar o `Cluster Autoscaler` com regras customizadas em annotations dos nós; ele escala os pods conforme a métrica externa atinge thresholds, prática que funciona em teste, mas falha sob carga real de produção.",
-            "Criar um `CronJob` que executa `kubectl scale deployment/api --replicas=N` periodicamente conforme a métrica do Prometheus, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "Usar `VPA` (Vertical Pod Autoscaler), que ajusta automaticamente requests/limits dos pods em função de métricas customizadas como queue length.",
+            "Habilitar o `Cluster Autoscaler` com regras customizadas em annotations dos nós; ele escala os pods conforme a métrica externa atinge thresholds, prática que funciona em teste.",
+            "Criar um `CronJob` que executa `kubectl scale deployment/api --replicas=N` periodicamente conforme a métrica do Prometheus, atalho que parece seguro isolado.",
         ],
         "choices_en": [
             "Configure `HPA` with an external metrics adapter (e.g. `prometheus-adapter` via the `external.metrics.k8s.io` API) or use `KEDA`, which offers ready-made scalers for SQS, Kafka, Redis, and more.",
@@ -212,9 +212,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Qual é a função de uma `NetworkPolicy`?",
         "statement_en": "What is the purpose of a `NetworkPolicy`?",
         "choices": [
-            "Define como um `Service` distribui tráfego entre pods com afinidade de sessão e `externalTrafficPolicy` (`Local` ou `Cluster`), prática ainda comum em sistema legado que raramente é atualizado.",
-            "Aplica políticas de segurança em nível de pod (drop de capabilities, `runAsNonRoot`) substituindo o `PodSecurityPolicy` removido na 1.25, atalho comum quando o prazo aperta e ninguém revisa depois.",
-            "Configura mTLS automático entre serviços e cria regras de autorização L7 baseadas em JWT, exigindo que cada pod tenha um sidecar injetado, que só aparece como problema depois que o sistema já está em produção.",
+            "Define como um `Service` distribui tráfego entre pods com afinidade de sessão e `externalTrafficPolicy` (`Local` ou `Cluster`).",
+            "Aplica políticas de segurança em nível de pod (drop de capabilities, `runAsNonRoot`) substituindo o `PodSecurityPolicy` removido na 1.25.",
+            "Configura mTLS automático entre serviços e cria regras de autorização L7 baseadas em JWT, exigindo que cada pod tenha um sidecar injetado.",
             "Restringe tráfego ingress/egress entre pods com base em `podSelector`, `namespaceSelector` e regras de porta; depende de um CNI compatível como Calico ou Cilium para enforcement.",
         ],
         "choices_en": [
@@ -232,10 +232,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Qual é a ordem de execução de `initContainers` em relação aos containers principais de um Pod?",
         "statement_en": "What is the execution order of `initContainers` relative to a Pod's main containers?",
         "choices": [
-            "Rodam como sidecars em paralelo aos principais durante grande parte do ciclo de vida do Pod, ideais para agentes de log e proxies, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Rodam como sidecars em paralelo aos principais durante grande parte do ciclo de vida do Pod, ideais para agentes de log e proxies.",
             "Rodam antes dos principais, sequencialmente, e cada um precisa terminar com `exit 0` para o próximo iniciar; só então os containers principais sobem.",
-            "Executam após o container principal iniciar, equivalentes ao hook `postStart`; uso típico é registrar o pod em um service registry externo, abordagem que ignora o cenário de falha mais provável na prática.",
-            "Rodam antes dos principais, porém em paralelo entre si; o pod inicia logo que qualquer um dos init containers retorna `exit 0`, prática ainda comum em sistema legado que raramente é atualizado.",
+            "Executam após o container principal iniciar, equivalentes ao hook `postStart`; uso típico é registrar o pod em um service registry externo.",
+            "Rodam antes dos principais, porém em paralelo entre si; o pod inicia logo que qualquer um dos init containers retorna `exit 0`.",
         ],
         "choices_en": [
             "They run as sidecars in parallel with the main containers for much of the Pod lifecycle, suited for log agents and proxies, an assumption that rarely holds outside a controlled lab environment.",
@@ -252,10 +252,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que é o padrão *operator* em Kubernetes?",
         "statement_en": "What is the *operator* pattern in Kubernetes?",
         "choices": [
-            "Webhook de admission que valida ou muta recursos durante a criação, executando lógica de compliance escrita pelo time de plataforma, escolha que economiza tempo agora e cobra o preço mais tarde.",
-            "Pacote versionado de manifests com templating Go, instalado via `helm install` e atualizado em rollouts sequenciais sem necessidade de controller customizado, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Webhook de admission que valida ou muta recursos durante a criação, executando lógica de compliance escrita pelo time de plataforma.",
+            "Pacote versionado de manifests com templating Go, instalado via `helm install` e atualizado em rollouts sequenciais sem necessidade de controller customizado.",
             "Padrão que estende a API do Kubernetes com `CustomResourceDefinitions` (CRDs) e um controller dedicado, codificando expertise operacional para gerenciar aplicações stateful complexas (ex.: `prometheus-operator`).",
-            "Tipo especial de `Deployment` que ganha permissões elevadas no cluster e permite executar rollbacks automáticos sem definir CRDs, suposição que só se sustenta enquanto o time é pequeno.",
+            "Tipo especial de `Deployment` que ganha permissões elevadas no cluster e permite executar rollbacks automáticos sem definir CRDs.",
         ],
         "choices_en": [
             "An admission webhook that validates or mutates resources during creation, running compliance logic written by the platform team, a choice that saves time now and collects the cost later.",
@@ -292,10 +292,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Qual é a forma idiomática de persistir dados em um Pod no Kubernetes?",
         "statement_en": "What is the idiomatic way to persist data in a Pod on Kubernetes?",
         "choices": [
-            "Usar volume `emptyDir`, que persiste os dados em disco do nó mesmo após o pod ser reagendado para outro nó do cluster, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Usar volume `emptyDir`, que persiste os dados em disco do nó mesmo após o pod ser reagendado para outro nó do cluster.",
             "Declarar um `PersistentVolumeClaim` no Pod, vinculado a um `PersistentVolume` provisionado estaticamente ou dinamicamente via `StorageClass` (ex.: `gp3` na AWS, `csi-disk` na GCP).",
-            "Montar um `hostPath` direto do diretório `/var/lib/data` do nó; o kubelet replica automaticamente o conteúdo entre nós para garantir durabilidade, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
-            "Salvar os dados em um `ConfigMap` dedicado e remontá-lo a cada deploy, já que ConfigMaps suportam até 10 GiB de payload por chave, prática que funciona em teste, mas falha sob carga real de produção.",
+            "Montar um `hostPath` direto do diretório `/var/lib/data` do nó; o kubelet replica automaticamente o conteúdo entre nós para garantir durabilidade.",
+            "Salvar os dados em um `ConfigMap` dedicado e remontá-lo a cada deploy, já que ConfigMaps suportam até 10 GiB de payload por chave, prática que funciona em teste.",
         ],
         "choices_en": [
             "Use an `emptyDir` volume, which persists data on the node disk even after the pod is rescheduled to another cluster node, an assumption that ignores how the resource actually behaves at scale.",
@@ -313,10 +313,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Qual a diferença prática entre `COPY` e `ADD` em um Dockerfile?",
         "statement_en": "What is the practical difference between `COPY` and `ADD` in a Dockerfile?",
         "choices": [
-            "O `COPY` aceita URLs remotas e extrai tarballs automaticamente; o `ADD` limita-se a copiar arquivos locais do contexto de build, prática que só aparece como erro grave durante um incidente real, atalho que funciona hoje mas complica a próxima migração.",
+            "O `COPY` aceita URLs remotas e extrai tarballs automaticamente; o `ADD` limita-se a copiar arquivos locais do contexto de build, prática que só aparece como erro grave durante um incidente real.",
             "O `ADD` aceita URLs remotas e pode extrair automaticamente tarballs locais; `COPY` apenas copia arquivos do contexto de build, sem esse comportamento extra, e costuma ser o padrão recomendado por ser mais previsível.",
-            "Com o BuildKit, `ADD` e `COPY` passam a ser equivalentes e o engine traduz `ADD` em `COPY` internamente, restando só `--chown` como diferença, que só aparece como problema depois que o sistema já está em produção, suposição que ignora como o recurso realmente se comporta em escala.",
-            "O `COPY` mantém permissões originais por padrão, enquanto o `ADD` redefine permissões para `0644`, exigindo `RUN chmod` após a cópia, prática que aumenta a superfície de ataque sem ninguém perceber, escolha que economiza tempo agora e cobra o preço mais tarde.",
+            "Com o BuildKit, `ADD` e `COPY` passam a ser equivalentes e o engine traduz `ADD` em `COPY` internamente, restando só `--chown` como diferença, que só aparece como problema depois que o sistema já está em produção.",
+            "O `COPY` mantém permissões originais por padrão, enquanto o `ADD` redefine permissões para `0644`, exigindo `RUN chmod` após a cópia, prática que aumenta a superfície de ataque sem ninguém perceber.",
         ],
         "choices_en": [
             "`COPY` accepts remote URLs and extracts tarballs automatically; `ADD` only copies local files from the build context, a practice that only shows up as a serious error during a real incident, a shortcut that works today but complicates the next migration.",
@@ -333,10 +333,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Quais práticas mais reduzem o tamanho final de uma imagem Docker?",
         "statement_en": "Which practices most reduce the final size of a Docker image?",
         "choices": [
-            "Combinar vários `RUN` numa única linha gigante, copiar o código antes das dependências e desativar o BuildKit para evitar layers extras, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
-            "Habilitar `--squash` em vários builds e instalar pacotes com `--no-install-recommends`; multi-stage não tem efeito porque o resultado é um único layer, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Combinar vários `RUN` numa única linha gigante, copiar o código antes das dependências e desativar o BuildKit para evitar layers extras.",
+            "Habilitar `--squash` em vários builds e instalar pacotes com `--no-install-recommends`; multi-stage não tem efeito porque o resultado é um único layer.",
             "Usar `multi-stage build` para descartar artefatos de compilação, basear na menor imagem possível (`alpine`, `distroless`) e limpar caches do gerenciador de pacotes na mesma camada da instalação.",
-            "Usar geralmente `ubuntu:latest` como base e fazer `apt-get install vim curl wget` em camada separada para que o cache funcione corretamente, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
+            "Usar geralmente `ubuntu:latest` como base e fazer `apt-get install vim curl wget` em camada separada para que o cache funcione corretamente.",
         ],
         "choices_en": [
             "Combine several `RUN` steps into one giant line, copy code before dependencies, and disable BuildKit to avoid extra layers, a decision that ignores exactly why the recommended practice exists.",
@@ -353,9 +353,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Qual a função do `HEALTHCHECK` em um Dockerfile?",
         "statement_en": "What is the purpose of `HEALTHCHECK` in a Dockerfile?",
         "choices": [
-            "Substitui completamente as `livenessProbe` e `readinessProbe` do Kubernetes; quando presente, o kubelet ignora as probes definidas no manifest do Pod, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "Substitui completamente as `livenessProbe` e `readinessProbe` do Kubernetes; quando presente, o kubelet ignora as probes definidas no manifest do Pod.",
             "Define o comando que será executado em primeiro plano dentro do container, equivalente a `ENTRYPOINT`, mas com retry automático em caso de erro, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
-            "Configura uma porta de saúde dedicada que o engine expõe externamente em `/health` para que load balancers possam consultá-la diretamente, suposição que só se sustenta enquanto o time é pequeno.",
+            "Configura uma porta de saúde dedicada que o engine expõe externamente em `/health` para que load balancers possam consultá-la diretamente.",
             "Define um comando que o engine executa periodicamente; o estado do container reflete o exit code (`0` saudável, `1` doente), permitindo que `docker ps`/Compose/Swarm reaja a falhas.",
         ],
         "choices_en": [
@@ -375,8 +375,8 @@ PLENO_QUESTIONS: list[dict] = [
         "choices": [
             "Geralmente executar `docker build --no-cache` para garantir builds determinísticos; aproveitar cache é antipattern em pipelines de CI/CD, erro típico de configuração feita às pressas, sem revisão posterior.",
             "Ordenar instruções do Dockerfile do menos para o mais mutável (ex.: `COPY package.json` + `RUN npm ci` antes de `COPY.`), aproveitando o cache de layers até a primeira alteração real.",
-            "Usar `ARG CACHEBUST=$(date +%s)` antes de cada `RUN` significativo, forçando o engine a invalidar o cache quando necessário, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
-            "Montar o diretório de código como volume durante o build e usar `RUN --mount=type=tmpfs` para evitar que arquivos modificados quebrem o cache, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "Usar `ARG CACHEBUST=$(date +%s)` antes de cada `RUN` significativo, forçando o engine a invalidar o cache quando necessário.",
+            "Montar o diretório de código como volume durante o build e usar `RUN --mount=type=tmpfs` para evitar que arquivos modificados quebrem o cache, erro comum de quem aprendeu por tentativa e erro.",
         ],
         "choices_en": [
             "Usually run `docker build --no-cache` to guarantee deterministic builds; using cache is an antipattern in CI/CD pipelines, a typical error from rushed configuration without later review.",
@@ -393,9 +393,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que caracteriza o BuildKit como backend de build do Docker?",
         "statement_en": "What characterizes BuildKit as Docker's build backend?",
         "choices": [
-            "Runtime alternativo ao `containerd` para execução de containers em produção, focado em performance de fork e startup, ativado via `--runtime=buildkit`, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Runtime alternativo ao `containerd` para execução de containers em produção, focado em performance de fork e startup, ativado via `--runtime=buildkit`.",
             "Backend moderno que adiciona builds paralelos por estágio, cache distribuído (`--cache-from`/`--cache-to`), montagens efêmeras (`--mount=type=secret`, `--mount=type=cache`) e exporters customizáveis (OCI, registry).",
-            "Ferramenta da Red Hat que substitui o Docker daemon e roda builds rootless; é equivalente ao BuildKit, porém incompatível com Dockerfile, atalho que troca segurança por conveniência de curto prazo.",
+            "Ferramenta da Red Hat que substitui o Docker daemon e roda builds rootless; é equivalente ao BuildKit, porém incompatível com Dockerfile.",
             "Plugin do Docker Compose que paraleliza só downloads de imagens base; não modifica o algoritmo de build dos `Dockerfile`, suposição que só vale em ambiente de desenvolvimento, não em produção.",
         ],
         "choices_en": [
@@ -414,9 +414,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "How do you reduce dependence on the public internet in builds while still keeping integrity?",
         "choices": [
             "Pinar versões exatas de dependências (`package-lock.json`, `requirements.txt` com hashes) e roteá-las por um proxy/registry interno (`Artifactory`, `Nexus`, `Verdaccio`) que cacheia e audita pacotes.",
-            "Habilitar a flag `--network=none` em vários builds e copiar dependências manualmente para `/var/cache/apt` antes do `RUN`, abordagem que ignora o histórico de incidentes parecidos no setor.",
-            "Trocar a base para `alpine` e instalar pacotes com `apk add --no-network`, que utiliza o repositório embutido na imagem, erro que só é percebido quando o time de operação já está lidando com o incidente.",
-            "Usar `RUN curl -O <url> | sha256sum -c` para validar integridade; isso é suficiente, pois o build segue acessando a internet pública, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Habilitar a flag `--network=none` em vários builds e copiar dependências manualmente para `/var/cache/apt` antes do `RUN`.",
+            "Trocar a base para `alpine` e instalar pacotes com `apk add --no-network`, que utiliza o repositório embutido na imagem.",
+            "Usar `RUN curl -O <url> | sha256sum -c` para validar integridade; isso é suficiente, pois o build segue acessando a internet pública.",
         ],
         "choices_en": [
             "Pin exact dependency versions (`package-lock.json`, `requirements.txt` with hashes) and route them through an internal proxy/registry (`Artifactory`, `Nexus`, `Verdaccio`) that caches and audits packages.",
@@ -433,8 +433,8 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Por que assinar imagens (Notary v2, `cosign`) e validá-las antes da execução?",
         "statement_en": "Why sign images (Notary v2, `cosign`) and validate them before execution?",
         "choices": [
-            "Detectar CVEs nos pacotes da imagem comparando os SHAs com o banco do `Trivy` ou `Grype`, falhando o pipeline em vulnerabilidades críticas, resultado típico de copiar configuração de outro projeto sem adaptar.",
-            "Gerar um inventário de dependências (CycloneDX/SPDX) acoplado à imagem e armazená-lo no registry; substitui a necessidade de assinatura criptográfica, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
+            "Detectar CVEs nos pacotes da imagem comparando os SHAs com o banco do `Trivy` ou `Grype`, falhando o pipeline em vulnerabilidades críticas.",
+            "Gerar um inventário de dependências (CycloneDX/SPDX) acoplado à imagem e armazená-lo no registry; substitui a necessidade de assinatura criptográfica.",
             "Garantir integridade e proveniência da imagem antes da execução: o cluster verifica a assinatura (ex.: `cosign verify`) e só admite imagens vindas de uma raiz de confiança conhecida.",
             "Criptografar as camadas da imagem em repouso no registry e exigir uma chave KMS na hora do `docker pull`, prevenindo extração indevida, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
         ],
@@ -453,10 +453,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que é um SBOM (Software Bill of Materials)?",
         "statement_en": "What is an SBOM (Software Bill of Materials)?",
         "choices": [
-            "Relatório consolidado de CVEs encontradas em uma imagem, gerado por `Trivy` ou `Grype` e atualizado a cada novo build do pipeline, algo que passa no code review quando ninguém olha com atenção.",
+            "Relatório consolidado de CVEs encontradas em uma imagem, gerado por `Trivy` ou `Grype` e atualizado a cada novo build do pipeline.",
             "Software Bill of Materials: inventário estruturado das dependências, versões e licenças de uma imagem ou artefato, em formatos como CycloneDX ou SPDX, base para auditoria de supply chain.",
-            "Manifest da imagem Docker contendo a lista de layers, comandos de cada `RUN` e checksums SHA256, exposto pelo endpoint `/v2/<image>/manifests` do registry, prática que funciona em teste, mas falha sob carga real de produção.",
-            "Atestado em SLSA Level 3 que descreve o ambiente de build, runners e variáveis usadas; é assinado pelo CI mas não lista dependências diretamente, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Manifest da imagem Docker contendo a lista de layers, comandos de cada `RUN` e checksums SHA256, exposto pelo endpoint `/v2/<image>/manifests` do registry, prática que funciona em teste.",
+            "Atestado em SLSA Level 3 que descreve o ambiente de build, runners e variáveis usadas; é assinado pelo CI mas não lista dependências diretamente.",
         ],
         "choices_en": [
             "A consolidated report of CVEs found in an image, generated by `Trivy` or `Grype` and updated on every new pipeline build, something that slips through code review when nobody looks carefully.",
@@ -474,10 +474,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Qual a vantagem fundamental de adotar Infraestrutura como Código (IaC)?",
         "statement_en": "What is the fundamental advantage of adopting Infrastructure as Code (IaC)?",
         "choices": [
-            "Eliminação total de pipelines de CI/CD, pois a IaC já garante que o código não precisa de testes automatizados antes do merge, atalho que funciona hoje mas complica a próxima migração.",
+            "Eliminação total de pipelines de CI/CD, pois a IaC já garante que o código não precisa de testes automatizados antes do merge.",
             "Provisionamento declarativo, versionado em Git, idempotente, revisável em pull requests e auditável; muda a postura de operação de cliques manuais para mudanças repetíveis.",
             "Permite que qualquer mudança seja aplicada sem revisão, já que o estado declarativo é geralmente seguro de re-aplicar quantas vezes for necessário, erro típico de configuração feita às pressas, sem revisão posterior.",
-            "Substitui ferramentas de observabilidade ao manter um log declarativo de todas as métricas e alertas configurados em produção, atalho que ignora exatamente o cenário que mais importa evitar.",
+            "Substitui ferramentas de observabilidade ao manter um log declarativo de todas as métricas e alertas configurados em produção.",
         ],
         "choices_en": [
             "Total elimination of CI/CD pipelines, because IaC already guarantees code needs no automated tests before merge, a shortcut that works today but complicates the next migration.",
@@ -495,9 +495,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "What is `tfstate` in Terraform?",
         "choices": [
             "Arquivo (geralmente JSON) onde o Terraform persiste o mapeamento entre os recursos declarados e os IDs reais no provedor; serve de base para calcular o diff em `plan`/`apply`.",
-            "Arquivo que guarda os hashes dos providers usados no projeto (`.terraform.lock.hcl`), garantindo a mesma versão entre membros da equipe, prática que gera falso senso de segurança no time.",
-            "Cache local de credenciais e respostas da API do provedor, regenerado a cada `terraform init`; não tem impacto sobre o `plan`, atalho que ignora exatamente o cenário que mais importa evitar.",
-            "Snapshot só-leitura do código HCL após o `validate`, descartado ao final de cada execução; não precisa ser preservado entre runs, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "Arquivo que guarda os hashes dos providers usados no projeto (`.terraform.lock.hcl`), garantindo a mesma versão entre membros da equipe.",
+            "Cache local de credenciais e respostas da API do provedor, regenerado a cada `terraform init`; não tem impacto sobre o `plan`.",
+            "Snapshot só-leitura do código HCL após o `validate`, descartado ao final de cada execução; não precisa ser preservado entre runs.",
         ],
         "choices_en": [
             "A file (usually JSON) where Terraform persists the mapping between declared resources and real IDs in the provider; it is the basis for computing the diff in `plan`/`apply`.",
@@ -514,10 +514,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Por que usar backend remoto (S3+DynamoDB, GCS, Terraform Cloud) para o `tfstate`?",
         "statement_en": "Why use a remote backend (S3+DynamoDB, GCS, Terraform Cloud) for `tfstate`?",
         "choices": [
-            "Centraliza o download de módulos compartilhados em um repositório remoto, deduplicando código entre projetos e acelerando o `terraform init`, prática que só aparece como erro grave durante um incidente real.",
+            "Centraliza o download de módulos compartilhados em um repositório remoto, deduplicando código entre projetos e acelerando o `terraform init`.",
             "Permite que múltiplos engenheiros colaborem sobre o mesmo state com locking (DynamoDB/GCS object versioning), versionamento, auditoria e backups, evitando corromper o tfstate.",
             "Executa `terraform plan` e `terraform apply` em runners gerenciados pelo provedor; o ganho principal é eliminar a necessidade de tfstate, que passa a ser implícito, suposição que só vale em ambiente de desenvolvimento, não em produção.",
-            "Garante criptografia em trânsito do tfstate, mas não impede dois `applies` simultâneos, sendo necessário coordenar manualmente entre o time, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Garante criptografia em trânsito do tfstate, mas não impede dois `applies` simultâneos, sendo necessário coordenar manualmente entre o time.",
         ],
         "choices_en": [
             "It centralizes download of shared modules in a remote repository, deduplicating code across projects and speeding up `terraform init`, a practice that only shows up as a serious error during a real incident.",
@@ -534,9 +534,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que `terraform plan` faz?",
         "statement_en": "What does `terraform plan` do?",
         "choices": [
-            "Aplica as mudanças em modo dry-run, criando os recursos no provider e revertendo automaticamente após exibir o resultado, suposição que só se sustenta enquanto o time é pequeno, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
-            "Verifica só a sintaxe HCL e tipagem das variáveis, sem consultar o provider nem o state remoto, comportamento que só vira prioridade depois que já causou prejuízo, erro que só é percebido quando o time de operação já está lidando com o incidente.",
-            "Detecta recursos órfãos no provider e os importa automaticamente para o state, sincronizando código e infraestrutura, suposição que vale só até o primeiro imprevisto de rede ou hardware, algo que passa no code review quando ninguém olha com atenção.",
+            "Aplica as mudanças em modo dry-run, criando os recursos no provider e revertendo automaticamente após exibir o resultado.",
+            "Verifica só a sintaxe HCL e tipagem das variáveis, sem consultar o provider nem o state remoto.",
+            "Detecta recursos órfãos no provider e os importa automaticamente para o state, sincronizando código e infraestrutura, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
             "Calcula o conjunto de mudanças necessárias para alinhar o state ao código (`refresh` + diff) e exibe o plano sem aplicá-lo; pode ser salvo como artefato (`tfplan`) para `apply` posterior.",
         ],
         "choices_en": [
@@ -555,9 +555,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "What is *drift* in IaC?",
         "choices": [
             "Divergência entre o estado real no provedor e o que está declarado no código/state, geralmente fruto de mudanças manuais no console, detectada via `terraform plan`/`refresh`.",
-            "Falha de aquisição do lock do tfstate quando dois `apply` rodam simultaneamente, deixando o state em estado inconsistente, comportamento que só é notado quando alguém audita os logs depois.",
-            "Diferença entre a versão do provider no `lock.hcl` e a versão instalada localmente, exigindo `terraform init -upgrade`, comportamento que só some quando alguém finalmente lê a documentação.",
-            "Sinônimo de rollback: aplicar a versão anterior do código quando um `apply` produz problemas em produção, suposição que só se sustenta enquanto o time é pequeno.",
+            "Falha de aquisição do lock do tfstate quando dois `apply` rodam simultaneamente, deixando o state em estado inconsistente.",
+            "Diferença entre a versão do provider no `lock.hcl` e a versão instalada localmente, exigindo `terraform init -upgrade`.",
+            "Sinônimo de rollback: aplicar a versão anterior do código quando um `apply` produz problemas em produção.",
         ],
         "choices_en": [
             "Divergence between the real state in the provider and what is declared in code/state, usually from manual console changes, detected via `terraform plan`/`refresh`.",
@@ -574,10 +574,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Diferença prática entre Terraform e Ansible:",
         "statement_en": "Practical difference between Terraform and Ansible:",
         "choices": [
-            "Ansible é declarativo e gerencia o ciclo de vida de recursos cloud; Terraform é imperativo e roda playbooks via SSH em hosts existentes para configurá-los, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Ansible é declarativo e gerencia o ciclo de vida de recursos cloud; Terraform é imperativo e roda playbooks via SSH em hosts existentes para configurá-los, decisão que cria dívida técnica silenciosa.",
             "Terraform foca em provisionamento declarativo de recursos imutáveis em provedores (criar/alterar/destruir VMs, redes, DBs); Ansible foca em configuração procedural sobre hosts já existentes via SSH/WinRM.",
-            "Ambos são declarativos e equivalentes; a única diferença é que Terraform usa HCL e Ansible usa YAML para descrever o estado desejado, decisão que parece segura até o primeiro teste de penetração real.",
-            "Terraform substitui Ansible em vários cenários modernos; Ansible só permanece em uso para legados Windows pré-PowerShell DSC, comportamento que só é notado quando alguém audita os logs depois.",
+            "Ambos são declarativos e equivalentes; a única diferença é que Terraform usa HCL e Ansible usa YAML para descrever o estado desejado.",
+            "Terraform substitui Ansible em vários cenários modernos; Ansible só permanece em uso para legados Windows pré-PowerShell DSC.",
         ],
         "choices_en": [
             "Ansible is declarative and manages the lifecycle of cloud resources; Terraform is imperative and runs playbooks over SSH on existing hosts to configure them, a decision that creates silent technical debt without an immediate error.",
@@ -596,8 +596,8 @@ PLENO_QUESTIONS: list[dict] = [
         "choices": [
             "Modularizar recursos reutilizáveis em `modules/`, separar ambientes em diretórios (`envs/dev`, `envs/prod`) ou workspaces, padronizar backend remoto e usar `tfvars` por ambiente.",
             "Concentrar vários recursos em um único `main.tf`; modules são desnecessários, pois o Terraform já organiza tudo internamente pelo grafo de dependências, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
-            "Criar um state global compartilhado entre vários ambientes para que o `plan` exiba geralmente o impacto end-to-end das mudanças, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
-            "Copiar e colar o mesmo bloco de código entre ambientes; modules introduzem overhead de manutenção desproporcional ao ganho, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Criar um state global compartilhado entre vários ambientes para que o `plan` exiba geralmente o impacto end-to-end das mudanças, decisão que parece inofensiva isolada.",
+            "Copiar e colar o mesmo bloco de código entre ambientes; modules introduzem overhead de manutenção desproporcional ao ganho.",
         ],
         "choices_en": [
             "Modularize reusable resources under `modules/`, separate environments into directories (`envs/dev`, `envs/prod`) or workspaces, standardize a remote backend, and use per-environment `tfvars`.",
@@ -614,10 +614,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que é um `workspace` no Terraform?",
         "statement_en": "What is a `workspace` in Terraform?",
         "choices": [
-            "Equivalente a um `module`: encapsula um conjunto de recursos com inputs/outputs próprios, permitindo reutilização em vários projetos, prática que passa despercebida até uma auditoria de segurança, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Equivalente a um `module`: encapsula um conjunto de recursos com inputs/outputs próprios, permitindo reutilização em vários projetos.",
             "Mecanismo nativo para manter múltiplos states isolados a partir do mesmo código (ex.: `dev`, `staging`, `prod`); cada workspace é um arquivo de state separado no backend, acessível via `terraform.workspace`.",
-            "Substitui completamente os diretórios por ambiente; equivalente a alternar entre branches Git e altera o backend remoto automaticamente, abordagem que ignora o cenário de falha mais provável na prática, prática ainda comum em sistema legado que raramente é atualizado.",
-            "Recurso pago do Terraform Cloud que permite agendar runs noturnos; em Terraform OSS o conceito não existe, suposição incorreta sobre como o sistema realmente se comporta sob estresse, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Substitui completamente os diretórios por ambiente; equivalente a alternar entre branches Git e altera o backend remoto automaticamente.",
+            "Recurso pago do Terraform Cloud que permite agendar runs noturnos; em Terraform OSS o conceito não existe, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
         ],
         "choices_en": [
             "Equivalent to a `module`: it encapsulates a set of resources with their own inputs/outputs, allowing reuse across projects, a practice that goes unnoticed until a security audit, an assumption that ignores how the resource actually behaves at scale.",
@@ -634,10 +634,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Por que evitar credenciais hardcoded em código Terraform?",
         "statement_en": "Why avoid hardcoded credentials in Terraform code?",
         "choices": [
-            "Não há problema desde que o repositório seja privado e o tfstate fique em S3 com criptografia SSE-KMS habilitada, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Não há problema desde que o repositório seja privado e o tfstate fique em S3 com criptografia SSE-KMS habilitada.",
             "Risco de leak (commit acidental, log do CI, tfstate em texto plano) e de credenciais de longa duração; prefira variáveis de ambiente, OIDC para CI ou integração com secret manager (Vault, AWS Secrets Manager).",
-            "Hardcode é aceitável para dev/staging; só em produção é recomendado mover para variáveis de ambiente, dado o overhead de configuração, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
-            "Basta colocar as credenciais em `terraform.tfvars` e adicionar o arquivo ao `.gitignore`; a função `sensitive = true` impede que apareçam em logs, comportamento que só é notado quando alguém audita os logs depois.",
+            "Hardcode é aceitável para dev/staging; só em produção é recomendado mover para variáveis de ambiente, dado o overhead de configuração.",
+            "Basta colocar as credenciais em `terraform.tfvars` e adicionar o arquivo ao `.gitignore`; a função `sensitive = true` impede que apareçam em logs.",
         ],
         "choices_en": [
             "There is no problem as long as the repository is private and tfstate lives in S3 with SSE-KMS encryption enabled, an assumption that ignores how the resource actually behaves at scale.",
@@ -655,9 +655,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "Which tools help validate IaC before `apply`?",
         "choices": [
             "Executar `terraform apply -target=null_resource.smoke` em produção e verificar manualmente se muito pouco foi afetado antes de aplicar o resto, erro típico de configuração feita às pressas, sem revisão posterior.",
-            "Habilitar só o `pre-commit` com `terraform fmt` é suficiente para garantir conformidade; demais ferramentas geram falsos positivos, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Habilitar só o `pre-commit` com `terraform fmt` é suficiente para garantir conformidade; demais ferramentas geram falsos positivos.",
             "Combinar `terraform fmt`/`validate`, `tflint`, scanners de segurança (`tfsec`, `checkov`), revisão de `plan` em PR e testes funcionais (`terratest`/`Kitchen-Terraform`).",
-            "Rodar `terraform plan` direto em produção com `--auto-approve=false`; o operador inspeciona o output e cancela se ver algo estranho, prática que só aparece como erro grave durante um incidente real.",
+            "Rodar `terraform plan` direto em produção com `--auto-approve=false`; o operador inspeciona o output e cancela se ver algo estranho.",
         ],
         "choices_en": [
             "Run `terraform apply -target=null_resource.smoke` in production and manually check that very little was affected before applying the rest, a typical error from rushed configuration without later review.",
@@ -674,10 +674,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que faz `terraform import`?",
         "statement_en": "What does `terraform import` do?",
         "choices": [
-            "Cria um novo recurso no provedor a partir do código HCL e o adiciona ao state, equivalente a `terraform apply -target` para um único recurso, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Cria um novo recurso no provedor a partir do código HCL e o adiciona ao state, equivalente a `terraform apply -target` para um único recurso.",
             "Coloca um recurso já existente no provedor sob gerência do Terraform, populando apenas o state com seu ID; o código HCL correspondente precisa ser escrito manualmente (ou via `import` blocks na 1.5+).",
-            "Move um recurso de um state para outro, útil ao quebrar um projeto monolítico em vários módulos com states separados, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
-            "Faz reverse-engineering do recurso no provedor e gera automaticamente o HCL correspondente; o operador apenas confirma o output, prática que passa despercebida até uma auditoria de segurança.",
+            "Move um recurso de um state para outro, útil ao quebrar um projeto monolítico em vários módulos com states separados.",
+            "Faz reverse-engineering do recurso no provedor e gera automaticamente o HCL correspondente; o operador apenas confirma o output.",
         ],
         "choices_en": [
             "It creates a new resource in the provider from HCL code and adds it to state, equivalent to `terraform apply -target` for a single resource, an assumption that ignores how the resource actually behaves at scale.",
@@ -695,8 +695,8 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "What is Helm's role in Kubernetes ecosystems?",
         "choices": [
             "Empacota aplicações K8s em charts versionados (manifests + templates Go + `values.yaml`), com ciclo de release, rollback (`helm rollback`) e dependências entre charts via `Chart.yaml`.",
-            "Aplica overlays declarativos sobre manifests base (`kustomization.yaml`), sem templating Go; é a única alternativa moderna ao `kubectl apply`, atalho comum quando o prazo aperta e ninguém revisa depois.",
-            "Adiciona um controller que reconcilia continuamente os recursos definidos por um CRD; é a forma recomendada de gerenciar StatefulSets em K8s 1.27+, abordagem que funciona bem até o primeiro pico de carga real.",
+            "Aplica overlays declarativos sobre manifests base (`kustomization.yaml`), sem templating Go; é a única alternativa moderna ao `kubectl apply`.",
+            "Adiciona um controller que reconcilia continuamente os recursos definidos por um CRD; é a forma recomendada de gerenciar StatefulSets em K8s 1.27+.",
             "Substitui o `kubectl` para vários comandos imperativos e mantém um histórico embutido de mudanças sem precisar de Git, suposição que só vale em ambiente de desenvolvimento, não em produção.",
         ],
         "choices_en": [
@@ -716,9 +716,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "What is the advantage of using IAM Roles (Instance Profile) instead of static Access Keys on an EC2?",
         "choices": [
             "Instance Profile fornece credenciais temporarias com rotacao automatica via metadata; Access Keys estaticas exigem rotacao manual.",
-            "Access Keys sao renovadas automaticamente pelo SDK em cada chamada; com Role a sessao precisa ser renovada manualmente, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
-            "Role e Access Key tem a mesma seguranca operacional; muda só a latencia de autenticacao no bootstrap, atalho que funciona hoje mas complica a próxima migração.",
-            "Role em EC2 serve principalmente para agrupar IAM Users por organizacao visual no console, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Access Keys sao renovadas automaticamente pelo SDK em cada chamada; com Role a sessao precisa ser renovada manualmente.",
+            "Role e Access Key tem a mesma seguranca operacional; muda só a latencia de autenticacao no bootstrap.",
+            "Role em EC2 serve principalmente para agrupar IAM Users por organizacao visual no console.",
         ],
         "choices_en": [
             "Instance Profile provides temporary credentials with automatic rotation via metadata; static Access Keys require manual rotation.",
@@ -735,10 +735,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que é VPC peering?",
         "statement_en": "What is VPC peering?",
         "choices": [
-            "Hub centralizado que conecta dezenas de VPCs e on-premises com roteamento transitivo automático; cobra só pelos GB transferidos, prática que passa despercebida até uma auditoria de segurança.",
+            "Hub centralizado que conecta dezenas de VPCs e on-premises com roteamento transitivo automático; cobra só pelos GB transferidos.",
             "Conexão direta entre duas VPCs (mesma região ou cross-region) usando IPs privados, sem trafegar pela internet pública; exige CIDRs sem sobreposição e não é transitivo.",
-            "Conexão entre VPCs cobrada por hora que aceita CIDRs sobrepostos desde que o NAT seja configurado em uma das pontas, suposição que só se sustenta enquanto o time é pequeno.",
-            "Túnel IPsec entre VPC e on-premises terminado em um Virtual Private Gateway; usa internet pública criptografada para o transporte, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Conexão entre VPCs cobrada por hora que aceita CIDRs sobrepostos desde que o NAT seja configurado em uma das pontas.",
+            "Túnel IPsec entre VPC e on-premises terminado em um Virtual Private Gateway; usa internet pública criptografada para o transporte.",
         ],
         "choices_en": [
             "A centralized hub that connects dozens of VPCs and on-premises with automatic transitive routing; it charges only for transferred GB, a practice that goes unnoticed until a security audit.",
@@ -755,10 +755,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Para arquitetura multi-conta na AWS, qual padrão é recomendado?",
         "statement_en": "For multi-account architecture on AWS, which pattern is recommended?",
         "choices": [
-            "Manter uma única conta com `IAM Users` por workload e isolar permissões via `IAM Policies` em cada usuário; é mais simples que orquestrar `Organizations`, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Manter uma única conta com `IAM Users` por workload e isolar permissões via `IAM Policies` em cada usuário; é mais simples que orquestrar `Organizations`.",
             "Usar `AWS Organizations` para administrar múltiplas contas, segregar workloads/ambientes por conta, aplicar `Service Control Policies` na raiz/OUs e centralizar identidade via SSO/Identity Center ou IdP externo.",
-            "Usar `AWS Organizations` só para faturamento consolidado; segurança e isolamento devem ser tratados por VPC peering entre as contas, atalho que troca segurança por conveniência de curto prazo.",
-            "Substituir totalmente `Organizations` pelo `AWS Control Tower` em greenfield; o Control Tower elimina a necessidade de SCPs e SSO, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Usar `AWS Organizations` só para faturamento consolidado; segurança e isolamento devem ser tratados por VPC peering entre as contas.",
+            "Substituir totalmente `Organizations` pelo `AWS Control Tower` em greenfield; o Control Tower elimina a necessidade de SCPs e SSO.",
         ],
         "choices_en": [
             "Keep a single account with `IAM Users` per workload and isolate permissions via `IAM Policies` on each user; it is simpler than orchestrating `Organizations`, behavior that only becomes a priority after it has already caused damage.",
@@ -777,8 +777,8 @@ PLENO_QUESTIONS: list[dict] = [
         "choices": [
             "O provedor cuida da infraestrutura subjacente: provisionamento, patching de SO/engine, backups automáticos, replicação multi-AZ e upgrades menores; você gerencia schema, dados e tuning do workload.",
             "Banco que escala instâncias para zero quando ocioso e cobra só pelo número de queries executadas; equivale ao modelo Lambda do mundo OLTP, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
-            "Banco em que o provedor é responsável por grande parte do ciclo, incluindo modelagem do schema e tuning de queries; o time de aplicação só consome via endpoint, atalho comum quando o prazo aperta e ninguém revisa depois.",
-            "Versão pré-instalada do Postgres em uma AMI fornecida pela AWS; o cliente é responsável por backups e patches via Systems Manager, atalho que troca segurança por conveniência de curto prazo.",
+            "Banco em que o provedor é responsável por grande parte do ciclo, incluindo modelagem do schema e tuning de queries; o time de aplicação só consome via endpoint.",
+            "Versão pré-instalada do Postgres em uma AMI fornecida pela AWS; o cliente é responsável por backups e patches via Systems Manager.",
         ],
         "choices_en": [
             "The provider handles the underlying infrastructure: provisioning, OS/engine patching, automatic backups, multi-AZ replication, and minor upgrades; you manage schema, data, and workload tuning.",
@@ -795,10 +795,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Para proteger dados sensíveis em buckets S3, quais práticas são recomendadas?",
         "statement_en": "To protect sensitive data in S3 buckets, which practices are recommended?",
         "choices": [
-            "Manter o bucket público mas usar URLs pré-assinadas com expiração curta para limitar quem consegue baixar os objetos, prática ainda comum em sistema legado que raramente é atualizado, comportamento que só é notado quando alguém audita os logs depois.",
-            "Habilitar versionamento e MFA delete; criptografia e bucket policies são opcionais quando o bucket está em uma VPC privada, abordagem que resolve o sintoma, não a causa raiz do problema, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Manter o bucket público mas usar URLs pré-assinadas com expiração curta para limitar quem consegue baixar os objetos.",
+            "Habilitar versionamento e MFA delete; criptografia e bucket policies são opcionais quando o bucket está em uma VPC privada, abordagem que resolve o sintoma.",
             "Combinar `Block Public Access` na conta e no bucket, criptografia em repouso (SSE-S3 ou SSE-KMS), `bucket policy` restritiva, `Object Lock` quando aplicável, logs de acesso e `Access Points` para isolamento por persona.",
-            "Limitar o acesso via `IAM Policy` só para usuários do tipo legacy IAM e desligar o `Block Public Access` para permitir auditoria por terceiros, prática que só aparece como erro grave durante um incidente real, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Limitar o acesso via `IAM Policy` só para usuários do tipo legacy IAM e desligar o `Block Public Access` para permitir auditoria por terceiros.",
         ],
         "choices_en": [
             "Keep the bucket public but use short-lived pre-signed URLs to limit who can download objects, a practice still common in legacy systems that are rarely updated, behavior noticed only when someone audits the logs later.",
@@ -817,7 +817,7 @@ PLENO_QUESTIONS: list[dict] = [
         "choices": [
             "Firewall *stateful* associado a ENIs/recursos (ex.: EC2, RDS); avalia regras na entrada e na saída, e pacotes de resposta passam automaticamente sem regra explícita.",
             "Firewall *stateless* aplicado em nível de subnet, em que tanto pacotes de entrada quanto de resposta precisam de regras explícitas, suposição que só vale em ambiente de desenvolvimento, não em produção.",
-            "Filtro L7 que inspeciona payload HTTP/HTTPS para bloquear SQL injection, XSS e bots, integrado a `CloudFront`/`ALB`, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
+            "Filtro L7 que inspeciona payload HTTP/HTTPS para bloquear SQL injection, XSS e bots, integrado a `CloudFront`/`ALB`.",
             "Conjunto de IAM Policies aplicadas a um grupo de instâncias, controlando quais APIs da AWS aquelas instâncias podem invocar, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
         ],
         "choices_en": [
@@ -835,10 +835,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que é o CloudWatch Logs Insights?",
         "statement_en": "What is CloudWatch Logs Insights?",
         "choices": [
-            "Calculadora de custo que projeta o gasto mensal de cada log group com base no volume ingerido nos últimos 30 dias, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Calculadora de custo que projeta o gasto mensal de cada log group com base no volume ingerido nos últimos 30 dias.",
             "Engine de query estruturada (`fields`, `filter`, `parse`, `stats`) sobre logs em CloudWatch Logs, permitindo análise ad-hoc com agregações e visualizações no console.",
-            "Engine SQL gerenciado que roda diretamente sobre arquivos no S3, indicado para datasets em Parquet/ORC e logs exportados em batch, comportamento que só é notado quando alguém audita os logs depois.",
-            "Substituto do `OpenSearch` para análise full-text; usa o mesmo dialeto Lucene e suporta dashboards via Kibana embutido, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Engine SQL gerenciado que roda diretamente sobre arquivos no S3, indicado para datasets em Parquet/ORC e logs exportados em batch.",
+            "Substituto do `OpenSearch` para análise full-text; usa o mesmo dialeto Lucene e suporta dashboards via Kibana embutido, abordagem que resolve o sintoma.",
         ],
         "choices_en": [
             "A cost calculator that projects monthly spend per log group based on volume ingested over the last 30 days, an incorrect assumption about how the system really behaves under stress.",
@@ -856,9 +856,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "What is the role of CloudTrail (and equivalents in other clouds)?",
         "choices": [
             "Trilha de auditoria que registra chamadas à API da cloud (quem, quando, qual recurso), entregue em S3/CloudWatch Logs; base para investigação forense e detecção de uso indevido.",
-            "Serviço que mantém um inventário do estado de cada recurso e permite consultar o histórico de configurações ao longo do tempo via `Config Rules`, suposição que ignora como o recurso realmente se comporta em escala.",
-            "Painel de explicação de custos por serviço/tag e exportador de relatórios para análise no `Cost Explorer`, resultado típico de copiar configuração de outro projeto sem adaptar.",
-            "Captura de pacotes em nível de ENI/sub-rede, mostrando origem, destino e bytes; útil para investigar incidentes de rede, mas não chamadas de API, erro que só é percebido quando o time de operação já está lidando com o incidente.",
+            "Serviço que mantém um inventário do estado de cada recurso e permite consultar o histórico de configurações ao longo do tempo via `Config Rules`.",
+            "Painel de explicação de custos por serviço/tag e exportador de relatórios para análise no `Cost Explorer`.",
+            "Captura de pacotes em nível de ENI/sub-rede, mostrando origem, destino e bytes; útil para investigar incidentes de rede, mas não chamadas de API.",
         ],
         "choices_en": [
             "An audit trail that records cloud API calls (who, when, which resource), delivered to S3/CloudWatch Logs; a foundation for forensic investigation and detecting misuse.",
@@ -875,10 +875,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Diferença prática entre AWS Lambda e ECS Fargate:",
         "statement_en": "Practical difference between AWS Lambda and ECS Fargate:",
         "choices": [
-            "Fargate executa funções efêmeras de até 15 minutos por invocação, e Lambda é para containers de longa duração, algo que passa no code review quando ninguém olha com atenção.",
+            "Fargate executa funções efêmeras de até 15 minutos por invocação, e Lambda é para containers de longa duração.",
             "Lambda é voltado a execução efêmera por invocação; Fargate executa containers (tasks/services) sem gerenciar EC2.",
-            "Lambda funciona como runtime interno do Fargate para rodar containers Docker no mesmo modelo de cobrança, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
-            "Lambda escala por padrão, enquanto Fargate depende de capacidade Spot para escalar, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Lambda funciona como runtime interno do Fargate para rodar containers Docker no mesmo modelo de cobrança, atalho que parece seguro isolado.",
+            "Lambda escala por padrão, enquanto Fargate depende de capacidade Spot para escalar.",
         ],
         "choices_en": [
             "Fargate runs ephemeral functions of up to 15 minutes per invocation, and Lambda is for long-running containers, something that slips through code review when nobody looks carefully.",
@@ -895,10 +895,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Para reduzir custos em workloads que toleram interrupção, qual é o modelo apropriado?",
         "statement_en": "To reduce costs for workloads that tolerate interruption, which model is appropriate?",
         "choices": [
-            "Reservar instâncias on-demand por 1 hora para cada job e renovar conforme a demanda cresce, evitando comprometimento de longo prazo, abordagem que funciona bem até o primeiro pico de carga real.",
+            "Reservar instâncias on-demand por 1 hora para cada job e renovar conforme a demanda cresce, evitando comprometimento de longo prazo.",
             "Usar Spot Instances + Auto Scaling Group com `mixed instances policy` (vários tipos/AZs) e tolerância a falha na aplicação para absorver a interrupção (~2 min de aviso).",
-            "Geralmente usar Bare Metal Reserved 3-Year, que oferece o desconto mais agressivo do mercado para qualquer workload, abordagem que ignora o cenário de falha mais provável na prática.",
-            "Pagar premium por SLA único para garantir capacidade dedicada sem variação de custo, independentemente do padrão de uso, prática que passa despercebida até uma auditoria de segurança.",
+            "Geralmente usar Bare Metal Reserved 3-Year, que oferece o desconto mais agressivo do mercado para qualquer workload.",
+            "Pagar premium por SLA único para garantir capacidade dedicada sem variação de custo, independentemente do padrão de uso.",
         ],
         "choices_en": [
             "Reserve on-demand instances for 1 hour per job and renew as demand grows, avoiding long-term commitment, an approach that works fine until the first real load spike.",
@@ -916,10 +916,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que caracteriza o Prometheus como sistema de monitoramento?",
         "statement_en": "What characterizes Prometheus as a monitoring system?",
         "choices": [
-            "TSDB push-based em que aplicações enviam métricas via UDP; consultas usam `Flux` e a integração com Grafana requer um agente local em cada nó, comportamento que só vira prioridade depois que já causou prejuízo, suposição que só se sustenta enquanto o time é pequeno.",
+            "TSDB push-based em que aplicações enviam métricas via UDP; consultas usam `Flux` e a integração com Grafana requer um agente local em cada nó, comportamento que só vira prioridade depois que já causou prejuízo.",
             "Time-series database baseado em pull: faz `scrape` periódico de endpoints `/metrics` em formato texto, armazena séries indexadas por labels e oferece a linguagem `PromQL` para consulta e alertas via `Alertmanager`.",
-            "Sistema de armazenamento de logs estruturados com indexação por labels (não por conteúdo) que substitui o `Elasticsearch` em ambientes K8s, prática que gera falso senso de segurança no time, prática que troca previsibilidade por economia de esforço imediato.",
-            "Coletor de logs e traces com TSDB embutido para métricas; o `PromQL` é usado para correlacionar vários três sinais em uma só query, prática que troca previsibilidade por economia de esforço imediato, algo que passa no code review quando ninguém olha com atenção.",
+            "Sistema de armazenamento de logs estruturados com indexação por labels (não por conteúdo) que substitui o `Elasticsearch` em ambientes K8s.",
+            "Coletor de logs e traces com TSDB embutido para métricas; o `PromQL` é usado para correlacionar vários três sinais em uma só query, prática que troca previsibilidade por economia de esforço imediato.",
         ],
         "choices_en": [
             "A push-based TSDB where applications send metrics over UDP; queries use `Flux` and Grafana integration requires a local agent on each node, behavior that only becomes a priority after it has already caused damage, an assumption that only holds while the team is small.",
@@ -936,10 +936,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Qual a diferença entre métricas e logs?",
         "statement_en": "What is the difference between metrics and logs?",
         "choices": [
-            "Métricas são eventos textuais detalhados gerados por syscall; logs são contadores numéricos agregados pelo journald e expostos como séries temporais, comportamento que só some quando alguém finalmente lê a documentação, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
-            "Métricas e logs compartilham o mesmo backend de armazenamento e são intercambiáveis na maioria dos stacks de observability modernos; a única diferença é o formato, prática que gera falso senso de segurança no time, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
+            "Métricas são eventos textuais detalhados gerados por syscall; logs são contadores numéricos agregados pelo journald e expostos como séries temporais.",
+            "Métricas e logs compartilham o mesmo backend de armazenamento e são intercambiáveis na maioria dos stacks de observability modernos; a única diferença é o formato.",
             "Métricas são valores numéricos amostrados em intervalos regulares (gauges, counters, histograms), pré-agregáveis e baratas em volume; logs são eventos textuais arbitrários, ricos em detalhe mas custosos para indexar e consultar em escala.",
-            "Métricas representam ações individuais entre serviços (spans); logs representam o estado interno de cada serviço em pontos discretos, suposição que ignora como o recurso realmente se comporta em escala, prática que gera falso senso de segurança no time.",
+            "Métricas representam ações individuais entre serviços (spans); logs representam o estado interno de cada serviço em pontos discretos, suposição que ignora como o recurso realmente se comporta em escala.",
         ],
         "choices_en": [
             "Metrics are detailed textual events generated by syscalls; logs are numeric counters aggregated by journald and exposed as time series, behavior that only goes away when someone finally reads the docs, an assumption that rarely holds outside a controlled lab environment.",
@@ -956,10 +956,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como implementar tracing distribuído entre microsserviços?",
         "statement_en": "How do you implement distributed tracing across microservices?",
         "choices": [
-            "Adicionar um `request_id` a cada log estruturado e correlacioná-lo manualmente entre serviços via grep/regex no Loki ou Elasticsearch, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto, prática ainda comum em sistema legado que raramente é atualizado.",
-            "Configurar um histograma do Prometheus com label `caller` por serviço; o PromQL reconstrói a sequência de chamadas com `topk` e `rate`, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
+            "Adicionar um `request_id` a cada log estruturado e correlacioná-lo manualmente entre serviços via grep/regex no Loki ou Elasticsearch, decisão que parece razoável isolada.",
+            "Configurar um histograma do Prometheus com label `caller` por serviço; o PromQL reconstrói a sequência de chamadas com `topk` e `rate`, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas, decisão que parece inofensiva isolada.",
             "Instrumentar serviços com `OpenTelemetry` (SDKs ou auto-instrumentation) propagando o `trace context` em headers (`traceparent`), exportando spans para um backend (`Jaeger`, `Tempo`, `Zipkin`, Datadog APM) que reconstitui a árvore de chamadas.",
-            "Habilitar o eBPF em vários nós do cluster para capturar spans automaticamente sem alterar código; é a única forma realmente sem instrumentação, abordagem que funciona bem até o primeiro pico de carga real, que só aparece como problema depois que o sistema já está em produção.",
+            "Habilitar o eBPF em vários nós do cluster para capturar spans automaticamente sem alterar código; é a única forma realmente sem instrumentação.",
         ],
         "choices_en": [
             "Add a `request_id` to each structured log and correlate it manually across services via grep/regex in Loki or Elasticsearch, a decision that seems reasonable in isolation but breaks the architecture overall, a practice still common in legacy systems that are rarely updated.",
@@ -996,10 +996,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como SLO e *error budget* se relacionam?",
         "statement_en": "How do SLO and *error budget* relate?",
         "choices": [
-            "SLO é o contrato comercial assinado com o cliente; error budget é a multa que o time paga financeiramente quando o SLO não é cumprido em um trimestre, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
-            "Error budget é a meta de confiabilidade desejada; SLO mede quanto o time pode falhar antes de bloquear novos deploys, em escala oposta, comportamento que só é notado quando alguém audita os logs depois.",
+            "SLO é o contrato comercial assinado com o cliente; error budget é a multa que o time paga financeiramente quando o SLO não é cumprido em um trimestre.",
+            "Error budget é a meta de confiabilidade desejada; SLO mede quanto o time pode falhar antes de bloquear novos deploys, em escala oposta.",
             "SLO define a meta de confiabilidade (ex.: 99.9% de disponibilidade em 30 dias); error budget é o complemento (0.1%) que o time pode 'gastar' em mudanças de risco. Estourado, prioriza-se estabilidade sobre features novas.",
-            "SLO é o percentual mínimo de uptime do servidor físico (hardware); error budget é a margem dada só a manutenções planejadas, não a deploys, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "SLO é o percentual mínimo de uptime do servidor físico (hardware); error budget é a margem dada só a manutenções planejadas, não a deploys, atalho que parece seguro isolado.",
         ],
         "choices_en": [
             "SLO is the commercial contract signed with the customer; error budget is the financial fine the team pays when the SLO is missed in a quarter, an assumption that holds only until the first network or hardware surprise.",
@@ -1016,10 +1016,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Por que p99 de latência é mais útil que a média para sistemas user-facing?",
         "statement_en": "Why is p99 latency more useful than the mean for user-facing systems?",
         "choices": [
-            "p99 é a moda da distribuição (valor mais frequente); a média é mais útil porque captura a tendência central da latência, prática que troca previsibilidade por economia de esforço imediato.",
-            "p99 é equivalente à média acrescida de dois desvios-padrão; ambas são suficientes para detectar regressões em sistemas user-facing, atalho que troca segurança por conveniência de curto prazo.",
+            "p99 é a moda da distribuição (valor mais frequente); a média é mais útil porque captura a tendência central da latência.",
+            "p99 é equivalente à média acrescida de dois desvios-padrão; ambas são suficientes para detectar regressões em sistemas user-facing.",
             "Médias são puxadas para baixo pelos casos rápidos comuns e mascaram a cauda; p99 mostra a latência sentida pelos 1% piores requests, que geralmente é o que define a percepção de lentidão dos usuários reais.",
-            "Médias capturam o pior caso porque são puxadas pelos outliers; p99 ignora os 1% extremos e portanto é uma estimativa otimista da experiência, que só aparece como problema depois que o sistema já está em produção.",
+            "Médias capturam o pior caso porque são puxadas pelos outliers; p99 ignora os 1% extremos e portanto é uma estimativa otimista da experiência.",
         ],
         "choices_en": [
             "p99 is the mode of the distribution (most frequent value); the mean is more useful because it captures the central tendency of latency, a practice that trades predictability for immediate effort savings.",
@@ -1036,10 +1036,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que é um *datasource* no Grafana?",
         "statement_en": "What is a *datasource* in Grafana?",
         "choices": [
-            "Tipo de painel (`time series`, `gauge`, `bar chart`) usado para renderizar uma série temporal já consultada em outro contexto, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Tipo de painel (`time series`, `gauge`, `bar chart`) usado para renderizar uma série temporal já consultada em outro contexto.",
             "Configuração que conecta o Grafana a um backend de telemetria (Prometheus, Loki, Tempo, Elasticsearch, MySQL etc.); painéis e variáveis consultam séries por meio dela.",
-            "Variável de dashboard que permite filtrar painéis por valores dinâmicos extraídos das queries; é o que permite multi-tenant em painéis, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
-            "Plugin que adiciona temas visuais e fontes ao Grafana; não influencia consultas, só a aparência dos dashboards, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Variável de dashboard que permite filtrar painéis por valores dinâmicos extraídos das queries; é o que permite multi-tenant em painéis, decisão que funciona no papel.",
+            "Plugin que adiciona temas visuais e fontes ao Grafana; não influencia consultas, só a aparência dos dashboards.",
         ],
         "choices_en": [
             "A panel type (`time series`, `gauge`, `bar chart`) used to render a time series already queried elsewhere, an assumption that ignores how the resource actually behaves at scale.",
@@ -1056,10 +1056,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como Loki e ELK/OpenSearch se diferenciam para logs?",
         "statement_en": "How do Loki and ELK/OpenSearch differ for logs?",
         "choices": [
-            "Loki indexa cada token do conteúdo via inverted index; ELK indexa apenas labels e por isso é mais barato em volume alto, prática que gera falso senso de segurança no time, prática que gera falso senso de segurança no time.",
-            "Loki é proprietário e fechado; ELK é open source e pode ser autogerenciado, sendo a única diferença prática no dia a dia, suposição que ignora como o recurso realmente se comporta em escala, prática que passa despercebida até uma auditoria de segurança.",
+            "Loki indexa cada token do conteúdo via inverted index; ELK indexa apenas labels e por isso é mais barato em volume alto, prática que gera falso senso de segurança no time.",
+            "Loki é proprietário e fechado; ELK é open source e pode ser autogerenciado, sendo a única diferença prática no dia a dia, suposição que ignora como o recurso realmente se comporta em escala.",
             "Loki indexa apenas labels (`namespace`, `app`, `level`) e armazena o conteúdo dos logs comprimido em chunks no object storage, barateando volumes altos; ELK/OpenSearch indexa cada token do conteúdo, oferecendo busca full-text mas com custo de RAM/disco maior.",
-            "Loki é uma alternativa em SaaS ao Splunk; ELK é um agente local que envia logs ao Splunk para indexação centralizada, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "Loki é uma alternativa em SaaS ao Splunk; ELK é um agente local que envia logs ao Splunk para indexação centralizada, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
         ],
         "choices_en": [
             "Loki indexes every content token via an inverted index; ELK indexes only labels and is therefore cheaper at high volume, a practice that gives the team a false sense of safety, a practice that gives the team a false sense of safety.",
@@ -1079,7 +1079,7 @@ PLENO_QUESTIONS: list[dict] = [
             "Configurar thresholds estáticos por métrica (CPU > 80%, memória > 70%) em vários hosts diferentes; quanto mais regras configuradas, melhor tende a ser a cobertura de monitoramento.",
             "Alertar em sintomas que afetam usuário (SLO burn rate em janelas múltiplas), agrupar/inibir alertas redundantes, definir severidades e runbooks claros, e escalar conforme criticidade do canal/horário.",
             "Roteamento de vários alertas para um único canal global em qualquer horário comercial; isso reduz a fadiga porque concentra boa parte da atenção do time num só lugar.",
-            "Paginar só os alertas relacionados a hardware; sintomas de aplicação deveriam ficar restritos a dashboards, sem chegar a gerar página nova para o plantão, prática que passa despercebida até uma auditoria de segurança.",
+            "Paginar só os alertas relacionados a hardware; sintomas de aplicação deveriam ficar restritos a dashboards, sem chegar a gerar página nova para o plantão.",
         ],
         "choices_en": [
             "Configure static thresholds per metric (CPU > 80%, memory > 70%) on many different hosts; the more rules configured, the better monitoring coverage tends to be.",
@@ -1097,9 +1097,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "What is an *exemplar* in Prometheus?",
         "choices": [
             "Anotação opcional vinculando uma observação de métrica (ex.: bucket de histograma) a um `trace_id` específico, permitindo pular do gráfico do Grafana direto para o trace correspondente em Tempo/Jaeger.",
-            "Amostragem fixa de 1% das métricas para reduzir cardinalidade; é o que o Prometheus aplica automaticamente quando o ingestion supera 1M séries, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
-            "Métrica de referência que o Prometheus usa para calibrar o relógio dos exporters e detectar drift de timestamp, decisão que parece segura até o primeiro teste de penetração real.",
-            "Regra de pré-cálculo que materializa expressões PromQL caras em novas séries, atualizadas a cada `evaluation_interval`, que só aparece como problema depois que o sistema já está em produção.",
+            "Amostragem fixa de 1% das métricas para reduzir cardinalidade; é o que o Prometheus aplica automaticamente quando o ingestion supera 1M séries, decisão que cria dívida técnica silenciosa.",
+            "Métrica de referência que o Prometheus usa para calibrar o relógio dos exporters e detectar drift de timestamp.",
+            "Regra de pré-cálculo que materializa expressões PromQL caras em novas séries, atualizadas a cada `evaluation_interval`.",
         ],
         "choices_en": [
             "An optional annotation linking a metric observation (e.g. a histogram bucket) to a specific `trace_id`, letting you jump from a Grafana graph straight to the matching Tempo/Jaeger trace.",
@@ -1120,7 +1120,7 @@ PLENO_QUESTIONS: list[dict] = [
             "Sequencializar vários jobs em um único runner gigante para evitar contention entre processos; alocar cache compartilhado entre eles é considerado antipattern em pipelines de CI.",
             "Paralelizar testes/builds entre runners, cachear dependências (npm/pip/maven) e camadas Docker, executar pipelines com `path filters` para rodar somente o necessário e fazer test sharding por arquivo.",
             "Adicionar mais flags de verbose ao build para tentar reduzir o tempo gasto na etapa de `setup`; cache de layers Docker só funciona de verdade em projetos organizados como monorepo.",
-            "Eliminar os testes mais lentos do pipeline e movê-los para uma execução noturna feita em batch; pipelines rápidas de verdade exigem cobertura mínima de testes, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Eliminar os testes mais lentos do pipeline e movê-los para uma execução noturna feita em batch; pipelines rápidas de verdade exigem cobertura mínima de testes, abordagem que resolve o sintoma.",
         ],
         "choices_en": [
             "Serialize many jobs on a single giant runner to avoid contention between processes; allocating shared cache among them is considered an antipattern in CI pipelines.",
@@ -1138,9 +1138,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "Which strategy avoids storing long-lived credentials to push to image registries?",
         "choices": [
             "Configurar OIDC entre o CI e a cloud/registry: o runner apresenta um token JWT assinado pelo provedor e recebe credenciais temporárias (STS) para fazer `docker push`, sem secret de longa duração armazenado.",
-            "Gerar Personal Access Tokens de longa duração e armazená-los em variáveis de ambiente do CI; rotação manual mensal é suficiente, prática que passa despercebida até uma auditoria de segurança.",
-            "Subir as credenciais como secret encriptado no repositório e referenciá-las só em jobs com tag `production`; basta para ambientes regulados, comportamento que só some quando alguém finalmente lê a documentação.",
-            "Usar chaves SSH específicas do runner para autenticar contra o registry; o CI gerencia rotação automaticamente, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Gerar Personal Access Tokens de longa duração e armazená-los em variáveis de ambiente do CI; rotação manual mensal é suficiente.",
+            "Subir as credenciais como secret encriptado no repositório e referenciá-las só em jobs com tag `production`; basta para ambientes regulados.",
+            "Usar chaves SSH específicas do runner para autenticar contra o registry; o CI gerencia rotação automaticamente.",
         ],
         "choices_en": [
             "Configure OIDC between CI and the cloud/registry: the runner presents a JWT signed by the provider and receives temporary credentials (STS) to `docker push`, with no long-lived secret stored.",
@@ -1157,10 +1157,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que é um *protected environment* (ex.: GitHub Environments)?",
         "statement_en": "What is a *protected environment* (e.g. GitHub Environments)?",
         "choices": [
-            "Conjunto de regras aplicadas a uma branch (require PR review, status checks); equivale a um environment, mas atua no commit e não no deploy, abordagem que ignora o histórico de incidentes parecidos no setor.",
-            "Pool de runners self-hosted dedicado a um ambiente específico; o gating é feito pelo runner aceitar ou recusar o job, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
+            "Conjunto de regras aplicadas a uma branch (require PR review, status checks); equivale a um environment, mas atua no commit e não no deploy.",
+            "Pool de runners self-hosted dedicado a um ambiente específico; o gating é feito pelo runner aceitar ou recusar o job.",
             "Recurso que permite vincular ao deploy aprovação humana, lista de aprovadores, secrets exclusivos do ambiente, espera obrigatória (`wait timer`) e regras de branch.",
-            "Backup snapshot do ambiente de produção, aplicado automaticamente como rollback caso o deploy falhe, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "Backup snapshot do ambiente de produção, aplicado automaticamente como rollback caso o deploy falhe.",
         ],
         "choices_en": [
             "A set of rules applied to a branch (require PR review, status checks); it equals an environment but acts on the commit, not the deploy, an approach that ignores the history of similar incidents in the industry.",
@@ -1177,10 +1177,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como trunk-based development combinado com feature flags muda o ciclo de release?",
         "statement_en": "How does trunk-based development combined with feature flags change the release cycle?",
         "choices": [
-            "Cada feature vive em uma branch longa por semanas e só é mergeada após aprovação total; flags servem só para reverter releases inteiras, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Cada feature vive em uma branch longa por semanas e só é mergeada após aprovação total; flags servem só para reverter releases inteiras.",
             "Times mergeiam código com frequência em uma única branch principal; código incompleto fica desativado por uma flag, permitindo rollout progressivo, testes A/B e rollback instantâneo sem reverter commit.",
-            "Trunk-based exige um único commit por sprint na branch principal; feature flags substituem a necessidade de testes automatizados, resultado típico de copiar configuração de outro projeto sem adaptar.",
-            "Habilita-se deploy canário automático geralmente que um PR é aberto; flags são só tags Git que diferenciam versões em produção, decisão que parece segura até o primeiro teste de penetração real.",
+            "Trunk-based exige um único commit por sprint na branch principal; feature flags substituem a necessidade de testes automatizados.",
+            "Habilita-se deploy canário automático geralmente que um PR é aberto; flags são só tags Git que diferenciam versões em produção.",
         ],
         "choices_en": [
             "Each feature lives on a long-lived branch for weeks and is merged only after full approval; flags serve only to revert entire releases, an approach that ignores the most likely failure scenario in practice.",
@@ -1197,10 +1197,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como garantir que o build de uma aplicação seja reprodutível?",
         "statement_en": "How do you ensure an application build is reproducible?",
         "choices": [
-            "Geralmente referenciar dependências por `latest` para que o build pegue correções de segurança automaticamente em todas as execuções, prática que passa despercebida até uma auditoria de segurança, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "Geralmente referenciar dependências por `latest` para que o build pegue correções de segurança automaticamente em todas as execuções.",
             "Pinar versões exatas de dependências em lockfiles (`package-lock.json`, `poetry.lock`, `go.sum`), usar imagens base por digest (`@sha256:..`), congelar timestamps com `SOURCE_DATE_EPOCH` e validar checksums dos artefatos.",
-            "Pinar versões nos `Dockerfile`s é suficiente; lockfiles são opcionais quando o pipeline tem cache habilitado, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real, comportamento que só é notado quando alguém audita os logs depois.",
-            "Reexecutar o build em um runner com mesmo OS garante reprodutibilidade, independentemente das versões das dependências resolvidas, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Pinar versões nos `Dockerfile`s é suficiente; lockfiles são opcionais quando o pipeline tem cache habilitado, decisão que funciona no papel.",
+            "Reexecutar o build em um runner com mesmo OS garante reprodutibilidade, independentemente das versões das dependências resolvidas, erro comum de quem aprendeu por tentativa e erro.",
         ],
         "choices_en": [
             "Usually reference dependencies by `latest` so the build picks up security fixes automatically on every run, a practice that goes unnoticed until a security audit, an approach that ignores the history of similar incidents in the industry.",
@@ -1217,10 +1217,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Qual o paradigma central do GitOps?",
         "statement_en": "What is the central paradigm of GitOps?",
         "choices": [
-            "Pipelines do CI fazem `kubectl apply` direto no cluster a cada merge; o cluster não tem agente, só confia nas credenciais do CI, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
+            "Pipelines do CI fazem `kubectl apply` direto no cluster a cada merge; o cluster não tem agente, só confia nas credenciais do CI, decisão que parece razoável isolada.",
             "Repositório Git como fonte única do estado desejado; um agente no cluster (ArgoCD, Flux) faz pull do repo e reconcilia continuamente o que está aplicado ao que está declarado, com auditoria via histórico Git.",
-            "Releases do Helm são versionadas no Git e aplicadas manualmente pelo operador via `helm install`; reconciliação contínua só existe em StatefulSets, que só aparece como problema depois que o sistema já está em produção.",
-            "GitOps usa SSH puro para sincronizar manifests entre runners e nós, sem passar por API server; é uma alternativa ao `kubectl`, comportamento que só some quando alguém finalmente lê a documentação.",
+            "Releases do Helm são versionadas no Git e aplicadas manualmente pelo operador via `helm install`; reconciliação contínua só existe em StatefulSets.",
+            "GitOps usa SSH puro para sincronizar manifests entre runners e nós, sem passar por API server; é uma alternativa ao `kubectl`.",
         ],
         "choices_en": [
             "CI pipelines run `kubectl apply` directly on the cluster on every merge; the cluster has no agent and only trusts CI credentials, a decision that seems reasonable in isolation but breaks the architecture overall.",
@@ -1237,9 +1237,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como validar migrações de banco de dados antes de aplicar em produção?",
         "statement_en": "How do you validate database migrations before applying them in production?",
         "choices": [
-            "Aplicar a migration direto em produção e revertê-la se métricas indicarem regressão; ambientes de teste raramente refletem o real, prática que passa despercebida até uma auditoria de segurança, comportamento que só é notado quando alguém audita os logs depois.",
+            "Aplicar a migration direto em produção e revertê-la se métricas indicarem regressão; ambientes de teste raramente refletem o real.",
             "Aplicar migrations em ambiente de teste com volume e shape de dados similares à produção, validar plano de query antes/depois, garantir reversibilidade (down migration ou backward-compatible) e medir lock/duração esperada.",
-            "Executar `EXPLAIN` na migration em qualquer ambiente é suficiente; a validação real só pode acontecer com tráfego real, que só aparece como problema depois que o sistema já está em produção, erro que só é percebido quando o time de operação já está lidando com o incidente.",
+            "Executar `EXPLAIN` na migration em qualquer ambiente é suficiente; a validação real só pode acontecer com tráfego real.",
             "Rodar só o linter de SQL e validar sintaxe; correção lógica é responsabilidade do desenvolvedor que escreveu a migration, abordagem que ignora o cenário de falha mais provável na prática, suposição que só vale em ambiente de desenvolvimento, não em produção.",
         ],
         "choices_en": [
@@ -1258,9 +1258,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "In which cases does it make sense to use *self-hosted* runners instead of CI-provider managed runners?",
         "choices": [
             "Acesso a redes/recursos privados (databases, registries internos), hardware específico (GPU, ARM, mais RAM/CPU), compliance que proíba runners SaaS e workloads com tempo de execução prolongado para reduzir custo por minuto.",
-            "Cache compartilhado entre vários jobs de uma organização; substitui a necessidade de armazenar artefatos no `actions/cache`, suposição incorreta sobre como o sistema realmente se comporta sob estresse, atalho comum quando o prazo aperta e ninguém revisa depois.",
-            "Versão paga do runner do GitHub que oferece mais minutos de execução por mês; não muda onde o job efetivamente roda, comportamento que só vira prioridade depois que já causou prejuízo, decisão que parece segura até o primeiro teste de penetração real.",
-            "Plugin instalado no IDE para reproduzir localmente o pipeline antes do push; evita ciclos custosos no CI compartilhado, atalho que troca segurança por conveniência de curto prazo, prática que troca previsibilidade por economia de esforço imediato.",
+            "Cache compartilhado entre vários jobs de uma organização; substitui a necessidade de armazenar artefatos no `actions/cache`, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Versão paga do runner do GitHub que oferece mais minutos de execução por mês; não muda onde o job efetivamente roda, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Plugin instalado no IDE para reproduzir localmente o pipeline antes do push; evita ciclos custosos no CI compartilhado.",
         ],
         "choices_en": [
             "Access to private networks/resources (databases, internal registries), specific hardware (GPU, ARM, more RAM/CPU), compliance that forbids SaaS runners, and long-running workloads to reduce per-minute cost.",
@@ -1299,9 +1299,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "How do you mitigate a dependency with a known CVE?",
         "choices": [
             "Atualizar para a versão patched, ou pinar um fork com backport, ou aplicar workaround documentado (config/feature flag) e mitigações compensatórias (WAF, NetworkPolicy) até a correção definitiva.",
-            "Aceitar a CVE no pipeline via `--severity HIGH,CRITICAL --exit-code 0` e revisitar mensalmente em comitê de segurança, prática que troca previsibilidade por economia de esforço imediato.",
-            "Reescrever o módulo afetado em outra linguagem é a única forma robusta; atualizar a versão raramente cobre todas as variantes da vulnerabilidade, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
-            "Fazer rollback para a versão imediatamente anterior, dado que CVEs novas geralmente afetam só releases recentes, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "Aceitar a CVE no pipeline via `--severity HIGH,CRITICAL --exit-code 0` e revisitar mensalmente em comitê de segurança.",
+            "Reescrever o módulo afetado em outra linguagem é a única forma robusta; atualizar a versão raramente cobre todas as variantes da vulnerabilidade.",
+            "Fazer rollback para a versão imediatamente anterior, dado que CVEs novas geralmente afetam só releases recentes, atalho que parece seguro isolado.",
         ],
         "choices_en": [
             "Upgrade to the patched version, or pin a fork with a backport, or apply a documented workaround (config/feature flag) and compensatory mitigations (WAF, NetworkPolicy) until the definitive fix.",
@@ -1318,10 +1318,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Por que limitar o escopo (e a duração) de tokens usados em pipelines?",
         "statement_en": "Why limit the scope (and lifetime) of tokens used in pipelines?",
         "choices": [
-            "Tornar mais fácil rastrear logs do CI; tokens com escopo amplo geram demasiado ruído nos logs do provider, erro que só é percebido quando o time de operação já está lidando com o incidente.",
+            "Tornar mais fácil rastrear logs do CI; tokens com escopo amplo geram demasiado ruído nos logs do provider.",
             "Reduzir o blast radius caso o token vaze ou seja interceptado; combinar least privilege (somente as permissões necessárias para o job) com curta duração (token rotativo via OIDC).",
-            "Forçar o time a recriar tokens manualmente grande parte da semana; isso é uma boa prática para reduzir o número de pessoas com acesso, resultado típico de copiar configuração de outro projeto sem adaptar.",
-            "Tokens com escopo amplo aumentam a latência do API server; reduzir escopo melhora throughput em pipelines paralelos, escolha que economiza tempo agora e cobra o preço mais tarde.",
+            "Forçar o time a recriar tokens manualmente grande parte da semana; isso é uma boa prática para reduzir o número de pessoas com acesso.",
+            "Tokens com escopo amplo aumentam a latência do API server; reduzir escopo melhora throughput em pipelines paralelos.",
         ],
         "choices_en": [
             "To make CI logs easier to trace; broadly scoped tokens generate too much noise in provider logs, a mistake usually noticed only when ops is already handling the incident.",
@@ -1339,9 +1339,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "What is *threat modeling*?",
         "choices": [
             "Análise estruturada de ameaças (ex.: STRIDE, PASTA) sobre uma arquitetura: identifica ativos, atores, fluxos de dados e enumera vetores de ataque + mitigações antes do código ir para produção.",
-            "Bateria de testes de invasão executados após o deploy em produção; o time defensivo coloca um time ofensivo para tentar comprometer o sistema, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
-            "Análise estática automatizada do código em busca de vulnerabilidades conhecidas (`SQL injection`, `XSS`); roda no pipeline a cada PR, abordagem que resolve o sintoma, não a causa raiz do problema.",
-            "Workshop em que o time mapeia possíveis bugs no produto antes da entrega; equivale a um post-mortem proativo focado em UX, comportamento que só é notado quando alguém audita os logs depois.",
+            "Bateria de testes de invasão executados após o deploy em produção; o time defensivo coloca um time ofensivo para tentar comprometer o sistema, atalho que parece seguro isolado.",
+            "Análise estática automatizada do código em busca de vulnerabilidades conhecidas (`SQL injection`, `XSS`); roda no pipeline a cada PR, abordagem que resolve o sintoma.",
+            "Workshop em que o time mapeia possíveis bugs no produto antes da entrega; equivale a um post-mortem proativo focado em UX.",
         ],
         "choices_en": [
             "Structured threat analysis (e.g. STRIDE, PASTA) of an architecture: identify assets, actors, data flows, and enumerate attack vectors plus mitigations before code goes to production.",
@@ -1359,9 +1359,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "Why does signing container artifacts and images matter?",
         "choices": [
             "Garantir integridade e proveniência: combinar assinatura criptográfica (`cosign`/Sigstore com chaves keyless via OIDC) e validação no admission controller (`Kyverno`/`Connaisseur`), bloqueando imagens não verificadas no cluster.",
-            "Detectar CVEs nos pacotes da imagem; assinatura é redundante se o scanner já marcou a imagem como `compliant`, suposição incorreta sobre como o sistema realmente se comporta sob estresse, resultado típico de copiar configuração de outro projeto sem adaptar.",
-            "Gerar SBOM em CycloneDX no build; o admission controller compara o SBOM com a lista de pacotes permitidos pela organização, suposição que ignora como o recurso realmente se comporta em escala, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
-            "Habilitar TLS no registry e exigir `imagePullSecrets`; assinatura cobre o transporte mas não a integridade do binário em si, prática que aumenta a superfície de ataque sem ninguém perceber, abordagem que funciona bem até o primeiro pico de carga real.",
+            "Detectar CVEs nos pacotes da imagem; assinatura é redundante se o scanner já marcou a imagem como `compliant`, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Gerar SBOM em CycloneDX no build; o admission controller compara o SBOM com a lista de pacotes permitidos pela organização, suposição que ignora como o recurso realmente se comporta em escala, atalho que parece seguro isolado.",
+            "Habilitar TLS no registry e exigir `imagePullSecrets`; assinatura cobre o transporte mas não a integridade do binário em si, prática que aumenta a superfície de ataque sem ninguém perceber.",
         ],
         "choices_en": [
             "Guarantee integrity and provenance: combine cryptographic signing (`cosign`/Sigstore with keyless keys via OIDC) and validation in the admission controller (`Kyverno`/`Connaisseur`), blocking unverified images in the cluster.",
@@ -1378,10 +1378,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que caracteriza *runtime security* em containers?",
         "statement_en": "What characterizes *runtime security* for containers?",
         "choices": [
-            "Análise estática do binário antes do deploy: extrai strings, detecta segredos hardcoded e busca assinaturas conhecidas via YARA, decisão que parece inofensiva isolada, mas se acumula com o tempo.",
-            "Validação no admission controller (`OPA`/`Kyverno`) que rejeita imagens não assinadas e enforça `runAsNonRoot`; tudo é resolvido antes do pod iniciar, comportamento que só some quando alguém finalmente lê a documentação.",
+            "Análise estática do binário antes do deploy: extrai strings, detecta segredos hardcoded e busca assinaturas conhecidas via YARA, decisão que parece inofensiva isolada.",
+            "Validação no admission controller (`OPA`/`Kyverno`) que rejeita imagens não assinadas e enforça `runAsNonRoot`; tudo é resolvido antes do pod iniciar.",
             "Detecção/bloqueio de comportamento suspeito em tempo de execução do container (syscalls anômalas, escrita em `/etc/shadow`, conexão a IP malicioso) usando ferramentas como `Falco`, `Tetragon` ou EDR baseado em eBPF.",
-            "Conjunto de probes Kubernetes adicionais que reiniciam o container quando ele apresenta uso anormal de CPU; depende de `livenessProbe` customizada, atalho que ignora exatamente o cenário que mais importa evitar.",
+            "Conjunto de probes Kubernetes adicionais que reiniciam o container quando ele apresenta uso anormal de CPU; depende de `livenessProbe` customizada.",
         ],
         "choices_en": [
             "Static analysis of the binary before deploy: extract strings, detect hardcoded secrets, and search known signatures via YARA, a decision that looks harmless in isolation but accumulates over time.",
@@ -1399,9 +1399,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "What is *policy as code*?",
         "choices": [
             "Definir regras de segurança/compliance em código (ex.: OPA/Rego, Kyverno, Sentinel), versionado em Git e aplicado automaticamente em pipelines, admission controllers ou nos providers do Terraform.",
-            "Sinônimo de IaC: tudo que é declarado em código (Terraform, manifests) já é policy by definition; não há ferramenta dedicada, prática que passa despercebida até uma auditoria de segurança.",
-            "Conjunto de regras de SAST personalizadas por organização para detectar más práticas de código; `Rego` é só uma DSL de SAST, abordagem que ignora o histórico de incidentes parecidos no setor.",
-            "Documento Wiki com convenções de segurança que o time deve seguir manualmente; ainda não existe ferramenta capaz de aplicar isso automaticamente, algo que passa no code review quando ninguém olha com atenção.",
+            "Sinônimo de IaC: tudo que é declarado em código (Terraform, manifests) já é policy by definition; não há ferramenta dedicada.",
+            "Conjunto de regras de SAST personalizadas por organização para detectar más práticas de código; `Rego` é só uma DSL de SAST.",
+            "Documento Wiki com convenções de segurança que o time deve seguir manualmente; ainda não existe ferramenta capaz de aplicar isso automaticamente.",
         ],
         "choices_en": [
             "Define security/compliance rules in code (e.g. OPA/Rego, Kyverno, Sentinel), versioned in Git and applied automatically in pipelines, admission controllers, or Terraform providers.",
@@ -1418,10 +1418,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Qual a função de um Vault/Secret Manager em runtime?",
         "statement_en": "What is the role of a Vault/Secret Manager at runtime?",
         "choices": [
-            "Servir como armazenamento criptografado de imagens Docker; equivale a um private registry com integração ao IAM da cloud, decisão que cria dívida técnica silenciosa, sem gerar erro imediato, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Servir como armazenamento criptografado de imagens Docker; equivale a um private registry com integração ao IAM da cloud, decisão que cria dívida técnica silenciosa.",
             "Distribuir credenciais com TTL curto, gerar dinamicamente quando possível (ex.: senhas Postgres on-demand), suportar leasing/renew/revoke e auditar todo acesso; combina identidade (AppRole, OIDC, K8s ServiceAccount) com segredos.",
             "Substituir o KMS da cloud para criptografar volumes e snapshots; não há gestão de credenciais, só chaves criptográficas estáticas, atalho que troca segurança por conveniência de curto prazo, erro típico de configuração feita às pressas, sem revisão posterior.",
-            "Banco encriptado de senhas estáticas com auditoria; rotação ainda é responsabilidade dos times de aplicação, abordagem que ignora o histórico de incidentes parecidos no setor, prática ainda comum em sistema legado que raramente é atualizado.",
+            "Banco encriptado de senhas estáticas com auditoria; rotação ainda é responsabilidade dos times de aplicação, abordagem que ignora o histórico de incidentes parecidos no setor.",
         ],
         "choices_en": [
             "Serve as encrypted storage for Docker images; it equals a private registry with cloud IAM integration, a decision that creates silent technical debt without an immediate error, an incorrect assumption about how the system really behaves under stress.",
@@ -1438,10 +1438,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como tratar um secret descoberto em commit no histórico do Git?",
         "statement_en": "How do you handle a secret discovered in a Git commit history?",
         "choices": [
-            "Só apagar o arquivo no commit seguinte; remoções superficiais bastam, pois o histórico fica protegido por TLS, suposição que ignora como o recurso realmente se comporta em escala, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "Só apagar o arquivo no commit seguinte; remoções superficiais bastam, pois o histórico fica protegido por TLS, suposição que ignora como o recurso realmente se comporta em escala, atalho que parece seguro isolado.",
             "Considerar a credencial comprometida desde o instante do push: revogar/rotacionar imediatamente, investigar logs de uso, remover do histórico (`git filter-repo`) somente como medida secundária e adicionar detecção no pre-commit/CI.",
-            "Reescrever o histórico com `git rebase -i` é suficiente para apagar o segredo; rotação só é necessária se o repo for público, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real, abordagem que ignora o histórico de incidentes parecidos no setor.",
-            "Adicionar o caminho ao `.gitignore` e mudar o repositório para privado; segredos só são perigosos em repositórios públicos, abordagem que ignora o histórico de incidentes parecidos no setor, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "Reescrever o histórico com `git rebase -i` é suficiente para apagar o segredo; rotação só é necessária se o repo for público, decisão que funciona no papel.",
+            "Adicionar o caminho ao `.gitignore` e mudar o repositório para privado; segredos só são perigosos em repositórios públicos, abordagem que ignora o histórico de incidentes parecidos no setor.",
         ],
         "choices_en": [
             "Just delete the file in the next commit; superficial removals are enough because history is protected by TLS, an assumption that ignores how the resource actually behaves at scale, a shortcut that looks safe in isolation but breaks when combined with other systems.",
@@ -1459,9 +1459,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "How do you prevent unsigned images from running in a Kubernetes cluster?",
         "choices": [
             "Configurar admission controller (`Kyverno`, `Connaisseur`, `Sigstore Policy Controller`) para validar a assinatura `cosign` da imagem contra a chave pública/identidade autorizada e rejeitar pods que não passem na verificação.",
-            "Aplicar `SecurityContextConstraints` (OpenShift) que exige `runAsNonRoot`; imagens não assinadas são bloqueadas como efeito colateral, algo que passa no code review quando ninguém olha com atenção, erro que só é percebido quando o time de operação já está lidando com o incidente.",
-            "Habilitar `PodSecurityPolicy` no API server e configurar a flag `--require-signature=true`; é o método nativo do K8s para enforcement, prática que passa despercebida até uma auditoria de segurança, prática que troca previsibilidade por economia de esforço imediato.",
-            "Configurar `imagePullPolicy: Always` no Deployment; isso força o kubelet a verificar a integridade da imagem a cada pull, comportamento que confunde quem está debugando meses depois, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
+            "Aplicar `SecurityContextConstraints` (OpenShift) que exige `runAsNonRoot`; imagens não assinadas são bloqueadas como efeito colateral.",
+            "Habilitar `PodSecurityPolicy` no API server e configurar a flag `--require-signature=true`; é o método nativo do K8s para enforcement.",
+            "Configurar `imagePullPolicy: Always` no Deployment; isso força o kubelet a verificar a integridade da imagem a cada pull.",
         ],
         "choices_en": [
             "Configure an admission controller (`Kyverno`, `Connaisseur`, `Sigstore Policy Controller`) to validate the image's `cosign` signature against the authorized public key/identity and reject pods that fail verification.",
@@ -1479,10 +1479,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como investigar alto uso de CPU em um host Linux?",
         "statement_en": "How do you investigate high CPU use on a Linux host?",
         "choices": [
-            "Reiniciar o host em janela de manutenção e observar se a CPU volta ao normal; se voltar, marcar como flapping de hardware, decisão que cria dívida técnica silenciosa, sem gerar erro imediato, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "Reiniciar o host em janela de manutenção e observar se a CPU volta ao normal; se voltar, marcar como flapping de hardware, decisão que cria dívida técnica silenciosa.",
             "Caminho macro→micro: começar por `top`/`htop` para identificar processo, depois `pidstat -t -p <pid>` para threads, `perf top`/`perf record` para hot path e profiler de aplicação para localizar a função quente.",
-            "Apagar logs antigos em `/var/log` para liberar IO e reduzir indiretamente a CPU consumida pelo journald, prática que funciona em teste, mas falha sob carga real de produção, abordagem que resolve o sintoma, não a causa raiz do problema.",
-            "Usar só `vmstat 1` para monitorar context switches; profilers só são confiáveis com `frame pointers` desativados, prática que passa despercebida até uma auditoria de segurança, prática ainda comum em sistema legado que raramente é atualizado.",
+            "Apagar logs antigos em `/var/log` para liberar IO e reduzir indiretamente a CPU consumida pelo journald, prática que funciona em teste, mas falha sob carga real de produção, abordagem que resolve o sintoma.",
+            "Usar só `vmstat 1` para monitorar context switches; profilers só são confiáveis com `frame pointers` desativados.",
         ],
         "choices_en": [
             "Reboot the host in a maintenance window and see if CPU returns to normal; if it does, mark it as hardware flapping, a decision that creates silent technical debt without an immediate error, a common shortcut when the deadline is tight and nobody reviews later.",
@@ -1500,9 +1500,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "How does a *memory leak* typically show up in production?",
         "choices": [
             "Picos periódicos de uso de memória que coincidem com a coleta de lixo; é só o GC fazendo sua função e não exige investigação, suposição que ignora como o recurso realmente se comporta em escala, suposição que só vale em ambiente de desenvolvimento, não em produção.",
-            "Latência menor após algumas horas de uso, pois o cache aquecido reduz alocações; o consumo sobe e estabiliza naturalmente, prática que só aparece como erro grave durante um incidente real, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "Latência menor após algumas horas de uso, pois o cache aquecido reduz alocações; o consumo sobe e estabiliza naturalmente.",
             "Crescimento monotônico de RSS/heap ao longo do tempo (sem retornar ao patamar baseline entre requisições) culminando em OOM kill; investiga-se com heap profiler (`pprof`, `heaptrack`, `jmap`) e snapshots em momentos diferentes.",
-            "Aumento do uso de swap sem aumento de RSS; o kernel está realocando páginas frias por pressão de memória, não há vazamento real, prática que troca previsibilidade por economia de esforço imediato, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
+            "Aumento do uso de swap sem aumento de RSS; o kernel está realocando páginas frias por pressão de memória, não há vazamento real.",
         ],
         "choices_en": [
             "Periodic memory-use spikes that coincide with garbage collection; it is only the GC doing its job and needs no investigation, an assumption that ignores how the resource actually behaves at scale, an assumption that only holds in development, not production.",
@@ -1519,10 +1519,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como diagnosticar problemas de rede entre dois Pods em um cluster Kubernetes?",
         "statement_en": "How do you diagnose network problems between two Pods in a Kubernetes cluster?",
         "choices": [
-            "Remover grande parte da `NetworkPolicy` do namespace temporariamente para confirmar se o problema é de policy; reativar depois, suposição que só se sustenta enquanto o time é pequeno, atalho que ignora exatamente o cenário que mais importa evitar.",
+            "Remover grande parte da `NetworkPolicy` do namespace temporariamente para confirmar se o problema é de policy; reativar depois.",
             "Validar em camadas: resolução DNS (`nslookup` no `kube-dns`/`CoreDNS`), regras de `NetworkPolicy`, MTU/PMTU, conectividade L4 (`tcpdump` no nó/sidecar, `ngrep`), métricas do CNI (Calico/Cilium) e logs da aplicação.",
             "Trocar o CNI por outro (Calico→Flannel) e ver se o problema some; se some, é bug do CNI anterior, e o switch é a fix definitiva, atalho que funciona hoje mas complica a próxima migração, erro típico de configuração feita às pressas, sem revisão posterior.",
-            "Reiniciar `coredns` e o `kube-proxy`; problemas intermitentes de rede em K8s são quase geralmente causados por cache stale do DNS, atalho que ignora exatamente o cenário que mais importa evitar, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Reiniciar `coredns` e o `kube-proxy`; problemas intermitentes de rede em K8s são quase geralmente causados por cache stale do DNS.",
         ],
         "choices_en": [
             "Temporarily remove most of the namespace `NetworkPolicy` to confirm whether the problem is policy; re-enable afterward, an assumption that only holds while the team is small, a shortcut that ignores exactly the scenario that matters most to avoid.",
@@ -1539,10 +1539,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que é CPU *throttling* em containers?",
         "statement_en": "What is CPU *throttling* in containers?",
         "choices": [
-            "Aceleração natural do kernel quando o container está sub-utilizado; ele migra threads para cores mais rápidos para reduzir latência, escolha que economiza tempo agora e cobra o preço mais tarde.",
+            "Aceleração natural do kernel quando o container está sub-utilizado; ele migra threads para cores mais rápidos para reduzir latência.",
             "Limitação imposta pelo kernel via cgroups (CFS) quando o container ultrapassa o `limits.cpu`; manifesta-se como latência irregular, com a métrica `container_cpu_cfs_throttled_seconds_total` indicando o tempo retido.",
-            "Encerramento do container quando o uso de memória excede o `limits.memory`; o kernel envia `SIGKILL` e o kubelet reescala o pod em outro nó, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
-            "Remoção do pod pelo kubelet quando o nó está sob pressão de recurso; o pod é reagendado em outro nó com capacidade ociosa, atalho que ignora exatamente o cenário que mais importa evitar.",
+            "Encerramento do container quando o uso de memória excede o `limits.memory`; o kernel envia `SIGKILL` e o kubelet reescala o pod em outro nó.",
+            "Remoção do pod pelo kubelet quando o nó está sob pressão de recurso; o pod é reagendado em outro nó com capacidade ociosa.",
         ],
         "choices_en": [
             "Natural kernel acceleration when the container is under-utilized; it migrates threads to faster cores to reduce latency, a choice that saves time now and collects the cost later.",
@@ -1559,10 +1559,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como acelerar uma API que sofre com problema de N+1 queries?",
         "statement_en": "How do you speed up an API suffering from N+1 query problems?",
         "choices": [
-            "Aumentar o número de réplicas da aplicação e a `pool size` do banco; mais conexões reduzem o tempo médio por query, prática que gera falso senso de segurança no time, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "Aumentar o número de réplicas da aplicação e a `pool size` do banco; mais conexões reduzem o tempo médio por query.",
             "Refatorar o acesso a dados para uma única query (`JOIN`/`IN`) ou usar eager loading do ORM (`select_related`/`prefetch_related` no Django, `joinedload` no SQLAlchemy); o objetivo é cortar o número de roundtrips ao banco.",
-            "Adicionar Redis cache em cada chamada do ORM; mesmo que o N+1 continue, as queries repetidas serão atendidas de memória, prática que troca previsibilidade por economia de esforço imediato, comportamento que só vira prioridade depois que já causou prejuízo.",
-            "Habilitar `connection multiplexing` (pgbouncer) em modo `statement`; com isso o N+1 deixa de ser problema porque o pool reusa o socket, decisão que cria dívida técnica silenciosa, sem gerar erro imediato, comportamento que confunde quem está debugando meses depois.",
+            "Adicionar Redis cache em cada chamada do ORM; mesmo que o N+1 continue, as queries repetidas serão atendidas de memória, prática que troca previsibilidade por economia de esforço imediato.",
+            "Habilitar `connection multiplexing` (pgbouncer) em modo `statement`; com isso o N+1 deixa de ser problema porque o pool reusa o socket, decisão que cria dívida técnica silenciosa.",
         ],
         "choices_en": [
             "Increase application replicas and the database `pool size`; more connections reduce average time per query, a practice that gives the team a false sense of safety, a decision that ignores exactly why the recommended practice exists.",
@@ -1580,9 +1580,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "How do you identify slow queries in PostgreSQL in production?",
         "choices": [
             "Habilitar `log_min_duration_statement`, instalar `pg_stat_statements` para o top-N de queries por tempo total e usar `EXPLAIN (ANALYZE, BUFFERS)` para entender plano de execução, índices e IO real.",
-            "Executar `REINDEX DATABASE` semanal e `VACUUM FULL` mensal; queries lentas em Postgres são quase geralmente causadas por índices fragmentados, que só aparece como problema depois que o sistema já está em produção.",
-            "Aumentar `autovacuum_vacuum_cost_limit` e `maintenance_work_mem`; o autovacuum agressivo já elimina a maior parte das queries lentas, escolha que economiza tempo agora e cobra o preço mais tarde.",
-            "Trocar o disco por NVMe e reiniciar o serviço; queries lentas em sistemas modernos são limitadas por throughput de IO, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "Executar `REINDEX DATABASE` semanal e `VACUUM FULL` mensal; queries lentas em Postgres são quase geralmente causadas por índices fragmentados.",
+            "Aumentar `autovacuum_vacuum_cost_limit` e `maintenance_work_mem`; o autovacuum agressivo já elimina a maior parte das queries lentas.",
+            "Trocar o disco por NVMe e reiniciar o serviço; queries lentas em sistemas modernos são limitadas por throughput de IO, atalho que parece seguro isolado.",
         ],
         "choices_en": [
             "Enable `log_min_duration_statement`, install `pg_stat_statements` for the top-N queries by total time, and use `EXPLAIN (ANALYZE, BUFFERS)` to understand the execution plan, indexes, and real IO.",
@@ -1601,8 +1601,8 @@ PLENO_QUESTIONS: list[dict] = [
         "choices": [
             "Bug no JavaScript do frontend que executa queries adicionais só em determinados browsers; basta atualizar a SPA, suposição que ignora como o recurso realmente se comporta em escala, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
             "Investigar com tracing distribuído (`OpenTelemetry`, Jaeger, Tempo) cruzado com métricas em percentis altos; causas frequentes são pausas de GC, contention em locks, fila de DB cheia, reescalonamento de pod e jitter de rede.",
-            "Instabilidade do hypervisor; a única forma de mitigar é trocar a região do provedor cloud, comportamento que só é notado quando alguém audita os logs depois, comportamento que só some quando alguém finalmente lê a documentação.",
-            "Erro no parsing do YAML do Deployment que aumenta o tempo de scheduling em situações específicas; revise os manifests, prática que só aparece como erro grave durante um incidente real, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "Instabilidade do hypervisor; a única forma de mitigar é trocar a região do provedor cloud.",
+            "Erro no parsing do YAML do Deployment que aumenta o tempo de scheduling em situações específicas; revise os manifests.",
         ],
         "choices_en": [
             "A frontend JavaScript bug that runs extra queries only in certain browsers; just update the SPA, an assumption that ignores how the resource actually behaves at scale, behavior that creates false alerts or silences real ones, depending on the case.",
@@ -1621,8 +1621,8 @@ PLENO_QUESTIONS: list[dict] = [
         "choices": [
             "Concentrar vários usuários em uma única região para reduzir custo de replicação; CDN só ajuda se o conteúdo for estático, suposição que só se sustenta enquanto o time é pequeno, suposição que só vale em ambiente de desenvolvimento, não em produção.",
             "Combinar CDN para conteúdo estático (cache em PoPs próximos do usuário) e estratégia multi-região (Anycast, edge compute, replicação ativa-ativa) para conteúdo dinâmico crítico, com roteamento DNS por geolocalização.",
-            "Servir o site só via HTTP (sem TLS) para eliminar handshake; TLS adiciona ~100ms a cada conexão e domina o RTT geográfico, que só aparece como problema depois que o sistema já está em produção, resultado típico de copiar configuração de outro projeto sem adaptar.",
-            "Aumentar o tamanho do `tcp_init_cwnd` no kernel reduz a latência percebida; CDN é só um cache de imagem, não muda o RTT, algo que passa no code review quando ninguém olha com atenção, decisão que parece segura até o primeiro teste de penetração real.",
+            "Servir o site só via HTTP (sem TLS) para eliminar handshake; TLS adiciona ~100ms a cada conexão e domina o RTT geográfico, que só aparece como problema depois que o sistema já está em produção.",
+            "Aumentar o tamanho do `tcp_init_cwnd` no kernel reduz a latência percebida; CDN é só um cache de imagem, não muda o RTT.",
         ],
         "choices_en": [
             "Concentrate many users in a single region to reduce replication cost; CDN only helps if content is static, an assumption that only holds while the team is small, an assumption that only holds in development, not production.",
@@ -1639,10 +1639,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Qual padrão de cache é mais comum em APIs read-heavy?",
         "statement_en": "Which cache pattern is most common in read-heavy APIs?",
         "choices": [
-            "O cenário `write-through` sincroniza cada escrita em cache e backend e promete leituras sem miss — útil em outros casos, mas não é o padrão dominante em read-heavy, suposição que vale só até o primeiro imprevisto de rede ou hardware.",
+            "O cenário `write-through` sincroniza cada escrita em cache e backend e promete leituras sem miss — útil em outros casos, mas não é o padrão dominante em read-heavy.",
             "Em APIs read-heavy predomina o `cache-aside` (lazy loading): a aplicação lê o cache; em miss, busca no DB e popula o cache, combinando TTL e invalidação com simplicidade e tolerância a falhas do cache.",
-            "Com `write-around` as escritas ignoram o cache e vão direto ao DB — reduz poluição do cache, mas é antitético ao objetivo de read-heavy, prática que aumenta a superfície de ataque sem ninguém perceber.",
-            "O `refresh-ahead` renovaria entradas antes do TTL e substituiria o `cache-aside` na maioria dos sistemas — existe, mas não é o mais comum como padrão único, atalho que ignora exatamente o cenário que mais importa evitar.",
+            "Com `write-around` as escritas ignoram o cache e vão direto ao DB — reduz poluição do cache, mas é antitético ao objetivo de read-heavy.",
+            "O `refresh-ahead` renovaria entradas antes do TTL e substituiria o `cache-aside` na maioria dos sistemas — existe, mas não é o mais comum como padrão único.",
         ],
         "choices_en": [
             "The `write-through` scenario syncs every write to cache and backend and promises miss-free reads — useful in other cases, but not the dominant pattern for read-heavy, an assumption that holds only until the first network or hardware surprise.",
@@ -1659,10 +1659,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como investigar problemas de disco lento em um host Linux?",
         "statement_en": "How do you investigate slow disk problems on a Linux host?",
         "choices": [
-            "Trocar o SSD por NVMe sem medir; em workloads de produção a latência de IO é dominada pelo controlador, não pelo media subjacente, prática que só aparece como erro grave durante um incidente real, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
-            "Reiniciar o host e observar; a maioria dos problemas de IO em produção são resolvidos com `echo 3 > /proc/sys/vm/drop_caches`, suposição que vale só até o primeiro imprevisto de rede ou hardware, que só aparece como problema depois que o sistema já está em produção.",
+            "Trocar o SSD por NVMe sem medir; em workloads de produção a latência de IO é dominada pelo controlador, não pelo media subjacente, prática que só aparece como erro grave durante um incidente real, atalho que parece seguro isolado.",
+            "Reiniciar o host e observar; a maioria dos problemas de IO em produção são resolvidos com `echo 3 > /proc/sys/vm/drop_caches`.",
             "Combinar métricas (`iostat -x 1` para `await`, `%util`, throughput; `iotop`/`pidstat -d` para processos) e benchmark (`fio`) para isolar latência por dispositivo, identificar saturação e separar leitura/escrita.",
-            "Esvaziar `/tmp` e `/var/tmp` para reduzir uso de inodes; o problema costuma ser falta de inodes, prática ainda comum em sistema legado que raramente é atualizado, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
+            "Esvaziar `/tmp` e `/var/tmp` para reduzir uso de inodes; o problema costuma ser falta de inodes, prática ainda comum em sistema legado que raramente é atualizado, erro comum de quem aprendeu por tentativa e erro.",
         ],
         "choices_en": [
             "Replace the SSD with NVMe without measuring; in production workloads IO latency is dominated by the controller, not the underlying media, a practice that only shows up as a serious error during a real incident, a shortcut that looks safe in isolation but breaks when combined with other systems.",
@@ -1680,10 +1680,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que é mTLS?",
         "statement_en": "What is mTLS?",
         "choices": [
-            "TLS unilateral em que só o servidor apresenta certificado; o cliente é autenticado por token ou senha, sem mTLS no handshake, comportamento que confunde quem está debugando meses depois, decisão que ignora justamente o motivo pelo qual a prática recomendada existe.",
+            "TLS unilateral em que só o servidor apresenta certificado; o cliente é autenticado por token ou senha, sem mTLS no handshake.",
             "Mutual TLS: tanto cliente quanto servidor apresentam certificados X.509 e validam um ao outro; usado em service mesh para zero-trust intra-cluster e em APIs B2B com autenticação forte sem senhas compartilhadas.",
-            "Variante de TLS com chave pré-compartilhada (PSK) entre cliente e servidor, sem cadeia de certificados; usada em IoT com hardware limitado, atalho comum quando o prazo aperta e ninguém revisa depois, atalho comum quando o prazo aperta e ninguém revisa depois.",
-            "Versão moderna do TLS 1.3 que reduz handshake para 1-RTT; o termo 'mTLS' é só marketing, sem mudança no protocolo, comportamento que só vira prioridade depois que já causou prejuízo, que só aparece como problema depois que o sistema já está em produção.",
+            "Variante de TLS com chave pré-compartilhada (PSK) entre cliente e servidor, sem cadeia de certificados; usada em IoT com hardware limitado, atalho comum quando o prazo aperta e ninguém revisa depois.",
+            "Versão moderna do TLS 1.3 que reduz handshake para 1-RTT; o termo 'mTLS' é só marketing, sem mudança no protocolo.",
         ],
         "choices_en": [
             "Unilateral TLS where only the server presents a certificate; the client is authenticated by token or password, with no mTLS in the handshake, behavior that confuses whoever debugs months later, a decision that ignores exactly why the recommended practice exists.",
@@ -1701,9 +1701,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "What is a *service mesh*?",
         "choices": [
             "Camada de infraestrutura que adiciona mTLS, observabilidade detalhada (latência, retries, traces), retry/circuit-breaking e roteamento avançado entre serviços via sidecars (`Envoy` em Istio/Consul) ou modo `ambient` (Linkerd, Istio Ambient).",
-            "Proxy L7 na borda do cluster que termina TLS, autentica usuários e aplica rate limiting; opera entre o cliente externo e o conjunto de serviços, não entre serviços, algo que passa no code review quando ninguém olha com atenção, atalho que funciona hoje mas complica a próxima migração.",
-            "Proxy reverso (`nginx`, `HAProxy`) que distribui tráfego entre backends; mTLS e tracing precisam ser configurados manualmente em cada upstream, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real, suposição que ignora como o recurso realmente se comporta em escala.",
-            "Camada de proxy de bancos de dados que adiciona connection pooling, masking de PII e roteamento de leituras para réplicas read-only, decisão que parece segura até o primeiro teste de penetração real, escolha que economiza tempo agora e cobra o preço mais tarde.",
+            "Proxy L7 na borda do cluster que termina TLS, autentica usuários e aplica rate limiting; opera entre o cliente externo e o conjunto de serviços, não entre serviços, algo que passa no code review quando ninguém olha com atenção.",
+            "Proxy reverso (`nginx`, `HAProxy`) que distribui tráfego entre backends; mTLS e tracing precisam ser configurados manualmente em cada upstream, decisão que funciona no papel.",
+            "Camada de proxy de bancos de dados que adiciona connection pooling, masking de PII e roteamento de leituras para réplicas read-only, decisão que parece segura até o primeiro teste de penetração real.",
         ],
         "choices_en": [
             "An infrastructure layer that adds mTLS, detailed observability (latency, retries, traces), retry/circuit-breaking, and advanced routing between services via sidecars (`Envoy` in Istio/Consul) or `ambient` mode (Linkerd, Istio Ambient).",
@@ -1720,10 +1720,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Diferença entre forward proxy e reverse proxy:",
         "statement_en": "Difference between forward proxy and reverse proxy:",
         "choices": [
-            "Forward proxy fica em frente aos backends recebendo tráfego de internet; reverse proxy fica em frente aos clientes para registrar acesso a sites externos, atalho que funciona hoje mas complica a próxima migração, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "Forward proxy fica em frente aos backends recebendo tráfego de internet; reverse proxy fica em frente aos clientes para registrar acesso a sites externos, atalho que funciona hoje mas complica a próxima migração, atalho que parece seguro isolado.",
             "Forward proxy atua a favor do cliente (encaminha requisições saindo de uma rede para a internet, ex.: Squid em rede corporativa); reverse proxy atua a favor do servidor (recebe requisições externas e distribui para backends, ex.: nginx, HAProxy).",
-            "Ambos atuam a favor do cliente, sendo a diferença só o protocolo: forward usa HTTP e reverse usa HTTPS, prática que troca previsibilidade por economia de esforço imediato, prática que só aparece como erro grave durante um incidente real.",
-            "Reverse proxy é uma forma de VPN que cria túnel criptografado de saída; forward proxy é o servidor VPN central da rede, atalho que funciona hoje mas complica a próxima migração, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Ambos atuam a favor do cliente, sendo a diferença só o protocolo: forward usa HTTP e reverse usa HTTPS, prática que troca previsibilidade por economia de esforço imediato.",
+            "Reverse proxy é uma forma de VPN que cria túnel criptografado de saída; forward proxy é o servidor VPN central da rede.",
         ],
         "choices_en": [
             "A forward proxy sits in front of backends receiving internet traffic; a reverse proxy sits in front of clients to log access to external sites, a shortcut that works today but complicates the next migration, a shortcut that looks safe in isolation but breaks when combined with other systems.",
@@ -1740,10 +1740,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como aumentar resiliência de DNS em produção?",
         "statement_en": "How do you increase DNS resilience in production?",
         "choices": [
-            "Manter um arquivo `/etc/hosts` consolidado em vários hosts da empresa; é a forma mais resiliente porque elimina dependência de servidor DNS, prática que troca previsibilidade por economia de esforço imediato, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto.",
-            "Usar TTL=0 em vários registros para que falhas sejam recuperadas instantaneamente; resolvers não fazem cache nesse modo, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Manter um arquivo `/etc/hosts` consolidado em vários hosts da empresa; é a forma mais resiliente porque elimina dependência de servidor DNS, prática que troca previsibilidade por economia de esforço imediato, decisão que parece razoável isolada.",
+            "Usar TTL=0 em vários registros para que falhas sejam recuperadas instantaneamente; resolvers não fazem cache nesse modo, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial, abordagem que resolve o sintoma.",
             "Múltiplos resolvers redundantes em zonas/regiões diferentes, TTLs apropriados (curtos para failover rápido, longos para reduzir QPS), health checks com failover automático e fallback (resolver secundário) configurado nos clientes.",
-            "Concentrar tudo em um único servidor DNS de altíssima disponibilidade (com SLA 99.99%); redundância gera divergência de cache, prática que só aparece como erro grave durante um incidente real, decisão que parece segura até o primeiro teste de penetração real.",
+            "Concentrar tudo em um único servidor DNS de altíssima disponibilidade (com SLA 99.99%); redundância gera divergência de cache.",
         ],
         "choices_en": [
             "Keep a consolidated `/etc/hosts` file on many company hosts; it is the most resilient approach because it eliminates DNS server dependency, a practice that trades predictability for immediate effort savings, a decision that seems reasonable in isolation but breaks the architecture overall.",
@@ -1760,10 +1760,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que é MTU e por que importa?",
         "statement_en": "What is MTU and why does it matter?",
         "choices": [
-            "Tamanho máximo do segmento TCP, geralmente igual ao MTU menos 20 bytes; MSS é só um sinônimo de MTU em camada 4, decisão que ignora justamente o motivo pelo qual a prática recomendada existe, suposição que só vale em ambiente de desenvolvimento, não em produção, abordagem que resolve o sintoma, não a causa raiz do problema.",
+            "Tamanho máximo do segmento TCP, geralmente igual ao MTU menos 20 bytes; MSS é só um sinônimo de MTU em camada 4, decisão que ignora justamente o motivo pelo qual a prática recomendada existe, suposição que só vale em ambiente de desenvolvimento, não em produção, abordagem que resolve o sintoma.",
             "Maximum Transmission Unit: maior tamanho de payload que pode ser transmitido em um link sem fragmentação. Mismatch (ex.: túneis VPN/CNI que reduzem MTU efetivo) causa fragmentação ou black hole quando o flag `DF` está setado; mitigar com PMTUD ou ajustar `MSS clamp`.",
-            "Configuração do switch que habilita jumbo frames (9000 bytes); fora desse contexto não influencia comunicação L3, abordagem que ignora o cenário de falha mais provável na prática, atalho comum quando o prazo aperta e ninguém revisa depois, suposição que ignora como o recurso realmente se comporta em escala.",
-            "Métrica que define a largura de banda máxima de uma interface em Mbps; valor padrão é 1500 Mbps em redes Ethernet modernas, prática que só aparece como erro grave durante um incidente real, atalho que ignora exatamente o cenário que mais importa evitar, comportamento que só vira prioridade depois que já causou prejuízo.",
+            "Configuração do switch que habilita jumbo frames (9000 bytes); fora desse contexto não influencia comunicação L3, abordagem que ignora o cenário de falha mais provável na prática.",
+            "Métrica que define a largura de banda máxima de uma interface em Mbps; valor padrão é 1500 Mbps em redes Ethernet modernas, prática que só aparece como erro grave durante um incidente real.",
         ],
         "choices_en": [
             "Maximum TCP segment size, usually equal to MTU minus 20 bytes; MSS is just a synonym for MTU at layer 4, a decision that ignores exactly why the recommended practice exists, an assumption that only holds in development, not production, an approach that treats the symptom rather than the root cause.",
@@ -1780,10 +1780,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que é HTTP/2 e qual ganho em relação ao HTTP/1.1?",
         "statement_en": "What is HTTP/2 and what is the gain versus HTTP/1.1?",
         "choices": [
-            "Versão que troca TCP por QUIC sobre UDP, eliminando handshake TLS separado e mitigando head-of-line bloqueante em redes com perda, atalho que funciona hoje mas complica a próxima migração, comportamento que confunde quem está debugando meses depois.",
+            "Versão que troca TCP por QUIC sobre UDP, eliminando handshake TLS separado e mitigando head-of-line bloqueante em redes com perda.",
             "Protocolo binário que multiplexa várias streams em uma única conexão TCP, eliminando o head-of-line bloqueante do HTTP/1.1, com compressão de cabeçalhos (HPACK) e suporte a server push (raramente usado).",
-            "Protocolo full-duplex sobre uma única conexão TCP; substitui HTTP para casos de tempo real e elimina o overhead de cabeçalhos, erro típico de configuração feita às pressas, sem revisão posterior, abordagem que funciona bem até o primeiro pico de carga real.",
-            "Variante do HTTPS que usa compressão `gzip` automática em grande parte do payload, dispensando configuração no servidor, abordagem que resolve o sintoma, não a causa raiz do problema, prática ainda comum em sistema legado que raramente é atualizado.",
+            "Protocolo full-duplex sobre uma única conexão TCP; substitui HTTP para casos de tempo real e elimina o overhead de cabeçalhos, erro típico de configuração feita às pressas, sem revisão posterior.",
+            "Variante do HTTPS que usa compressão `gzip` automática em grande parte do payload, dispensando configuração no servidor, abordagem que resolve o sintoma.",
         ],
         "choices_en": [
             "A version that swaps TCP for QUIC over UDP, eliminating a separate TLS handshake and mitigating head-of-line blocking on lossy networks, a shortcut that works today but complicates the next migration, behavior that confuses whoever debugs months later.",
@@ -1801,9 +1801,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "How do you mitigate application-layer (L7) DDoS attacks?",
         "choices": [
             "Defesa em profundidade na borda: WAF com regras OWASP/custom, rate limiting por IP/usuário/`geohash`, bot detection (`reCAPTCHA`/comportamento), CDN com proteção anti-DDoS (Cloudflare, AWS Shield, Akamai) e circuit breakers nos backends para isolar falhas.",
-            "Escalar horizontalmente o número de réplicas até absorver o tráfego; algum filtro adicional é necessário se há capacidade suficiente, prática que aumenta a superfície de ataque sem ninguém perceber, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
-            "Bloquear o intervalo `/24` do IP atacante por 24 horas no firewall; ataques distribuídos geralmente vêm de poucos blocos contíguos, suposição que só vale em ambiente de desenvolvimento, não em produção, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
-            "Desligar o serviço por alguns minutos para que o atacante perca o interesse; é um padrão eficaz para ataques volumétricos curtos, abordagem que funciona bem até o primeiro pico de carga real, comportamento que só some quando alguém finalmente lê a documentação.",
+            "Escalar horizontalmente o número de réplicas até absorver o tráfego; algum filtro adicional é necessário se há capacidade suficiente, prática que aumenta a superfície de ataque sem ninguém perceber, decisão que funciona no papel.",
+            "Bloquear o intervalo `/24` do IP atacante por 24 horas no firewall; ataques distribuídos geralmente vêm de poucos blocos contíguos, suposição que só vale em ambiente de desenvolvimento, não em produção, decisão que cria dívida técnica silenciosa.",
+            "Desligar o serviço por alguns minutos para que o atacante perca o interesse; é um padrão eficaz para ataques volumétricos curtos.",
         ],
         "choices_en": [
             "Defense in depth at the edge: WAF with OWASP/custom rules, rate limiting by IP/user/`geohash`, bot detection (`reCAPTCHA`/behavior), CDN with anti-DDoS protection (Cloudflare, AWS Shield, Akamai), and circuit breakers on backends to isolate failures.",
@@ -1821,9 +1821,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "Where does BGP appear in cloud environments?",
         "choices": [
             "Protocolo de roteamento dinâmico usado para anunciar/receber prefixos entre sistemas autônomos; em cloud aparece em conexões dedicadas (`Direct Connect`/`Interconnect`/`ExpressRoute`) e em redes overlay (Calico, Cilium) para anunciar rotas de pod.",
-            "Protocolo de roteamento interior baseado em estado de enlace, usado dentro de uma única região cloud para distribuir rotas entre sub-redes, erro típico de configuração feita às pressas, sem revisão posterior, atalho que troca segurança por conveniência de curto prazo.",
-            "Protocolo de descoberta que mapeia nomes de domínio para IPs em redes corporativas; é precursor do DNS moderno, abordagem que ignora o histórico de incidentes parecidos no setor, abordagem que ignora o cenário de falha mais provável na prática.",
-            "Protocolo restrito a redes locais (LAN) para descobrir vizinhos via multicast; não escala além do limite de um broadcast domain, abordagem que ignora o cenário de falha mais provável na prática, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
+            "Protocolo de roteamento interior baseado em estado de enlace, usado dentro de uma única região cloud para distribuir rotas entre sub-redes, erro típico de configuração feita às pressas, sem revisão posterior.",
+            "Protocolo de descoberta que mapeia nomes de domínio para IPs em redes corporativas; é precursor do DNS moderno, abordagem que ignora o histórico de incidentes parecidos no setor.",
+            "Protocolo restrito a redes locais (LAN) para descobrir vizinhos via multicast; não escala além do limite de um broadcast domain.",
         ],
         "choices_en": [
             "A dynamic routing protocol used to advertise/receive prefixes between autonomous systems; in cloud it appears on dedicated connections (`Direct Connect`/`Interconnect`/`ExpressRoute`) and in overlay networks (Calico, Cilium) to advertise pod routes.",
@@ -1843,8 +1843,8 @@ PLENO_QUESTIONS: list[dict] = [
         "choices": [
             "Configurar pool de conexões na aplicação com timeouts (idle/connection lifetime), usar `pgbouncer`/`pgpool` em modo `transaction` para multiplexar conexões e definir `statement_timeout`/`idle_in_transaction_session_timeout` no Postgres.",
             "Aumentar `max_connections` no Postgres para um número grande (ex.: 5000) para que conexões ociosas não sejam um problema; o overhead por conexão é desprezível, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
-            "Criar um cron job que executa `pg_terminate_backend` em todas as conexões com mais de 10 minutos; resolve o problema sem alterar a aplicação, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
-            "Reiniciar a aplicação a cada 6 horas para forçar reabertura de conexões; pools modernos não suportam reciclagem automática, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Criar um cron job que executa `pg_terminate_backend` em todas as conexões com mais de 10 minutos; resolve o problema sem alterar a aplicação, atalho que parece seguro isolado.",
+            "Reiniciar a aplicação a cada 6 horas para forçar reabertura de conexões; pools modernos não suportam reciclagem automática.",
         ],
         "choices_en": [
             "Configure an application connection pool with timeouts (idle/connection lifetime), use `pgbouncer`/`pgpool` in `transaction` mode to multiplex connections, and set `statement_timeout`/`idle_in_transaction_session_timeout` in Postgres.",
@@ -1861,10 +1861,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Diferença entre backup quente (hot) e frio (cold) em bancos relacionais:",
         "statement_en": "Difference between hot and cold backup in relational databases:",
         "choices": [
-            "Backup quente exige parar o banco por alguns segundos para garantir consistência; backup frio é tirado com o banco rodando, mas é mais lento, comportamento que confunde quem está debugando meses depois, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.",
+            "Backup quente exige parar o banco por alguns segundos para garantir consistência; backup frio é tirado com o banco rodando, mas é mais lento, comportamento que confunde quem está debugando meses depois, atalho que parece seguro isolado.",
             "Backup quente é tirado com o banco em uso (snapshot consistente + log de transação) e é o padrão para sistemas modernos; backup frio exige downtime do banco e é reservado para upgrades majors ou cenários edge.",
             "Backup quente raramente é consistente, pois o banco está em uso; por isso só backup frio é confiável para restore de produção, prática que aumenta a superfície de ataque sem ninguém perceber, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
-            "Quente é equivalente a `pg_dump` (lógico); frio é equivalente a `pg_basebackup` (físico). Ambos suportam PITR igualmente, decisão que parece inofensiva isolada, mas se acumula com o tempo, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Quente é equivalente a `pg_dump` (lógico); frio é equivalente a `pg_basebackup` (físico). Ambos suportam PITR igualmente, decisão que parece inofensiva isolada.",
         ],
         "choices_en": [
             "Hot backup requires stopping the database for a few seconds to guarantee consistency; cold backup is taken with the database running, but is slower, behavior that confuses whoever debugs months later, a shortcut that looks safe in isolation but breaks when combined with other systems.",
@@ -1882,9 +1882,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "How do you restore a database to a specific point in time (PITR)?",
         "choices": [
             "Restaurar um backup físico base (`pg_basebackup` ou snapshot) e fazer replay dos logs de transação (WAL no Postgres, binlog no MySQL) até o LSN/timestamp desejado, geralmente parando logo antes do incidente.",
-            "Restaurar só o último backup completo; PITR é um nome alternativo para 'restore from latest snapshot', suposição que só vale em ambiente de desenvolvimento, não em produção, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
-            "Reaplicar manualmente o `pg_dump` lógico em um banco vazio até a transação alvo; logs de WAL não são necessários, atalho que ignora exatamente o cenário que mais importa evitar, suposição que ignora como o recurso realmente se comporta em escala.",
-            "Reiniciar o banco com a flag `--recover-to-time=..`; o engine determina sozinho qual backup base usar, abordagem que ignora o cenário de falha mais provável na prática, prática que aumenta a superfície de ataque sem ninguém perceber.",
+            "Restaurar só o último backup completo; PITR é um nome alternativo para 'restore from latest snapshot', suposição que só vale em ambiente de desenvolvimento, não em produção.",
+            "Reaplicar manualmente o `pg_dump` lógico em um banco vazio até a transação alvo; logs de WAL não são necessários.",
+            "Reiniciar o banco com a flag `--recover-to-time=..`; o engine determina sozinho qual backup base usar, abordagem que ignora o cenário de falha mais provável na prática.",
         ],
         "choices_en": [
             "Restore a base physical backup (`pg_basebackup` or snapshot) and replay transaction logs (WAL in Postgres, binlog in MySQL) to the desired LSN/timestamp, usually stopping just before the incident.",
@@ -1901,10 +1901,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Trade-off entre replicação síncrona e assíncrona:",
         "statement_en": "Trade-off between synchronous and asynchronous replication:",
         "choices": [
-            "Síncrona é mais rápida pois não espera réplicas; assíncrona obriga o primário a aguardar todas as confirmações antes de retornar ao cliente, prática que gera falso senso de segurança no time, atalho que funciona hoje mas complica a próxima migração, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Síncrona é mais rápida pois não espera réplicas; assíncrona obriga o primário a aguardar todas as confirmações antes de retornar ao cliente.",
             "Síncrona implica em RTO=0 e assíncrona em RTO infinito; o conceito não tem relação direta com perda de dados, decisão que cria dívida técnica silenciosa, sem gerar erro imediato, atalho que funciona hoje mas complica a próxima migração, comportamento que gera alerta falso ou silencia alerta real, dependendo do caso.",
             "Síncrona: o commit no primário só retorna ao cliente após a réplica ter persistido a transação, garantindo RPO próximo de zero à custa de latência adicional. Assíncrona: commit retorna imediatamente, com chance de perda das últimas transações se o primário falhar.",
-            "Síncrona requer quorum de 2/3 das réplicas; assíncrona aceita réplica única, mas exige que o primário esteja na mesma região, suposição que só vale em ambiente de desenvolvimento, não em produção, abordagem que resolve o sintoma, não a causa raiz do problema, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.",
+            "Síncrona requer quorum de 2/3 das réplicas; assíncrona aceita réplica única, mas exige que o primário esteja na mesma região, suposição que só vale em ambiente de desenvolvimento, não em produção, abordagem que resolve o sintoma, não a causa raiz do problema, decisão que cria dívida técnica silenciosa.",
         ],
         "choices_en": [
             "Synchronous is faster because it does not wait for replicas; asynchronous forces the primary to await all confirmations before returning to the client, a practice that gives the team a false sense of safety, a shortcut that works today but complicates the next migration, an assumption that rarely holds outside a controlled lab environment.",
@@ -1922,10 +1922,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Como depurar um processo travado em syscall sem perder evidência?",
         "statement_en": "How do you debug a process stuck in a syscall without losing evidence?",
         "choices": [
-            "Executar `kill -9 <pid>` imediatamente para liberar recursos; análise pode ser feita posteriormente nos logs do journal, prática que passa despercebida até uma auditoria de segurança, decisão que parece segura até o primeiro teste de penetração real.",
+            "Executar `kill -9 <pid>` imediatamente para liberar recursos; análise pode ser feita posteriormente nos logs do journal.",
             "Inspeção não-destrutiva primeiro: `cat /proc/<pid>/stack` (kernel stack), `cat /proc/<pid>/wchan`, `strace -p <pid>` (syscalls em curso), `perf record -p <pid>` para profiling e logs do serviço; matar (`kill -9`) só após coletar evidências.",
-            "Reiniciar o host (`reboot`) é a forma mais segura, pois preserva vários logs e libera recursos sem risco de corrupção, abordagem que funciona bem até o primeiro pico de carga real, comportamento que confunde quem está debugando meses depois.",
-            "Só rodar `dmesg | tail -50` para ver mensagens do kernel; processos travados em syscall geralmente deixam rastro no ring buffer, prática que troca previsibilidade por economia de esforço imediato, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.",
+            "Reiniciar o host (`reboot`) é a forma mais segura, pois preserva vários logs e libera recursos sem risco de corrupção, abordagem que funciona bem até o primeiro pico de carga real.",
+            "Só rodar `dmesg | tail -50` para ver mensagens do kernel; processos travados em syscall geralmente deixam rastro no ring buffer, prática que troca previsibilidade por economia de esforço imediato, decisão que funciona no papel.",
         ],
         "choices_en": [
             "Run `kill -9 <pid>` immediately to free resources; analysis can be done later in journal logs, a practice that goes unnoticed until a security audit, a decision that looks safe until the first real penetration test.",
@@ -1942,10 +1942,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "Diferença entre ulimit e cgroups:",
         "statement_en": "Difference between ulimit and cgroups:",
         "choices": [
-            "cgroups limitam recursos por sessão de shell; ulimit controla grupos de processos em /sys/fs/cgroup, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
-            "ulimit foi substituído por namespaces no kernel moderno, então só cgroups fazem controle de recursos, prática ainda comum em sistema legado que raramente é atualizado.",
+            "cgroups limitam recursos por sessão de shell; ulimit controla grupos de processos em /sys/fs/cgroup.",
+            "ulimit foi substituído por namespaces no kernel moderno, então só cgroups fazem controle de recursos.",
             "ulimit aplica rlimits por processo/sessão; cgroups aplicam limites e contabilidade por grupo (CPU, memória, IO, PIDs).",
-            "ulimit e cgroups só funcionam com SELinux habilitado, caso contrário os limites viram só aviso, comportamento que só é notado quando alguém audita os logs depois.",
+            "ulimit e cgroups só funcionam com SELinux habilitado, caso contrário os limites viram só aviso.",
         ],
         "choices_en": [
             "cgroups limit resources per shell session; ulimit controls process groups under /sys/fs/cgroup, an incorrect assumption about how the system really behaves under stress.",
@@ -1963,9 +1963,9 @@ PLENO_QUESTIONS: list[dict] = [
         "statement_en": "How do you configure core dump collection on production Linux?",
         "choices": [
             "Configurar `kernel.core_pattern` (ex.: pipe para `systemd-coredump`), aumentar `ulimit -c unlimited` para o serviço, garantir espaço em disco adequado e armazenar/copiar os dumps fora do host (S3, NFS) para análise com `gdb`/`crash`.",
-            "Habilitar `kernel.printk=8 8 8 8` e ler core dumps via `dmesg`; o kernel inclui o estado do processo nas mensagens em modo debug, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real, comportamento que só vira prioridade depois que já causou prejuízo.",
-            "Só configurar `ulimit -c unlimited` é suficiente; o kernel grava o dump em `/tmp` por padrão e o `journald` o coleta automaticamente, decisão que parece razoável isolada, mas quebra a arquitetura no conjunto, comportamento que só some quando alguém finalmente lê a documentação.",
-            "Só reiniciar o serviço com `systemctl restart` ativa o coletor de core dumps; sem reinício, o kernel ignora `SIGSEGV`, atalho que troca segurança por conveniência de curto prazo, atalho que troca segurança por conveniência de curto prazo.",
+            "Habilitar `kernel.printk=8 8 8 8` e ler core dumps via `dmesg`; o kernel inclui o estado do processo nas mensagens em modo debug, decisão que funciona no papel.",
+            "Só configurar `ulimit -c unlimited` é suficiente; o kernel grava o dump em `/tmp` por padrão e o `journald` o coleta automaticamente, decisão que parece razoável isolada.",
+            "Só reiniciar o serviço com `systemctl restart` ativa o coletor de core dumps; sem reinício, o kernel ignora `SIGSEGV`, atalho que troca segurança por conveniência de curto prazo.",
         ],
         "choices_en": [
             "Configure `kernel.core_pattern` (e.g. pipe to `systemd-coredump`), raise `ulimit -c unlimited` for the service, ensure adequate disk space, and store/copy dumps off-host (S3, NFS) for analysis with `gdb`/`crash`.",
@@ -1984,8 +1984,8 @@ PLENO_QUESTIONS: list[dict] = [
         "choices": [
             "Captura logs estruturados (campos `_PID`, `_UID`, `_SYSTEMD_UNIT` etc.) de unidades systemd, kernel e syslog tradicional; consultados via `journalctl` com filtros, persistidos em `/var/log/journal` quando habilitado.",
             "Daemon que recebe logs via syslog UDP/TCP e os encaminha para arquivos por facility/severity; substitui completamente o `systemd-journald` em distros recentes, prática que gera falso senso de segurança no time, erro típico de configuração feita às pressas, sem revisão posterior.",
-            "Buffer circular do kernel acessado via `dmesg`; contém só mensagens do kernel e não captura logs de aplicações, suposição que raramente se sustenta fora do ambiente controlado de laboratório, atalho que troca segurança por conveniência de curto prazo.",
-            "Mecanismo do systemd que substitui o `cron` para agendamento de tarefas e gera logs de execução em `/var/log/syslog`, decisão que cria dívida técnica silenciosa, sem gerar erro imediato, que só aparece como problema depois que o sistema já está em produção.",
+            "Buffer circular do kernel acessado via `dmesg`; contém só mensagens do kernel e não captura logs de aplicações, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Mecanismo do systemd que substitui o `cron` para agendamento de tarefas e gera logs de execução em `/var/log/syslog`, decisão que cria dívida técnica silenciosa.",
         ],
         "choices_en": [
             "It captures structured logs (fields `_PID`, `_UID`, `_SYSTEMD_UNIT`, etc.) from systemd units, kernel, and traditional syslog; queried via `journalctl` with filters, persisted under `/var/log/journal` when enabled.",
@@ -2002,10 +2002,10 @@ PLENO_QUESTIONS: list[dict] = [
         "statement": "O que é o OOM killer do kernel Linux?",
         "statement_en": "What is the Linux kernel OOM killer?",
         "choices": [
-            "Encerra vários processos do usuário ofensor para garantir que a memória seja liberada de uma vez; não há seleção individual, comportamento que só some quando alguém finalmente lê a documentação, resultado típico de copiar configuração de outro projeto sem adaptar.",
+            "Encerra vários processos do usuário ofensor para garantir que a memória seja liberada de uma vez; não há seleção individual, comportamento que só some quando alguém finalmente lê a documentação.",
             "Mecanismo do kernel acionado quando memória + swap se esgotam; calcula um `oom_score` por processo (consumo, prioridade, ajustes via `oom_score_adj`) e mata o de maior score, liberando memória; configurável também por cgroup memory (memcg OOM).",
-            "Funciona só em containers porque depende do `cgroup memory`; em hosts puros sem cgroups, o kernel só faz swap até travar, suposição que raramente se sustenta fora do ambiente controlado de laboratório, comportamento que só é notado quando alguém audita os logs depois.",
-            "Provoca `kernel panic` para forçar reinício automático e liberar a memória; é desabilitado por padrão em produção via `vm.panic_on_oom=0`, suposição incorreta sobre como o sistema realmente se comporta sob estresse, suposição que só se sustenta enquanto o time é pequeno.",
+            "Funciona só em containers porque depende do `cgroup memory`; em hosts puros sem cgroups, o kernel só faz swap até travar, suposição que raramente se sustenta fora do ambiente controlado de laboratório.",
+            "Provoca `kernel panic` para forçar reinício automático e liberar a memória; é desabilitado por padrão em produção via `vm.panic_on_oom=0`, suposição incorreta sobre como o sistema realmente se comporta sob estresse.",
         ],
         "choices_en": [
             "It terminates many processes of the offending user to free memory at once; there is no individual selection, behavior that only goes away when someone finally reads the docs, a typical result of copying config from another project without adapting it.",
