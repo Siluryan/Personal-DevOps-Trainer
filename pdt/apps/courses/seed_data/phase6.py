@@ -2680,7 +2680,7 @@ code 65 would require running a real subprocess on every test.</p>
                   correct_en="So pipelines can capture only the result (stdout), while diagnostics go to stderr.",
                   wrong_en=[
                             "It's purely an aesthetic organization choice, with no real impact on CLI use, still common in rarely updated legacy systems.",
-                            "The stderr channel tends to be written considerably faster than stdout, a typical rushed-configuration error without later review.",
+                            "The stderr channel tends to be written considerably faster than stdout.",
                             "By default stdout cannot correctly display UTF-8-encoded characters, a behavior that only goes away when someone finally reads the docs.",
                         ],
                   explanation_en="POSIX convention. Allows `my-cli | jq ...` without mixing in logs."),
@@ -2693,7 +2693,7 @@ code 65 would require running a real subprocess on every test.</p>
                   correct_en="The file may not be closed if GC is slow; on long-lived servers that leaks descriptors.",
                   wrong_en=[
                             "Writing it that way usually causes a syntax error already when reading the code, an assumption that holds only until the first network or hardware surprise.",
-                            "That direct form tends to run visibly slower than using a context manager, a typical rushed-configuration error without later review.",
+                            "That direct form tends to run visibly slower than using a context manager.",
                             "This problem usually only appears on machines specifically running Windows, an approach that works fine until the first real load spike.",
                         ],
                   explanation_en="Without `with`, we rely on GC calling __del__ to close the file. In CPython it almost always works, but it isn't portable or guaranteed."),
@@ -5304,7 +5304,7 @@ e2e for "does the CLI exit 0 on a happy path in CI".</p>
                   wrong_en=[
                             "Yes, as long as the code in question is considered pure, with no side effects at all — something that passes code review when nobody looks carefully.",
                             "It only actually guarantees that starting specifically with Python version 3.12 — a decision that creates silent technical debt without an immediate error.",
-                            "Yes, 100% coverage guarantees the code is free of any kind of bug — a typical rushed-configuration error without later review.",
+                            "Yes, 100% coverage guarantees the code is free of any kind of bug.",
                         ],
                   explanation_en="Coverage is a presence metric, not a quality metric. Edge cases (None, empty lists, extreme values) still need to be exercised."),
                 q("Para testar código async com pytest, instale:",
