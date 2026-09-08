@@ -43,13 +43,22 @@ _TARGET_LONGEST_WINS = 0.30
 _TARGET_SHORTEST_WINS = 0.30
 
 
-def _pairs(phase: dict) -> list:
+def _pairs(phase: dict, lang: str = "pt") -> list:
+    """Pares (correta, distratores) de uma fase, em português ou inglês.
+
+    O inglês entra porque a plataforma tem toggle de idioma e o aluno que
+    estuda em inglês lê os campos `text_en`. Medir só o português já deixou
+    passar um caso real: o PT foi limpo das caudas de enchimento e o EN
+    seguiu com elas, mantendo o vazamento que se dava por corrigido.
+    """
+    key = "text" if lang == "pt" else "text_en"
     pairs = []
     for topic in phase["topics"]:
         for q in topic.get("questions", []):
-            correct = next(c["text"] for c in q["choices"] if c["correct"])
-            wrong = [c["text"] for c in q["choices"] if not c["correct"]]
-            pairs.append((correct, wrong))
+            correct = next((c.get(key) for c in q["choices"] if c["correct"]), None)
+            wrong = [c.get(key) for c in q["choices"] if not c["correct"]]
+            if correct and all(wrong):
+                pairs.append((correct, wrong))
     return pairs
 
 
@@ -64,14 +73,15 @@ def _labeled_pairs(phase: dict, phase_num: int) -> list:
 
 
 class TestVazamentoAgregadoPorFase:
+    @pytest.mark.parametrize("lang", ["pt", "en"])
     @pytest.mark.parametrize("phase_num", [1, 2, 3, 4, 5, 6])
-    def test_taxa_de_acerto_marcando_sempre_a_mais_longa(self, phase_num):
-        pairs = _pairs(PHASES[phase_num - 1])
+    def test_taxa_de_acerto_marcando_sempre_a_mais_longa(self, phase_num, lang):
+        pairs = _pairs(PHASES[phase_num - 1], lang)
         taxa = longest_wins_rate(pairs)
         baseline = _BASELINE_LONGEST_WINS[phase_num]
         if taxa > _TARGET_LONGEST_WINS:
             pytest.xfail(
-                f"Onda 3: fase {phase_num} ainda não reescrita "
+                f"Onda 3: fase {phase_num} [{lang}] ainda não reescrita "
                 f"({taxa * 100:.1f}% marcando sempre a mais longa; "
                 f"alvo: ≤ {_TARGET_LONGEST_WINS * 100:.0f}%; "
                 f"medição anterior: {baseline * 100:.0f}%)"
@@ -82,22 +92,24 @@ class TestVazamentoAgregadoPorFase:
             + "\n".join(worst_offenders_by_length_gap(_labeled_pairs(PHASES[phase_num - 1], phase_num)))
         )
 
+    @pytest.mark.parametrize("lang", ["pt", "en"])
     @pytest.mark.parametrize("phase_num", [1, 2, 3, 4, 5, 6])
-    def test_taxa_de_acerto_marcando_sempre_a_mais_curta(self, phase_num):
-        pairs = _pairs(PHASES[phase_num - 1])
+    def test_taxa_de_acerto_marcando_sempre_a_mais_curta(self, phase_num, lang):
+        pairs = _pairs(PHASES[phase_num - 1], lang)
         taxa = shortest_wins_rate(pairs)
         if taxa > _TARGET_SHORTEST_WINS:
             pytest.xfail(
-                f"Viés invertido: fase {phase_num} com {taxa * 100:.1f}% "
+                f"Viés invertido: fase {phase_num} [{lang}] com {taxa * 100:.1f}% "
                 f"marcando sempre a mais curta (alvo: ≤ "
                 f"{_TARGET_SHORTEST_WINS * 100:.0f}%; baseline aleatório: 25%)"
             )
-        assert taxa <= _TARGET_SHORTEST_WINS, f"Fase {phase_num}: {taxa * 100:.1f}%"
+        assert taxa <= _TARGET_SHORTEST_WINS, f"Fase {phase_num} [{lang}]: {taxa * 100:.1f}%"
 
+    @pytest.mark.parametrize("lang", ["pt", "en"])
     @pytest.mark.parametrize("phase_num", [1, 2, 3, 4, 5, 6])
-    def test_absoluto_nao_vaza_so_no_distrator(self, phase_num):
+    def test_absoluto_nao_vaza_so_no_distrator(self, phase_num, lang):
         phase = PHASES[phase_num - 1]
-        pairs = _pairs(phase)
+        pairs = _pairs(phase, lang)
         taxa = absolute_leak_rate(pairs)
         if taxa > 0.0:
             ofensores = [

@@ -22,6 +22,7 @@ from apps.core.question_quality import (
     absolute_leak_rate,
     absolute_word_leaks,
     longest_wins_rate,
+    shortest_wins_rate,
     worst_offenders_by_length_gap,
 )
 from apps.interviews.seed_data import ALL_INTERVIEW_QUESTIONS
@@ -456,46 +457,69 @@ class TestQualityHelpers:
 # para um banco pequeno já corrigido com o mesmo par de heurísticas.
 
 
-def _longest_pairs(level: str) -> list:
-    questions = ALL_INTERVIEW_QUESTIONS[level]
+TARGET = 0.30
+LANGS = ("pt", "en")
+
+
+def _longest_pairs(level: str, lang: str = "pt") -> list:
+    """Pares (correta, distratores) de um nível, em português ou inglês.
+
+    O inglês entra aqui porque a plataforma tem toggle de idioma e o aluno
+    que estuda em inglês lê `choices_en`. Medir só o português já deixou
+    passar um caso real: o PT foi limpo das caudas de enchimento e o EN
+    seguiu com elas, mantendo lá o vazamento que se dava por corrigido.
+    """
     pairs = []
-    for q in questions:
-        correct = q["choices"][q["correct_index"]]
-        wrong = [c for j, c in enumerate(q["choices"]) if j != q["correct_index"]]
-        pairs.append((correct, wrong))
+    for q in ALL_INTERVIEW_QUESTIONS[level]:
+        choices = q["choices"] if lang == "pt" else q.get("choices_en")
+        if not choices or len(choices) != len(q["choices"]):
+            continue
+        i = q["correct_index"]
+        pairs.append((choices[i], [c for j, c in enumerate(choices) if j != i]))
     return pairs
 
 
-def _longest_labeled_pairs(level: str) -> list:
-    return [(f"{level}#{i}", pair) for i, pair in enumerate(_longest_pairs(level))]
+def _longest_labeled_pairs(level: str, lang: str = "pt") -> list:
+    return [(f"{level}#{i}", pair) for i, pair in enumerate(_longest_pairs(level, lang))]
 
 
 class TestVazamentoAgregado:
-    """Aqui até por nível: cada um reflete o esforço de reescrita já feito."""
+    """Por nível e por idioma: cada um reflete a reescrita já feita.
 
-    @pytest.mark.xfail(
-        reason="Onda 3: reescrita de distratores do júnior ainda em andamento "
-        "(82% de acerto marcando sempre a mais longa; alvo: ≤ 30%)",
-        strict=False,
-    )
-    def test_junior_taxa_de_acerto_marcando_sempre_a_mais_longa(self):
-        assert longest_wins_rate(_longest_pairs("junior")) <= 0.30
+    As DUAS direções são checadas de propósito. Corrigir só uma empurra o
+    viés para a outra, e isso já aconteceu duas vezes neste projeto: alongar
+    os distratores derrubou "marcar a mais longa" de 90,2% para 3,5% e levou
+    "marcar a mais curta" a 77,2%; depois, remover o enchimento das
+    entrevistas derrubou "mais curta" de 87% para 1% e levou "mais longa" a
+    53%. Para quem chuta pela forma, tanto faz de que lado está o desnível.
+    """
 
-    @pytest.mark.xfail(
-        reason="Onda 3: reescrita de distratores do pleno ainda em andamento "
-        "(95% de acerto marcando sempre a mais longa; alvo: ≤ 30%)",
-        strict=False,
-    )
-    def test_pleno_taxa_de_acerto_marcando_sempre_a_mais_longa(self):
-        assert longest_wins_rate(_longest_pairs("pleno")) <= 0.30
+    @pytest.mark.parametrize("level", ["junior", "pleno", "senior"])
+    @pytest.mark.parametrize("lang", LANGS)
+    def test_taxa_de_acerto_marcando_sempre_a_mais_longa(self, level, lang):
+        pairs = _longest_pairs(level, lang)
+        taxa = longest_wins_rate(pairs)
+        if taxa > TARGET:
+            pytest.xfail(
+                f"{level} [{lang}]: {taxa * 100:.1f}% marcando sempre a mais longa "
+                f"(alvo ≤ {TARGET * 100:.0f}%; baseline aleatório 25%)"
+            )
+        assert taxa <= TARGET, (
+            f"{level} [{lang}] regrediu: {taxa * 100:.1f}%.\n"
+            + "\n".join(worst_offenders_by_length_gap(_longest_labeled_pairs(level, lang)))
+        )
 
-    @pytest.mark.xfail(
-        reason="Onda 3: reescrita de distratores do sênior ainda em andamento "
-        "(98% de acerto marcando sempre a mais longa; alvo: ≤ 30%)",
-        strict=False,
-    )
-    def test_senior_taxa_de_acerto_marcando_sempre_a_mais_longa(self):
-        assert longest_wins_rate(_longest_pairs("senior")) <= 0.30
+    @pytest.mark.parametrize("level", ["junior", "pleno", "senior"])
+    @pytest.mark.parametrize("lang", LANGS)
+    def test_taxa_de_acerto_marcando_sempre_a_mais_curta(self, level, lang):
+        pairs = _longest_pairs(level, lang)
+        taxa = shortest_wins_rate(pairs)
+        if taxa > TARGET:
+            pytest.xfail(
+                f"{level} [{lang}]: {taxa * 100:.1f}% marcando sempre a mais curta "
+                f"(alvo ≤ {TARGET * 100:.0f}%; baseline aleatório 25%)"
+            )
+        assert taxa <= TARGET, f"{level} [{lang}] regrediu: {taxa * 100:.1f}%"
 
     @pytest.mark.parametrize("level", ["junior", "pleno", "senior"])
     @pytest.mark.xfail(
