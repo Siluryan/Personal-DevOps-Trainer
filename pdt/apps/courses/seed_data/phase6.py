@@ -617,7 +617,7 @@ descriptors until the process crashes.</li>
                   "`Optional[X]` still works but `X | None` is preferred."),
                 q("Qual a diferença entre `is` e `==`?",
                   "`is` compara identidade (mesmo objeto na memória); `==` compara valor.",
-                  ["O operador `==` costuma ser bem mais lento de executar do que o `is` na prática.", "Os dois operadores fazem exatamente a mesma comparação, sem diferença alguma entre eles.", "O operador `is` só funciona de forma correta quando comparando números inteiros pequenos."],
+                  ["`==` é mais lento que `is`.", "Os dois comparam a mesma coisa.", "`is` só vale para inteiros pequenos."],
                   "Use `is` para comparar com `None`, `True`, `False`. Para igualdade "
                   "de valor use `==`.",
                   statement_en="What's the difference between `is` and `==`?",
@@ -1354,7 +1354,7 @@ materialize the entire file at once before processing anything.</p>"""
                   explanation_en="Performance is generally better than for+append. The risk is cognitive: a 4-line comprehension with 2 ifs is worse than a loop."),
                 q("`{**a, **b}` quando há chaves repetidas...",
                   "Mantém o valor do último dict (b sobrescreve a).",
-                  ["Soma automaticamente os valores das duas chaves repetidas.", "Levanta uma exceção KeyError assim que encontra a repetição.", "Mantém o valor do primeiro dict, ignorando o segundo (a vence)."],
+                  ["Soma os valores repetidos.", "Levanta KeyError na repetição.", "Mantém o valor do primeiro (a vence)."],
                   "Padrão merge: o último ganha. Idiomático para juntar config default + "
                   "override do usuário.",
                   statement_en="`{**a, **b}` when there are duplicate keys...",
@@ -1957,7 +1957,7 @@ exceptions, without one masking the other.</p>
             "questions": [
                 q("Qual destes deveria SEMPRE ser definido em uma classe customizada?",
                   "__repr__",
-                  ["__init__ sobrescrito e vazio", "__del__ implementado manualmente", "__str__ isolado, sem __repr__"],
+                  ["__init__ vazio", "__del__", "__str__ sozinho"],
                   "__repr__ é o que aparece em logs e debugger. Sem ele, depurar erros "
                   "vira advinhação. __del__ é raramente útil.",
                   statement_en="Which of these should ALWAYS be defined on a custom class?",
@@ -1998,7 +1998,7 @@ exceptions, without one masking the other.</p>
                   explanation_en="BaseException is the top. Applications should catch Exception or subclasses. Catching BaseException can ignore Ctrl+C and sys.exit()."),
                 q("`raise NewError(\"...\") from old` faz o quê?",
                   "Lança a nova exceção encadeando a original (preserva traceback).",
-                  ["Substitui a exceção original de forma silenciosa, sem deixar algum registro dela.", "Causa um erro de sintaxe assim que o interpretador tenta ler esse trecho de código.", "Lança as duas exceções ao mesmo tempo, rodando de forma paralela uma à outra."],
+                  ["Substitui a original em silêncio.", "Causa SyntaxError na leitura.", "Lança as duas em paralelo."],
                   "O `from` deixa explícito o encadeamento, o traceback mostra 'The "
                   "above exception was the direct cause of...' facilitando debugging.",
                   statement_en="What does `raise NewError(\"...\") from old` do?",
@@ -2054,7 +2054,7 @@ exceptions, without one masking the other.</p>
                   explanation_en="The function has setup before the yield and cleanup after. Equivalent to a class with __enter__/__exit__."),
                 q("Qual a diferença entre `except Exception as e` e `except:` (sem tipo)?",
                   "`except:` captura também BaseException (KeyboardInterrupt, SystemExit), o que é perigoso.",
-                  ["Só essa segunda forma, sem tipo, passou a funcionar a partir da versão 3.10, prática ainda comum em sistema legado que raramente é atualizado.", "As duas formas se comportam de maneira idêntica, sem diferença prática relevante, prática que só aparece como erro grave durante um incidente real.", "A forma `except:` costuma rodar visivelmente mais rápido do que `except Exception`, que só aparece como problema depois que o sistema já está em produção."],
+                  ["Só essa segunda forma, sem tipo, passou a funcionar a partir da versão 3.10.", "As duas formas se comportam de maneira idêntica, sem diferença prática relevante.", "A forma `except:` costuma rodar visivelmente mais rápido do que `except Exception`."],
                   "Bare `except:` é proibido pelo PEP 8. Sempre use `except Exception` "
                   "no mínimo.",
                   statement_en="What's the difference between `except Exception as e` and `except:` (no type)?",
@@ -2082,7 +2082,7 @@ exceptions, without one masking the other.</p>
                   explanation_en="Standard pattern to reuse the parent's initialization. With multiple inheritance, super() follows the MRO (Method Resolution Order)."),
                 q("Para um pedaço de código que SEMPRE deve rodar (limpeza), use:",
                   "finally:",
-                  ["except Exception: (bloco genérico)", "else: (só roda sem exceção)", "pass (dentro do except)"],
+                  ["except Exception:", "else:", "pass no except"],
                   "`finally:` executa com ou sem exceção, com ou sem `return`. É o "
                   "lugar de fechar conexões, soltar locks, remover arquivos temporários.",
                   statement_en="For a piece of code that MUST always run (cleanup), use:",
@@ -2649,7 +2649,7 @@ code 65 would require running a real subprocess on every test.</p>
                   explanation_en="yaml.load accepts `!!python/object` tags that instantiate classes — an RCE vector. Always use `yaml.safe_load`."),
                 q("Para parsear pyproject.toml na stdlib (3.11+), use:",
                   "tomllib",
-                  ["tomli (pacote externo via pip)", "configparser (formato .ini)", "json (formato incompatível)"],
+                  ["tomli (via pip)", "configparser", "json"],
                   "tomllib é a stdlib a partir do 3.11. Para versões anteriores use "
                   "tomli (mesma API).",
                   statement_en="To parse pyproject.toml with the stdlib (3.11+), use:",
@@ -2674,7 +2674,7 @@ code 65 would require running a real subprocess on every test.</p>
                   explanation_en="Without the flag → False; with the flag → True. More natural than --verbose=true."),
                 q("Por que separar saída em stdout vs stderr em um CLI?",
                   "Para que pipelines possam capturar só o resultado (stdout), enquanto diagnóstico vai para stderr.",
-                  ["É puramente uma escolha estética de organização, sem qualquer impacto real no uso do CLI, prática ainda comum em sistema legado que raramente é atualizado.", "O canal stderr costuma ser escrito de forma consideravelmente mais rápida que o stdout, erro típico de configuração feita às pressas, sem revisão posterior.", "O stdout, por padrão, não consegue exibir corretamente caracteres codificados em UTF-8, comportamento que só some quando alguém finalmente lê a documentação."],
+                  ["É puramente uma escolha estética de organização, sem qualquer impacto real no uso do CLI.", "O canal stderr costuma ser escrito de forma consideravelmente mais rápida que o stdout.", "O stdout, por padrão, não consegue exibir corretamente caracteres codificados em UTF-8."],
                   "Convenção POSIX. Permite `meu-cli | jq ...` sem misturar logs.",
                   statement_en="Why separate output into stdout vs stderr in a CLI?",
                   correct_en="So pipelines can capture only the result (stdout), while diagnostics go to stderr.",
@@ -2686,7 +2686,7 @@ code 65 would require running a real subprocess on every test.</p>
                   explanation_en="POSIX convention. Allows `my-cli | jq ...` without mixing in logs."),
                 q("Por que evitar `open(p).read()` direto, sem context manager?",
                   "O arquivo pode não ser fechado se o GC demorar, em servidores de longa vida vaza descritores.",
-                  ["Escrever direto assim costuma causar um erro de sintaxe já na leitura do código, suposição que vale só até o primeiro imprevisto de rede ou hardware.", "Essa forma direta costuma rodar visivelmente mais devagar que usar um context manager, erro típico de configuração feita às pressas, sem revisão posterior.", "Esse problema só costuma aparecer em máquinas rodando especificamente o Windows, abordagem que funciona bem até o primeiro pico de carga real."],
+                  ["Escrever direto assim costuma causar um erro de sintaxe já na leitura do código.", "Essa forma direta costuma rodar visivelmente mais devagar que usar um context manager.", "Esse problema só costuma aparecer em máquinas rodando especificamente o Windows."],
                   "Sem `with`, dependemos do GC para chamar __del__ que fecha o arquivo. "
                   "Em CPython funciona quase sempre, mas não é portável e em PyPy demora.",
                   statement_en="Why avoid `open(p).read()` directly, without a context manager?",
@@ -3274,7 +3274,7 @@ compares in constant time, regardless of how many characters match.</p>
             "questions": [
                 q("Por que `requests.get(url)` sem timeout é perigoso em produção?",
                   "A chamada pode travar indefinidamente se o servidor não responder.",
-                  ["A chamada fica só um pouco mais lenta do que fazer o mesmo request com timeout.", "A chamada deixa de funcionar por completo quando a URL usa o protocolo HTTPS.", "Isso passa a causar um erro de sintaxe a partir especificamente da versão 3.11."],
+                  ["Fica um pouco mais lenta.", "Para de funcionar em HTTPS.", "Vira SyntaxError na 3.11."],
                   "Sem timeout, uma conexão problemática pode travar o programa para "
                   "sempre. Sempre defina (connect_timeout, read_timeout).",
                   statement_en="Why is `requests.get(url)` without a timeout dangerous in production?",
@@ -3313,7 +3313,7 @@ compares in constant time, regardless of how many characters match.</p>
                   explanation_en="Retry with exponential backoff is the standard. A manual loop without jitter can cause a thundering herd."),
                 q("Por que usar `requests.Session` em vez de chamadas avulsas?",
                   "Reusa conexões TCP/TLS (connection pooling), reduzindo latência.",
-                  ["Mantém os cookies recebidos guardados por um período fixo de exatamente 24 horas.", "Passou a ser uma exigência obrigatória da biblioteca a partir da versão 3.10.", "Permite que as requisições continuem sendo feitas mesmo sem conexão de rede."],
+                  ["Guarda cookies por 24 horas.", "Virou exigência na 3.10.", "Funciona offline, sem rede."],
                   "Em scripts com várias chamadas ao mesmo host, Session evita "
                   "handshake TLS repetido.",
                   statement_en="Why use `requests.Session` instead of one-off calls?",
@@ -3339,7 +3339,7 @@ compares in constant time, regardless of how many characters match.</p>
                   explanation_en="compare_digest is constant-time: it doesn't leak information via timing. `==` stops comparing at the first differing byte."),
                 q("Em paginação por Link header (estilo GitHub), o atributo `r.links['next']['url']` retorna...",
                   "A URL completa da próxima página.",
-                  ["Retorna só o número correspondente à próxima página.", "Retorna um booleano indicando só se existe próxima página.", "Retorna o número total de páginas disponíveis na resposta."],
+                  ["O número da próxima página.", "Um booleano de 'tem próxima'.", "O total de páginas."],
                   "requests parseia o Link header automaticamente em dict, basta "
                   "checar 'next'.",
                   statement_en="In Link-header pagination (GitHub style), `r.links['next']['url']` returns...",
@@ -3390,7 +3390,7 @@ compares in constant time, regardless of how many characters match.</p>
                   explanation_en="RFC 6750 standard. Always the explicit scheme before the token."),
                 q("Vale a pena usar `r.json()` se o status for 500?",
                   "Não, chame raise_for_status() primeiro; senão pode parsear body de erro como dado válido.",
-                  ["Vale a pena fazer isso em qualquer situação, mesmo sem checar o status antes, resultado típico de copiar configuração de outro projeto sem adaptar.", "Só vale a pena fazer isso quando a aplicação já está rodando em produção, atalho que parece seguro isolado, mas quebra quando combinado com outros sistemas.", "Só vale a pena fazer isso quando a chamada acontece dentro da rede interna, suposição que só se sustenta enquanto o time é pequeno."],
+                  ["Vale a pena fazer isso em qualquer situação, mesmo sem checar o status antes.", "Só vale a pena fazer isso quando a aplicação já está rodando em produção.", "Só vale a pena fazer isso quando a chamada acontece dentro da rede interna."],
                   "5xx geralmente vêm com body em texto/HTML, parsear como JSON gera "
                   "erro confuso. raise_for_status interrompe antes.",
                   statement_en="Is it worth using `r.json()` if the status is 500?",
@@ -3947,7 +3947,7 @@ seconds — especially anything that writes state or holds locks.</li>
             "questions": [
                 q("Por que `subprocess.run([\"rm\", path])` é mais seguro que `os.system(f\"rm {path}\")`?",
                   "Argumentos em lista são passados direto ao processo, sem interpretação de shell, evitando injeção.",
-                  ["É só uma forma um pouco mais rápida de rodar o mesmo comando, só isso, decisão que parece inofensiva isolada, mas se acumula com o tempo.", "O `subprocess` geralmente captura a saída do comando automaticamente por padrão, prática que troca previsibilidade por economia de esforço imediato.", "A função `os.system` simplesmente deixou de existir a partir do Python 3, suposição que só vale em ambiente de desenvolvimento, não em produção."],
+                  ["É só uma forma um pouco mais rápida de rodar o mesmo comando, só isso.", "O `subprocess` geralmente captura a saída do comando automaticamente por padrão.", "A função `os.system` simplesmente deixou de existir a partir do Python 3."],
                   "Lista evita interpretação de espaços, `;`, `|`, `$()`. Vetor clássico "
                   "de injeção desaparece.",
                   statement_en="Why is `subprocess.run([\"rm\", path])` safer than `os.system(f\"rm {path}\")`?",
@@ -3960,7 +3960,7 @@ seconds — especially anything that writes state or holds locks.</li>
                   explanation_en="A list avoids interpretation of spaces, `;`, `|`, `$()`. The classic injection vector disappears."),
                 q("Para garantir que `subprocess.run` falhe se o exit code não for 0:",
                   "Passe `check=True`.",
-                  ["Verificar manualmente o valor de `result.returncode` depois de cada chamada.", "Não existe forma direta de fazer esse tipo de verificação.", "Configurar o parâmetro `stderr=PIPE` na chamada do subprocess."],
+                  ["Cheque `result.returncode`.", "Use `shell=True`.", "Passe `stderr=PIPE`."],
                   "check=True levanta CalledProcessError automaticamente. Manual também "
                   "funciona, mas é fácil esquecer.",
                   statement_en="To ensure `subprocess.run` fails if the exit code isn't 0:",
@@ -3986,7 +3986,7 @@ seconds — especially anything that writes state or holds locks.</li>
                   explanation_en="shell=True interprets shell metacharacters. If one comes from the user, it's RCE. Use an arg list or shlex.quote."),
                 q("Para mostrar saída de um processo longo enquanto ele roda, use:",
                   "subprocess.Popen com stdout=PIPE e iterar p.stdout linha a linha.",
-                  ["Chamar `subprocess.check_output`, que só retorna ao final.", "Usar `subprocess.run` com `capture_output`, que só retorna no fim da execução.", "Chamar `os.system`, que mostra a saída direto no terminal."],
+                  ["Chamar `subprocess.check_output`.", "Usar `subprocess.run` com `capture_output`.", "Chamar `os.system`, que mostra a saída direto no terminal."],
                   "run/check_output bloqueiam até o fim. Popen + iter dá streaming "
                   "em tempo real.",
                   statement_en="To show output from a long-running process while it runs, use:",
@@ -4025,7 +4025,7 @@ seconds — especially anything that writes state or holds locks.</li>
                   explanation_en="NamedTemporaryFile removes the file on leaving `with` (delete=True default). mktemp is race-condition vulnerable."),
                 q("`shutil.move(src, dst)` em FS diferentes...",
                   "Cai para copiar+remover (não é atômico).",
-                  ["Continua sendo uma operação atômica, independente do filesystem.", "Usa internamente um pipe para transferir os bytes do arquivo.", "Acaba falhando na maioria dos casos quando os filesystems são diferentes."],
+                  ["Segue atômico entre FS.", "Transfere via pipe interno.", "Falha entre FS distintos."],
                   "Em FS diferentes, copia e depois remove. Atômico só dentro do mesmo "
                   "FS via rename(2).",
                   statement_en="`shutil.move(src, dst)` across different filesystems...",
@@ -4051,7 +4051,7 @@ seconds — especially anything that writes state or holds locks.</li>
                   explanation_en="shutil.which returns the absolute path or None. Useful to check dependencies before calling them."),
                 q("`signal.signal(SIGTERM, handler)` é útil para...",
                   "Interceptar pedido de parada e fazer cleanup gracioso (fechar arquivos, drenar fila).",
-                  ["Aumentar manualmente a prioridade de agendamento desse processo no sistema, erro que só é percebido quando o time de operação já está lidando com o incidente.", "Forçar o reboot completo da máquina onde esse processo está rodando, decisão que parece inofensiva isolada, mas se acumula com o tempo.", "Detectar de forma automática erros de lógica dentro do próprio código do programa, comportamento que só é notado quando alguém audita os logs depois."],
+                  ["Aumentar manualmente a prioridade de agendamento desse processo no sistema.", "Forçar o reboot completo da máquina onde esse processo está rodando.", "Detectar de forma automática erros de lógica dentro do próprio código do programa."],
                   "Workers/daemons precisam disso para shutdown limpo. SIGKILL não pode "
                   "ser interceptado, só SIGTERM/SIGINT.",
                   statement_en="`signal.signal(SIGTERM, handler)` is useful to...",
@@ -4593,7 +4593,7 @@ must share, use <code>asyncio.Lock</code>.</p>
                   explanation_en="I/O-bound: threads help (GIL is released during I/O). Pool simplifies things. Multiprocessing would be costly due to pickle overhead."),
                 q("O GIL impede que threads ajudem em qual cenário?",
                   "Cálculos CPU-bound em Python puro.",
-                  ["A leitura de um arquivo grande feita em disco.", "Esperar a contagem de um timer chegar ao fim.", "Fazer chamadas de rede via HTTP para outro serviço."],
+                  ["Leitura de arquivo em disco.", "Esperar um timer terminar.", "Chamadas HTTP a outro serviço."],
                   "GIL serializa execução de bytecode. Para CPU-bound, use "
                   "multiprocessing ou libs C que liberam o GIL.",
                   statement_en="The GIL prevents threads from helping in which scenario?",
@@ -4673,7 +4673,7 @@ must share, use <code>asyncio.Lock</code>.</p>
                   explanation_en="Compound operations (count += 1) aren't atomic. Use Lock, Queue, or thread-safe structures."),
                 q("Para CPU-bound em Python puro, use:",
                   "ProcessPoolExecutor (multiprocessing).",
-                  ["Usar `ThreadPoolExecutor`, que ainda compartilha o mesmo GIL.", "Usar `asyncio` combinado com `gather` para paralelizar.", "Criar instâncias de `concurrent.futures.Future` diretamente."],
+                  ["`ThreadPoolExecutor` (mesmo GIL).", "`asyncio` com `gather`.", "`Future` instanciado à mão."],
                   "Processos contornam o GIL, usam todos os cores. Custo: serialização "
                   "via pickle entre processos.",
                   statement_en="For CPU-bound work in pure Python, use:",
@@ -4686,7 +4686,7 @@ must share, use <code>asyncio.Lock</code>.</p>
                   explanation_en="Processes bypass the GIL and use all cores. Cost: pickle serialization between processes."),
                 q("Em multiprocessing no Windows, o código que dispara workers DEVE estar dentro de:",
                   "if __name__ == '__main__':",
-                  ["try/except ao redor do disparo dos workers", "with usado como context manager qualquer", "async def no lugar de uma função comum"],
+                  ["try/except nos workers", "with como context manager", "async def na função"],
                   "Windows usa 'spawn' que re-executa o módulo no filho. Sem o guard, "
                   "o filho dispara workers de novo → fork bomb.",
                   statement_en="In multiprocessing on Windows, code that starts workers MUST be inside:",
@@ -4699,7 +4699,7 @@ must share, use <code>asyncio.Lock</code>.</p>
                   explanation_en="Windows uses 'spawn', which re-executes the module in the child. Without the guard, the child starts workers again → fork bomb."),
                 q("`asyncio.TaskGroup` (3.11+) tem qual vantagem sobre gather?",
                   "Cancelamento estruturado: se uma falhar, as outras são canceladas e erros vêm em ExceptionGroup.",
-                  ["É consideravelmente mais rápido de executar na prática do que o próprio gather, suposição incorreta sobre como o sistema realmente se comporta sob estresse.", "Funciona rodando diretamente dentro de threads separadas do sistema operacional, suposição que raramente se sustenta fora do ambiente controlado de laboratório.", "Substitui por completo a necessidade de usar um Semaphore em qualquer cenário, que só aparece como problema depois que o sistema já está em produção."],
+                  ["É consideravelmente mais rápido de executar na prática do que o próprio gather.", "Funciona rodando diretamente dentro de threads separadas do sistema operacional.", "Substitui por completo a necessidade de usar um Semaphore em qualquer cenário."],
                   "TaskGroup implementa structured concurrency, escopo explícito, "
                   "cleanup automático, erros agregados.",
                   statement_en="What advantage does `asyncio.TaskGroup` (3.11+) have over gather?",
@@ -5296,7 +5296,7 @@ e2e for "does the CLI exit 0 on a happy path in CI".</p>
                   explanation_en="monkeypatch undoes everything on teardown. Essential for testing env-based configs."),
                 q("Cobertura de 100% garante código sem bugs?",
                   "Não, só garante que cada linha foi executada, não que os casos de borda foram cobertos.",
-                  ["Sim, desde que o código em questão seja considerado puro, sem efeito colateral algum, algo que passa no code review quando ninguém olha com atenção.", "Só garante isso de fato a partir especificamente da versão 3.12 do Python, decisão que cria dívida técnica silenciosa, sem gerar erro imediato.", "Sim, cobertura de 100% garante que o código está livre de qualquer tipo de bug, erro típico de configuração feita às pressas, sem revisão posterior."],
+                  ["Sim, desde que o código em questão seja considerado puro, sem efeito colateral algum.", "Só garante isso de fato a partir especificamente da versão 3.12 do Python.", "Sim, cobertura de 100% garante que o código está livre de qualquer tipo de bug."],
                   "Cobertura é métrica de presença, não de qualidade. Casos de borda "
                   "(None, listas vazias, valores extremos) precisam ser explícitos.",
                   statement_en="Does 100% coverage guarantee bug-free code?",
@@ -5322,7 +5322,7 @@ e2e for "does the CLI exit 0 on a happy path in CI".</p>
                   explanation_en="pytest-asyncio is the standard plugin. Configure mode='auto' in pyproject.toml to avoid marking every test."),
                 q("Onde colocar fixtures que múltiplos arquivos de teste compartilham?",
                   "conftest.py no diretório de testes.",
-                  ["Num arquivo `fixtures.py` importado manualmente em cada teste.", "Dentro de um plugin externo instalado separadamente via pip.", "Duplicada dentro de cada arquivo de teste individualmente."],
+                  ["Em `fixtures.py` importado à mão.", "Num plugin externo via pip.", "Duplicada em cada teste."],
                   "conftest.py é detectado automaticamente. Útil para fixtures globais "
                   "(client HTTP fake, DB de teste, etc.).",
                   statement_en="Where should fixtures shared by multiple test files go?",
@@ -5968,7 +5968,7 @@ local checks. That baseline scales from a personal CLI to a team-shared library.
                   explanation_en="Wheel is the modern binary format (fast to install). sdist is the source. Both go to PyPI."),
                 q("Configuração centralizada no pyproject.toml ajuda a evitar:",
                   "Inconsistências entre dev e CI sobre versão de regras de lint, format e types.",
-                  ["Conflitos de import entre módulos que compartilham o mesmo nome no projeto, decisão que funciona no papel, mas não sobrevive ao primeiro incidente real.", "Deadlocks que costumam acontecer só depois que o código já está em produção, prática que gera falso senso de segurança no time.", "Falhas relacionadas à resolução de nomes de DNS durante o pipeline de CI, atalho que troca segurança por conveniência de curto prazo."],
+                  ["Conflitos de import entre módulos que compartilham o mesmo nome no projeto.", "Deadlocks que costumam acontecer só depois que o código já está em produção.", "Falhas relacionadas à resolução de nomes de DNS durante o pipeline de CI."],
                   "Tudo em um único arquivo versionado: dev e CI usam exatamente as "
                   "mesmas regras.",
                   statement_en="Centralized config in pyproject.toml helps avoid:",
@@ -6545,7 +6545,7 @@ applied with security and operability as first-class requirements.</p>
                   explanation_en="Classic pattern: try in-cluster (looks for /var/run/secrets/...); if not, use local kubeconfig. Same tool works in both places."),
                 q("Para um job batch que termina, expor métricas Prometheus como?",
                   "Empurrar para Pushgateway com push_to_gateway.",
-                  ["Simplesmente não é possível coletar métricas desse tipo de job.", "Salvar as métricas manualmente num arquivo `.prom` local.", "Iniciar um servidor HTTP que continua de pé mesmo após o job terminar."],
+                  ["Não dá para coletar do job.", "Salvar num `.prom` local.", "Subir HTTP que sobrevive ao job."],
                   "Pushgateway armazena temporariamente as métricas para Prometheus "
                   "scrape. É o padrão para jobs efêmeros.",
                   statement_en="For a batch job that finishes, how do you expose Prometheus metrics?",
@@ -6636,7 +6636,7 @@ applied with security and operability as first-class requirements.</p>
                   explanation_en="Dry-run is the equivalent of `terraform plan`. Lets you review before applying; vital to avoid operational mistakes."),
                 q("Idempotência em scripts DevOps significa:",
                   "Rodar o mesmo script várias vezes leva ao mesmo estado, sem efeitos colaterais extras.",
-                  ["Significa que o script só pode ser executado uma única vez ao longo do tempo, abordagem que funciona bem até o primeiro pico de carga real.", "Significa que o script já vem com um mecanismo de retry embutido internamente, prática que gera falso senso de segurança no time.", "Significa que o script em questão não faz qualquer operação de I/O, comportamento que confunde quem está debugando meses depois."],
+                  ["Significa que o script só pode ser executado uma única vez ao longo do tempo.", "Significa que o script já vem com um mecanismo de retry embutido internamente.", "Significa que o script em questão não faz qualquer operação de I/O."],
                   "Ex: 'criar bucket' deveria checar se existe primeiro. Idempotência "
                   "é base de Ansible, Terraform e bons pipelines de deploy.",
                   statement_en="Idempotency in DevOps scripts means:",
