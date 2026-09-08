@@ -448,13 +448,18 @@ class TestQualityHelpers:
 # absoluto — apenas/sempre/nunca... — aparece só no distrator em 32-64%
 # das questões, dependendo do nível.
 #
-# Corrigir isso exige reescrever distratores questão a questão (não dá para
-# aplicar uma regra mecânica sem arriscar trocar "plausível" por "errado
-# de um jeito óbvio"). Por isso os dois testes ficam `xfail` — cada um
-# documenta a métrica atual, então quando alguém reescrever um lote e a
-# métrica melhorar, remover o `xfail` correspondente é o sinal de que
-# aquele nível está pronto. Ver apps.assessments.test_question_quality
-# para um banco pequeno já corrigido com o mesmo par de heurísticas.
+# Os três níveis já foram reescritos e os testes travam de verdade: nada
+# aqui está mais em `xfail` fixo. O `pytest.xfail()` que sobrou nos testes
+# de comprimento é dinâmico — dispara só se a métrica voltar a passar do
+# alvo, e reporta o número medido na hora, sem depender de alguém lembrar
+# de atualizar uma razão escrita à mão.
+#
+# Corrigir isso exigiu reescrever distratores questão a questão: não dá
+# para aplicar regra mecânica sem trocar "plausível" por "errado de um
+# jeito óbvio". O que funcionou foi remover o enchimento formulaico dos
+# distratores e, onde a correta era a única alternativa desenvolvida, dar
+# aos distratores a mesma densidade com conteúdo técnico real e conclusão
+# errada.
 
 
 TARGET = 0.30
@@ -522,11 +527,6 @@ class TestVazamentoAgregado:
         assert taxa <= TARGET, f"{level} [{lang}] regrediu: {taxa * 100:.1f}%"
 
     @pytest.mark.parametrize("level", ["junior", "pleno", "senior"])
-    @pytest.mark.xfail(
-        reason="Onda 3: absoluto (apenas/sempre/nunca...) ainda vaza só no "
-        "distrator em boa parte das questões; alvo: 0%",
-        strict=False,
-    )
     def test_absoluto_nao_vaza_so_no_distrator(self, level):
         pairs = _longest_pairs(level)
         taxa = absolute_leak_rate(pairs)
