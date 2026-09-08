@@ -1824,7 +1824,7 @@ JUNIOR_QUESTIONS: list[dict] = [
             "Hardcoded diretamente no código-fonte e commitados no repositório para que devs e SRE encontrem facilmente em produção, erro comum de quem aprendeu por tentativa e erro, sem revisar a documentação oficial.",
             "Em um secret manager dedicado (HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, K8s Secrets com KMS), com acesso governado por IAM e injeção via env/sidecar/CSI no runtime.",
             "Em um arquivo `README.md` na raiz do repositório, documentando as credenciais para onboarding rápido de novos integrantes, prática que troca previsibilidade por economia de esforço imediato.",
-            "Como variáveis de ambiente em um workflow YAML público de CI, sem alguma camada de criptografia ou redaction, suposição que ignora como o recurso realmente se comporta em escala.",
+            "Como variáveis de ambiente em um workflow YAML público de CI, sem camada de criptografia ou redaction, suposição que ignora como o recurso realmente se comporta em escala.",
         ],
         "choices_en": [
             "Hardcoded directly in source code and committed to the repository so developers and SRE can find them easily in production, a common trial-and-error mistake without reviewing official docs. This reflects a recurring operational pitfall seen when teams skip review under delivery pressure.",

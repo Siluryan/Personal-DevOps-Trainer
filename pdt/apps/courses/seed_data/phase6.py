@@ -1341,7 +1341,7 @@ materialize the entire file at once before processing anything.</p>"""
                   explanation_en="A slice with step -1 reverses the sequence. Classic shortcut to reverse lists/strings."),
                 q("Qual destas é uma DESVANTAGEM de comprehensions?",
                   "Ficam ilegíveis quando aninhadas profundamente ou com filtros complexos.",
-                  ["Não conseguem incluir algum tipo de condicional dentro da própria expressão.", "Costumam rodar visivelmente mais devagar do que um loop for equivalente.", "Não podem ser combinadas de forma alguma com uma expressão geradora."],
+                  ["Não conseguem incluir condicional dentro da própria expressão.", "Costumam rodar visivelmente mais devagar do que um loop for equivalente.", "Não podem ser combinadas de forma alguma com uma expressão geradora."],
                   "Performance é geralmente melhor que for+append. O risco é cognitivo: "
                   "comprehension de 4 linhas com 2 ifs é pior que loop explícito.",
                   statement_en="Which of these is a DISADVANTAGE of comprehensions?",
@@ -4634,7 +4634,7 @@ must share, use <code>asyncio.Lock</code>.</p>
                   explanation_en="When one fails, gather propagates the exception. To collect all, use return_exceptions=True (each item may be an exception)."),
                 q("Para limitar a 10 conexões simultâneas em asyncio:",
                   "asyncio.Semaphore(10) com `async with sem:` ao redor da chamada.",
-                  ["Escrever um loop manual controlando um contador junto de um `sleep`.", "Limitar diretamente o número de threads criadas pelo processo principal.", "Não existe alguma forma direta de limitar esse tipo de concorrência em asyncio."],
+                  ["Escrever um loop manual controlando um contador junto de um `sleep`.", "Limitar diretamente o número de threads criadas pelo processo principal.", "Não existe forma direta de limitar esse tipo de concorrência em asyncio."],
                   "Semaphore é o mecanismo padrão. Cada acquire decrementa, release "
                   "incrementa; bloqueia quando zerado.",
                   statement_en="To limit to 10 simultaneous connections in asyncio:",
