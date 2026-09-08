@@ -1163,7 +1163,7 @@ def expand_labs() -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for phase in PHASES:
         for topic in phase["topics"]:
-            pages, _pages_en = _topic_pages(topic)
+            pages, pages_en = _topic_pages(topic)
             authored = authored_by_title.get(topic["title"])
             authored_page = assign_authored_page(pages, authored) if authored else None
             for i, page in enumerate(pages, start=1):
@@ -1174,6 +1174,19 @@ def expand_labs() -> list[dict[str, Any]]:
                 built = synthesize_page_lab(page, headings, i)
                 if not built:
                     continue
+                # O conteúdo do exercício (cenário, linhas, etapas) sai do HTML
+                # da página; gerar só a partir do português deixava o aluno em
+                # inglês com título e enunciado meio traduzidos ("Build the
+                # command: Modelo de identidade..."). Regerar a partir da
+                # página em inglês só vale se cair no MESMO tipo de exercício —
+                # senão as duas versões divergiriam em estrutura, e o template
+                # renderiza uma só (`kind`).
+                page_en = pages_en[i - 1] if i - 1 < len(pages_en) else page
+                if page_en != page:
+                    built_en = synthesize_page_lab(page_en, _page_headings(page_en), i)
+                    if built_en and built_en["kind"] == built["kind"]:
+                        built["title_en"] = built_en["title_en"]
+                        built["spec_en"] = built_en["spec_en"]
                 out.append(
                     {
                         "topic_title": topic["title"],
