@@ -6489,7 +6489,7 @@ Action item: revisar todos templates de Deployment para liveness mais leve.</cod
                   ["Um tipo específico de configuração de TLS.", "A cadência com que os testes automatizados rodam.", "Só um registro relacionado à resolução de DNS."],
                   "Alimenta SIEM/EDR para detecção. Compartilhe via STIX/TAXII com peers.",
                   statement_en="Indicator of compromise (IOC):",
-                  correct_en="An observable signal (hash, IP, behavior).",
+                  correct_en="An observable signal (hash, IP.",
                   wrong_en=["A specific type of TLS configuration.", "The cadence at which automated tests run.", "Just a record related to DNS resolution."],
                   explanation_en="Feeds SIEM/EDR for detection. Share via STIX/TAXII with peers."),
                 q("Tabletop exercise:",

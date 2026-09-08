@@ -1251,9 +1251,9 @@ RDS instance?</li>
                   "O RDS cria os snapshots, mas a retenção é configurável e finita — auditoria não opera backup.",
                   statement_en="Backing up RDS data is the duty of:",
                   correct_en="The customer, who configures snapshots and retention.",
-                  wrong_en=["The provider, which backs up automatically by default.",
+                  wrong_en=["The provider.",
                             "The external audit team hired for the task.",
-                            "RDS, which retains snapshots indefinitely."],
+                            "RDS."],
                   explanation_en="Automatic snapshots have a short default retention; adjust it "
                   "for your RTO/RPO window. RDS does create the snapshots, but retention is "
                   "configurable and finite — auditors don't run backups."),
@@ -1297,7 +1297,7 @@ RDS instance?</li>
                   statement_en="Compliance is the responsibility of:",
                   correct_en="Shared — each party certifies what it controls.",
                   wrong_en=["The external auditor hired once a year by the company.",
-                            "The provider, which certifies the datacenter.",
+                            "The provider.",
                             "The customer, who proves compliance alone."],
                   explanation_en="The provider shows the datacenter is compliant; the customer "
                   "shows their app/process is compliant. The auditor verifies evidence, it "

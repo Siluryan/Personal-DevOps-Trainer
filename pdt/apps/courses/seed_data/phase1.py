@@ -644,7 +644,7 @@ dig further.</p>"""
                   correct_en="SIGKILL, terminates the process immediately with no chance for cleanup.",
                   wrong_en=["SIGTERM, asks for termination and gives time to save state.",
                             "SIGHUP, reloads the configuration without dropping the process.",
-                            "SIGSTOP, pauses the process, which stays halted until a SIGCONT arrives."],
+                            "SIGSTOP, pauses the process."],
                   explanation_en="SIGKILL cannot be ignored or caught. Prefer SIGTERM (15) whenever "
                   "possible. SIGTERM is what plain `kill` sends and asks for a clean exit; SIGHUP (1) "
                   "became the config-reload convention in daemons; SIGSTOP (19) only freezes."),
@@ -2074,7 +2074,7 @@ chown -R $USER:$USER ~/.ssh</code></pre><p>If anything is more open than that, s
                             "777 (rw and execute for any user)."],
                   explanation_en="sshd silently refuses the key if the file is readable by "
                   "others. 644 and 777 expose the key; 400 owned by root leaves the user with no "
-                  "access to their own authorized_keys, which sshd also refuses."),
+                  "access to their own authorized_keys."),
                 q("Como copiar a chave pública para o servidor?",
                   "ssh-copy-id user@host",
                   ["ssh-add -L user@host", "scp chave.pub user@host:", "rsync chave.pub user@host:"],
@@ -3467,7 +3467,7 @@ it serve today?".</li>
                   wrong_en=[
                     "drop outbound and allow inbound.",
                     "no policy set, leaving the kernel to decide.",
-                    "default allow, which opens every connection with no restriction."
+                    "default allow."
                 ],
                   explanation_en="Default-deny flips the default: nothing enters unless you say yes. "
                   "Default allow leaves everything open until you remember to close it, swapping INPUT "
@@ -5084,7 +5084,7 @@ cycle running without depending on someone remembering manually.</li>
                   wrong_en=[
                     "isort --check-only.",
                     "pylint --output-format=json.",
-                    "tox -e deps, which runs the test environment."
+                    "tox -e deps."
                 ],
                   explanation_en="syft works for any language; cyclonedx-py is Python-specific. isort only "
                   "reorders imports, pylint flags code-quality problems, and tox orchestrates test "
@@ -5137,7 +5137,7 @@ cycle running without depending on someone remembering manually.</li>
                 ],
                   explanation_en="Automatic updates in a pipeline without tests are a recipe for outage. "
                   "Pinning changes neither the CPU cost of installing nor anything about hot reload, and "
-                  "it does not alter log level — that is `-v` or `--debug` on the package manager."),
+                  "it does not alter log level."),
             ],
         },
         # =====================================================================

@@ -731,7 +731,7 @@ admins.</p>""",
                             "Syncs the local repository with the remote, creating no commit."],
                   explanation_en="Rebase generates new hashes; don't use it on history that's already shared. "
                   "Merge, by contrast, adds an extra commit and keeps the original history; syncing "
-                  "with the remote is `git fetch`/`git pull`, which rewrites nothing."),
+                  "with the remote is `git fetch`/`git pull`."),
                 q("Por que evitar force push em main?",
                   "Pode reescrever história compartilhada e quebrar o time.",
                   ["É mais lento que um push comum em repos grandes.",
@@ -2659,7 +2659,7 @@ expected.</li>
                             "Compress the logs produced while the playbook runs."],
                   explanation_en="Fine for small projects. At scale, prefer lookups into Vault/Secrets Manager. "
                   "Ansible vault encrypts repository files with AES256: it compresses nothing and "
-                  "does not replace a KMS, which still holds and rotates the master key."),
+                  "does not replace a KMS."),
                 q("Inventário pode ser:",
                   "Estático (arquivo) ou dinâmico (script/plugin).",
                   ["Restrito ao formato INI, sem YAML.",
@@ -4840,7 +4840,7 @@ not just style.</li>
                   statement_en="hadolint detects:",
                   correct_en="Bad practices in Dockerfiles.",
                   wrong_en=["Broken DNS — a network issue unrelated to Dockerfiles.",
-                            "JavaScript errors — something hadolint does not analyze.",
+                            "JavaScript errors.",
                             "Bugs in Java code — outside hadolint's analysis scope."],
                   explanation_en="Catches things like `apt-get install` without `--no-install-recommends`, missing USER."),
                 q("Linter difere de SAST porque:",

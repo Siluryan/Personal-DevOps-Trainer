@@ -1606,7 +1606,7 @@ everything still technically available for deployment.</li>
                   statement_en='Distroless is for:',
                   correct_en='Minimalist images, with no shell or package manager.',
                   wrong_en=['It only works for images written in Python.', 'Getting higher network performance between containers.', 'Increasing the volume of logs the image generates.'],
-                  explanation_en="With no shell, an attacker has a harder time escaping the container. Debugging is less comfortable — that's the trade-off."),
+                  explanation_en="With no shell, an attacker has a harder time escaping the container. Debugging is less comfortable."),
                 q("Pin por digest sha256 garante:",
                   "Reprodutibilidade, mesma imagem sempre.",
                   ["Renovação automática do certificado usado na imagem.", "Uma conexão TLS mais forte entre cliente e registry.", "Download mais rápido no pull."],
