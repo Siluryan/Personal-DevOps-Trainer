@@ -474,6 +474,65 @@ class TestLabDataIntegrity:
 
 
 @pytest.mark.django_db
+class TestLabNaPaginaCerta:
+    """A página renderizada precisa ser a mesma que gerou o lab.
+
+    `expand_labs` calcula o `lesson_page` de cada lab paginando o corpo CRU
+    da aula, mas a página exibida passa antes pelo glossário e, em inglês,
+    por outro texto. Enquanto esses três caminhos paginavam por conta
+    própria, a seção que caía na página N era diferente em cada um — o aluno
+    abria a página sobre mirror interno e encontrava um exercício sobre
+    typosquatting, assunto da seção seguinte, que ele ainda não tinha lido.
+    """
+
+    def setup_method(self):
+        from django.core.cache import cache
+
+        cache.clear()
+
+    def _h3_por_pagina(self, pages) -> list[int]:
+        return [str(page).count("<h3") for page in pages]
+
+    def test_glossario_nao_desloca_a_secao_para_outra_pagina(self):
+        from django.core.management import call_command
+
+        from apps.core.pagination import paginate_html_sections
+        from apps.core.templatetags.pdt_extras import paginate_lesson_body
+
+        call_command("seed_glossary", verbosity=0)
+        for phase in PHASES:
+            for topic in phase["topics"]:
+                body = (topic.get("lesson") or {}).get("body") or ""
+                if not body:
+                    continue
+                seed = paginate_html_sections(body) or [body]
+                render = paginate_lesson_body(body, body)
+                assert self._h3_por_pagina(render) == [p.count("<h3") for p in seed], (
+                    f"{topic['title']}: aluno vê {len(render)} páginas, "
+                    f"seed calculou lab para {len(seed)}"
+                )
+
+    def test_ingles_corta_nas_mesmas_secoes_que_o_portugues(self):
+        from django.core.management import call_command
+
+        from apps.core.pagination import paginate_html_sections
+        from apps.core.templatetags.pdt_extras import paginate_lesson_body
+
+        call_command("seed_glossary", verbosity=0)
+        for phase in PHASES:
+            for topic in phase["topics"]:
+                lesson = topic.get("lesson") or {}
+                body, body_en = lesson.get("body") or "", lesson.get("body_en") or ""
+                if not body or not body_en:
+                    continue
+                seed = paginate_html_sections(body) or [body]
+                render_en = paginate_lesson_body(body_en, body)
+                assert self._h3_por_pagina(render_en) == [p.count("<h3") for p in seed], (
+                    f"{topic['title']}: em inglês a seção cai em outra página"
+                )
+
+
+@pytest.mark.django_db
 class TestSeedLabsCommand:
     """Mesmo padrão de TestSeedTopicsCommand: idempotente, preserva edição."""
 

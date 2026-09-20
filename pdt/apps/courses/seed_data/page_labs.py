@@ -22,7 +22,7 @@ import re
 import shlex
 from typing import Any
 
-from apps.core.pagination import paginate_html_sections
+from apps.core.pagination import paginate_html_sections, paginate_html_sections_like
 
 from . import PHASES
 from .labs import LABS
@@ -1262,7 +1262,10 @@ def _topic_pages(topic: dict) -> tuple[list[str], list[str]]:
     body = lesson.get("body") or ""
     body_en = lesson.get("body_en") or ""
     pages = paginate_html_sections(body) or ([body] if body else [""])
-    pages_en = paginate_html_sections(body_en) if body_en else pages
+    # Alinhado pelo corpo em português: a página N precisa cobrir a mesma
+    # seção nos dois idiomas, senão o `lesson_page` do lab (calculado só uma
+    # vez, no português) aponta para outro assunto em inglês.
+    pages_en = paginate_html_sections_like(body_en, body) if body_en else pages
     if len(pages_en) != len(pages):
         pages_en = pages
     return pages, pages_en

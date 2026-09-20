@@ -107,7 +107,7 @@
       {% endif %}
 
       {% if topic.lesson.body %}
-        {% with pages=topic.lesson.display_body|paginate_lesson_body %}
+        {% with pages=topic.lesson.display_body|paginate_lesson_body:topic.lesson.body %}
         <div class="lesson-body mb-2"
              style="{% if topic.lesson.intro %}border-top:none;border-radius:0;{% else %}border-radius:12px 12px 0 0;{% endif %}
                     {% if not topic.lesson.practical and not labs %}border-radius:0 0 12px 12px;{% endif %}"

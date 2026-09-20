@@ -7,9 +7,13 @@ from django import template
 from django.utils.html import escape, linebreaks
 from django.utils.safestring import mark_safe
 
-from apps.core.glossary import annotate_glossary_terms, get_glossary_terms
+from apps.core.glossary import (
+    annotate_glossary_parts,
+    annotate_glossary_terms,
+    get_glossary_terms,
+)
 from apps.core.glossary import lesson_glossary_sidebar as _lesson_glossary_sidebar
-from apps.core.pagination import paginate_html_sections
+from apps.core.pagination import paginate_html_sections_like
 
 register = template.Library()
 
@@ -137,18 +141,22 @@ def bold_ticks(value, autoescape=True):
     return mark_safe(out)
 
 
-def _prepare_lesson_html(value: str) -> str:
-    """HTML pronto para exibir: texto puro vira <p>, termos de glossário marcados.
+def _lesson_html(value: str) -> str:
+    """HTML cru do campo de aula: texto puro vira <p>, HTML passa direto.
 
-    Compartilhado por `render_lesson` e `paginate_lesson_body` — a anotação de
-    glossário precisa rodar sobre o texto INTEIRO de uma vez (não por página),
-    senão "1ª ocorrência do termo" ficaria por página em vez de por aula.
+    Sem glossário de propósito — `paginate_lesson_body` precisa paginar o
+    HTML do MESMO tamanho que o seed pagina para decidir o `lesson_page` de
+    cada lab (ver `annotate_glossary_parts`).
     """
     if not value:
         return ""
     stripped = value.strip()
-    html = stripped if stripped.startswith("<") else linebreaks(stripped)
-    return annotate_glossary_terms(html, get_glossary_terms())
+    return stripped if stripped.startswith("<") else linebreaks(stripped)
+
+
+def _prepare_lesson_html(value: str) -> str:
+    """HTML pronto para exibir: `_lesson_html` + termos de glossário marcados."""
+    return annotate_glossary_terms(_lesson_html(value), get_glossary_terms())
 
 
 @register.filter(is_safe=True)
@@ -164,14 +172,19 @@ def render_lesson(value: str) -> str:
 
 
 @register.filter(is_safe=True)
-def paginate_lesson_body(value: str) -> list:
+def paginate_lesson_body(value: str, reference: str = "") -> list:
     """Corpo da aula (`Lesson.body`) dividido em páginas por seção `<h3>`.
 
     Aula curta (ou sem `<h3>`) volta como lista de 1 item — o template não
     precisa de lógica condicional a mais para esse caso, só itera a lista.
+
+    `reference` é o corpo em português (`lesson.body`): é ele que o seed
+    pagina para decidir o `lesson_page` de cada lab, então é por ele que o
+    inglês se alinha. Em português os dois são o mesmo texto e o parâmetro
+    não muda nada.
     """
-    html = _prepare_lesson_html(value)
-    return [mark_safe(page) for page in paginate_html_sections(html)]
+    pages = paginate_html_sections_like(_lesson_html(value), _lesson_html(reference))
+    return [mark_safe(page) for page in annotate_glossary_parts(pages, get_glossary_terms())]
 
 
 @register.simple_tag
