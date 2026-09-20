@@ -1,6 +1,8 @@
 """Testes do app courses: modelos, quiz, integridade dos dados de seed."""
 from __future__ import annotations
 
+import re
+
 import pytest
 from django.urls import reverse
 from django.utils import translation
@@ -206,6 +208,93 @@ class TestSeedDataIntegrity:
                 assert topic["title"] not in seen, f"Tópico duplicado: {topic['title']}"
                 seen.add(topic["title"])
         assert len(seen) == 60
+
+
+_H3_RE = re.compile(r"<h3[^>]*>(.*?)</h3>", re.S)
+_TAG_RE = re.compile(r"<[^>]+>")
+_HEADING_NUM_RE = re.compile(r"^\s*(\d{1,2})\s*[.)]")
+# "seção 7", "seções 4 e 5", "section 7", "sections 4 and 5". O grupo repetido
+# só casa quando vem outro NÚMERO depois da conjunção, então "seção 5, e o
+# resto da frase" não é confundido com uma lista.
+_REF_RES = (
+    re.compile(r"\bseç(?:ão|ões)\s+(\d{1,2}(?:\s*(?:,|e)\s*\d{1,2})*)", re.IGNORECASE),
+    re.compile(r"\bsections?\s+(\d{1,2}(?:\s*(?:,|and)\s*\d{1,2})*)", re.IGNORECASE),
+)
+
+
+def _section_numbers(body: str) -> set[int]:
+    """Números dos `<h3>` da aula. Todos os 60 tópicos usam 'N. Título'."""
+    out: set[int] = set()
+    for raw in _H3_RE.findall(body or ""):
+        m = _HEADING_NUM_RE.match(_TAG_RE.sub("", raw).strip())
+        if m:
+            out.add(int(m.group(1)))
+    return out
+
+
+def _referenced_sections(html: str) -> list[int]:
+    out: list[int] = []
+    text = _TAG_RE.sub(" ", html or "")
+    for regex in _REF_RES:
+        for m in regex.finditer(text):
+            out.extend(int(n) for n in re.findall(r"\d{1,2}", m.group(1)))
+    return out
+
+
+class TestReferenciasDeSecaoNoExercicio:
+    """O exercício prático cita seções da aula por número; elas precisam existir.
+
+    Os exercícios mandam o aluno voltar a um ponto específico ("é a armadilha
+    da seção 6"), e é isso que liga a prática à leitura. A referência é
+    posicional: inserir ou reordenar um `<h3>` desloca a numeração e faz o
+    exercício apontar para o assunto errado — sem quebrar nada e sem aviso,
+    que é o pior tipo de erro de conteúdo.
+    """
+
+    def test_toda_secao_citada_existe_na_aula(self):
+        for phase in PHASES:
+            for topic in phase["topics"]:
+                lesson = topic["lesson"]
+                for practical_key, body_key in (
+                    ("practical", "body"),
+                    ("practical_en", "body_en"),
+                ):
+                    existing = _section_numbers(lesson.get(body_key) or "")
+                    if not existing:
+                        continue
+                    for cited in _referenced_sections(lesson.get(practical_key) or ""):
+                        assert cited in existing, (
+                            f"{topic['title']} [{practical_key}]: cita a seção "
+                            f"{cited}, mas a aula vai de {min(existing)} a "
+                            f"{max(existing)}"
+                        )
+
+    def test_h3_continuam_numerados(self):
+        """A checagem acima depende disso; sem número, ela passaria vazia."""
+        for phase in PHASES:
+            for topic in phase["topics"]:
+                for body_key in ("body", "body_en"):
+                    body = topic["lesson"].get(body_key) or ""
+                    headings = [_TAG_RE.sub("", h).strip() for h in _H3_RE.findall(body)]
+                    for heading in headings:
+                        assert _HEADING_NUM_RE.match(heading), (
+                            f"{topic['title']} [{body_key}]: heading sem número "
+                            f"({heading[:40]!r}) — as citações do exercício "
+                            "prático deixam de ser verificáveis"
+                        )
+
+    def test_a_checagem_nao_passa_vazia(self):
+        """Rede de segurança: se a convenção sumir, o teste acima vira decoração."""
+        total = sum(
+            len(_referenced_sections(topic["lesson"].get(key) or ""))
+            for phase in PHASES
+            for topic in phase["topics"]
+            for key in ("practical", "practical_en")
+        )
+        assert total > 100, (
+            f"só {total} referências a seção encontradas nos 120 exercícios; "
+            "ou a convenção mudou, ou o regex parou de casar"
+        )
 
 
 class TestLabDataIntegrity:
