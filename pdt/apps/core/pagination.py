@@ -57,3 +57,39 @@ def paginate_html_sections(
         pages.append("".join(current))
 
     return pages
+
+
+def paginate_html_sections_like(
+    html: str, reference: str, target_chars: int = _TARGET_CHARS_PER_PAGE
+) -> list[str]:
+    """Pagina `html` copiando o agrupamento de seções que `reference` produz.
+
+    A tradução de uma aula quase nunca tem o mesmo tamanho do original, então
+    paginar cada idioma por conta própria dava contagens diferentes de página
+    para a MESMA aula (17 dos 60 tópicos). Como o `lesson_page` de cada lab é
+    calculado uma vez só, em cima do corpo em português, no inglês o
+    exercício caía numa página que ainda não tinha ensinado o assunto — e os
+    labs das páginas excedentes não apareciam para ninguém.
+
+    Alinhar pela contagem de seções por página mantém a seção N no mesmo
+    número de página nos dois idiomas. Quando as duas versões não têm o mesmo
+    número de `<h3>` (tradução reestruturada), não há como alinhar e cada uma
+    volta a ser paginada por tamanho.
+    """
+    if not html:
+        return []
+    if not reference or reference == html:
+        return paginate_html_sections(html, target_chars)
+
+    segments = [s for s in _H3_BOUNDARY_RE.split(html) if s]
+    ref_pages = paginate_html_sections(reference, target_chars)
+    sizes = [len([s for s in _H3_BOUNDARY_RE.split(p) if s]) for p in ref_pages]
+    if sum(sizes) != len(segments):
+        return paginate_html_sections(html, target_chars)
+
+    pages: list[str] = []
+    start = 0
+    for size in sizes:
+        pages.append("".join(segments[start : start + size]))
+        start += size
+    return pages

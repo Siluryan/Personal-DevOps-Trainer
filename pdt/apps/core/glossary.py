@@ -41,7 +41,7 @@ _CACHE_TTL = 300
 
 
 class _GlossaryAnnotator(HTMLParser):
-    def __init__(self, terms: dict[str, str]):
+    def __init__(self, terms: dict[str, str], used: set[str] | None = None):
         super().__init__(convert_charrefs=True)
         self._terms = terms
         self._pattern = self._build_pattern(terms) if terms else None
@@ -49,7 +49,9 @@ class _GlossaryAnnotator(HTMLParser):
         # (tag, raw_passthrough): Mermaid precisa do texto byte-a-byte (`-->`,
         # aspas); pre/code/etc. re-escapam `&`/`</>` após o parser decodificar.
         self._skip_stack: list[tuple[str, bool]] = []
-        self._used: set[str] = set()
+        # `used` compartilhado deixa `annotate_glossary_parts` varrer a aula
+        # página por página mantendo "1ª ocorrência" no escopo da AULA.
+        self._used: set[str] = set() if used is None else used
         self.used_order: list[str] = []  # ordem de 1ª aparição, para a sidebar
 
     @staticmethod
@@ -180,6 +182,35 @@ def annotate_glossary_terms(html: str, terms: dict[str, str]) -> str:
     parser.feed(html)
     parser.close()
     return parser.get_html()
+
+
+def annotate_glossary_parts(parts: list[str], terms: dict[str, str]) -> list[str]:
+    """Anota uma aula JÁ dividida em páginas, sem repetir termo entre elas.
+
+    Existe porque anotar a aula inteira e só depois paginar desalinhava o
+    lab da página: o popover de cada termo custa ~1,2 mil caracteres de
+    markup, muito mais que os 3 mil que `paginate_html_sections` usa como
+    alvo de página. O corpo anotado rendia bem mais páginas que o corpo cru
+    — e o lab, cujo `lesson_page` sai do corpo cru no seed, caía numa página
+    que ainda nem tinha apresentado o assunto do exercício.
+
+    Paginar primeiro e anotar cada página depois resolve isso, e o conjunto
+    `used` compartilhado entre as páginas preserva o que anotar a aula de
+    uma vez garantia: cada termo marcado uma vez só por AULA, não por página.
+    """
+    if not terms:
+        return [part or "" for part in parts]
+    used: set[str] = set()
+    out: list[str] = []
+    for part in parts:
+        if not part:
+            out.append("")
+            continue
+        parser = _GlossaryAnnotator(terms, used=used)
+        parser.feed(part)
+        parser.close()
+        out.append(parser.get_html())
+    return out
 
 
 def lesson_glossary_sidebar(html_parts: list[str], terms: dict[str, str], limit: int = 12) -> list[dict[str, str]]:
