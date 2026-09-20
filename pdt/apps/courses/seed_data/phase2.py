@@ -485,30 +485,60 @@ a site or blog — cloud remains the more obvious choice in most
 cases.</p>"""
                 ),
                 "practical": (
-                    "(1) Crie uma conta AWS free tier (ou GCP / Azure equivalente).<br>"
-                    "(2) Provisione uma EC2 t3.micro (ou e2-micro / B1s) em duas regiões "
-                    "diferentes, anote o tempo desde 'click' até 'SSH responde'.<br>"
-                    "(3) De cada VM, use <code>mtr</code> / <code>traceroute</code> para a "
-                    "outra e meça a latência cross-region.<br>"
-                    "(4) Suba uma imagem Docker simples na mesma VM e cronometre o tempo de "
-                    "subir uma instância nova vs subir um container, compare ordens de "
-                    "magnitude.<br>"
-                    "(5) Configure <strong>budget alert</strong> em US$ 5 e termine "
-                    "(<code>terminate</code>) tudo no fim. <strong>Não esqueça.</strong> Se "
-                    "esquecer, vai descobrir o mundo dos NAT Gateways de US$ 32/mês."
+                    """<p><strong>Objetivo:</strong> sentir com o cronômetro a diferença entre provisionar uma VM e subir um container — e sair com um alarme de custo configurado, que é o primeiro hábito que separa quem usa cloud de quem leva susto na fatura.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma conta AWS free tier (ou GCP/Azure equivalente). Cartão cadastrado: o free tier exige, e o passo 6 existe justamente por isso.</li>
+<li><code>mtr</code> ou <code>traceroute</code> na sua máquina.</li>
+<li>Cerca de duas horas. Reserve os dez minutos finais para destruir tudo — não deixe para depois.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Configure o alarme de custo antes de criar qualquer recurso.</strong> Um budget alert de 5 dólares, com e-mail.<br><em>O que observar:</em> esse é o único passo que você faz <em>antes</em> e não depois. Recurso esquecido é a causa número um de conta inesperada — e um NAT Gateway esquecido custa mais de 30 dólares por mês sozinho, sem nenhum tráfego.</li>
+<li><strong>Provisione uma VM e cronometre do clique até o SSH responder.</strong> Uma <code>t3.micro</code> (ou equivalente).<br><em>O que observar:</em> anote o tempo, normalmente na casa de dezenas de segundos a poucos minutos. Compare mentalmente com o que era pedir um servidor físico: semanas. É a seção 3 em uma medição.</li>
+<li><strong>Suba um container na mesma VM e cronometre de novo.</strong> <code>docker run -d nginx</code>.<br><em>O que observar:</em> a diferença é de <em>ordem de grandeza</em>, não percentual. A VM carrega um kernel inteiro; o container compartilha o que já está rodando. É a seção 2, e essa medição explica por que a densidade de container mudou a economia de infraestrutura.</li>
+<li><strong>Crie a segunda VM em outra região e meça a distância.</strong> De uma para a outra, <code>mtr</code> ou <code>traceroute</code>.<br><em>O que observar:</em> a latência cross-region é imposta pela física, não pelo provedor. Esse número é o que torna "replicar em outra região" uma decisão de arquitetura e não um checkbox — e é o que a seção 5 quer que você sinta.</li>
+<li><strong>Descubra o que você não controla.</strong> Procure, no console, a versão do hypervisor e o modelo exato de CPU do host.<br><em>O que observar:</em> você não acha. Essa camada é do provedor, e é exatamente aí que começa o modelo de responsabilidade compartilhada do próximo tópico. Abstração tem preço: conveniência em troca de visibilidade.</li>
+<li><strong>Destrua tudo e confirme.</strong> Terminate nas duas instâncias, e depois procure por volumes EBS, Elastic IPs e snapshots órfãos.<br><em>O que observar:</em> terminar a instância nem sempre apaga o disco. Volume órfão continua cobrando em silêncio — é a armadilha mais comum de quem está aprendendo, e vale ver a lista vazia antes de fechar o console.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você tem os três tempos anotados: VM região A, VM região B e container.</li>
+<li>O budget alert está ativo e você recebeu o e-mail de confirmação.</li>
+<li>O console não lista nenhum recurso cobrável restante.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o SSH não conecta, o Security Group provavelmente não libera a porta 22 para o seu IP — é o mesmo firewall em camada de cloud do tópico de Firewall. E se a instância fica presa em "pending", tente outra zona de disponibilidade: capacidade esgotada em AZ específica acontece, e a mensagem de erro raramente é clara.</p>
+<h4>Vá além</h4>
+<p>Leia o caso da seção 9 e depois simule o custo de manter as suas duas VMs por um ano na calculadora do provedor. Compare com o preço de comprar hardware equivalente. A conclusão da seção 10 costuma surpreender: para carga estável e previsível, cloud raramente é a opção mais barata — ela é a mais <em>elástica</em>, que é outra coisa.</p>"""
                 ),
                 "practical_en": (
-                    "(1) Create a free-tier AWS account (or the GCP / Azure equivalent).<br>"
-                    "(2) Provision a t3.micro EC2 instance (or e2-micro / B1s) in two different "
-                    "regions, and note the time from 'click' to 'SSH responds'.<br>"
-                    "(3) From each VM, use <code>mtr</code> / <code>traceroute</code> to reach the "
-                    "other one and measure the cross-region latency.<br>"
-                    "(4) Upload a simple Docker image to the same VM and time how long it takes to "
-                    "bring up a new instance vs bringing up a container, and compare orders of "
-                    "magnitude.<br>"
-                    "(5) Set up a <strong>budget alert</strong> at US$5 and terminate "
-                    "(<code>terminate</code>) everything at the end. <strong>Don't forget.</strong> If "
-                    "you do, you'll discover the world of US$32/month NAT Gateways."
+                    """<p><strong>Goal:</strong> feel, on a stopwatch, the difference between provisioning a VM and starting a container — and come away with a cost alert configured, the first habit that separates people who use cloud from people who get a shock on the invoice.</p>
+<h4>Before you start</h4>
+<ul>
+<li>An AWS free tier account (or GCP/Azure equivalent). A card on file: free tier requires it, and step 6 exists precisely because of that.</li>
+<li><code>mtr</code> or <code>traceroute</code> on your machine.</li>
+<li>About two hours. Reserve the last ten minutes for tearing everything down — do not leave it for later.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Set the cost alert before creating any resource.</strong> A 5 dollar budget alert, with email.<br><em>What to look for:</em> this is the one step you do <em>first</em> rather than last. A forgotten resource is the number one cause of surprise bills — and a forgotten NAT Gateway costs over 30 dollars a month on its own, with no traffic at all.</li>
+<li><strong>Provision a VM and time it from click to SSH answering.</strong> A <code>t3.micro</code> (or equivalent).<br><em>What to look for:</em> note the time, usually tens of seconds to a few minutes. Compare mentally with requesting a physical server: weeks. That is section 3 in one measurement.</li>
+<li><strong>Start a container on the same VM and time it again.</strong> <code>docker run -d nginx</code>.<br><em>What to look for:</em> the difference is an <em>order of magnitude</em>, not a percentage. The VM boots an entire kernel; the container shares what is already running. That is section 2, and this measurement explains why container density changed infrastructure economics.</li>
+<li><strong>Create the second VM in another region and measure the distance.</strong> From one to the other, <code>mtr</code> or <code>traceroute</code>.<br><em>What to look for:</em> cross-region latency is imposed by physics, not by the provider. That number is what makes "replicate to another region" an architectural decision rather than a checkbox — and what section 5 wants you to feel.</li>
+<li><strong>Find out what you do not control.</strong> In the console, go looking for the hypervisor version and the exact host CPU model.<br><em>What to look for:</em> you cannot find them. That layer belongs to the provider, and that is exactly where the next topic's shared responsibility model begins. Abstraction has a price: convenience in exchange for visibility.</li>
+<li><strong>Destroy everything and verify.</strong> Terminate both instances, then go looking for orphaned EBS volumes, Elastic IPs, and snapshots.<br><em>What to look for:</em> terminating an instance does not always delete its disk. An orphaned volume keeps billing silently — the most common trap for learners, and worth seeing the list empty before closing the console.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>You have all three timings recorded: VM region A, VM region B, and container.</li>
+<li>The budget alert is active and you received the confirmation email.</li>
+<li>The console lists no remaining billable resources.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If SSH will not connect, the Security Group probably does not allow port 22 from your IP — the same firewall, one layer up in cloud, from the Firewall topic. And if an instance sticks at "pending", try another availability zone: exhausted capacity in a specific AZ happens, and the error message is rarely clear.</p>
+<h4>Go further</h4>
+<p>Read the case in section 9, then price a full year of your two VMs in the provider's calculator. Compare that with buying equivalent hardware. Section 10's conclusion usually surprises people: for steady, predictable load, cloud is rarely the cheapest option — it is the most <em>elastic</em>, which is a different thing.</p>"""
                 ),
             },
             "materials": [
@@ -1144,26 +1174,60 @@ RDS instance?</li>
 """
                 ),
                 "practical": (
-                    "Crie um spreadsheet 3x10:<br>"
-                    "Linhas: 10 itens de operação (patch SO, patch DB engine, snapshot RDS, "
-                    "encryption at rest, MFA root, logs CloudTrail, gestão de IAM, public "
-                    "access, backup S3, configuração de SG).<br>"
-                    "Colunas: Você / Provedor / Compartilhado.<br>"
-                    "Para cada combinação, escreva 1 frase justificando. Cruze com a página "
-                    "oficial do seu provedor, para cada item que você marcou 'provedor', "
-                    "ache a citação textual. Provavelmente vai descobrir 2-3 itens que você "
-                    "achava deles e na verdade são seus."
+                    """<p><strong>Objetivo:</strong> descobrir, com citação da documentação oficial na mão, pelo menos dois itens que você <em>achava</em> que o provedor cobria e que na verdade são seus — que é exatamente o tipo de suposição que vira incidente.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Acesso à documentação do seu provedor e uma planilha (ou tabela em Markdown).</li>
+<li>Se possível, uma conta real onde você possa verificar as configurações no passo 5.</li>
+<li>Cerca de uma hora e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Preencha a tabela de memória, antes de consultar nada.</strong> Dez itens de operação — patch do SO, patch do engine do banco, snapshot do RDS, criptografia em repouso, MFA na conta root, CloudTrail, gestão de IAM, bloqueio de acesso público, backup de bucket, regras de Security Group — contra três colunas: você, provedor, compartilhado.<br><em>O que observar:</em> responda rápido e sem pesquisar. O valor do exercício está justamente em registrar a sua suposição <em>antes</em> de confrontá-la — depois de ler a documentação, ninguém lembra do que achava.</li>
+<li><strong>Agora confronte cada linha com a fonte oficial.</strong> Para tudo que você marcou "provedor", ache a citação textual que sustenta isso.<br><em>O que observar:</em> em dois ou três itens você não vai achar a citação. Normalmente são patch de engine gerenciado e backup: o provedor oferece o mecanismo, mas <em>ativar e verificar</em> é seu. É a seção 3, e é onde mora a ilusão mais cara da cloud.</li>
+<li><strong>Escreva o que é seu em qualquer cenário.</strong> Numa linha separada, liste o que nunca muda de lado: seus dados, suas credenciais, suas permissões, sua configuração.<br><em>O que observar:</em> essa lista é curta e não depende do serviço ser IaaS, PaaS ou SaaS. É a seção 4, e ela é o núcleo que sobra quando todo o resto é abstraído.</li>
+<li><strong>Entenda por que PaaS exige mais atenção, não menos.</strong> Compare a sua linha de "patch do SO" entre uma EC2 e um banco gerenciado.<br><em>O que observar:</em> no gerenciado o provedor aplica o patch, mas a <em>janela</em> de manutenção e a versão do engine continuam sendo escolha sua. Mais abstração significa menos tarefas e mais decisões silenciosas — o ponto da seção 8.</li>
+<li><strong>Verifique três itens na sua conta real.</strong> MFA na root, bloqueio de acesso público no S3 e CloudTrail ativo em todas as regiões.<br><em>O que observar:</em> algum dos três costuma estar faltando. Todos são responsabilidade sua em qualquer modelo, e todos aparecem entre as causas mais comuns de incidente em cloud (seção 5).</li>
+<li><strong>Transforme um item em guard-rail.</strong> Em vez de anotar "lembrar de bloquear bucket público", ligue o bloqueio no nível da conta.<br><em>O que observar:</em> a diferença entre prevenir e detectar é que o guard-rail funciona mesmo quando ninguém está prestando atenção. É a seção 6 — e é o que sobrevive a férias, troca de time e sexta-feira à noite.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Cada item marcado como "provedor" tem uma citação textual da documentação ao lado.</li>
+<li>Você identificou pelo menos dois itens que achava dele e são seus.</li>
+<li>Pelo menos um deles virou guard-rail ativo, não anotação.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se você não achar a documentação específica de um serviço, procure a página de "compliance" ou "security" dele em vez do modelo genérico — a linha divisória muda por serviço, e o diagrama geral do provedor é propositalmente vago. E se um item parecer claramente "compartilhado", escreva <em>qual metade</em> é sua: "compartilhado" sem detalhe é o mesmo que não ter respondido.</p>
+<h4>Vá além</h4>
+<p>Leia a anatomia do caso na seção 9 e marque, na sua própria tabela, qual linha falhou lá. Depois verifique a sua conta contra essa linha específica. O incidente aconteceu num item que estava do lado do cliente o tempo todo — e a lição é que o modelo estava documentado, só não tinha sido lido.</p>"""
                 ),
                 "practical_en": (
-                    "Create a 3x10 spreadsheet:<br>"
-                    "Rows: 10 operational items (OS patching, DB engine patching, RDS snapshot, "
-                    "encryption at rest, root MFA, CloudTrail logs, IAM management, public "
-                    "access, S3 backup, SG configuration).<br>"
-                    "Columns: You / Provider / Shared.<br>"
-                    "For each combination, write 1 sentence justifying it. Cross-check against "
-                    "your provider's official page — for every item you marked 'provider', "
-                    "find the exact quote. You'll probably discover 2-3 items you thought were "
-                    "theirs that are actually yours."
+                    """<p><strong>Goal:</strong> discover, with official documentation quoted in hand, at least two items you <em>thought</em> the provider covered that are actually yours — exactly the kind of assumption that turns into an incident.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Access to your provider's documentation and a spreadsheet (or a Markdown table).</li>
+<li>If possible, a real account where you can verify settings in step 5.</li>
+<li>About an hour and a half.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Fill the table from memory, before consulting anything.</strong> Ten operational items — OS patching, database engine patching, RDS snapshots, encryption at rest, MFA on the root account, CloudTrail, IAM management, public access blocking, bucket backups, Security Group rules — against three columns: you, provider, shared.<br><em>What to look for:</em> answer fast, without research. The value lies precisely in recording your assumption <em>before</em> confronting it — after reading the docs, nobody remembers what they believed.</li>
+<li><strong>Now confront each row with the official source.</strong> For everything you marked "provider", find the literal quote that supports it.<br><em>What to look for:</em> on two or three items you will not find the quote. Usually it is managed engine patching and backups: the provider offers the mechanism, but <em>enabling and verifying</em> is yours. That is section 3, and where cloud's most expensive illusion lives.</li>
+<li><strong>Write down what is yours in every scenario.</strong> On a separate line, list what never changes sides: your data, your credentials, your permissions, your configuration.<br><em>What to look for:</em> that list is short and does not depend on the service being IaaS, PaaS, or SaaS. It is section 4, and the core that remains once everything else is abstracted.</li>
+<li><strong>Understand why PaaS demands more attention, not less.</strong> Compare your "OS patching" row between an EC2 instance and a managed database.<br><em>What to look for:</em> on the managed one the provider applies the patch, but the maintenance <em>window</em> and the engine version remain your choice. More abstraction means fewer tasks and more silent decisions — section 8's point.</li>
+<li><strong>Verify three items in your real account.</strong> MFA on root, S3 public access block, and CloudTrail active in all regions.<br><em>What to look for:</em> one of the three is usually missing. All are your responsibility under any model, and all rank among the most common causes of cloud incidents (section 5).</li>
+<li><strong>Turn one item into a guard-rail.</strong> Instead of noting "remember to block public buckets", enable the block at the account level.<br><em>What to look for:</em> the difference between preventing and detecting is that a guard-rail works even when nobody is paying attention. That is section 6 — and what survives vacations, team changes, and Friday nights.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>Every item marked "provider" has a literal documentation quote beside it.</li>
+<li>You identified at least two items you thought were theirs and are yours.</li>
+<li>At least one of them became an active guard-rail, not a note.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If you cannot find service-specific documentation, look for that service's "compliance" or "security" page rather than the generic model — the dividing line moves per service, and the provider's overview diagram is deliberately vague. And if an item seems clearly "shared", write down <em>which half</em> is yours: "shared" without detail is the same as not having answered.</p>
+<h4>Go further</h4>
+<p>Read the anatomy of the case in section 9 and mark, on your own table, which row failed there. Then check your account against that specific row. The incident happened on an item that was on the customer's side all along — and the lesson is that the model was documented, it just had not been read.</p>"""
                 ),
             },
             "materials": [
@@ -1922,40 +1986,62 @@ account needs to be isolated with its own reinforced MFA, not treated
 as just another ordinary credential on the internal network.</p>"""
                 ),
                 "practical": (
-                    "(1) Crie uma role IAM <code>read-reports</code> que pode apenas "
-                    "<code>s3:GetObject</code> e <code>s3:ListBucket</code> em "
-                    "<code>arn:aws:s3:::meu-bucket</code> e <code>/*</code>, com "
-                    "<code>Condition</code> exigindo MFA "
-                    "(<code>aws:MultiFactorAuthPresent: true</code>).<br>"
-                    "(2) Teste com IAM Policy Simulator em modo MFA-true e MFA-false; veja "
-                    "as duas respostas.<br>"
-                    "(3) Configure OIDC entre GitHub Actions e AWS, siga "
-                    "<a href='https://docs.github.com/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services'>"
-                    "doc oficial</a>. Faça deploy de um arquivo para S3 sem nenhuma chave "
-                    "estática no GitHub.<br>"
-                    "(4) Em <code>Access Analyzer → Generate Policy</code>, gere policy "
-                    "baseada em uso histórico de uma role existente; compare com a policy "
-                    "atual para encontrar permissões não usadas.<br>"
-                    "(5) Bônus: monte uma SCP que negue criação de bucket S3 sem "
-                    "encryption. Aplique em uma OU de testes."
+                    """<p><strong>Objetivo:</strong> fazer um deploy autenticado <em>sem nenhuma chave estática</em> em lugar nenhum — e ver, no simulador, uma mesma policy permitir e negar a mesma ação conforme o contexto.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma conta AWS onde você possa criar roles e policies, e um repositório no GitHub.</li>
+<li>Um bucket S3 de testes. Crie um novo: o exercício mexe em policy.</li>
+<li>Cerca de duas horas e meia. O passo 4 é o mais longo e o mais valioso.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Escreva a policy mais restrita que resolve o problema.</strong> Uma role <code>read-reports</code> com apenas <code>s3:GetObject</code> e <code>s3:ListBucket</code>, nos ARNs do bucket <em>e</em> do conteúdo (<code>/*</code>).<br><em>O que observar:</em> repare que são dois ARNs diferentes e cada ação usa um. Errar isso é o motivo número um de "AccessDenied" em policy que parece certa — é a estrutura da seção 2.</li>
+<li><strong>Acrescente uma condition de MFA.</strong> <code>aws:MultiFactorAuthPresent: true</code>.<br><em>O que observar:</em> a permissão passou a depender de <em>como</em> a pessoa autenticou, não só de quem ela é. Conditions são o que transforma policy binária em policy contextual, e é o assunto da seção 7.</li>
+<li><strong>Teste os dois cenários no Policy Simulator.</strong> Uma vez com MFA presente, outra sem.<br><em>O que observar:</em> a mesma policy devolve allow e deny. Você acabou de ver a avaliação da seção 3 acontecendo — e o simulador faz isso sem risco, o que é a forma certa de validar antes de aplicar em gente de verdade.</li>
+<li><strong>Configure OIDC entre GitHub Actions e AWS.</strong> Provider de identidade, trust policy restrita ao seu repositório, e um workflow que copia um arquivo para o S3.<br><em>O que observar:</em> ao final, procure por <code>AWS_ACCESS_KEY_ID</code> nos secrets do repositório. Não existe nenhum. A credencial é temporária e emitida por requisição — é a seção 5, e é a diferença entre uma chave que vaza e um token que expira em minutos.</li>
+<li><strong>Restrinja a trust policy e veja falhar.</strong> Troque a condition de <code>sub</code> para outro repositório e rode o workflow de novo.<br><em>O que observar:</em> falha na hora. Sem essa restrição, <em>qualquer</em> repositório do GitHub poderia assumir a sua role — e é o erro de configuração mais perigoso de OIDC, porque tudo funciona normalmente enquanto está errado.</li>
+<li><strong>Descubra o privilégio que ninguém usa.</strong> No Access Analyzer, gere uma policy a partir do uso histórico de uma role existente e compare com a policy atual.<br><em>O que observar:</em> a policy gerada costuma ser bem menor. A diferença é privilégio concedido e nunca exercido — exatamente o excesso que um atacante herdaria. É a seção 8 transformando auditoria em dado.</li>
+<li><strong>Feche com um guard-rail organizacional.</strong> Uma SCP negando criação de bucket sem criptografia, aplicada numa OU de testes.<br><em>O que observar:</em> a SCP nega mesmo para quem tem permissão de administrador. Ela é um teto, não uma concessão — e é por isso que a seção 6 a trata como camada separada do IAM comum.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O workflow do GitHub faz upload para o S3 sem nenhuma chave estática.</li>
+<li>O simulador mostra allow com MFA e deny sem MFA para a mesma policy.</li>
+<li>Você tem a lista de permissões concedidas e nunca usadas de pelo menos uma role.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>"Not authorized to perform sts:AssumeRoleWithWebIdentity" quase sempre é a condition de <code>sub</code> na trust policy: o formato é <code>repo:org/repo:ref:refs/heads/main</code> e um caractere fora do lugar invalida tudo. E se o upload falha com AccessDenied mesmo com a policy certa, confira se o bucket tem uma policy própria negando — negação explícita vence permissão em qualquer nível, que é a regra central da seção 3.</p>
+<h4>Vá além</h4>
+<p>Leia o caso da seção 11 e identifique qual dos controles deste exercício teria interrompido a cadeia. Depois procure na sua conta uma role com <code>*</code> em Action ou Resource. Se achar, você encontrou a mesma porta que aquele incidente usou — e agora sabe exatamente como fechá-la.</p>"""
                 ),
                 "practical_en": (
-                    "(1) Create an IAM role <code>read-reports</code> that can only "
-                    "<code>s3:GetObject</code> and <code>s3:ListBucket</code> on "
-                    "<code>arn:aws:s3:::my-bucket</code> and <code>/*</code>, with a "
-                    "<code>Condition</code> requiring MFA "
-                    "(<code>aws:MultiFactorAuthPresent: true</code>).<br>"
-                    "(2) Test with IAM Policy Simulator in MFA-true and MFA-false mode; "
-                    "compare the two responses.<br>"
-                    "(3) Set up OIDC between GitHub Actions and AWS, following the "
-                    "<a href='https://docs.github.com/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services'>"
-                    "official docs</a>. Deploy a file to S3 with no static key at all "
-                    "in GitHub.<br>"
-                    "(4) In <code>Access Analyzer → Generate Policy</code>, generate a "
-                    "policy based on the historical usage of an existing role; compare it "
-                    "with the current policy to find unused permissions.<br>"
-                    "(5) Bonus: build an SCP that denies creating an S3 bucket without "
-                    "encryption. Apply it to a test OU."
+                    """<p><strong>Goal:</strong> perform an authenticated deploy with <em>no static key anywhere</em> — and watch, in the simulator, a single policy allow and deny the same action depending on context.</p>
+<h4>Before you start</h4>
+<ul>
+<li>An AWS account where you can create roles and policies, and a GitHub repository.</li>
+<li>A test S3 bucket. Create a new one: the exercise modifies policies.</li>
+<li>About two and a half hours. Step 4 is the longest and the most valuable.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Write the most restrictive policy that solves the problem.</strong> A <code>read-reports</code> role with only <code>s3:GetObject</code> and <code>s3:ListBucket</code>, on the bucket ARN <em>and</em> the content ARN (<code>/*</code>).<br><em>What to look for:</em> notice these are two different ARNs and each action uses one. Getting that wrong is the number one cause of "AccessDenied" on a policy that looks correct — the structure from section 2.</li>
+<li><strong>Add an MFA condition.</strong> <code>aws:MultiFactorAuthPresent: true</code>.<br><em>What to look for:</em> the permission now depends on <em>how</em> the person authenticated, not just who they are. Conditions are what turn a binary policy into a contextual one, and they are section 7's subject.</li>
+<li><strong>Test both scenarios in the Policy Simulator.</strong> Once with MFA present, once without.<br><em>What to look for:</em> the same policy returns allow and deny. You just watched section 3's evaluation happen — and the simulator does it without risk, which is the right way to validate before applying it to real people.</li>
+<li><strong>Configure OIDC between GitHub Actions and AWS.</strong> Identity provider, trust policy scoped to your repository, and a workflow that copies a file to S3.<br><em>What to look for:</em> when it works, go looking for <code>AWS_ACCESS_KEY_ID</code> in the repository secrets. There is none. The credential is temporary and issued per request — section 5, and the difference between a key that leaks and a token that expires in minutes.</li>
+<li><strong>Tighten the trust policy and watch it fail.</strong> Change the <code>sub</code> condition to another repository and rerun the workflow.<br><em>What to look for:</em> it fails immediately. Without that restriction, <em>any</em> GitHub repository could assume your role — the most dangerous OIDC misconfiguration, because everything works normally while it is wrong.</li>
+<li><strong>Find the privilege nobody uses.</strong> In Access Analyzer, generate a policy from an existing role's historical usage and compare it with the current policy.<br><em>What to look for:</em> the generated policy is usually much smaller. The difference is privilege granted and never exercised — exactly the excess an attacker would inherit. Section 8 turning audit into data.</li>
+<li><strong>Close with an organizational guard-rail.</strong> An SCP denying bucket creation without encryption, applied to a test OU.<br><em>What to look for:</em> the SCP denies even for administrators. It is a ceiling, not a grant — which is why section 6 treats it as a layer separate from ordinary IAM.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The GitHub workflow uploads to S3 with no static key at all.</li>
+<li>The simulator shows allow with MFA and deny without, for the same policy.</li>
+<li>You have the list of granted-but-never-used permissions for at least one role.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>"Not authorized to perform sts:AssumeRoleWithWebIdentity" is almost always the <code>sub</code> condition in the trust policy: the format is <code>repo:org/repo:ref:refs/heads/main</code> and one character out of place invalidates everything. And if upload fails with AccessDenied despite a correct policy, check whether the bucket has its own policy denying it — an explicit deny beats an allow at any level, the central rule of section 3.</p>
+<h4>Go further</h4>
+<p>Read the case in section 11 and identify which control from this exercise would have broken the chain. Then search your account for a role with <code>*</code> in Action or Resource. If you find one, you found the same door that incident used — and now you know exactly how to close it.</p>"""
                 ),
             },
             "materials": [
@@ -2586,37 +2672,62 @@ notices in time.</p>
 """
                 ),
                 "practical": (
-                    "Construa via Terraform (ou console) uma VPC <code>10.10.0.0/16</code> "
-                    "com:<br>"
-                    "(1) 2 subnets públicas <code>/24</code> em AZs diferentes;<br>"
-                    "(2) 2 subnets privadas <code>/24</code> em AZs diferentes;<br>"
-                    "(3) IGW + 1 NAT Gateway na pública A (HA simplificado);<br>"
-                    "(4) Route tables apropriadas;<br>"
-                    "(5) VPC Endpoint Gateway para S3, apontando para route table "
-                    "privada.<br>"
-                    "(6) Suba uma EC2 em subnet privada. <code>aws s3 cp</code> de algum "
-                    "objeto deve funcionar e <em>não</em> aparecer no log do NAT.<br>"
-                    "(7) Habilite VPC Flow Logs. Faça uma chamada bloqueada (curl em IP "
-                    "fora) e veja o REJECT no log.<br>"
-                    "(8) Bônus: planeje IP para 4 ambientes (prod, staging, dev, sandbox) "
-                    "em uma org com peering futuro, desenhe em papel."
+                    """<p><strong>Objetivo:</strong> construir uma rede em que a máquina privada alcança o S3 <em>sem passar pela internet</em> — e ver, na conta e no log, por que essa diferença de caminho vale dinheiro de verdade.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Conta AWS com permissão para criar VPC, e Terraform instalado (ou disposição para fazer pelo console).</li>
+<li>Um alarme de budget já configurado. O NAT Gateway deste exercício custa por hora, ligado ou não.</li>
+<li>Cerca de três horas. Destrua tudo no fim — e confira a destruição, não confie nela.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Planeje o endereçamento no papel antes de digitar.</strong> Uma VPC <code>10.10.0.0/16</code> com duas subnets públicas <code>/24</code> e duas privadas <code>/24</code>, em AZs diferentes.<br><em>O que observar:</em> reserve faixas não usadas de propósito. Faixa mal planejada não se conserta depois: fazer peering entre duas VPCs com CIDR sobreposto é impossível, e a única saída é recriar a rede. É a seção 2, e o sofrimento é real.</li>
+<li><strong>Entenda o que torna uma subnet "pública".</strong> Crie o IGW, associe à route table das públicas, e compare com a route table das privadas.<br><em>O que observar:</em> não existe flag "pública" em lugar nenhum. A subnet é pública porque a rota <code>0.0.0.0/0</code> aponta para o IGW — é só isso. Essa clareza evita horas de confusão (seção 3).</li>
+<li><strong>Suba uma EC2 na subnet privada e confirme o isolamento.</strong> Tente conectar de fora.<br><em>O que observar:</em> não há caminho de entrada. Use SSM Session Manager para acessar sem bastion e sem porta aberta — e repare que você está administrando um host que a internet não enxerga.</li>
+<li><strong>Dê saída pela NAT e observe o custo começar.</strong> NAT Gateway na pública, rota <code>0.0.0.0/0</code> na route table privada.<br><em>O que observar:</em> da EC2 privada, <code>curl</code> para fora passa a funcionar. Anote a hora: a partir daqui o NAT cobra por hora <em>e</em> por GB processado. Esses dois eixos de cobrança são o que produz o caso da seção 10.</li>
+<li><strong>Crie o VPC Endpoint para S3 e mude o caminho.</strong> Um Gateway Endpoint associado à route table privada.<br><em>O que observar:</em> <code>aws s3 cp</code> continua funcionando, mas o tráfego não passa mais pelo NAT. Compare o gráfico de bytes processados do NAT antes e depois: ele cai. É a seção 6, e é a otimização com melhor retorno da lista.</li>
+<li><strong>Ligue o Flow Logs e veja uma negação registrada.</strong> Da EC2 privada, tente alcançar um IP bloqueado.<br><em>O que observar:</em> procure o <code>REJECT</code> no log, com origem, destino e porta. O Flow Log não mostra conteúdo, só metadados de conexão — mas é o suficiente para responder "esta máquina conversou com aquele IP?", que é a pergunta central de qualquer investigação (seção 7).</li>
+<li><strong>Destrua e confirme.</strong> <code>terraform destroy</code>, depois confira no console se sobrou NAT Gateway, Elastic IP ou endpoint.<br><em>O que observar:</em> Elastic IP desassociado continua cobrando. É a pegadinha de custo mais silenciosa da AWS, e vale ver a lista vazia com os próprios olhos.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>A EC2 privada acessa o S3 e o tráfego não aparece no NAT.</li>
+<li>Você encontrou um <code>REJECT</code> no Flow Logs e sabe ler os campos.</li>
+<li>Nenhum recurso cobrável sobrou depois do destroy.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se a EC2 privada não tem saída nenhuma, confira se a route table associada é mesmo a das privadas: associação errada de subnet é o erro mais comum e o mais difícil de ver no console. E se o VPC Endpoint parece não funcionar, confirme que ele é do tipo Gateway (não Interface) e que foi associado à route table certa — Gateway Endpoint age por rota, não por DNS.</p>
+<h4>Vá além</h4>
+<p>Desenhe no papel o plano de IP para quatro ambientes (prod, staging, dev, sandbox) numa organização que um dia vai fazer peering entre eles. A regra que a seção 2 ensina: reserve mais do que precisa agora e nunca sobreponha. Esse desenho de trinta minutos economiza uma migração de rede daqui a dois anos.</p>"""
                 ),
                 "practical_en": (
-                    "Build via Terraform (or the console) a VPC <code>10.10.0.0/16</code> "
-                    "with:<br>"
-                    "(1) 2 public subnets, <code>/24</code>, in different AZs;<br>"
-                    "(2) 2 private subnets, <code>/24</code>, in different AZs;<br>"
-                    "(3) IGW + 1 NAT Gateway in public subnet A (simplified HA);<br>"
-                    "(4) Appropriate route tables;<br>"
-                    "(5) A VPC Endpoint Gateway for S3, pointing at the private "
-                    "route table.<br>"
-                    "(6) Launch an EC2 instance in the private subnet. <code>aws s3 cp</code> "
-                    "against some object should work and <em>should not</em> show up in the "
-                    "NAT's log.<br>"
-                    "(7) Enable VPC Flow Logs. Make a blocked call (curl to an IP "
-                    "outside) and check the REJECT entry in the log.<br>"
-                    "(8) Bonus: plan IPs for 4 environments (prod, staging, dev, sandbox) "
-                    "in an org with future peering in mind; sketch it on paper."
+                    """<p><strong>Goal:</strong> build a network where the private machine reaches S3 <em>without going through the internet</em> — and see, in the bill and in the logs, why that difference in path costs real money.</p>
+<h4>Before you start</h4>
+<ul>
+<li>An AWS account allowed to create VPCs, and Terraform installed (or willingness to click through the console).</li>
+<li>A budget alert already configured. The NAT Gateway in this exercise bills hourly, idle or not.</li>
+<li>About three hours. Destroy everything at the end — and verify the destruction, do not trust it.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Plan the addressing on paper before typing.</strong> A <code>10.10.0.0/16</code> VPC with two public <code>/24</code> subnets and two private ones, in different AZs.<br><em>What to look for:</em> deliberately reserve unused ranges. A badly planned range cannot be fixed later: peering two VPCs with overlapping CIDRs is impossible, and the only way out is rebuilding the network. That is section 2, and the pain is real.</li>
+<li><strong>Understand what makes a subnet "public".</strong> Create the IGW, attach it to the public route table, and compare with the private one.<br><em>What to look for:</em> there is no "public" flag anywhere. The subnet is public because its <code>0.0.0.0/0</code> route points at the IGW — that is all. This clarity saves hours of confusion (section 3).</li>
+<li><strong>Start an EC2 in the private subnet and confirm the isolation.</strong> Try connecting from outside.<br><em>What to look for:</em> there is no inbound path. Use SSM Session Manager to get in without a bastion and without an open port — and notice you are administering a host the internet cannot see.</li>
+<li><strong>Give it egress through NAT and watch the cost begin.</strong> NAT Gateway in the public subnet, <code>0.0.0.0/0</code> route in the private route table.<br><em>What to look for:</em> from the private EC2, <code>curl</code> to the internet now works. Note the time: from here the NAT bills per hour <em>and</em> per GB processed. Those two billing axes are what produce the case in section 10.</li>
+<li><strong>Create the S3 VPC Endpoint and change the path.</strong> A Gateway Endpoint attached to the private route table.<br><em>What to look for:</em> <code>aws s3 cp</code> keeps working, but the traffic no longer goes through the NAT. Compare the NAT's processed-bytes graph before and after: it drops. That is section 6, and the best-return optimization on the list.</li>
+<li><strong>Enable Flow Logs and see a denial recorded.</strong> From the private EC2, try to reach a blocked IP.<br><em>What to look for:</em> find the <code>REJECT</code> in the log, with source, destination, and port. Flow Logs show no content, only connection metadata — but that is enough to answer "did this machine talk to that IP?", the central question of any investigation (section 7).</li>
+<li><strong>Destroy and verify.</strong> <code>terraform destroy</code>, then check the console for leftover NAT Gateways, Elastic IPs, or endpoints.<br><em>What to look for:</em> an unassociated Elastic IP keeps billing. It is AWS's quietest cost trap, and it is worth seeing the list empty with your own eyes.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The private EC2 reaches S3 and that traffic does not appear on the NAT.</li>
+<li>You found a <code>REJECT</code> in Flow Logs and can read the fields.</li>
+<li>No billable resource survived the destroy.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the private EC2 has no egress at all, check that the associated route table really is the private one: wrong subnet association is the most common mistake and the hardest to spot in the console. And if the VPC Endpoint seems ineffective, confirm it is a Gateway type (not Interface) and attached to the right route table — a Gateway Endpoint works through routes, not DNS.</p>
+<h4>Go further</h4>
+<p>Draw, on paper, the IP plan for four environments (prod, staging, dev, sandbox) in an organization that will someday peer them. The rule section 2 teaches: reserve more than you need now and never overlap. That thirty-minute drawing saves a network migration two years from now.</p>"""
                 ),
             },
             "materials": [
@@ -3208,34 +3319,62 @@ flowchart TD
 """
                 ),
                 "practical": (
-                    "(1) Crie um SG <code>web</code> permitindo 443 de 0.0.0.0/0 e 22 "
-                    "<em>apenas</em> do seu IP fixo (não 0.0.0.0/0).<br>"
-                    "(2) Crie um SG <code>db</code> permitindo 5432 apenas de SG "
-                    "<code>web</code> (referência por SG-id, não por IP).<br>"
-                    "(3) Suba uma EC2 com SG <code>web</code> e um RDS com SG "
-                    "<code>db</code>. De fora, tente <code>nc -zv &lt;rds-endpoint&gt; "
-                    "5432</code>, deve falhar. Da EC2, deve funcionar.<br>"
-                    "(4) Habilite VPC Flow Logs e veja o REJECT na primeira tentativa.<br>"
-                    "(5) Configure SSM Agent na EC2 e acesse via "
-                    "<code>aws ssm start-session</code>, sem nenhuma porta aberta para "
-                    "internet.<br>"
-                    "(6) Bônus: escreva a mesma config em Terraform e aplique. Veja como "
-                    "fica versionável."
+                    """<p><strong>Objetivo:</strong> liberar acesso a um banco sem escrever um único IP — usando referência entre Security Groups — e acessar uma máquina sem abrir nenhuma porta para a internet.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Conta AWS com uma VPC (pode ser a do exercício anterior) e permissão para criar RDS.</li>
+<li>Uma instância RDS pequena ou, se quiser economizar, um Postgres em container numa segunda EC2.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Crie o SG da camada web com escopo honesto.</strong> Porta 443 de <code>0.0.0.0/0</code> e porta 22 apenas do <em>seu</em> IP.<br><em>O que observar:</em> repare na tentação de pôr 22 aberto para todo mundo "só enquanto testo". O caso da seção 10 começa exatamente assim — e o "enquanto testo" tem o hábito de virar permanente.</li>
+<li><strong>Libere o banco por referência, não por IP.</strong> No SG do banco, permita 5432 tendo como origem o <em>SG-id</em> da web.<br><em>O que observar:</em> você não escreveu nenhum endereço. Toda instância que receber o SG web ganha acesso automaticamente, e toda que perder o SG perde o acesso. É a seção 3, e é o que faz a regra sobreviver a autoscaling.</li>
+<li><strong>Prove os dois lados.</strong> De fora, <code>nc -zv ENDPOINT 5432</code> (deve falhar); da EC2 web, o mesmo comando (deve funcionar).<br><em>O que observar:</em> mesma porta, mesmo destino, resultados opostos. O que mudou foi a identidade da origem, não o endereço — que é a ideia inteira de segurança por grupo.</li>
+<li><strong>Veja a negação no Flow Logs.</strong> Procure o <code>REJECT</code> da sua primeira tentativa de fora.<br><em>O que observar:</em> o registro existe mesmo para tráfego bloqueado. É isso que permite detectar varredura antes de ela achar alguma coisa — e é a matéria-prima do GuardDuty.</li>
+<li><strong>Elimine o bastion inteiro.</strong> Configure o SSM Agent e acesse com <code>aws ssm start-session</code>.<br><em>O que observar:</em> agora <em>nenhuma</em> porta de entrada está aberta, nem a 22. A conexão parte da instância para o serviço da AWS, e a autenticação é IAM com log no CloudTrail. Compare com o bastion: menos superfície e melhor auditoria (seção 4).</li>
+<li><strong>Entenda por que SG é stateful e NACL não.</strong> Numa NACL, libere só a entrada na porta 443 e tente uma conexão.<br><em>O que observar:</em> a conexão falha, porque a resposta sai por porta efêmera e a NACL bloqueia a volta. No SG isso não acontece: ele lembra da conexão. É a seção 9, e é a pegadinha que faz gente mexer em NACL e derrubar a produção.</li>
+<li><strong>Restrinja a saída.</strong> Troque o egress padrão (tudo liberado) por apenas o necessário.<br><em>O que observar:</em> algo vai quebrar — atualização de pacote, chamada de API, resolução de nome. Descobrir o que o host realmente precisa falar é o exercício, e é o que a seção 5 chama de boa prática ignorada por padrão.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O banco aceita conexão da EC2 web e recusa de fora, sem nenhum IP escrito na regra.</li>
+<li>Você acessa a instância por SSM, sem porta 22 aberta.</li>
+<li>O egress está restrito e você sabe listar o que precisou liberar.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o SSM não conecta, quase sempre falta a role com <code>AmazonSSMManagedInstanceCore</code> na instância, ou saída para o endpoint do SSM — em subnet privada, isso exige VPC Endpoint. E se a conexão ao banco falha mesmo com a referência de SG correta, confirme que ambos estão na mesma VPC: referência por SG-id não atravessa VPC sem peering.</p>
+<h4>Vá além</h4>
+<p>Escreva a mesma configuração em Terraform e aplique. Depois abra uma porta pelo console e rode <code>terraform plan</code>: ele acusa o desvio. Essa detecção de drift é o que a seção 8 chama de auditoria contínua — e é como se descobre a regra que alguém abriu numa madrugada e esqueceu de fechar.</p>"""
                 ),
                 "practical_en": (
-                    "(1) Create a <code>web</code> SG allowing 443 from 0.0.0.0/0 and 22 "
-                    "<em>only</em> from your fixed IP (not 0.0.0.0/0).<br>"
-                    "(2) Create a <code>db</code> SG allowing 5432 only from the "
-                    "<code>web</code> SG (reference by SG-id, not by IP).<br>"
-                    "(3) Spin up an EC2 with the <code>web</code> SG and an RDS with the "
-                    "<code>db</code> SG. From outside, try <code>nc -zv &lt;rds-endpoint&gt; "
-                    "5432</code>, it should fail. From the EC2, it should work.<br>"
-                    "(4) Enable VPC Flow Logs and watch the REJECT on the first attempt.<br>"
-                    "(5) Configure the SSM Agent on the EC2 and connect via "
-                    "<code>aws ssm start-session</code>, with no port open to the "
-                    "internet.<br>"
-                    "(6) Bonus: write the same config in Terraform and apply it. See how "
-                    "it becomes versionable."
+                    """<p><strong>Goal:</strong> grant database access without writing a single IP — using Security Group references — and reach a machine with no port open to the internet at all.</p>
+<h4>Before you start</h4>
+<ul>
+<li>An AWS account with a VPC (the one from the previous exercise works) and permission to create RDS.</li>
+<li>A small RDS instance or, to save money, a Postgres container on a second EC2.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Create the web tier SG with honest scope.</strong> Port 443 from <code>0.0.0.0/0</code> and port 22 from <em>your</em> IP only.<br><em>What to look for:</em> notice the temptation to open 22 to everyone "just while testing". The case in section 10 starts exactly that way — and "while testing" has a habit of becoming permanent.</li>
+<li><strong>Allow the database by reference, not by IP.</strong> On the database SG, allow 5432 with the web <em>SG-id</em> as the source.<br><em>What to look for:</em> you wrote no address at all. Every instance that gets the web SG gains access automatically, and every one that loses it loses access. That is section 3, and what makes the rule survive autoscaling.</li>
+<li><strong>Prove both sides.</strong> From outside, <code>nc -zv ENDPOINT 5432</code> (should fail); from the web EC2, the same command (should work).<br><em>What to look for:</em> same port, same destination, opposite results. What changed is the source's identity, not its address — which is the whole idea of group-based security.</li>
+<li><strong>See the denial in Flow Logs.</strong> Find the <code>REJECT</code> from your first attempt from outside.<br><em>What to look for:</em> the record exists even for blocked traffic. That is what lets you detect scanning before it finds anything — and it is GuardDuty's raw material.</li>
+<li><strong>Eliminate the bastion entirely.</strong> Configure the SSM Agent and connect with <code>aws ssm start-session</code>.<br><em>What to look for:</em> now <em>no</em> inbound port is open, not even 22. The connection goes from the instance out to the AWS service, and authentication is IAM with CloudTrail logging. Compare with a bastion: less surface and better auditing (section 4).</li>
+<li><strong>Understand why SGs are stateful and NACLs are not.</strong> On a NACL, allow only inbound 443 and try a connection.<br><em>What to look for:</em> the connection fails, because the response leaves on an ephemeral port and the NACL blocks the return. That does not happen with an SG: it remembers the connection. Section 9, and the trap that makes people touch a NACL and take production down.</li>
+<li><strong>Restrict egress.</strong> Replace the default egress (everything allowed) with only what is needed.<br><em>What to look for:</em> something will break — a package update, an API call, name resolution. Discovering what the host actually needs to reach is the exercise, and it is what section 5 calls the best practice ignored by default.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The database accepts connections from the web EC2 and refuses them from outside, with no IP written in the rule.</li>
+<li>You reach the instance over SSM, with port 22 closed.</li>
+<li>Egress is restricted and you can list what you had to allow.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If SSM will not connect, the instance is usually missing the role with <code>AmazonSSMManagedInstanceCore</code>, or egress to the SSM endpoint — in a private subnet that requires a VPC Endpoint. And if the database connection fails despite a correct SG reference, confirm both sit in the same VPC: SG-id references do not cross VPCs without peering.</p>
+<h4>Go further</h4>
+<p>Write the same configuration in Terraform and apply it. Then open a port through the console and run <code>terraform plan</code>: it reports the drift. That drift detection is what section 8 calls continuous auditing — and it is how you find the rule someone opened at 2am and forgot to close.</p>"""
                 ),
             },
             "materials": [
@@ -3990,38 +4129,62 @@ solves the same problem better.</li>
 """
                 ),
                 "practical": (
-                    "(1) Crie um bucket privado, ative Block Public Access (todas as 4 "
-                    "flags), encryption SSE-KMS com CMK próprio e versionamento.<br>"
-                    "(2) Configure lifecycle: Standard → IA aos 30d, Glacier Instant aos "
-                    "90d, Deep Archive aos 365d, expiração aos 7 anos.<br>"
-                    "(3) Em uma app, gere um <em>presigned URL PUT</em> com 5 min de TTL e "
-                    "<code>Content-Length</code> máximo de 5 MB. Faça o upload via "
-                    "<code>curl -T arquivo.jpg URL</code>.<br>"
-                    "(4) Apague o objeto. Depois recupere a versão anterior via "
-                    "<code>aws s3api list-object-versions</code> + "
-                    "<code>copy-object</code>.<br>"
-                    "(5) Crie bucket policy negando todo acesso sem "
-                    "<code>aws:SecureTransport: true</code>. Teste com curl http (deve "
-                    "falhar) e https (deve funcionar).<br>"
-                    "(6) Bônus: configure replicação cross-region para outro bucket em "
-                    "região diferente."
+                    """<p><strong>Objetivo:</strong> apagar um objeto e recuperá-lo — provando na prática que versionamento é a defesa contra ransomware que a aula descreve — e entregar um upload seguro sem distribuir credencial nenhuma.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Conta AWS com permissão em S3 e KMS. O custo é mínimo, mas apague tudo no fim.</li>
+<li><code>curl</code> e a AWS CLI configurada.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Crie o bucket fechado desde o nascimento.</strong> Block Public Access com as quatro flags, criptografia SSE-KMS com CMK própria e versionamento ligado.<br><em>O que observar:</em> repare que são quatro flags, não uma. Elas cobrem ACL e policy, presentes e futuras — e é por isso que ativar as quatro no nível da conta é o guard-rail recomendado em vez de confiar em lembrar bucket a bucket.</li>
+<li><strong>Entenda a ordem de avaliação errando de propósito.</strong> Escreva uma bucket policy que nega tudo e depois tente ler um objeto com credencial de administrador.<br><em>O que observar:</em> negado. Negação explícita vence qualquer permissão, inclusive de admin — é a seção 2, e é a razão de bucket policy ser tanto a melhor proteção quanto a melhor forma de se trancar do lado de fora.</li>
+<li><strong>Exija HTTPS por policy.</strong> Um <code>Deny</code> quando <code>aws:SecureTransport</code> for <code>false</code>.<br><em>O que observar:</em> teste com <code>curl http://</code> (falha) e <code>https://</code> (funciona). Sem essa condition, o bucket aceita conexão em texto puro mesmo você sempre usando HTTPS — a proteção depende do cliente, e cliente não é confiável.</li>
+<li><strong>Distribua upload sem distribuir credencial.</strong> Gere um presigned URL de PUT com cinco minutos de validade e limite de tamanho.<br><em>O que observar:</em> qualquer pessoa com o link faz upload, ninguém recebe chave da AWS, e o link morre em cinco minutos. É a seção 4, e é o padrão correto para upload vindo de navegador — a alternativa (chave no frontend) é o vazamento clássico.</li>
+<li><strong>Apague e recupere.</strong> <code>aws s3 rm</code> no objeto, depois <code>aws s3api list-object-versions</code> e restaure a versão anterior.<br><em>O que observar:</em> o objeto nunca foi apagado de fato — o que existe é um delete marker por cima. Essa é a mecânica que transforma versionamento em defesa contra ransomware, e vale ver com os próprios olhos (seção 6).</li>
+<li><strong>Prove o limite do versionamento.</strong> Repare que quem tem permissão de <code>s3:DeleteObjectVersion</code> pode apagar a versão antiga também.<br><em>O que observar:</em> versionamento sozinho não basta contra atacante com permissão total. É por isso que Object Lock existe: ele impede a remoção até a data, mesmo para a conta root. Ative em um bucket de teste e tente apagar.</li>
+<li><strong>Corte o custo com lifecycle.</strong> Standard aos 30 dias para IA, 90 para Glacier Instant, 365 para Deep Archive, expiração em sete anos.<br><em>O que observar:</em> estime a economia com a calculadora. Para log antigo, a diferença chega perto de 90% — e é uma configuração que se faz uma vez e rende para sempre (seção 7).</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você apagou e restaurou um objeto usando versões.</li>
+<li>Um upload por presigned URL funciona e expira no prazo.</li>
+<li><code>curl</code> em HTTP é recusado pela policy e em HTTPS funciona.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se você se trancar para fora do bucket com a policy do passo 2, use a conta root para removê-la — é o único caminho, e é o motivo de testar isso em bucket descartável. E se o presigned URL der <code>SignatureDoesNotMatch</code>, quase sempre é diferença de cabeçalho entre a assinatura e o <code>curl</code>: gere o link pedindo exatamente os headers que você vai enviar.</p>
+<h4>Vá além</h4>
+<p>Releia o caso da seção 10 e localize, na sua própria conta, qualquer bucket sem Block Public Access. Depois ative o bloqueio no nível da conta inteira. A lição do incidente não é que alguém errou uma policy — é que o erro era possível, e guard-rail existe para tornar o erro impossível.</p>"""
                 ),
                 "practical_en": (
-                    "(1) Create a private bucket, enable Block Public Access (all 4 "
-                    "flags), SSE-KMS encryption with your own CMK, and versioning.<br>"
-                    "(2) Configure lifecycle: Standard → IA at 30d, Glacier Instant at "
-                    "90d, Deep Archive at 365d, expiration at 7 years.<br>"
-                    "(3) In an app, generate a <em>presigned PUT URL</em> with a 5-minute "
-                    "TTL and a maximum <code>Content-Length</code> of 5 MB. Upload via "
-                    "<code>curl -T arquivo.jpg URL</code>.<br>"
-                    "(4) Delete the object. Then recover the previous version via "
-                    "<code>aws s3api list-object-versions</code> + "
-                    "<code>copy-object</code>.<br>"
-                    "(5) Create a bucket policy denying all access without "
-                    "<code>aws:SecureTransport: true</code>. Test with curl over http "
-                    "(should fail) and https (should work).<br>"
-                    "(6) Bonus: configure cross-region replication to another bucket in "
-                    "a different region."
+                    """<p><strong>Goal:</strong> delete an object and recover it — proving firsthand that versioning is the ransomware defense the lesson describes — and deliver a secure upload without distributing any credential.</p>
+<h4>Before you start</h4>
+<ul>
+<li>An AWS account with S3 and KMS permissions. The cost is minimal, but delete everything at the end.</li>
+<li><code>curl</code> and a configured AWS CLI.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Create the bucket closed from birth.</strong> Block Public Access with all four flags, SSE-KMS encryption with your own CMK, and versioning on.<br><em>What to look for:</em> notice there are four flags, not one. They cover ACLs and policies, present and future — which is why enabling all four at the account level is the recommended guard-rail instead of trusting yourself to remember bucket by bucket.</li>
+<li><strong>Learn the evaluation order by getting it wrong on purpose.</strong> Write a bucket policy that denies everything, then try reading an object with administrator credentials.<br><em>What to look for:</em> denied. An explicit deny beats any allow, admin included — that is section 2, and the reason bucket policies are both the best protection and the best way to lock yourself out.</li>
+<li><strong>Require HTTPS through policy.</strong> A <code>Deny</code> when <code>aws:SecureTransport</code> is <code>false</code>.<br><em>What to look for:</em> test with <code>curl http://</code> (fails) and <code>https://</code> (works). Without that condition, the bucket accepts plaintext connections even if you always use HTTPS — protection would depend on the client, and clients are not trustworthy.</li>
+<li><strong>Distribute uploads without distributing credentials.</strong> Generate a presigned PUT URL with five minutes of validity and a size limit.<br><em>What to look for:</em> anyone with the link can upload, nobody receives an AWS key, and the link dies in five minutes. That is section 4, and the correct pattern for browser uploads — the alternative (a key in the frontend) is the classic leak.</li>
+<li><strong>Delete and recover.</strong> <code>aws s3 rm</code> the object, then <code>aws s3api list-object-versions</code> and restore the previous version.<br><em>What to look for:</em> the object was never really deleted — what exists is a delete marker on top. That mechanic is what turns versioning into ransomware defense, and it is worth seeing with your own eyes (section 6).</li>
+<li><strong>Prove versioning's limit.</strong> Notice that anyone holding <code>s3:DeleteObjectVersion</code> can delete the old version too.<br><em>What to look for:</em> versioning alone is not enough against an attacker with full permissions. That is why Object Lock exists: it blocks removal until the retention date, even for the root account. Enable it on a test bucket and try to delete.</li>
+<li><strong>Cut cost with lifecycle rules.</strong> Standard to IA at 30 days, Glacier Instant at 90, Deep Archive at 365, expiry at seven years.<br><em>What to look for:</em> estimate the savings in the calculator. For old logs the difference approaches 90% — and it is a configuration you make once and benefit from forever (section 7).</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>You deleted and restored an object using versions.</li>
+<li>A presigned URL upload works and expires on schedule.</li>
+<li><code>curl</code> over HTTP is refused by policy and over HTTPS works.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If you lock yourself out with the step 2 policy, use the root account to remove it — that is the only path, and the reason to test this on a disposable bucket. And if the presigned URL returns <code>SignatureDoesNotMatch</code>, it is almost always a header mismatch between the signature and your <code>curl</code>: generate the link asking for exactly the headers you will send.</p>
+<h4>Go further</h4>
+<p>Reread the case in section 10 and find, in your own account, any bucket without Block Public Access. Then enable the block account-wide. The lesson of that incident is not that someone got a policy wrong — it is that the mistake was possible, and guard-rails exist to make it impossible.</p>"""
                 ),
             },
             "materials": [
@@ -4738,34 +4901,60 @@ steals the disk steals the key along with it.</li>
 """
                 ),
                 "practical": (
-                    "(1) Crie uma CMK em KMS com rotação anual habilitada. Adicione policy "
-                    "permitindo apenas uma role específica usar para encrypt/decrypt.<br>"
-                    "(2) Use <code>aws kms encrypt</code> e <code>decrypt</code> via CLI "
-                    "para entender o fluxo. Veja o log no CloudTrail.<br>"
-                    "(3) Habilite encryption padrão SSE-KMS com sua CMK em um bucket S3. "
-                    "Faça upload de um objeto e tente baixá-lo de uma role <em>sem</em> "
-                    "permissão na CMK, deve falhar mesmo com S3 GetObject.<br>"
-                    "(4) Em uma app Python, implemente envelope encryption com a CMK + "
-                    "AES-GCM local.<br>"
-                    "(5) Configure um Nginx com TLS 1.3 'modern' (Mozilla generator) e "
-                    "audite com SSL Labs até A+.<br>"
-                    "(6) Bônus: implemente hash de senha com Argon2id em uma rota "
-                    "<code>/register</code>. Compare o tempo de hash com SHA-256 puro."
+                    """<p><strong>Objetivo:</strong> descobrir que ter permissão no S3 <em>não</em> é suficiente para ler um objeto criptografado — e entender, implementando, por que envelope encryption existe.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Conta AWS com permissão em KMS e S3, e Python com <code>boto3</code> e <code>cryptography</code>.</li>
+<li>Um Nginx com domínio para o passo 6, ou use o do tópico de Web Servers.</li>
+<li>Cerca de duas horas e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Crie a CMK com rotação e policy restrita.</strong> Rotação anual ativada e uma key policy permitindo apenas uma role específica fazer encrypt e decrypt.<br><em>O que observar:</em> a key policy é separada da IAM policy, e as duas precisam permitir. Essa dupla camada é o que torna o KMS um ponto de controle de verdade, em vez de apenas mais uma permissão (seção 4).</li>
+<li><strong>Cifre e decifre pela CLI e observe o rastro.</strong> <code>aws kms encrypt</code>, depois <code>decrypt</code>, e procure as duas chamadas no CloudTrail.<br><em>O que observar:</em> cada uso da chave deixa registro de quem, quando e para qual recurso. É isso que permite responder "quem descriptografou esse dado em março?" — pergunta que aparece em toda investigação séria.</li>
+<li><strong>Prove que S3 e KMS são camadas independentes.</strong> Ative SSE-KMS com a sua CMK no bucket, suba um objeto e tente baixá-lo com uma role que tem <code>s3:GetObject</code> mas <em>não</em> tem permissão na CMK.<br><em>O que observar:</em> falha. Ter acesso ao objeto não basta se você não pode usar a chave. Essa separação é o que limita o estrago de uma credencial vazada — e costuma surpreender quem achava que S3 e criptografia eram a mesma configuração.</li>
+<li><strong>Implemente envelope encryption e descubra por que ela existe.</strong> Gere uma data key com <code>generate_data_key</code>, cifre um arquivo grande localmente com AES-GCM, e guarde só a versão cifrada da data key junto.<br><em>O que observar:</em> o arquivo inteiro nunca trafega para o KMS — só a chave de 256 bits. Tente mandar 100 MB direto para <code>kms encrypt</code> e você esbarra no limite de 4 KB. É a seção 5, e o limite explica o padrão.</li>
+<li><strong>Veja a diferença entre hash e criptografia.</strong> Implemente um hash de senha com Argon2id e cronometre; compare com SHA-256 puro.<br><em>O que observar:</em> o Argon2id é milhares de vezes mais lento, <em>de propósito</em>. Lentidão é a defesa: ela torna a força bruta inviável. E repare que hash não tem volta — é o que a seção 8 quer deixar claro, porque tratar senha como dado cifrado é um erro de categoria.</li>
+<li><strong>Endureça o TLS e audite.</strong> Configure o Nginx com o perfil "modern" do gerador da Mozilla e rode o SSL Labs.<br><em>O que observar:</em> o perfil moderno derruba clientes antigos. Essa é a decisão real de TLS 1.3: compatibilidade em troca de segurança, e a resposta depende de quem são os seus usuários (seção 6).</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Uma role com <code>s3:GetObject</code> e sem permissão na CMK recebe negação ao baixar.</li>
+<li>Seu script cifra um arquivo grande usando data key, sem enviar o conteúdo ao KMS.</li>
+<li>O SSL Labs dá A ou A+ no domínio configurado.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o <code>decrypt</code> falhar com a data key correta, confira o contexto de criptografia: se você passou <code>EncryptionContext</code> ao cifrar, precisa passar o mesmo ao decifrar — ele faz parte da autenticação. E se o SSL Labs reprovar por cadeia incompleta, o servidor está enviando só o certificado folha; inclua a cadeia intermediária.</p>
+<h4>Vá além</h4>
+<p>Revise a seção 1 e responda, para o seu próprio sistema: criptografia em repouso protege contra quê, exatamente? Se o atacante rouba credencial da aplicação, ela decifra normalmente — porque a aplicação tem a chave. Entender esse limite evita a falsa sensação de segurança que "tudo criptografado" costuma dar.</p>"""
                 ),
                 "practical_en": (
-                    "(1) Create a CMK in KMS with annual rotation enabled. Add a policy "
-                    "allowing only a specific role to use it for encrypt/decrypt.<br>"
-                    "(2) Use <code>aws kms encrypt</code> and <code>decrypt</code> via the CLI "
-                    "to understand the flow. Check the log in CloudTrail.<br>"
-                    "(3) Enable default SSE-KMS encryption with your CMK on an S3 bucket. "
-                    "Upload an object and try to download it from a role <em>without</em> "
-                    "permission on the CMK, it should fail even with S3 GetObject.<br>"
-                    "(4) In a Python app, implement envelope encryption with the CMK + "
-                    "local AES-GCM.<br>"
-                    "(5) Configure an Nginx with 'modern' TLS 1.3 (Mozilla generator) and "
-                    "audit it with SSL Labs until you reach A+.<br>"
-                    "(6) Bonus: implement password hashing with Argon2id on a "
-                    "<code>/register</code> route. Compare the hash time with plain SHA-256."
+                    """<p><strong>Goal:</strong> discover that holding S3 permissions is <em>not</em> enough to read an encrypted object — and understand, by implementing it, why envelope encryption exists.</p>
+<h4>Before you start</h4>
+<ul>
+<li>An AWS account with KMS and S3 permissions, and Python with <code>boto3</code> and <code>cryptography</code>.</li>
+<li>An Nginx with a domain for step 6, or reuse the one from the Web Servers topic.</li>
+<li>About two and a half hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Create the CMK with rotation and a restricted policy.</strong> Annual rotation enabled and a key policy allowing only one specific role to encrypt and decrypt.<br><em>What to look for:</em> the key policy is separate from the IAM policy, and both must allow. That double layer is what makes KMS a real control point rather than just one more permission (section 4).</li>
+<li><strong>Encrypt and decrypt via CLI and watch the trail.</strong> <code>aws kms encrypt</code>, then <code>decrypt</code>, and find both calls in CloudTrail.<br><em>What to look for:</em> every key use leaves a record of who, when, and for which resource. That is what lets you answer "who decrypted this data in March?" — a question that shows up in every serious investigation.</li>
+<li><strong>Prove that S3 and KMS are independent layers.</strong> Enable SSE-KMS with your CMK on the bucket, upload an object, and try downloading it with a role that has <code>s3:GetObject</code> but <em>no</em> permission on the CMK.<br><em>What to look for:</em> it fails. Access to the object is not enough if you cannot use the key. That separation is what limits the damage of a leaked credential — and it surprises people who assumed S3 and encryption were the same setting.</li>
+<li><strong>Implement envelope encryption and discover why it exists.</strong> Generate a data key with <code>generate_data_key</code>, encrypt a large file locally with AES-GCM, and store only the encrypted copy of the data key alongside it.<br><em>What to look for:</em> the file itself never travels to KMS — only a 256-bit key does. Try sending 100 MB straight to <code>kms encrypt</code> and you hit the 4 KB limit. That is section 5, and the limit explains the pattern.</li>
+<li><strong>See the difference between hashing and encryption.</strong> Implement password hashing with Argon2id and time it; compare with plain SHA-256.<br><em>What to look for:</em> Argon2id is thousands of times slower, <em>on purpose</em>. The slowness is the defense: it makes brute force impractical. And notice hashing has no inverse — the point section 8 wants to land, because treating a password as encrypted data is a category error.</li>
+<li><strong>Harden TLS and audit it.</strong> Configure Nginx with Mozilla's "modern" generator profile and run SSL Labs.<br><em>What to look for:</em> the modern profile drops old clients. That is the real TLS 1.3 decision: compatibility traded for security, and the answer depends on who your users are (section 6).</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>A role with <code>s3:GetObject</code> and no CMK permission is denied on download.</li>
+<li>Your script encrypts a large file using a data key, never sending content to KMS.</li>
+<li>SSL Labs gives A or A+ on the configured domain.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If <code>decrypt</code> fails with the correct data key, check the encryption context: if you passed <code>EncryptionContext</code> when encrypting, you must pass the same when decrypting — it is part of the authentication. And if SSL Labs fails you for an incomplete chain, the server is sending only the leaf certificate; include the intermediate chain.</p>
+<h4>Go further</h4>
+<p>Revisit section 1 and answer, for your own system: what exactly does encryption at rest protect against? If an attacker steals the application's credentials, it decrypts normally — because the application holds the key. Understanding that limit prevents the false confidence that "everything is encrypted" tends to create.</p>"""
                 ),
             },
             "materials": [
@@ -5353,34 +5542,60 @@ flowchart LR
 """
                 ),
                 "practical": (
-                    "(1) Defina um SLO realístico para uma rota da sua app (ex.: "
-                    "<code>GET /api/users</code>): '95% das requests respondem em &lt;300ms "
-                    "com 200/4xx'.<br>"
-                    "(2) Suba Prometheus + Grafana via docker-compose. Instrumente sua app "
-                    "com OpenTelemetry (Python tem auto-instrumentation).<br>"
-                    "(3) Crie no Grafana 4 painéis (golden signals): latência p50/p95/p99, "
-                    "tráfego, erros, saturação (CPU).<br>"
-                    "(4) Configure burn-rate alerts no Alertmanager (rate1h &gt; 14.4 = "
-                    "page).<br>"
-                    "(5) Para cada alarme, escreva runbook de 3 linhas: '1) verificar X; "
-                    "2) se X=Y, fazer Z; 3) escalar para A se persistir'.<br>"
-                    "(6) Bônus: simule outage (mata o container 5min) e veja burn rate "
-                    "subir; alarme deve disparar."
+                    """<p><strong>Objetivo:</strong> sair de "o sistema está bem?" para um número com regra de decisão — e configurar um alerta que só acorda alguém quando existe ação a tomar.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Docker Compose e uma aplicação HTTP simples que você possa derrubar sem dó.</li>
+<li>Cerca de duas horas e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Escreva o SLO antes de instalar qualquer coisa.</strong> Uma frase para uma rota específica: "95% das requisições a <code>GET /api/users</code> respondem em menos de 300 ms".<br><em>O que observar:</em> repare no que a frase obriga você a decidir: qual rota, qual percentil, qual limite. SLO vago não serve de base para alerta nenhum — é a seção 2, e é onde o trabalho realmente está.</li>
+<li><strong>Suba Prometheus e Grafana e instrumente a aplicação.</strong> Via docker-compose, com auto-instrumentação do OpenTelemetry.<br><em>O que observar:</em> confirme em <code>/metrics</code> que as séries aparecem. Se o histograma de latência não estiver lá, nenhum painel de percentil vai funcionar depois — vale verificar agora.</li>
+<li><strong>Monte os quatro sinais de ouro.</strong> Latência (p50, p95, p99), tráfego, erros e saturação.<br><em>O que observar:</em> ponha média e p99 no mesmo gráfico de latência. Gere carga desigual e veja as duas linhas divergirem: a média fica calma enquanto o p99 dispara. É a seção 4, e é a razão de percentil existir.</li>
+<li><strong>Calcule o error budget do mês.</strong> Com 99,9%, são cerca de 43 minutos de falha permitidos em trinta dias.<br><em>O que observar:</em> esse número transforma discussão em conta. "Podemos arriscar esse deploy?" passa a ter resposta objetiva: depende de quanto budget sobrou. É a seção 3, e é o que alinha time de produto e de operação.</li>
+<li><strong>Alerte por taxa de queima, não por valor instantâneo.</strong> No Alertmanager, regra de burn rate — por exemplo, queima em 1 hora acima de 14,4 vezes o normal.<br><em>O que observar:</em> gere um pico curto de latência: nada dispara. Depois derrube a aplicação por cinco minutos: o alerta dispara. A diferença entre ruído e sinal está aí (seção 7).</li>
+<li><strong>Escreva o runbook de três linhas para cada alerta.</strong> Verificar X; se X for Y, fazer Z; escalar para A se persistir.<br><em>O que observar:</em> se você não consegue escrever essas três linhas, o alerta provavelmente não deveria existir — não há ação definida. Esse é o melhor filtro contra fadiga de alerta que existe.</li>
+<li><strong>Provoque o incidente e observe o ciclo inteiro.</strong> Mate o container por cinco minutos e acompanhe painel, burn rate e alerta.<br><em>O que observar:</em> cronometre o tempo entre a falha começar e o alerta chegar. Esse número é o seu tempo de detecção, e ele é tão importante quanto o tempo de correção.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Existe um SLO escrito com rota, percentil e limite.</li>
+<li>Um pico isolado não dispara alerta e uma queda sustentada dispara.</li>
+<li>Cada alerta tem runbook de três linhas.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o Prometheus não coleta, confira o <code>targets</code> na interface dele — quase sempre é nome de host de container errado no <code>scrape_config</code>. E se o p99 aparecer vazio, a métrica provavelmente é um gauge em vez de histograma: percentil exige buckets, e essa escolha é feita na instrumentação, não no painel.</p>
+<h4>Vá além</h4>
+<p>Adicione um label com identificador único de usuário numa métrica e observe o número de séries do Prometheus explodir (seção 6). Depois remova. Cardinalidade é o que derruba instalação de monitoramento, e a lição gruda melhor depois de ver o gráfico de memória subir.</p>"""
                 ),
                 "practical_en": (
-                    "(1) Define a realistic SLO for a route in your app (e.g.: "
-                    "<code>GET /api/users</code>): '95% of requests respond in &lt;300ms "
-                    "with 200/4xx'.<br>"
-                    "(2) Spin up Prometheus + Grafana via docker-compose. Instrument your app "
-                    "with OpenTelemetry (Python has auto-instrumentation).<br>"
-                    "(3) Create 4 panels in Grafana (golden signals): p50/p95/p99 latency, "
-                    "traffic, errors, saturation (CPU).<br>"
-                    "(4) Configure burn-rate alerts in Alertmanager (rate1h &gt; 14.4 = "
-                    "page).<br>"
-                    "(5) For each alarm, write a 3-line runbook: '1) check X; "
-                    "2) if X=Y, do Z; 3) escalate to A if it persists'.<br>"
-                    "(6) Bonus: simulate an outage (kill the container for 5min) and watch "
-                    "the burn rate climb; the alarm should fire."
+                    """<p><strong>Goal:</strong> move from "is the system fine?" to a number with a decision rule — and configure an alert that only wakes someone when there is action to take.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Docker Compose and a simple HTTP application you can kill without regret.</li>
+<li>About two and a half hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Write the SLO before installing anything.</strong> One sentence about a specific route: "95% of requests to <code>GET /api/users</code> respond in under 300 ms".<br><em>What to look for:</em> notice what that sentence forces you to decide: which route, which percentile, which threshold. A vague SLO cannot ground any alert — that is section 2, and where the real work sits.</li>
+<li><strong>Bring up Prometheus and Grafana and instrument the app.</strong> Via docker-compose, with OpenTelemetry auto-instrumentation.<br><em>What to look for:</em> confirm on <code>/metrics</code> that the series appear. If the latency histogram is missing, no percentile panel will work later — worth checking now.</li>
+<li><strong>Build the four golden signals.</strong> Latency (p50, p95, p99), traffic, errors, and saturation.<br><em>What to look for:</em> put average and p99 on the same latency chart. Generate uneven load and watch the lines diverge: the average stays calm while p99 spikes. That is section 4, and the reason percentiles exist.</li>
+<li><strong>Compute the monthly error budget.</strong> At 99.9%, that is roughly 43 minutes of allowed failure in thirty days.<br><em>What to look for:</em> that number turns argument into arithmetic. "Can we risk this deploy?" gets an objective answer: it depends how much budget is left. Section 3, and what aligns product and operations.</li>
+<li><strong>Alert on burn rate, not on instantaneous value.</strong> In Alertmanager, a burn rate rule — for example, one-hour burn above 14.4 times normal.<br><em>What to look for:</em> generate a short latency spike: nothing fires. Then take the app down for five minutes: the alert fires. The difference between noise and signal lives right there (section 7).</li>
+<li><strong>Write the three-line runbook for each alert.</strong> Check X; if X is Y, do Z; escalate to A if it persists.<br><em>What to look for:</em> if you cannot write those three lines, the alert probably should not exist — there is no defined action. It is the best filter against alert fatigue there is.</li>
+<li><strong>Cause the incident and watch the whole cycle.</strong> Kill the container for five minutes and follow dashboard, burn rate, and alert.<br><em>What to look for:</em> time the gap between the failure starting and the alert arriving. That number is your detection time, and it matters as much as repair time.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>There is a written SLO with route, percentile, and threshold.</li>
+<li>An isolated spike fires nothing and a sustained outage fires the alert.</li>
+<li>Every alert has a three-line runbook.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If Prometheus scrapes nothing, check <code>targets</code> in its own UI — it is almost always a wrong container hostname in <code>scrape_config</code>. And if p99 comes back empty, the metric is probably a gauge rather than a histogram: percentiles need buckets, and that choice is made in the instrumentation, not in the panel.</p>
+<h4>Go further</h4>
+<p>Add a label carrying a unique user identifier to a metric and watch Prometheus's series count explode (section 6). Then remove it. Cardinality is what takes monitoring installations down, and the lesson sticks better after watching the memory graph climb.</p>"""
                 ),
             },
             "materials": [
@@ -5999,34 +6214,62 @@ distributed the copy.</li>
 """
                 ),
                 "practical": (
-                    "(1) Faça snapshot/backup do seu banco de teste (RDS, Postgres, MySQL "
-                    "qualquer).<br>"
-                    "(2) <strong>Apague o banco</strong>. (Em ambiente de teste! Não em "
-                    "prod!)<br>"
-                    "(3) Provisione novo banco na <em>outra região</em>.<br>"
-                    "(4) Restaure do backup. Cronometre <strong>do passo 2 ao último query "
-                    "respondendo</strong>.<br>"
-                    "(5) Compare com o RTO que você assumia. Provavelmente vai surpreender "
-                    "para cima.<br>"
-                    "(6) Bônus: configure object-lock de 30d em um bucket S3, faça upload, "
-                    "tente apagar, veja a denial.<br>"
-                    "(7) Bônus 2: agende game day mensal calendário do time para repetir "
-                    "esse exercício."
+                    """<p><strong>Objetivo:</strong> descobrir o seu RTO real cronometrando uma restauração de verdade — e provavelmente levar um susto, porque o número medido quase nunca bate com o número assumido.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um banco de <em>teste</em> com dados de exemplo. Leia essa palavra de novo: teste.</li>
+<li>Um cronômetro. É o instrumento principal deste exercício.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Escreva o RTO e o RPO que você <em>acha</em> que tem.</strong> Antes de qualquer coisa, anote: quanto tempo até voltar, e quanto dado você aceita perder.<br><em>O que observar:</em> registrar a suposição agora é o que dá sentido à medição depois. Sem isso, você só vai ter um número solto sem referência para comparar.</li>
+<li><strong>Faça o backup e confira que ele existe de fato.</strong> Snapshot ou <code>pg_dump</code>, e depois verifique tamanho e integridade do arquivo.<br><em>O que observar:</em> backup que nunca foi lido é hipótese, não backup. Abrir o arquivo e conferir que ele tem conteúdo já elimina a falha mais comum: o job que rodava há meses gravando zero byte.</li>
+<li><strong>Apague o banco e dispare o cronômetro.</strong> No ambiente de teste, apague de verdade.<br><em>O que observar:</em> apagar de mentira não vale. A sensação de não ter mais o original é parte do exercício, e é o que faz você notar cada passo que não estava documentado.</li>
+<li><strong>Provisione em outra região e restaure.</strong> Banco novo, restauração do backup, aplicação conectando.<br><em>O que observar:</em> anote cada obstáculo: senha que não estava anotada, security group faltando, extensão do Postgres ausente, endpoint hardcoded na aplicação. Cada um desses é um item de runbook que só aparece restaurando.</li>
+<li><strong>Pare o cronômetro na primeira query da aplicação, não na restauração.</strong><br><em>O que observar:</em> compare com o RTO do passo 1. A diferença costuma ser grande, e a maior parte dela não é o restore em si — é configuração, DNS e credencial. Por isso RTO medido é o único que vale.</li>
+<li><strong>Proteja o backup do próprio atacante.</strong> Ative Object Lock por 30 dias num bucket, suba um arquivo e tente apagar.<br><em>O que observar:</em> a negação vale inclusive para quem tem permissão total. É a diferença entre backup e backup imutável — e ransomware moderno procura e apaga backup antes de cifrar o principal.</li>
+<li><strong>Transforme o aprendizado em agenda.</strong> Marque no calendário do time a repetição mensal deste exercício.<br><em>O que observar:</em> restauração que não é ensaiada regularmente volta a ser hipótese em poucos meses, porque a infraestrutura muda. O evento no calendário é o que mantém o procedimento vivo.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você tem o RTO medido, em minutos, ao lado do RTO que assumia.</li>
+<li>Existe uma lista escrita dos obstáculos que apareceram no caminho.</li>
+<li>O bucket com Object Lock recusa a exclusão de um arquivo dentro do prazo.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se a restauração falhar por versão incompatível do engine, anote: é um requisito do runbook que ninguém costuma documentar. E se a aplicação não conecta depois de tudo restaurado, procure endpoint fixo no código ou na configuração — descobrir isso hoje, no teste, é muito melhor que descobrir durante um incidente real.</p>
+<h4>Vá além</h4>
+<p>Calcule o custo de reduzir o seu RTO pela metade e leve o número para a discussão com o time. Disponibilidade é compra, não virtude: a pergunta certa não é "queremos voltar mais rápido?" — todo mundo quer — e sim "quanto vale cada hora a menos de indisponibilidade para este sistema específico?".</p>"""
                 ),
                 "practical_en": (
-                    "(1) Take a snapshot/backup of your test database (RDS, Postgres, MySQL, "
-                    "any).<br>"
-                    "(2) <strong>Delete the database</strong>. (In a test environment! Not in "
-                    "prod!)<br>"
-                    "(3) Provision a new database in the <em>other region</em>.<br>"
-                    "(4) Restore from the backup. Time it <strong>from step 2 to the last "
-                    "query responding</strong>.<br>"
-                    "(5) Compare with the RTO you assumed. It will probably surprise you, on "
-                    "the wrong side.<br>"
-                    "(6) Bonus: configure 30-day object-lock on an S3 bucket, upload a file, "
-                    "try to delete it, watch the denial.<br>"
-                    "(7) Bonus 2: schedule a monthly game day on the team calendar to repeat "
-                    "this exercise."
+                    """<p><strong>Goal:</strong> find your real RTO by timing an actual restore — and probably get a shock, because the measured number almost never matches the assumed one.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A <em>test</em> database with sample data. Read that word again: test.</li>
+<li>A stopwatch. It is the main instrument of this exercise.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Write down the RTO and RPO you <em>think</em> you have.</strong> Before anything else: how long until you are back, and how much data you accept losing.<br><em>What to look for:</em> recording the assumption now is what gives the later measurement meaning. Without it you just end up with a loose number and nothing to compare against.</li>
+<li><strong>Take the backup and confirm it actually exists.</strong> Snapshot or <code>pg_dump</code>, then check the file's size and integrity.<br><em>What to look for:</em> a backup nobody has read is a hypothesis, not a backup. Opening the file and confirming it has content already eliminates the most common failure: the job that has been writing zero bytes for months.</li>
+<li><strong>Delete the database and start the clock.</strong> In the test environment, really delete it.<br><em>What to look for:</em> pretending does not count. The feeling of no longer having the original is part of the exercise, and it is what makes you notice every undocumented step.</li>
+<li><strong>Provision in another region and restore.</strong> New database, restore from backup, application connecting.<br><em>What to look for:</em> note every obstacle: a password nobody wrote down, a missing security group, an absent Postgres extension, a hardcoded endpoint in the app. Each one is a runbook item that only appears during a restore.</li>
+<li><strong>Stop the clock at the application's first query, not at the restore.</strong><br><em>What to look for:</em> compare with the RTO from step 1. The gap is usually large, and most of it is not the restore itself — it is configuration, DNS, and credentials. That is why a measured RTO is the only one that counts.</li>
+<li><strong>Protect the backup from the attacker too.</strong> Enable Object Lock for 30 days on a bucket, upload a file, and try to delete it.<br><em>What to look for:</em> the denial applies even to someone with full permissions. That is the difference between a backup and an immutable backup — and modern ransomware looks for and deletes backups before encrypting the primary data.</li>
+<li><strong>Turn the lesson into a calendar entry.</strong> Schedule a monthly repeat of this exercise with the team.<br><em>What to look for:</em> a restore that is not rehearsed regularly goes back to being a hypothesis within months, because infrastructure changes. The calendar event is what keeps the procedure alive.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>You have the measured RTO, in minutes, next to the RTO you assumed.</li>
+<li>There is a written list of the obstacles that came up along the way.</li>
+<li>The Object Lock bucket refuses to delete a file within the retention period.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the restore fails on an incompatible engine version, write that down: it is a runbook requirement nobody usually documents. And if the application will not connect after everything is restored, look for a hardcoded endpoint in the code or configuration — finding that today, in a test, beats finding it during a real incident.</p>
+<h4>Go further</h4>
+<p>Calculate the cost of halving your RTO and bring that number to the team discussion. Availability is a purchase, not a virtue: the right question is not "do we want to recover faster?" — everyone does — but "what is each hour of downtime worth for this specific system?".</p>"""
                 ),
             },
             "materials": [
@@ -6768,38 +7011,62 @@ decision.</li>
 """
                 ),
                 "practical": (
-                    "(1) Ative cost allocation tags em sua conta AWS. Adicione tag "
-                    "<code>Environment</code> e <code>Owner</code> em pelo menos 5 "
-                    "recursos.<br>"
-                    "(2) Em Cost Explorer, identifique os 3 serviços que mais custam no "
-                    "último mês.<br>"
-                    "(3) Para cada um, escreva 1 ação concreta:<br>"
-                    "&nbsp;&nbsp;• Para EC2: rodar Compute Optimizer, considerar Graviton "
-                    "ou Spot.<br>"
-                    "&nbsp;&nbsp;• Para NAT Gateway: configurar VPC Endpoints para S3.<br>"
-                    "&nbsp;&nbsp;• Para CloudWatch Logs: configurar retention "
-                    "(<code>14d</code> em dev, <code>90d</code> em prod).<br>"
-                    "(4) Configure budget alert em 50% e 90% via AWS Budgets.<br>"
-                    "(5) Configure Cost Anomaly Detection (free) em sua conta.<br>"
-                    "(6) Bônus: instale Komiser via docker-compose e veja o relatório "
-                    "consolidado de custo + recursos órfãos."
+                    """<p><strong>Objetivo:</strong> achar dinheiro sendo queimado na sua própria conta em menos de uma hora — e transformar cada achado em uma ação concreta, não numa anotação de "revisar depois".</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma conta AWS com pelo menos um mês de uso real. Conta nova e vazia não rende exercício.</li>
+<li>Permissão no Cost Explorer (nem toda role tem — pode ser preciso habilitar na conta de billing).</li>
+<li>Cerca de uma hora e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Tente atribuir o custo antes de mexer em qualquer tag.</strong> No Cost Explorer, agrupe por tag e veja quanto cai em "sem tag".<br><em>O que observar:</em> costuma ser a maior fatia. Sem atribuição, qualquer conversa sobre reduzir custo vira opinião — é por isso que a seção 2 põe visibilidade antes de otimização.</li>
+<li><strong>Ative cost allocation tags e marque pelo menos cinco recursos.</strong> <code>Environment</code> e <code>Owner</code>, no mínimo.<br><em>O que observar:</em> a tag só passa a valer a partir de agora; ela não retroage. Quanto antes ligar, mais cedo você tem histórico — e essa é a razão de ser o primeiro passo em qualquer iniciativa de FinOps.</li>
+<li><strong>Encontre os três serviços mais caros do último mês.</strong> Agrupado por serviço, últimos 30 dias.<br><em>O que observar:</em> com frequência algo que ninguém esperava aparece no pódio — NAT Gateway, CloudWatch Logs e transferência de dados são os suspeitos de sempre. São custos que não aparecem em nenhum diagrama de arquitetura (seção 7).</li>
+<li><strong>Cace recursos órfãos.</strong> Volumes EBS não anexados, Elastic IPs sem associação, snapshots antigos e load balancers sem target.<br><em>O que observar:</em> cada um cobra sozinho, para sempre, sem entregar nada. É o ralo silencioso da seção 5, e costuma ser a economia mais rápida disponível — dinheiro que sai da conta sem nenhuma decisão por trás.</li>
+<li><strong>Meça antes de redimensionar.</strong> Rode o Compute Optimizer e olhe a utilização real de CPU e memória das suas instâncias.<br><em>O que observar:</em> a maioria está bem abaixo da capacidade. Mas repare: reduzir sem medir gera incidente, e é por isso que a seção 4 insiste em dado histórico antes da mudança.</li>
+<li><strong>Transforme cada achado em uma ação com dono e prazo.</strong> Para EC2 ociosa, Graviton ou Spot; para NAT caro, VPC Endpoint; para CloudWatch Logs, retenção de 14 dias em dev e 90 em produção.<br><em>O que observar:</em> ação sem dono não acontece. Escreva o nome de alguém e uma data ao lado de cada item — é o que separa relatório de economia real.</li>
+<li><strong>Ponha o vigia no lugar.</strong> Budget alerts em 50% e 90%, mais o Cost Anomaly Detection (que é gratuito).<br><em>O que observar:</em> o anomaly detection avisa sobre mudança de <em>padrão</em>, não sobre valor absoluto. Ele pega o recurso que alguém subiu e esqueceu — que é exatamente o caso que o budget mensal só denuncia tarde demais.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você sabe o valor exato dos três serviços mais caros do mês.</li>
+<li>Existe uma lista de recursos órfãos com o custo mensal de cada um.</li>
+<li>Budget alert e anomaly detection estão ativos e testados.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o Cost Explorer não mostrar nada, ele pode não estar habilitado — a primeira ativação leva até 24 horas para preencher os dados. E se as tags não aparecem no relatório, confirme que você as ativou como <em>cost allocation tags</em> no console de billing: marcar o recurso não basta, a tag precisa ser promovida.</p>
+<h4>Vá além</h4>
+<p>Pegue o serviço mais caro e calcule quanto custaria em Savings Plan ou instância reservada por um ano. Depois responda com honestidade: esse workload vai existir daqui a doze meses? Compromisso de longo prazo economiza de verdade, e custa caro quando a resposta era não.</p>"""
                 ),
                 "practical_en": (
-                    "(1) Enable cost allocation tags on your AWS account. Add the "
-                    "<code>Environment</code> and <code>Owner</code> tags to at least 5 "
-                    "resources.<br>"
-                    "(2) In Cost Explorer, identify the 3 services that cost the most in the "
-                    "last month.<br>"
-                    "(3) For each one, write 1 concrete action:<br>"
-                    "&nbsp;&nbsp;• For EC2: run Compute Optimizer, consider Graviton or "
-                    "Spot.<br>"
-                    "&nbsp;&nbsp;• For NAT Gateway: configure VPC Endpoints for S3.<br>"
-                    "&nbsp;&nbsp;• For CloudWatch Logs: configure retention "
-                    "(<code>14d</code> in dev, <code>90d</code> in prod).<br>"
-                    "(4) Configure a budget alert at 50% and 90% via AWS Budgets.<br>"
-                    "(5) Configure Cost Anomaly Detection (free) on your account.<br>"
-                    "(6) Bonus: install Komiser via docker-compose and see the consolidated "
-                    "cost + orphaned resources report."
+                    """<p><strong>Goal:</strong> find money burning in your own account in under an hour — and turn every finding into a concrete action rather than a "review later" note.</p>
+<h4>Before you start</h4>
+<ul>
+<li>An AWS account with at least a month of real usage. A fresh empty account yields no exercise.</li>
+<li>Cost Explorer permissions (not every role has them — it may need enabling on the billing account).</li>
+<li>About an hour and a half.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Try attributing cost before touching any tag.</strong> In Cost Explorer, group by tag and see how much lands in "untagged".<br><em>What to look for:</em> it is usually the largest slice. Without attribution, any conversation about cutting cost becomes opinion — which is why section 2 puts visibility before optimization.</li>
+<li><strong>Enable cost allocation tags and tag at least five resources.</strong> <code>Environment</code> and <code>Owner</code>, at minimum.<br><em>What to look for:</em> tags only count from now on; they do not apply retroactively. The sooner you enable them, the sooner you have history — which is why this is step one of any FinOps effort.</li>
+<li><strong>Find the three most expensive services of the last month.</strong> Grouped by service, last 30 days.<br><em>What to look for:</em> something unexpected frequently makes the podium — NAT Gateway, CloudWatch Logs, and data transfer are the usual suspects. These are costs that appear on no architecture diagram (section 7).</li>
+<li><strong>Hunt for orphaned resources.</strong> Unattached EBS volumes, unassociated Elastic IPs, old snapshots, and load balancers with no targets.<br><em>What to look for:</em> each bills on its own, forever, delivering nothing. That is section 5's silent drain, and usually the fastest saving available — money leaving the account with no decision behind it.</li>
+<li><strong>Measure before resizing.</strong> Run Compute Optimizer and look at real CPU and memory utilization across your instances.<br><em>What to look for:</em> most sit well below capacity. But note: shrinking without measuring creates incidents, which is why section 4 insists on historical data before the change.</li>
+<li><strong>Turn each finding into an action with an owner and a date.</strong> For idle EC2, Graviton or Spot; for expensive NAT, a VPC Endpoint; for CloudWatch Logs, 14-day retention in dev and 90 in production.<br><em>What to look for:</em> actions without owners do not happen. Write someone's name and a date beside each item — that is what separates a report from actual savings.</li>
+<li><strong>Put the watchdog in place.</strong> Budget alerts at 50% and 90%, plus Cost Anomaly Detection (which is free).<br><em>What to look for:</em> anomaly detection warns about a change in <em>pattern</em>, not an absolute value. It catches the resource someone spun up and forgot — exactly the case a monthly budget only reveals far too late.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>You know the exact figure for the three most expensive services this month.</li>
+<li>There is a list of orphaned resources with each one's monthly cost.</li>
+<li>Budget alerts and anomaly detection are active and tested.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If Cost Explorer shows nothing, it may not be enabled — first activation takes up to 24 hours to populate data. And if tags do not appear in reports, confirm you activated them as <em>cost allocation tags</em> in the billing console: tagging the resource is not enough, the tag must be promoted.</p>
+<h4>Go further</h4>
+<p>Take the most expensive service and price a one-year Savings Plan or reserved instance for it. Then answer honestly: will this workload still exist in twelve months? Long-term commitments save real money, and cost real money when the answer was no.</p>"""
                 ),
             },
             "materials": [
