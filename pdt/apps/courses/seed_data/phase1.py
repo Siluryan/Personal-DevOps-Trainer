@@ -519,40 +519,62 @@ machine already shows signs of something compromised before you even
 dig further.</p>"""
                 ),
                 "practical": (
-                    "Em uma VM ou container limpo:<br>"
-                    "(1) Crie o usuário <code>app</code> e o grupo <code>web</code>; adicione "
-                    "<code>app</code> ao grupo. Verifique com <code>id app</code>.<br>"
-                    "(2) Crie o diretório <code>/srv/app</code> com dono <code>app:web</code> e "
-                    "modo <code>2750</code> (note o setgid). Crie um arquivo dentro, confirme "
-                    "que ele herdou o grupo <code>web</code>.<br>"
-                    "(3) Crie um segundo usuário <code>visitante</code> sem entrar no grupo. "
-                    "Tente ler o arquivo como ele e veja a falha. Use <code>strace -e openat</code> "
-                    "para ver o EACCES vindo do kernel.<br>"
-                    "(4) Adicione uma ACL: "
-                    "<code>setfacl -m u:visitante:r-- /srv/app/config.yml</code>. Confirme que "
-                    "agora ele lê.<br>"
-                    "(5) Bônus: configure um <code>nc -l -p 8080</code> rodando como "
-                    "<code>app</code> e dê a ele <code>CAP_NET_BIND_SERVICE</code> via "
-                    "<code>setcap</code> em uma cópia do <code>nc</code>; tente bindar na porta 80 "
-                    "com e sem a capability."
+                    """<p><strong>Objetivo:</strong> construir uma permissão que funciona e depois <em>ver o kernel negá-la</em>, em vez de só ler "permission denied" — entendendo onde cada camada (rwx, setgid, ACL, capability) entra e o que cada uma resolve.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma VM ou container Linux limpo, com acesso a <code>sudo</code>. Um <code>docker run -it --rm --privileged ubuntu bash</code> serve para tudo, menos o passo 6.</li>
+<li>Instale <code>strace</code>, <code>acl</code> e <code>libcap2-bin</code>.</li>
+<li>Cerca de uma hora e meia. Não use sua máquina de trabalho: o exercício cria usuários.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Crie a identidade e inspecione o que ela é de verdade.</strong> <code>useradd app</code>, <code>groupadd web</code>, <code>usermod -aG web app</code>, depois <code>id app</code>.<br><em>O que observar:</em> o que aparece é um conjunto de números, não nomes. O kernel só conhece UID e GID; o nome existe apenas em <code>/etc/passwd</code> para benefício humano. Isso explica por que copiar um arquivo entre máquinas pode trocar o dono sem ninguém mexer em nada (seção 2).</li>
+<li><strong>Use o setgid e veja a herança acontecer.</strong> <code>mkdir /srv/app</code>, <code>chown app:web /srv/app</code>, <code>chmod 2750 /srv/app</code>, depois crie um arquivo lá dentro como outro usuário.<br><em>O que observar:</em> o arquivo nasce com grupo <code>web</code>, não com o grupo primário de quem criou. Refaça com <code>chmod 750</code> (sem o 2) e veja a diferença. Esse bit é o que faz diretório compartilhado funcionar sem ninguém corrigir grupo na mão (seção 4).</li>
+<li><strong>Provoque a negação e observe o kernel recusando.</strong> Crie <code>useradd visitante</code> (fora do grupo) e rode <code>sudo -u visitante strace -e openat cat /srv/app/config.yml</code>.<br><em>O que observar:</em> na saída do strace aparece <code>openat(...) = -1 EACCES</code>. Você está vendo a chamada de sistema ser recusada, não a mensagem que o <code>cat</code> escolheu mostrar. É a diferença entre saber que deu errado e saber <em>onde</em> deu errado.</li>
+<li><strong>Abra uma exceção pontual com ACL.</strong> <code>setfacl -m u:visitante:r-- /srv/app/config.yml</code>, depois <code>getfacl</code> no arquivo.<br><em>O que observar:</em> o <code>ls -l</code> agora mostra um <code>+</code> no fim das permissões — sinal de que existe ACL. Repare no que você <em>não</em> precisou fazer: nem pôr o visitante no grupo <code>web</code>, nem afrouxar o modo para todo mundo. É a seção 5, e é como se concede acesso sem alargar o perímetro.</li>
+<li><strong>Entenda por que o setuid existe e por que ele assusta.</strong> Rode <code>ls -l /usr/bin/passwd</code> e repare no <code>s</code>. Depois <code>find /usr/bin -perm -4000</code>.<br><em>O que observar:</em> cada binário dessa lista roda como root, independentemente de quem o chamou. Um bug em qualquer um deles é escalação de privilégio. É por isso que a seção 4 trata setuid como algo a auditar, não a distribuir.</li>
+<li><strong>Substitua privilégio total por capability.</strong> Copie o <code>nc</code> para <code>/tmp</code>, tente bindar a porta 80 como <code>app</code>, veja falhar; depois <code>setcap cap_net_bind_service=+ep /tmp/nc</code> e tente de novo.<br><em>O que observar:</em> funcionou sem root. Você deu <em>uma</em> permissão em vez de todas — é o mesmo princípio que separa <code>--privileged</code> de uma lista de capabilities num container, e por isso a seção 5 insiste nisso.</li>
+<li><strong>Feche com o checklist do host desconhecido.</strong> Rode <code>ps aux</code>, <code>ss -tulpn</code>, <code>df -h</code> e <code>journalctl -p err -n 50</code>.<br><em>O que observar:</em> em dois minutos você sabe o que roda, o que escuta, se tem disco e o que falhou recentemente. A seção 10 é uma sequência, não uma lista solta — e ela vale ser decorada.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Um arquivo criado em <code>/srv/app</code> nasce com grupo <code>web</code> sem ninguém corrigir.</li>
+<li>Você viu o <code>EACCES</code> no strace e sabe dizer qual camada o gerou.</li>
+<li>O <code>nc</code> binda a porta 80 sem ser root, por capability.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se <code>setfacl</code> reclamar de "Operation not supported", o filesystem foi montado sem a opção <code>acl</code> — comum em container. E se o <code>setcap</code> não surtir efeito, confira se o binário está num filesystem que preserva atributos estendidos: em <code>overlayfs</code> de container isso às vezes falha em silêncio, e a melhor pista é <code>getcap</code> vindo vazio.</p>
+<h4>Vá além</h4>
+<p>Reproduza o ataque do <code>/tmp</code> da seção 9 num diretório de teste sem sticky bit: crie um arquivo como um usuário e apague-o como outro. Depois ligue o sticky (<code>chmod +t</code>) e repita. Três caracteres de diferença, e um vetor inteiro fecha.</p>"""
                 ),
                 "practical_en": (
-                    "On a clean VM or container:<br>"
-                    "(1) Create the user <code>app</code> and the group <code>web</code>; add "
-                    "<code>app</code> to the group. Verify with <code>id app</code>.<br>"
-                    "(2) Create the directory <code>/srv/app</code> owned by <code>app:web</code> "
-                    "with mode <code>2750</code> (note the setgid). Create a file inside, confirm "
-                    "it inherited the <code>web</code> group.<br>"
-                    "(3) Create a second user <code>visitante</code> not in that group. Try to "
-                    "read the file as that user and watch it fail. Use <code>strace -e openat</code> "
-                    "to see the EACCES coming from the kernel.<br>"
-                    "(4) Add an ACL: "
-                    "<code>setfacl -m u:visitante:r-- /srv/app/config.yml</code>. Confirm that "
-                    "now it can read it.<br>"
-                    "(5) Bonus: set up an <code>nc -l -p 8080</code> running as "
-                    "<code>app</code> and grant it <code>CAP_NET_BIND_SERVICE</code> via "
-                    "<code>setcap</code> on a copy of <code>nc</code>; try binding to port 80 "
-                    "with and without the capability."
+                    """<p><strong>Goal:</strong> build a working permission and then <em>watch the kernel deny it</em>, instead of just reading "permission denied" — understanding where each layer (rwx, setgid, ACL, capability) fits and what each one solves.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A clean Linux VM or container with <code>sudo</code>. A <code>docker run -it --rm --privileged ubuntu bash</code> covers everything except step 6.</li>
+<li>Install <code>strace</code>, <code>acl</code>, and <code>libcap2-bin</code>.</li>
+<li>About an hour and a half. Do not use your work machine: the exercise creates users.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Create the identity and inspect what it really is.</strong> <code>useradd app</code>, <code>groupadd web</code>, <code>usermod -aG web app</code>, then <code>id app</code>.<br><em>What to look for:</em> what comes back is a set of numbers, not names. The kernel only knows UID and GID; the name lives in <code>/etc/passwd</code> for human benefit alone. That explains why copying a file between machines can change its owner without anyone touching anything (section 2).</li>
+<li><strong>Use setgid and watch inheritance happen.</strong> <code>mkdir /srv/app</code>, <code>chown app:web /srv/app</code>, <code>chmod 2750 /srv/app</code>, then create a file inside as another user.<br><em>What to look for:</em> the file is born with group <code>web</code>, not the creator's primary group. Redo it with <code>chmod 750</code> (no leading 2) and see the difference. That bit is what makes a shared directory work without anyone fixing groups by hand (section 4).</li>
+<li><strong>Provoke the denial and watch the kernel refuse.</strong> Create <code>useradd guest</code> (outside the group) and run <code>sudo -u guest strace -e openat cat /srv/app/config.yml</code>.<br><em>What to look for:</em> strace shows <code>openat(...) = -1 EACCES</code>. You are watching the system call be refused, not the message <code>cat</code> chose to print. That is the difference between knowing it failed and knowing <em>where</em> it failed.</li>
+<li><strong>Grant a narrow exception with an ACL.</strong> <code>setfacl -m u:guest:r-- /srv/app/config.yml</code>, then <code>getfacl</code> on the file.<br><em>What to look for:</em> <code>ls -l</code> now shows a <code>+</code> at the end of the permissions — the sign that an ACL exists. Notice what you did <em>not</em> have to do: neither add the guest to group <code>web</code> nor loosen the mode for everyone. That is section 5, and it is how you grant access without widening the perimeter.</li>
+<li><strong>Understand why setuid exists and why it is frightening.</strong> Run <code>ls -l /usr/bin/passwd</code> and notice the <code>s</code>. Then <code>find /usr/bin -perm -4000</code>.<br><em>What to look for:</em> every binary on that list runs as root regardless of who invoked it. A bug in any one of them is privilege escalation. That is why section 4 treats setuid as something to audit, not to hand out.</li>
+<li><strong>Replace full privilege with a capability.</strong> Copy <code>nc</code> to <code>/tmp</code>, try binding port 80 as <code>app</code> and watch it fail; then <code>setcap cap_net_bind_service=+ep /tmp/nc</code> and try again.<br><em>What to look for:</em> it worked without root. You granted <em>one</em> permission instead of all of them — the same principle that separates <code>--privileged</code> from a capability list in a container, and why section 5 insists on it.</li>
+<li><strong>Finish with the unknown-host checklist.</strong> Run <code>ps aux</code>, <code>ss -tulpn</code>, <code>df -h</code>, and <code>journalctl -p err -n 50</code>.<br><em>What to look for:</em> in two minutes you know what runs, what listens, whether there is disk, and what failed recently. Section 10 is a sequence, not a loose list — and it is worth memorizing.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>A file created in <code>/srv/app</code> is born with group <code>web</code> without anyone fixing it.</li>
+<li>You saw <code>EACCES</code> in strace and can say which layer produced it.</li>
+<li><code>nc</code> binds port 80 without being root, through a capability.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If <code>setfacl</code> complains "Operation not supported", the filesystem was mounted without the <code>acl</code> option — common in containers. And if <code>setcap</code> has no effect, check that the binary sits on a filesystem preserving extended attributes: on container <code>overlayfs</code> this sometimes fails silently, and the best clue is <code>getcap</code> returning nothing.</p>
+<h4>Go further</h4>
+<p>Reproduce the <code>/tmp</code> attack from section 9 in a test directory with no sticky bit: create a file as one user and delete it as another. Then turn the sticky bit on (<code>chmod +t</code>) and repeat. Three characters of difference, and an entire vector closes.</p>"""
                 ),
             },
             "materials": [
@@ -883,32 +905,62 @@ iperf3 -c host                              # banda</code></pre><h3>7. Anatomy o
 <ul><li><strong>Too many open ports</strong>: every port on <code>0.0.0.0</code> is attack surface. Default-deny on the firewall.</li><li><strong>DNS without DNSSEC + cache poisoning</strong>: the classic Kaminsky 2008 case.</li><li><strong>Misconfigured TLS</strong>: TLS 1.0/1.1, weak cipher suites, leaked wildcard certificate. Use SSL Labs and the Mozilla SSL Generator.</li><li><strong>BGP hijacking</strong>: your prefix hijacked by another AS. Solution: RPKI, MANRS.</li><li><strong>SSRF</strong>: the app talks to a user-controlled URL without validating it, hits <code>169.254.169.254</code> (metadata) and exfiltrates an IAM credential. <em>See Capital One 2019</em>.</li></ul><h3>10. Real case: Cloudflare 2020, the BGP outage</h3><p>In July 2020, Cloudflare went down for 27 minutes because a BGP routing config update withdrew announcements for a set of prefixes. Sites depending on Cloudflare became unreachable. Lesson: routing is fragile; have a plan B (multi-CDN or DNS with a direct health-check to origin).</p>"""
                 ),
                 "practical": (
-                    "(1) <code>dig +trace seudominio.com</code>: identifique cada delegação até "
-                    "o autoritativo. Anote os TTLs.<br>"
-                    "(2) Em uma VM, abra dois terminais. Em um, "
-                    "<code>sudo tcpdump -i any -nn -w /tmp/r.pcap port 80 or port 443</code>; "
-                    "no outro, faça <code>curl -v https://example.com</code>. Pare o tcpdump e "
-                    "abra o pcap no Wireshark, identifique handshake TCP, ClientHello TLS, "
-                    "ApplicationData.<br>"
-                    "(3) <code>curl -w '@-' -o /dev/null -s https://example.com</code> com um "
-                    "format file que imprima dns/connect/ssl/ttfb/total. Repita com outro "
-                    "domínio mais distante e compare.<br>"
-                    "(4) <code>ss -tulpn</code> em sua máquina: para cada porta, identifique o "
-                    "processo dono e justifique se ela deveria estar aberta."
+                    """<p><strong>Objetivo:</strong> ver com os próprios olhos o que acontece entre digitar uma URL e receber a resposta — e sair capaz de apontar <em>qual camada</em> está lenta, em vez de dizer "a internet está ruim".</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma VM Linux (ou WSL) com <code>dig</code>, <code>tcpdump</code>, <code>curl</code> e <code>ss</code>. O Wireshark ajuda no passo 3, mas o <code>tcpdump -r</code> também serve.</li>
+<li><code>sudo</code> para capturar pacote.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Siga a resolução de nome desde a raiz.</strong> <code>dig +trace exemplo.com</code> e anote cada delegação e os TTLs.<br><em>O que observar:</em> a resposta não vem de um servidor só — ela desce da raiz para o TLD e daí para o autoritativo. Repare nos TTLs: eles são o motivo de uma mudança de DNS "demorar a propagar", e saber lê-los evita a espera cega da seção 5.</li>
+<li><strong>Prove o efeito do cache.</strong> Rode <code>dig exemplo.com</code> duas vezes seguidas e compare o tempo e o TTL.<br><em>O que observar:</em> a segunda consulta volta bem mais rápido e com TTL menor, contando regressivamente. Você está vendo o cache do resolver funcionando — e entendendo por que baixar o TTL <em>antes</em> de uma migração é o que torna o corte rápido.</li>
+<li><strong>Capture uma requisição HTTPS inteira.</strong> Num terminal, <code>sudo tcpdump -i any -nn -w /tmp/r.pcap port 443</code>; no outro, <code>curl -v https://example.com</code>. Pare a captura e abra o arquivo.<br><em>O que observar:</em> identifique o handshake TCP (SYN, SYN-ACK, ACK), o ClientHello do TLS e depois os dados já cifrados. A partir do ApplicationData você não vê mais o conteúdo — é o que a seção 7 descreve, e é a prova visual de que o TLS está fazendo o trabalho dele.</li>
+<li><strong>Meça cada etapa separadamente.</strong> Use <code>curl -w</code> com um formato que imprima <code>time_namelookup</code>, <code>time_connect</code>, <code>time_appconnect</code>, <code>time_starttransfer</code> e <code>time_total</code>.<br><em>O que observar:</em> agora "está lento" vira um número por camada. Repita com um site em outro continente e compare: se <code>time_connect</code> dobra, o problema é distância; se só <code>time_starttransfer</code> cresce, o problema está no servidor. Esse diagnóstico é o que a seção 6 chama de resolver 95% dos casos.</li>
+<li><strong>Veja TCP e UDP se comportarem diferente.</strong> Compare <code>dig</code> (UDP por padrão) com <code>dig +tcp</code>, observando a captura.<br><em>O que observar:</em> a versão UDP é um par pergunta-resposta; a TCP carrega handshake antes. É a seção 3 deixando de ser tabela: um protocolo troca garantia por latência, o outro faz o contrário.</li>
+<li><strong>Audite o que a sua máquina expõe.</strong> <code>ss -tulpn</code> e, para cada porta aberta, identifique o processo dono e justifique se ela deveria estar ali.<br><em>O que observar:</em> quase sempre aparece algo escutando em <code>0.0.0.0</code> que poderia estar em <code>127.0.0.1</code>. Essa diferença de endereço de bind é a fronteira entre "serviço local" e "serviço exposto", e é onde a seção 9 começa.</li>
+<li><strong>Entenda o problema do IP real.</strong> Acesse um serviço atrás de proxy e compare o IP que ele registra com o seu IP público.<br><em>O que observar:</em> sem <code>X-Forwarded-For</code>, o log registra o IP do proxy, e todo rate limit por IP passa a contar o proxy inteiro como um usuário só. É o problema da seção 8, e ele aparece em produção como bloqueio injusto.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você consegue dizer, para um site lento, se o gargalo é DNS, conexão, TLS ou servidor — com número, não com palpite.</li>
+<li>Você identificou o ClientHello na captura e sabe a partir de onde o conteúdo fica cifrado.</li>
+<li>Toda porta aberta na sua máquina tem dono e justificativa.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o <code>tcpdump</code> não captura nada, confira a interface: <code>-i any</code> costuma resolver, mas em alguns ambientes é preciso nomear a interface real que aparece em <code>ip a</code>. E se o <code>dig +trace</code> falhar no meio, o resolver da sua rede pode estar bloqueando consulta direta aos root servers — teste com <code>@8.8.8.8</code>.</p>
+<h4>Vá além</h4>
+<p>Releia o caso da seção 10 e depois pergunte-se sobre a sua própria infraestrutura: se o seu provedor de DNS sair do ar por uma hora, o que acontece? Se a resposta for "tudo para", você acabou de achar um ponto único de falha que nenhum diagrama de arquitetura costuma mostrar.</p>"""
                 ),
                 "practical_en": (
-                    "(1) <code>dig +trace yourdomain.com</code>: identify each delegation "
-                    "down to the authoritative. Note the TTLs.<br>"
-                    "(2) On a VM, open two terminals. In one, "
-                    "<code>sudo tcpdump -i any -nn -w /tmp/r.pcap port 80 or port 443</code>; "
-                    "in the other, run <code>curl -v https://example.com</code>. Stop tcpdump "
-                    "and open the pcap in Wireshark, identify the TCP handshake, TLS "
-                    "ClientHello, ApplicationData.<br>"
-                    "(3) <code>curl -w '@-' -o /dev/null -s https://example.com</code> with a "
-                    "format file that prints dns/connect/ssl/ttfb/total. Repeat with another, "
-                    "more distant domain and compare.<br>"
-                    "(4) <code>ss -tulpn</code> on your machine: for each port, identify the "
-                    "owning process and justify whether it should be open."
+                    """<p><strong>Goal:</strong> see with your own eyes what happens between typing a URL and getting a response — and come out able to name <em>which layer</em> is slow, instead of saying "the internet is bad".</p>
+<h4>Before you start</h4>
+<ul>
+<li>A Linux VM (or WSL) with <code>dig</code>, <code>tcpdump</code>, <code>curl</code>, and <code>ss</code>. Wireshark helps in step 3, but <code>tcpdump -r</code> works too.</li>
+<li><code>sudo</code> for packet capture.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Follow name resolution from the root.</strong> <code>dig +trace example.com</code>, noting each delegation and the TTLs.<br><em>What to look for:</em> the answer does not come from one server — it walks from the root to the TLD and then to the authoritative one. Watch the TTLs: they are why a DNS change "takes time to propagate", and reading them avoids the blind waiting described in section 5.</li>
+<li><strong>Prove the effect of caching.</strong> Run <code>dig example.com</code> twice in a row and compare time and TTL.<br><em>What to look for:</em> the second query returns much faster and with a lower TTL, counting down. You are watching the resolver cache work — and understanding why lowering the TTL <em>before</em> a migration is what makes the cutover fast.</li>
+<li><strong>Capture a complete HTTPS request.</strong> In one terminal, <code>sudo tcpdump -i any -nn -w /tmp/r.pcap port 443</code>; in the other, <code>curl -v https://example.com</code>. Stop the capture and open the file.<br><em>What to look for:</em> identify the TCP handshake (SYN, SYN-ACK, ACK), the TLS ClientHello, and then the already-encrypted data. From ApplicationData onward you cannot see content — exactly what section 7 describes, and visual proof that TLS is doing its job.</li>
+<li><strong>Measure each stage separately.</strong> Use <code>curl -w</code> with a format printing <code>time_namelookup</code>, <code>time_connect</code>, <code>time_appconnect</code>, <code>time_starttransfer</code>, and <code>time_total</code>.<br><em>What to look for:</em> now "it is slow" becomes a number per layer. Repeat against a site on another continent and compare: if <code>time_connect</code> doubles, the problem is distance; if only <code>time_starttransfer</code> grows, the problem is the server. That diagnosis is what section 6 calls solving 95% of cases.</li>
+<li><strong>Watch TCP and UDP behave differently.</strong> Compare <code>dig</code> (UDP by default) with <code>dig +tcp</code>, watching the capture.<br><em>What to look for:</em> the UDP version is one question and one answer; the TCP one carries a handshake first. Section 3 stops being a table: one protocol trades guarantees for latency, the other does the reverse.</li>
+<li><strong>Audit what your machine exposes.</strong> <code>ss -tulpn</code> and, for each open port, identify the owning process and justify whether it belongs there.<br><em>What to look for:</em> there is almost always something listening on <code>0.0.0.0</code> that could be on <code>127.0.0.1</code>. That bind address difference is the border between "local service" and "exposed service", and it is where section 9 begins.</li>
+<li><strong>Understand the real-IP problem.</strong> Reach a service behind a proxy and compare the IP it logs with your public IP.<br><em>What to look for:</em> without <code>X-Forwarded-For</code>, the log records the proxy's IP, and every per-IP rate limit starts counting the whole proxy as a single user. That is section 8's problem, and it shows up in production as unfair blocking.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>For a slow site, you can say whether the bottleneck is DNS, connection, TLS, or server — with a number, not a guess.</li>
+<li>You identified the ClientHello in the capture and know from where content becomes encrypted.</li>
+<li>Every open port on your machine has an owner and a justification.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If <code>tcpdump</code> captures nothing, check the interface: <code>-i any</code> usually works, but some environments need the real interface name from <code>ip a</code>. And if <code>dig +trace</code> fails midway, your network's resolver may be blocking direct queries to the root servers — try with <code>@8.8.8.8</code>.</p>
+<h4>Go further</h4>
+<p>Reread the case in section 10, then ask about your own infrastructure: if your DNS provider goes down for an hour, what happens? If the answer is "everything stops", you just found a single point of failure that architecture diagrams rarely show.</p>"""
                 ),
             },
             "materials": [
@@ -1565,32 +1617,62 @@ prevent structurally, instead of relying on someone remembering to
 check manually in every new script.</p>"""
                 ),
                 "practical": (
-                    "Escreva um script <code>analyze_logs.sh</code> que:<br>"
-                    "(a) recebe um diretório como argumento (validado por regex);<br>"
-                    "(b) usa <code>set -euo pipefail</code> e <code>trap</code> para limpar "
-                    "tmp;<br>"
-                    "(c) encontra os 5 arquivos <code>.log</code> maiores recursivamente, "
-                    "tratando nomes com espaço corretamente;<br>"
-                    "(d) imprime estatísticas (linhas totais, ERROR/WARN/INFO) com "
-                    "<code>awk</code>;<br>"
-                    "(e) loga em stderr com timestamp em ISO-8601;<br>"
-                    "(f) sai com código não-zero específico em cada falha (64 input, 65 fs, "
-                    "66 dependência).<br>"
-                    "Rode <code>shellcheck -S style</code> nele até zerar todos os warnings."
+                    """<p><strong>Objetivo:</strong> escrever um script que falha <em>cedo e alto</em> em vez de continuar com dado pela metade — e entender por que cada linha do cabeçalho seguro existe, testando o que acontece sem ela.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Bash 4+ e <code>shellcheck</code> instalado (<code>apt install shellcheck</code>).</li>
+<li>Um diretório com vários <code>.log</code>, incluindo pelo menos um com espaço no nome. Crie de propósito: <code>touch "meu log com espaço.log"</code>.</li>
+<li>Cerca de uma hora e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Veja o que acontece <em>sem</em> o cabeçalho seguro.</strong> Escreva três linhas: um comando que falha, um <code>echo</code> depois dele, e use uma variável nunca definida.<br><em>O que observar:</em> o script continua depois do erro e trata a variável vazia como string vazia, sem reclamar. Agora acrescente <code>set -euo pipefail</code> e rode de novo: ele para na primeira falha e acusa a variável. É a seção 1, e a diferença é entre falhar e corromper em silêncio.</li>
+<li><strong>Quebre o script com um nome de arquivo com espaço.</strong> Escreva <code>for f in $(find . -name "*.log")</code> e rode no seu diretório de teste.<br><em>O que observar:</em> o arquivo com espaço vira dois itens e o laço quebra. Troque por <code>find ... -print0</code> com <code>while IFS= read -r -d ''</code> e veja funcionar. É a seção 4 — e é o mesmo bug que apagou disco alheio no caso da seção 11.</li>
+<li><strong>Valide o argumento tratando-o como hostil.</strong> Aceite o diretório só se casar com um padrão esperado, e recuse o resto com mensagem clara.<br><em>O que observar:</em> teste passando <code>../../etc</code> e uma string com <code>;</code>. Input que vem de fora é hostil até prova em contrário — é a seção 7, e é o que separa script pessoal de script que outra pessoa vai rodar.</li>
+<li><strong>Garanta a limpeza com <code>trap</code>.</strong> Crie um diretório temporário e registre <code>trap 'rm -rf "$tmp"' EXIT</code>.<br><em>O que observar:</em> mate o script com Ctrl+C no meio e confirme que o temporário sumiu. Sem <code>trap</code>, cada execução interrompida deixa lixo — e em cron isso enche o disco em semanas sem nenhum erro aparente (seção 6).</li>
+<li><strong>Use códigos de saída específicos.</strong> 64 para input inválido, 65 para problema de filesystem, 66 para dependência faltando.<br><em>O que observar:</em> rode <code>./analyze_logs.sh /nao/existe; echo $?</code>. Um número distinto por causa permite que quem chama o script reaja de formas diferentes — com <code>exit 1</code> para tudo, quem chama só sabe que falhou.</li>
+<li><strong>Logue com timestamp em stderr, resultado em stdout.</strong> Uma função <code>log()</code> escrevendo em <code>&gt;&amp;2</code> com data ISO-8601.<br><em>O que observar:</em> agora <code>./analyze_logs.sh . | tail -5</code> filtra só o resultado e mantém o progresso visível. É a mesma separação da seção 8, e é o que faz o script compor com outros.</li>
+<li><strong>Zere o shellcheck.</strong> <code>shellcheck -S style analyze_logs.sh</code> até não sobrar aviso.<br><em>O que observar:</em> leia cada aviso antes de corrigir — a maioria aponta um bug real de aspas, não preferência de estilo. A ferramenta encontra em segundos o que revisão humana deixa passar (seção 10).</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O arquivo com espaço no nome é processado corretamente.</li>
+<li>Ctrl+C no meio não deixa diretório temporário para trás.</li>
+<li><code>shellcheck -S style</code> não reporta nada.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se <code>set -e</code> parecer não funcionar dentro de uma função usada em condicional, é o comportamento documentado: em contexto de teste o <code>-e</code> é suspenso. Por isso a seção 5 recomenda propagar erro com retorno explícito em vez de confiar só no <code>-e</code>. E se o <code>pipefail</code> mudar o comportamento de um pipe que "sempre funcionou", ele provavelmente estava escondendo a falha do primeiro comando o tempo todo.</p>
+<h4>Vá além</h4>
+<p>Reescreva o mesmo utilitário em Python e compare os dois. A seção 10 dá o critério de quando subir de linguagem: o momento costuma ser quando você precisa de estrutura de dados de verdade ou tratamento de erro além de código de saída. Ter os dois arquivos lado a lado torna esse limite concreto.</p>"""
                 ),
                 "practical_en": (
-                    "Write a script <code>analyze_logs.sh</code> that:<br>"
-                    "(a) takes a directory as an argument (validated by regex);<br>"
-                    "(b) uses <code>set -euo pipefail</code> and <code>trap</code> to clean up "
-                    "tmp files;<br>"
-                    "(c) finds the 5 largest <code>.log</code> files recursively, correctly "
-                    "handling names with spaces;<br>"
-                    "(d) prints statistics (total lines, ERROR/WARN/INFO) with "
-                    "<code>awk</code>;<br>"
-                    "(e) logs to stderr with an ISO-8601 timestamp;<br>"
-                    "(f) exits with a specific non-zero code for each failure (64 input, 65 "
-                    "filesystem, 66 dependency).<br>"
-                    "Run <code>shellcheck -S style</code> on it until every warning is gone."
+                    """<p><strong>Goal:</strong> write a script that fails <em>early and loudly</em> instead of continuing with half the data — and understand why each line of the safe header exists, by testing what happens without it.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Bash 4+ and <code>shellcheck</code> installed (<code>apt install shellcheck</code>).</li>
+<li>A directory with several <code>.log</code> files, including at least one with a space in the name. Create it on purpose: <code>touch "my log with spaces.log"</code>.</li>
+<li>About an hour and a half.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>See what happens <em>without</em> the safe header.</strong> Write three lines: a command that fails, an <code>echo</code> after it, and a reference to an undefined variable.<br><em>What to look for:</em> the script keeps going after the error and treats the empty variable as an empty string, silently. Now add <code>set -euo pipefail</code> and run again: it stops at the first failure and flags the variable. That is section 1, and the difference is between failing and quietly corrupting.</li>
+<li><strong>Break the script with a filename containing a space.</strong> Write <code>for f in $(find . -name "*.log")</code> and run it in your test directory.<br><em>What to look for:</em> the file with a space becomes two items and the loop breaks. Switch to <code>find ... -print0</code> with <code>while IFS= read -r -d ''</code> and watch it work. That is section 4 — and the same bug that wiped someone's disk in the case from section 11.</li>
+<li><strong>Validate the argument as hostile input.</strong> Accept the directory only if it matches an expected pattern, and reject the rest with a clear message.<br><em>What to look for:</em> test with <code>../../etc</code> and a string containing <code>;</code>. Input from outside is hostile until proven otherwise — section 7, and what separates a personal script from one someone else will run.</li>
+<li><strong>Guarantee cleanup with <code>trap</code>.</strong> Create a temporary directory and register <code>trap 'rm -rf "$tmp"' EXIT</code>.<br><em>What to look for:</em> kill the script with Ctrl+C midway and confirm the temp directory is gone. Without <code>trap</code>, every interrupted run leaves garbage — and in a cron that fills the disk over weeks with no visible error (section 6).</li>
+<li><strong>Use specific exit codes.</strong> 64 for invalid input, 65 for filesystem trouble, 66 for a missing dependency.<br><em>What to look for:</em> run <code>./analyze_logs.sh /does/not/exist; echo $?</code>. A distinct number per cause lets the caller react differently — with <code>exit 1</code> for everything, the caller only knows it failed.</li>
+<li><strong>Log with timestamps to stderr, results to stdout.</strong> A <code>log()</code> function writing to <code>&gt;&amp;2</code> with ISO-8601 dates.<br><em>What to look for:</em> now <code>./analyze_logs.sh . | tail -5</code> filters only the result while progress stays visible. Same separation as section 8, and what lets the script compose with others.</li>
+<li><strong>Get shellcheck to zero.</strong> <code>shellcheck -S style analyze_logs.sh</code> until no warnings remain.<br><em>What to look for:</em> read each warning before fixing — most point at a real quoting bug, not a style preference. The tool finds in seconds what human review lets through (section 10).</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The file with a space in its name is processed correctly.</li>
+<li>Ctrl+C midway leaves no temporary directory behind.</li>
+<li><code>shellcheck -S style</code> reports nothing.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If <code>set -e</code> seems not to work inside a function used in a conditional, that is documented behavior: in test context <code>-e</code> is suspended. That is why section 5 recommends propagating errors through explicit returns rather than trusting <code>-e</code> alone. And if <code>pipefail</code> changes the behavior of a pipe that "always worked", it was probably hiding the first command's failure all along.</p>
+<h4>Go further</h4>
+<p>Rewrite the same utility in Python and compare the two. Section 10 gives the criterion for moving up a language: the moment usually arrives when you need real data structures or error handling beyond exit codes. Having both files side by side makes that boundary concrete.</p>"""
                 ),
             },
             "materials": [
@@ -1950,41 +2032,62 @@ chown -R $USER:$USER ~/.ssh</code></pre><p>If anything is more open than that, s
 <ul><li>Sharing keys between humans ('the team's key').</li><li>Not using a passphrase 'because it's annoying', the agent solves it.</li><li>Blindly accepting a host key in scripts (<code>StrictHostKeyChecking=no</code>) without registering it via <code>ssh-keyscan</code> + out-of-band verification.</li><li>Enabling <code>PermitRootLogin yes</code> 'temporarily' and forgetting about it.</li><li>Leaving <code>AllowAgentForwarding yes</code> as the default on an exposed server.</li><li>Never rotating, a 2017 key still in the 2025 <code>authorized_keys</code>.</li></ul>"""
                 ),
                 "practical": (
-                    "Em duas VMs:<br>"
-                    "(1) Gere uma chave Ed25519 com passphrase: "
-                    "<code>ssh-keygen -t ed25519 -a 100</code>.<br>"
-                    "(2) Copie para a outra VM com "
-                    "<code>ssh-copy-id user@host</code>; verifique permissões.<br>"
-                    "(3) No servidor, edite <code>/etc/ssh/sshd_config.d/99-hardening.conf</code> "
-                    "com <code>PasswordAuthentication no</code>, "
-                    "<code>PermitRootLogin no</code>, <code>MaxAuthTries 3</code>, "
-                    "<code>AllowUsers $SEU_USER</code>. Valide com <code>sshd -t</code> e "
-                    "recarregue com <code>systemctl reload sshd</code>.<br>"
-                    "(4) <strong>Não feche a sessão atual</strong>. Em outro terminal, tente "
-                    "logar com senha (deve falhar) e com a chave (deve passar).<br>"
-                    "(5) <code>journalctl -u sshd -n 50</code> e veja a auditoria.<br>"
-                    "(6) Bônus: configure um <code>~/.ssh/config</code> com host alias e "
-                    "<code>ProxyJump</code>, depois <code>ssh app01</code> deve atravessar o "
-                    "bastion sozinho."
+                    """<p><strong>Objetivo:</strong> endurecer um servidor SSH sem se trancar do lado de fora — e entender, na prática, por que a regra de ouro é sempre manter uma sessão aberta enquanto testa.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Duas VMs (ou uma VM e a sua máquina). Se usar cloud, tenha o console web disponível: ele é o seu plano B se algo der errado.</li>
+<li>Acesso <code>sudo</code> no servidor.</li>
+<li>Cerca de uma hora e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Gere um par Ed25519 com passphrase.</strong> <code>ssh-keygen -t ed25519 -a 100 -C "seu-email"</code>, depois <code>cat</code> nos dois arquivos gerados.<br><em>O que observar:</em> a chave pública cabe em uma linha; a privada é bem maior e começa com um cabeçalho de chave privada. Fixe qual é qual agora: distribuir a errada é o erro que a seção 1 previne com o modelo mental de par de chaves.</li>
+<li><strong>Copie a chave e confira as permissões.</strong> <code>ssh-copy-id user@host</code>, depois <code>ls -la ~/.ssh</code> no servidor.<br><em>O que observar:</em> <code>~/.ssh</code> precisa ser 700 e <code>authorized_keys</code> 600. Afrouxe de propósito (<code>chmod 644</code>) e tente logar: o SSH recusa <em>a sua própria chave</em>. É a seção 6, e a mensagem de erro não diz claramente que o problema é permissão — por isso vale ver acontecer.</li>
+<li><strong>Abra uma segunda sessão e não feche a primeira.</strong> Antes de mexer no <code>sshd_config</code>, deixe uma sessão conectada e funcionando.<br><em>O que observar:</em> essa sessão é a sua rede de segurança. Configuração errada só afeta conexões <em>novas</em>; a que já está aberta sobrevive e permite consertar. Quem pula este passo eventualmente perde acesso a um servidor de produção.</li>
+<li><strong>Endureça o servidor num arquivo separado.</strong> Crie <code>/etc/ssh/sshd_config.d/99-hardening.conf</code> com <code>PasswordAuthentication no</code>, <code>PermitRootLogin no</code>, <code>MaxAuthTries 3</code> e <code>AllowUsers SEU_USER</code>.<br><em>O que observar:</em> rode <code>sshd -t</code> antes de recarregar. Ele valida a sintaxe sem aplicar nada — e é o que impede um erro de digitação de derrubar o serviço no <code>reload</code>.</li>
+<li><strong>Teste os dois caminhos, da segunda sessão.</strong> Tente <code>ssh -o PreferredAuthentications=password</code> (deve falhar) e com a chave (deve passar).<br><em>O que observar:</em> a autenticação por senha é recusada antes de pedir a senha. Esse é o efeito real: força bruta deixa de ser possível, porque não existe mais o que adivinhar.</li>
+<li><strong>Leia a auditoria.</strong> <code>journalctl -u sshd -n 50</code>.<br><em>O que observar:</em> cada tentativa aparece com IP, usuário e método. Esse log é a matéria-prima de qualquer detecção de força bruta — e é o que o fail2ban consome quando você chegar nele.</li>
+<li><strong>Atravesse um bastion sem pensar nisso.</strong> No <code>~/.ssh/config</code>, defina um host <code>app01</code> com <code>ProxyJump bastion</code>.<br><em>O que observar:</em> agora <code>ssh app01</code> passa pelo bastion sozinho, em um comando. Compare com o túnel manual que você faria sem isso — é a seção 4, e é o que economiza as tais horas.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Login por senha é recusado e por chave funciona.</li>
+<li><code>sshd -t</code> passa limpo e você validou <em>antes</em> de recarregar.</li>
+<li><code>ssh app01</code> atravessa o bastion sem nenhum comando extra.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se perdeu o acesso, use o console web do provedor e reverta o arquivo de hardening — é exatamente por isso que ele fica separado, em vez de editado no <code>sshd_config</code> principal. E "Permission denied (publickey)" com a chave certa é quase sempre permissão no servidor: rode <code>sudo journalctl -u sshd -n 20</code>, que ali o motivo real aparece.</p>
+<h4>Vá além</h4>
+<p>Leia o caso da seção 9 e depois inspecione o seu <code>~/.ssh/known_hosts</code>: você saberia dizer se a chave de host de um servidor mudou hoje? Essa é a pergunta que o incidente de 2023 tornou concreta — e a resposta explica por que certificados de host (seção 7) existem.</p>"""
                 ),
                 "practical_en": (
-                    "On two VMs:<br>"
-                    "(1) Generate an Ed25519 key with a passphrase: "
-                    "<code>ssh-keygen -t ed25519 -a 100</code>.<br>"
-                    "(2) Copy it to the other VM with "
-                    "<code>ssh-copy-id user@host</code>; verify permissions.<br>"
-                    "(3) On the server, edit <code>/etc/ssh/sshd_config.d/99-hardening.conf</code> "
-                    "with <code>PasswordAuthentication no</code>, "
-                    "<code>PermitRootLogin no</code>, <code>MaxAuthTries 3</code>, "
-                    "<code>AllowUsers $YOUR_USER</code>. Validate with <code>sshd -t</code> and "
-                    "reload with <code>systemctl reload sshd</code>.<br>"
-                    "(4) <strong>Do not close the current session</strong>. In another "
-                    "terminal, try logging in with a password (should fail) and with the key "
-                    "(should succeed).<br>"
-                    "(5) <code>journalctl -u sshd -n 50</code> and check the audit trail.<br>"
-                    "(6) Bonus: set up a <code>~/.ssh/config</code> with a host alias and "
-                    "<code>ProxyJump</code>, then <code>ssh app01</code> should traverse the "
-                    "bastion on its own."
+                    """<p><strong>Goal:</strong> harden an SSH server without locking yourself out — and understand firsthand why the golden rule is always keeping one session open while you test.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Two VMs (or one VM and your machine). On cloud, have the web console available: it is your plan B if something goes wrong.</li>
+<li><code>sudo</code> access on the server.</li>
+<li>About an hour and a half.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Generate an Ed25519 pair with a passphrase.</strong> <code>ssh-keygen -t ed25519 -a 100 -C "your-email"</code>, then <code>cat</code> both generated files.<br><em>What to look for:</em> the public key fits on one line; the private one is much longer and starts with a private key header. Fix which is which now: distributing the wrong one is the mistake section 1's key-pair mental model exists to prevent.</li>
+<li><strong>Copy the key and check permissions.</strong> <code>ssh-copy-id user@host</code>, then <code>ls -la ~/.ssh</code> on the server.<br><em>What to look for:</em> <code>~/.ssh</code> must be 700 and <code>authorized_keys</code> 600. Loosen it on purpose (<code>chmod 644</code>) and try to log in: SSH refuses <em>your own key</em>. That is section 6, and the error message does not clearly say permissions are the problem — which is why it is worth seeing happen.</li>
+<li><strong>Open a second session and do not close the first.</strong> Before touching <code>sshd_config</code>, leave one session connected and working.<br><em>What to look for:</em> that session is your safety net. A bad configuration only affects <em>new</em> connections; the open one survives and lets you fix things. People who skip this step eventually lose access to a production server.</li>
+<li><strong>Harden the server in a separate file.</strong> Create <code>/etc/ssh/sshd_config.d/99-hardening.conf</code> with <code>PasswordAuthentication no</code>, <code>PermitRootLogin no</code>, <code>MaxAuthTries 3</code>, and <code>AllowUsers YOUR_USER</code>.<br><em>What to look for:</em> run <code>sshd -t</code> before reloading. It validates syntax without applying anything — and it is what stops a typo from taking the service down on <code>reload</code>.</li>
+<li><strong>Test both paths from the second session.</strong> Try <code>ssh -o PreferredAuthentications=password</code> (should fail) and with the key (should pass).<br><em>What to look for:</em> password authentication is refused before it even asks for a password. That is the real effect: brute force becomes impossible, because there is nothing left to guess.</li>
+<li><strong>Read the audit trail.</strong> <code>journalctl -u sshd -n 50</code>.<br><em>What to look for:</em> every attempt appears with IP, user, and method. That log is the raw material of any brute-force detection — and what fail2ban consumes when you get to it.</li>
+<li><strong>Cross a bastion without thinking about it.</strong> In <code>~/.ssh/config</code>, define host <code>app01</code> with <code>ProxyJump bastion</code>.<br><em>What to look for:</em> now <code>ssh app01</code> goes through the bastion by itself, in one command. Compare with the manual tunnel you would otherwise build — that is section 4, and it is where those saved hours come from.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>Password login is refused and key login works.</li>
+<li><code>sshd -t</code> passes clean and you validated <em>before</em> reloading.</li>
+<li><code>ssh app01</code> crosses the bastion with no extra command.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If you lost access, use the provider's web console and revert the hardening file — which is exactly why it lives separately rather than edited into the main <code>sshd_config</code>. And "Permission denied (publickey)" with the right key is almost always server-side permissions: run <code>sudo journalctl -u sshd -n 20</code>, where the real reason appears.</p>
+<h4>Go further</h4>
+<p>Read the case in section 9, then inspect your own <code>~/.ssh/known_hosts</code>: could you tell whether a server's host key changed today? That is the question the 2023 incident made concrete — and the answer explains why host certificates (section 7) exist.</p>"""
                 ),
             },
             "materials": [
@@ -2705,37 +2808,62 @@ incident response later.</p>
 """
                 ),
                 "practical": (
-                    "(1) Pegue um serviço systemd existente em sua máquina e rode "
-                    "<code>systemd-analyze security &lt;unit&gt;</code>. Anote a nota.<br>"
-                    "(2) Crie drop-in em "
-                    "<code>/etc/systemd/system/&lt;unit&gt;.d/hardening.conf</code> com "
-                    "<code>NoNewPrivileges=true</code>, <code>PrivateTmp=true</code>, "
-                    "<code>ProtectSystem=strict</code>, <code>ProtectHome=true</code> e "
-                    "<code>ReadWritePaths=</code> só para os caminhos necessários.<br>"
-                    "(3) <code>systemctl daemon-reload &amp;&amp; systemctl restart &lt;unit&gt;</code> "
-                    "e veja se quebra. Se quebrar, leia <code>journalctl</code> e ajuste "
-                    "<code>ReadWritePaths</code>.<br>"
-                    "(4) Rode <code>systemd-analyze security</code> de novo. A nota deve cair "
-                    "(mais seguro = nota menor).<br>"
-                    "(5) Bônus: faça o mesmo exercício em um Dockerfile, adicione "
-                    "<code>USER</code> não-root, <code>--cap-drop=ALL</code>, "
-                    "<code>--read-only</code> e veja se app continua funcionando."
+                    """<p><strong>Objetivo:</strong> reduzir o privilégio de um serviço que já roda na sua máquina e <em>medir</em> a redução com um número — em vez de confiar que "está mais seguro agora".</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma VM com systemd (não sirva de cobaia a sua máquina de trabalho) e um serviço qualquer rodando: nginx, cron, o que preferir.</li>
+<li>Docker instalado para o passo 6.</li>
+<li>Cerca de duas horas, boa parte delas depurando o serviço que você acabou de quebrar — e essa é a parte que ensina.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Meça a nota antes de mexer.</strong> <code>systemd-analyze security nginx.service</code>.<br><em>O que observar:</em> anote a nota e leia a tabela de itens. Nota alta significa exposição alta — é contraintuitivo à primeira vista, e vale fixar isso antes de comparar depois.</li>
+<li><strong>Endureça num drop-in, nunca editando a unit original.</strong> Crie <code>/etc/systemd/system/nginx.service.d/hardening.conf</code> com <code>NoNewPrivileges=true</code>, <code>PrivateTmp=true</code>, <code>ProtectSystem=strict</code> e <code>ProtectHome=true</code>.<br><em>O que observar:</em> o drop-in sobrevive a atualização do pacote; editar a unit original não. É a diferença entre hardening que dura e hardening que some no próximo <code>apt upgrade</code>.</li>
+<li><strong>Quebre o serviço e leia o motivo.</strong> <code>systemctl daemon-reload &amp;&amp; systemctl restart nginx</code>.<br><em>O que observar:</em> com <code>ProtectSystem=strict</code> o serviço provavelmente não sobe, porque precisa escrever em algum lugar. O <code>journalctl -u nginx -n 30</code> diz exatamente qual caminho foi negado. Acrescente só esse caminho em <code>ReadWritePaths=</code> — é aqui que você descobre o que o serviço realmente precisa, em vez de supor.</li>
+<li><strong>Meça de novo e compare.</strong> <code>systemd-analyze security nginx.service</code>.<br><em>O que observar:</em> a nota caiu. Você tem agora um antes e um depois, e cada ponto de diferença corresponde a uma capacidade que o serviço perdeu — e que um atacante que o comprometer também não terá (seção 3).</li>
+<li><strong>Revise o <code>sudo</code> com o mesmo critério.</strong> Rode <code>sudo -l</code> e depois leia <code>/etc/sudoers.d/</code>.<br><em>O que observar:</em> procure por <code>ALL=(ALL) NOPASSWD: ALL</code>. Um <code>NOPASSWD</code> amplo transforma qualquer execução de código como aquele usuário em root imediato. Restrinja a comandos específicos e veja o que quebra (seção 4).</li>
+<li><strong>Repita a ideia num container.</strong> Suba uma imagem qualquer com <code>--user 1000 --cap-drop=ALL --read-only</code> e veja o que falha.<br><em>O que observar:</em> com <code>--read-only</code>, o container quebra onde precisa escrever — e a correção certa é um <code>--tmpfs</code> no caminho exato, não remover a flag. É o mesmo raciocínio do passo 3, em outra camada (seção 5).</li>
+<li><strong>Procure o privilege creep.</strong> Liste os grupos do seu próprio usuário com <code>id</code> e pergunte, para cada um: por que estou aqui e ainda preciso disso?<br><em>O que observar:</em> quase sempre sobra um grupo herdado de uma tarefa pontual de meses atrás. Permissão entra fácil e nunca sai sozinha — é a seção 8, e é o que faz a conta de um estagiário virar risco depois de dois anos.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você tem as duas notas do <code>systemd-analyze security</code>, antes e depois.</li>
+<li>O serviço roda com <code>ProtectSystem=strict</code> e uma lista mínima de <code>ReadWritePaths</code>.</li>
+<li>O container roda sem capabilities e com filesystem somente leitura.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o serviço não sobe e o journal não é claro, afrouxe uma diretiva de cada vez até descobrir a culpada — mudar tudo de uma vez não ensina nada. E se <code>ProtectHome=true</code> quebrar, provavelmente o serviço lê configuração de um diretório de usuário, o que já é um achado por si só.</p>
+<h4>Vá além</h4>
+<p>Leia o caso da seção 9 e identifique qual privilégio excessivo transformou um acesso isolado num vazamento em massa. Depois procure o equivalente na sua própria cloud: uma role que pode listar <em>todos</em> os buckets é o mesmo padrão, esperando a mesma falha.</p>"""
                 ),
                 "practical_en": (
-                    "(1) Pick an existing systemd service on your machine and run "
-                    "<code>systemd-analyze security &lt;unit&gt;</code>. Note the score.<br>(2) "
-                    "Create a drop-in at "
-                    "<code>/etc/systemd/system/&lt;unit&gt;.d/hardening.conf</code> with "
-                    "<code>NoNewPrivileges=true</code>, <code>PrivateTmp=true</code>, "
-                    "<code>ProtectSystem=strict</code>, <code>ProtectHome=true</code>, and "
-                    "<code>ReadWritePaths=</code> only for the paths you need.<br>(3) "
-                    "<code>systemctl daemon-reload &amp;&amp; systemctl restart "
-                    "&lt;unit&gt;</code> and see if it breaks. If it breaks, read "
-                    "<code>journalctl</code> and adjust <code>ReadWritePaths</code>.<br>(4) Run "
-                    "<code>systemd-analyze security</code> again. The score should drop (more "
-                    "secure = lower score).<br>(5) Bonus: do the same exercise on a Dockerfile — "
-                    "add a non-root <code>USER</code>, <code>--cap-drop=ALL</code>, "
-                    "<code>--read-only</code>, and see whether the app still works."
+                    """<p><strong>Goal:</strong> reduce a running service's privilege and <em>measure</em> the reduction with a number — instead of trusting that "it is safer now".</p>
+<h4>Before you start</h4>
+<ul>
+<li>A VM with systemd (do not experiment on your work machine) and any running service: nginx, cron, whichever.</li>
+<li>Docker installed for step 6.</li>
+<li>About two hours, much of it debugging the service you just broke — and that is the part that teaches.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Measure the score before touching anything.</strong> <code>systemd-analyze security nginx.service</code>.<br><em>What to look for:</em> note the score and read the item table. A high score means high exposure — counterintuitive at first, and worth fixing in your head before comparing later.</li>
+<li><strong>Harden in a drop-in, never by editing the original unit.</strong> Create <code>/etc/systemd/system/nginx.service.d/hardening.conf</code> with <code>NoNewPrivileges=true</code>, <code>PrivateTmp=true</code>, <code>ProtectSystem=strict</code>, and <code>ProtectHome=true</code>.<br><em>What to look for:</em> the drop-in survives package updates; editing the original unit does not. That is the difference between hardening that lasts and hardening that vanishes at the next <code>apt upgrade</code>.</li>
+<li><strong>Break the service and read why.</strong> <code>systemctl daemon-reload &amp;&amp; systemctl restart nginx</code>.<br><em>What to look for:</em> with <code>ProtectSystem=strict</code> the service probably will not start, because it needs to write somewhere. <code>journalctl -u nginx -n 30</code> names exactly which path was denied. Add only that path to <code>ReadWritePaths=</code> — this is where you learn what the service actually needs, instead of guessing.</li>
+<li><strong>Measure again and compare.</strong> <code>systemd-analyze security nginx.service</code>.<br><em>What to look for:</em> the score dropped. You now have a before and an after, and every point of difference is a capability the service lost — and that an attacker who compromises it will not have either (section 3).</li>
+<li><strong>Review <code>sudo</code> with the same standard.</strong> Run <code>sudo -l</code> and then read <code>/etc/sudoers.d/</code>.<br><em>What to look for:</em> hunt for <code>ALL=(ALL) NOPASSWD: ALL</code>. A broad <code>NOPASSWD</code> turns any code execution as that user into immediate root. Narrow it to specific commands and see what breaks (section 4).</li>
+<li><strong>Repeat the idea in a container.</strong> Start any image with <code>--user 1000 --cap-drop=ALL --read-only</code> and see what fails.<br><em>What to look for:</em> with <code>--read-only</code>, the container breaks where it needs to write — and the right fix is a <code>--tmpfs</code> at the exact path, not removing the flag. Same reasoning as step 3, one layer over (section 5).</li>
+<li><strong>Go looking for privilege creep.</strong> List your own groups with <code>id</code> and ask, for each: why am I here, and do I still need this?<br><em>What to look for:</em> there is almost always a leftover group from a one-off task months ago. Permissions arrive easily and never leave on their own — that is section 8, and how an intern's account becomes a risk after two years.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>You have both <code>systemd-analyze security</code> scores, before and after.</li>
+<li>The service runs with <code>ProtectSystem=strict</code> and a minimal <code>ReadWritePaths</code> list.</li>
+<li>The container runs with no capabilities and a read-only filesystem.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the service will not start and the journal is unclear, loosen one directive at a time until you find the culprit — changing everything at once teaches nothing. And if <code>ProtectHome=true</code> breaks it, the service is probably reading configuration from a user directory, which is a finding in itself.</p>
+<h4>Go further</h4>
+<p>Read the case in section 9 and identify which excessive privilege turned an isolated access into a mass leak. Then find the equivalent in your own cloud: a role that can list <em>all</em> buckets is the same pattern, waiting for the same failure.</p>"""
                 ),
             },
             "materials": [
@@ -3402,30 +3530,62 @@ it serve today?".</li>
 """
                 ),
                 "practical": (
-                    "Em uma VM:<br>"
-                    "(1) <code>ufw default deny incoming</code> e "
-                    "<code>ufw default allow outgoing</code>.<br>"
-                    "(2) <code>ufw limit ssh</code> e <code>ufw allow 80,443/tcp</code>.<br>"
-                    "(3) <code>ufw enable</code>; verifique com <code>ufw status verbose</code>.<br>"
-                    "(4) De <em>outra</em> máquina, rode "
-                    "<code>nmap -sS -p 1-1024 &lt;ip&gt;</code>, só 22, 80, 443 devem "
-                    "aparecer.<br>"
-                    "(5) Faça 10 tentativas de SSH com senha errada de uma terceira máquina "
-                    "(use <code>sshpass</code>) e veja o rate-limit kicar, IP banido por "
-                    "alguns minutos.<br>"
-                    "(6) Bônus: reescreva as mesmas regras em nftables raw e veja "
-                    "<code>nft list ruleset</code>."
+                    """<p><strong>Objetivo:</strong> fechar um host e depois <em>provar de fora</em> que ele está fechado — e descobrir, no caminho, o bypass por IPv6 que passa despercebido em quase toda configuração feita às pressas.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma VM descartável com IP alcançável e acesso por console web (o seu plano B).</li>
+<li>Uma segunda máquina para escanear, com <code>nmap</code> instalado.</li>
+<li>Cerca de uma hora e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Escaneie <em>antes</em> de configurar nada.</strong> Da segunda máquina: <code>nmap -sS -p 1-1024 IP_DA_VM</code>.<br><em>O que observar:</em> anote tudo que aparece aberto. Esse retrato é a sua linha de base — e frequentemente já revela serviço que você nem sabia que estava escutando.</li>
+<li><strong>Libere o SSH antes de negar o resto.</strong> Esta é a ordem que importa: <code>ufw limit ssh</code> <em>primeiro</em>, depois <code>ufw default deny incoming</code> e <code>ufw default allow outgoing</code>.<br><em>O que observar:</em> inverter essa ordem e habilitar o firewall te expulsa do servidor na hora. A seção 6 existe por causa dessa exata sequência, e quase todo mundo aprende errando uma vez.</li>
+<li><strong>Habilite e confira o que ficou.</strong> <code>ufw enable</code> e depois <code>ufw status verbose</code>.<br><em>O que observar:</em> repare que o <code>limit</code> do SSH não é um simples allow — ele restringe tentativas repetidas do mesmo IP. Essa é a diferença entre porta aberta e porta aberta com defesa contra força bruta.</li>
+<li><strong>Prove de fora.</strong> Repita o <code>nmap</code> do passo 1.<br><em>O que observar:</em> compare as duas listas. Só o que você liberou deve aparecer. Testar de fora é a única verificação que vale: <code>ufw status</code> mostra a sua intenção, o nmap mostra a realidade.</li>
+<li><strong>Sinta a diferença entre DROP e REJECT.</strong> Escaneie uma porta bloqueada e cronometre; depois mude a política para <code>reject</code> e repita.<br><em>O que observar:</em> com DROP o cliente fica esperando até o timeout; com REJECT recebe recusa imediata. DROP desacelera quem varre; REJECT é mais educado com cliente legítimo. É a seção 5, e é uma escolha, não um default a aceitar sem pensar.</li>
+<li><strong>Procure o bypass por IPv6.</strong> Rode <code>ip -6 addr</code> na VM e, se houver endereço, escaneie com <code>nmap -6</code>.<br><em>O que observar:</em> regra escrita só para IPv4 deixa o IPv6 aberto. O serviço continua acessível por outro caminho, e o <code>ufw status</code> parece perfeito. É o caso da seção 9, e é o tipo de furo que sobrevive a auditoria porque ninguém olha pelo lado certo.</li>
+<li><strong>Veja o rate limit agir.</strong> De uma terceira máquina, faça dez tentativas de SSH com senha errada em sequência.<br><em>O que observar:</em> a partir de certo ponto a conexão para de ser aceita por alguns minutos. Confirme no log com <code>journalctl -n 50</code>. É defesa em profundidade: mesmo com senha desabilitada, o rate limit corta o ruído antes de chegar ao sshd.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O <code>nmap</code> de fora mostra só as portas que você liberou de propósito.</li>
+<li>Você verificou o IPv6 e sabe dizer se ele está coberto.</li>
+<li>Você continua com acesso SSH ao servidor.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se perdeu o acesso, use o console web e rode <code>ufw disable</code>. E se o <code>nmap</code> mostra tudo filtrado, inclusive o SSH, provavelmente existe um firewall <em>antes</em> da VM — em cloud, o Security Group atua antes do UFW e os dois precisam permitir, o que é o ponto da seção 8.</p>
+<h4>Vá além</h4>
+<p>Reescreva as mesmas regras em <code>nftables</code> puro e compare com <code>nft list ruleset</code>. Depois responda à pergunta da seção 7: o que esse firewall <em>não</em> consegue bloquear? Ele decide por IP e porta, então tráfego malicioso numa porta legítima passa inteiro — e é exatamente por isso que WAF e runtime security existem.</p>"""
                 ),
                 "practical_en": (
-                    "On a VM:<br>(1) <code>ufw default deny incoming</code> and <code>ufw "
-                    "default allow outgoing</code>.<br>(2) <code>ufw limit ssh</code> and "
-                    "<code>ufw allow 80,443/tcp</code>.<br>(3) <code>ufw enable</code>; verify "
-                    "with <code>ufw status verbose</code>.<br>(4) From <em>another</em> machine, "
-                    "run <code>nmap -sS -p 1-1024 &lt;ip&gt;</code> — only 22, 80, 443 should "
-                    "appear.<br>(5) Make 10 SSH attempts with the wrong password from a third "
-                    "machine (use <code>sshpass</code>) and watch the rate-limit kick in, IP "
-                    "banned for a few minutes.<br>(6) Bonus: rewrite the same rules in raw "
-                    "nftables and check <code>nft list ruleset</code>."
+                    """<p><strong>Goal:</strong> close a host and then <em>prove from outside</em> that it is closed — discovering, along the way, the IPv6 bypass that slips past nearly every configuration made in a hurry.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A disposable VM with a reachable IP and web console access (your plan B).</li>
+<li>A second machine to scan from, with <code>nmap</code> installed.</li>
+<li>About an hour and a half.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Scan <em>before</em> configuring anything.</strong> From the second machine: <code>nmap -sS -p 1-1024 VM_IP</code>.<br><em>What to look for:</em> write down everything that shows open. That snapshot is your baseline — and it frequently reveals a service you did not know was listening.</li>
+<li><strong>Allow SSH before denying the rest.</strong> This is the order that matters: <code>ufw limit ssh</code> <em>first</em>, then <code>ufw default deny incoming</code> and <code>ufw default allow outgoing</code>.<br><em>What to look for:</em> reversing that order and enabling the firewall kicks you off the server instantly. Section 6 exists because of this exact sequence, and almost everyone learns it by getting it wrong once.</li>
+<li><strong>Enable it and check the result.</strong> <code>ufw enable</code>, then <code>ufw status verbose</code>.<br><em>What to look for:</em> notice that SSH <code>limit</code> is not a plain allow — it throttles repeated attempts from the same IP. That is the difference between an open port and an open port with brute-force defense.</li>
+<li><strong>Prove it from outside.</strong> Repeat the <code>nmap</code> from step 1.<br><em>What to look for:</em> compare the two lists. Only what you allowed should appear. Testing from outside is the only verification that counts: <code>ufw status</code> shows your intention, nmap shows reality.</li>
+<li><strong>Feel the difference between DROP and REJECT.</strong> Scan a blocked port and time it; then switch the policy to <code>reject</code> and repeat.<br><em>What to look for:</em> with DROP the client waits until timeout; with REJECT it gets an immediate refusal. DROP slows scanners down; REJECT is kinder to legitimate clients. That is section 5, and it is a choice, not a default to accept unthinkingly.</li>
+<li><strong>Go hunting for the IPv6 bypass.</strong> Run <code>ip -6 addr</code> on the VM and, if there is an address, scan with <code>nmap -6</code>.<br><em>What to look for:</em> a rule written only for IPv4 leaves IPv6 open. The service stays reachable by another path while <code>ufw status</code> looks perfect. That is the case in section 9, and the kind of hole that survives audits because nobody looks from the right side.</li>
+<li><strong>Watch the rate limit act.</strong> From a third machine, make ten SSH attempts with a wrong password in a row.<br><em>What to look for:</em> past a certain point the connection stops being accepted for a few minutes. Confirm in the log with <code>journalctl -n 50</code>. That is defense in depth: even with passwords disabled, the rate limit cuts the noise before it reaches sshd.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The external <code>nmap</code> shows only the ports you deliberately allowed.</li>
+<li>You checked IPv6 and can say whether it is covered.</li>
+<li>You still have SSH access to the server.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If you lost access, use the web console and run <code>ufw disable</code>. And if <code>nmap</code> shows everything filtered, SSH included, there is probably a firewall <em>in front of</em> the VM — in cloud, the Security Group acts before UFW and both must allow, which is section 8's point.</p>
+<h4>Go further</h4>
+<p>Rewrite the same rules in raw <code>nftables</code> and compare with <code>nft list ruleset</code>. Then answer section 7's question: what can this firewall <em>not</em> block? It decides by IP and port, so malicious traffic on a legitimate port passes untouched — which is exactly why WAFs and runtime security exist.</p>"""
                 ),
             },
             "materials": [
@@ -4196,36 +4356,64 @@ before.</li>
 """
                 ),
                 "practical": (
-                    "(1) Suba uma app simples (FastAPI/Django) na porta 8000.<br>"
-                    "(2) Configure Nginx como proxy reverso para ela com TLS via "
-                    "<code>certbot --nginx</code>.<br>"
-                    "(3) Adicione todos os headers de segurança da aula. Adicione um "
-                    "<code>limit_req</code> em <code>/login</code>.<br>"
-                    "(4) Teste em "
-                    "<a href='https://www.ssllabs.com/ssltest/'>SSL Labs</a> e "
-                    "<a href='https://securityheaders.com'>securityheaders.com</a>. Mire em "
-                    "A+ em ambos.<br>"
-                    "(5) Bônus: bloqueie acesso a <code>.env</code>, <code>.git</code> e "
-                    "<code>.htaccess</code> via:<br>"
-                    "<code>location ~ /\\.(env|git|htaccess) { deny all; }</code>.<br>"
-                    "(6) Bônus avançado: instale o ModSecurity em "
-                    "<code>SecRuleEngine DetectionOnly</code> e gere alguns ataques de SQLi "
-                    "via <code>curl</code>; veja o log em "
-                    "<code>/var/log/nginx/modsec_audit.log</code>."
+                    """<p><strong>Objetivo:</strong> levar um proxy reverso de "funciona" até nota A+ em auditoria pública — e entender o que cada header realmente bloqueia, em vez de colar um bloco de configuração pronto.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma VM com IP público e um domínio apontando para ela (o certbot precisa disso para emitir o certificado).</li>
+<li>Uma aplicação simples escutando em <code>127.0.0.1:8000</code> — FastAPI, Django, o que você tiver.</li>
+<li>Cerca de duas horas. O passo 5 é o que consome tempo, e é o mais instrutivo.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Coloque a aplicação atrás do Nginx, ainda sem TLS.</strong> Um <code>proxy_pass</code> para <code>http://127.0.0.1:8000</code>.<br><em>O que observar:</em> confirme com <code>ss -tulpn</code> que a aplicação escuta só em localhost. Ela deixou de ser alcançável diretamente: todo acesso passa pelo Nginx agora, e é isso que torna o resto do exercício possível.</li>
+<li><strong>Emita o certificado e veja o redirecionamento nascer.</strong> <code>certbot --nginx</code>.<br><em>O que observar:</em> o certbot edita a sua configuração e cria o redirect de 80 para 443. Leia o diff do que ele mudou — entender essa edição é o que permite reproduzir sem o certbot depois.</li>
+<li><strong>Descubra onde você está antes de otimizar.</strong> Rode o teste do SSL Labs e do securityheaders.com no seu domínio e anote as duas notas.<br><em>O que observar:</em> o TLS provavelmente já vem bem; os headers provavelmente vêm com nota baixa. Essa assimetria é comum: a parte automatizada pelo certbot está pronta, a parte que exige decisão humana não.</li>
+<li><strong>Adicione os headers um a um, testando o efeito.</strong> <code>Strict-Transport-Security</code>, <code>X-Content-Type-Options</code>, <code>X-Frame-Options</code>, <code>Referrer-Policy</code>.<br><em>O que observar:</em> depois do <code>X-Frame-Options</code>, tente abrir seu site dentro de um <code>&lt;iframe&gt;</code> numa página local. O navegador recusa. Você acabou de fechar clickjacking com uma linha — e viu o efeito, em vez de confiar nele (seção 3).</li>
+<li><strong>Enfrente o CSP em modo report, não em modo bloqueio.</strong> Comece com <code>Content-Security-Policy-Report-Only</code> e navegue pelo site com o console aberto.<br><em>O que observar:</em> o console lista tudo que <em>seria</em> bloqueado. Quase sempre aparece script inline ou CDN que você esqueceu. Ir direto para o modo bloqueio quebra a aplicação e gera a reversão apressada que a seção 4 descreve.</li>
+<li><strong>Proteja o login com rate limit e teste com carga.</strong> Um <code>limit_req_zone</code> aplicado só em <code>/login</code>, depois vinte requisições seguidas via <code>curl</code> em laço.<br><em>O que observar:</em> a partir de certo ponto vem 503. Ajuste <code>burst</code> e <code>nodelay</code> até um usuário real não ser afetado. Esse equilíbrio é a seção 5 — rate limit apertado demais vira incidente de disponibilidade.</li>
+<li><strong>Bloqueie os arquivos que nunca deveriam ser servidos.</strong> Uma <code>location</code> negando <code>.env</code>, <code>.git</code> e <code>.htaccess</code>.<br><em>O que observar:</em> antes de aplicar, tente <code>curl https://seudominio/.git/config</code>. Em muitos servidores isso responde — e é um dos vazamentos mais explorados na internet, porque expõe a URL do repositório e às vezes credencial.</li>
+<li><strong>Repita os dois testes públicos.</strong><br><em>O que observar:</em> compare com as notas do passo 3. Cada ponto de melhora corresponde a um ataque concreto que você fechou, não a um selo.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>SSL Labs e securityheaders.com dão A ou A+.</li>
+<li>O CSP está ativo em modo bloqueio e o site funciona sem erro no console.</li>
+<li><code>curl</code> em <code>/.git/config</code> responde 403.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o certbot falhar, quase sempre é DNS ainda não propagado ou porta 80 fechada no firewall — a validação HTTP precisa das duas coisas. E se a aplicação passar a registrar o IP do Nginx em vez do IP real do visitante, faltou <code>proxy_set_header X-Forwarded-For</code> e a configuração correspondente do lado da aplicação: é o problema da seção 6, e ele estraga rate limit e auditoria ao mesmo tempo.</p>
+<h4>Vá além</h4>
+<p>Instale o ModSecurity em <code>SecRuleEngine DetectionOnly</code> e dispare alguns SQLi via <code>curl</code>, acompanhando <code>modsec_audit.log</code> (seção 8). Depois pergunte-se: quantos falsos positivos apareceram em tráfego legítimo? Essa resposta é o que decide se um WAF pode ir para modo bloqueio ou não.</p>"""
                 ),
                 "practical_en": (
-                    "(1) Bring up a simple app (FastAPI/Django) on port 8000.<br>(2) Configure "
-                    "Nginx as a reverse proxy to it with TLS via <code>certbot "
-                    "--nginx</code>.<br>(3) Add all the security headers from the lesson. Add a "
-                    "<code>limit_req</code> on <code>/login</code>.<br>(4) Test on <a "
-                    "href='https://www.ssllabs.com/ssltest/'>SSL Labs</a> and <a "
-                    "href='https://securityheaders.com'>securityheaders.com</a>. Aim for A+ on "
-                    "both.<br>(5) Bonus: block access to <code>.env</code>, <code>.git</code>, "
-                    "and <code>.htaccess</code> via:<br><code>location ~ /\\.(env|git|htaccess) { "
-                    "deny all; }</code>.<br>(6) Advanced bonus: install ModSecurity in "
-                    "<code>SecRuleEngine DetectionOnly</code> and generate a few SQLi attacks "
-                    "via <code>curl</code>; check the log at "
-                    "<code>/var/log/nginx/modsec_audit.log</code>."
+                    """<p><strong>Goal:</strong> take a reverse proxy from "it works" to an A+ in public auditing — and understand what each header actually blocks, instead of pasting a ready-made config block.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A VM with a public IP and a domain pointing at it (certbot needs that to issue the certificate).</li>
+<li>A simple application listening on <code>127.0.0.1:8000</code> — FastAPI, Django, whatever you have.</li>
+<li>About two hours. Step 5 eats the time, and it is the most instructive.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Put the application behind Nginx, still without TLS.</strong> A <code>proxy_pass</code> to <code>http://127.0.0.1:8000</code>.<br><em>What to look for:</em> confirm with <code>ss -tulpn</code> that the app listens on localhost only. It is no longer directly reachable: every access goes through Nginx now, and that is what makes the rest of the exercise possible.</li>
+<li><strong>Issue the certificate and watch the redirect appear.</strong> <code>certbot --nginx</code>.<br><em>What to look for:</em> certbot edits your configuration and creates the 80-to-443 redirect. Read the diff of what it changed — understanding that edit is what lets you reproduce it without certbot later.</li>
+<li><strong>Find out where you stand before optimizing.</strong> Run the SSL Labs and securityheaders.com tests against your domain and note both grades.<br><em>What to look for:</em> TLS probably already scores well; headers probably score low. That asymmetry is common: the part certbot automated is done, the part requiring human decisions is not.</li>
+<li><strong>Add headers one at a time, testing the effect.</strong> <code>Strict-Transport-Security</code>, <code>X-Content-Type-Options</code>, <code>X-Frame-Options</code>, <code>Referrer-Policy</code>.<br><em>What to look for:</em> after <code>X-Frame-Options</code>, try opening your site inside an <code>&lt;iframe&gt;</code> on a local page. The browser refuses. You just closed clickjacking with one line — and saw it happen, instead of trusting it (section 3).</li>
+<li><strong>Face CSP in report mode, not blocking mode.</strong> Start with <code>Content-Security-Policy-Report-Only</code> and browse the site with the console open.<br><em>What to look for:</em> the console lists everything that <em>would</em> be blocked. There is almost always an inline script or a forgotten CDN. Jumping straight to blocking mode breaks the app and triggers the hasty rollback section 4 describes.</li>
+<li><strong>Protect login with rate limiting and test under load.</strong> A <code>limit_req_zone</code> applied only to <code>/login</code>, then twenty sequential <code>curl</code> calls in a loop.<br><em>What to look for:</em> past a point you get 503. Tune <code>burst</code> and <code>nodelay</code> until a real user is unaffected. That balance is section 5 — a rate limit set too tight becomes an availability incident.</li>
+<li><strong>Block files that should never be served.</strong> A <code>location</code> denying <code>.env</code>, <code>.git</code>, and <code>.htaccess</code>.<br><em>What to look for:</em> before applying it, try <code>curl https://yourdomain/.git/config</code>. On many servers that answers — and it is one of the most exploited leaks on the internet, because it exposes the repository URL and sometimes credentials.</li>
+<li><strong>Repeat both public tests.</strong><br><em>What to look for:</em> compare against the grades from step 3. Every point of improvement maps to a concrete attack you closed, not to a badge.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>SSL Labs and securityheaders.com both give A or A+.</li>
+<li>CSP is active in blocking mode and the site runs with no console errors.</li>
+<li><code>curl</code> against <code>/.git/config</code> returns 403.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If certbot fails, it is almost always DNS not yet propagated or port 80 closed in the firewall — HTTP validation needs both. And if the application starts logging Nginx's IP instead of the visitor's real one, you are missing <code>proxy_set_header X-Forwarded-For</code> and the matching app-side configuration: section 6's problem, and it ruins rate limiting and auditing at once.</p>
+<h4>Go further</h4>
+<p>Install ModSecurity in <code>SecRuleEngine DetectionOnly</code> and fire a few SQLi attempts via <code>curl</code>, watching <code>modsec_audit.log</code> (section 8). Then ask yourself: how many false positives appeared on legitimate traffic? That answer decides whether a WAF can move to blocking mode at all.</p>"""
                 ),
             },
             "materials": [
@@ -4919,34 +5107,62 @@ cycle running without depending on someone remembering manually.</li>
 """
                 ),
                 "practical": (
-                    "(1) Adicione o repositório oficial Docker em uma VM Ubuntu via "
-                    "<code>signed-by=/etc/apt/keyrings/...</code>. Verifique fingerprint "
-                    "antes.<br>"
-                    "(2) Pin a versão do <code>docker-ce</code> em "
-                    "<code>/etc/apt/preferences.d/docker</code> e marque com "
-                    "<code>apt-mark hold</code>.<br>"
-                    "(3) Instale <code>syft</code> e gere um SBOM CycloneDX da imagem "
-                    "<code>nginx:1.24-alpine</code>: "
-                    "<code>syft nginx:1.24-alpine -o cyclonedx-json &gt; nginx.sbom.json</code>.<br>"
-                    "(4) Instale <code>grype</code> e cruze o SBOM contra CVEs: "
-                    "<code>grype sbom:./nginx.sbom.json</code>.<br>"
-                    "(5) Bônus: tente <code>apt install</code> de pacote que não tem "
-                    "assinatura, observe o erro do APT e pesquise o que "
-                    "<code>--allow-unauthenticated</code> faz (e por que você não deveria "
-                    "usar)."
+                    """<p><strong>Objetivo:</strong> instalar software de terceiro verificando <em>de quem</em> ele veio, e depois inventariar o que você acabou de trazer para dentro — que é a diferença entre confiar num repositório e saber o que ele te entregou.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma VM Ubuntu limpa com <code>sudo</code>.</li>
+<li>Docker instalado para os passos de SBOM, ou disposição para instalar <code>syft</code> e <code>grype</code> via script oficial.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Adicione o repositório do Docker do jeito certo.</strong> Baixe a chave para <code>/etc/apt/keyrings/</code> e referencie com <code>signed-by=</code> na linha do repositório.<br><em>O que observar:</em> compare com o método antigo, <code>apt-key add</code>. Naquele, a chave passava a assinar <em>qualquer</em> repositório da máquina; com <code>signed-by</code>, ela vale só para aquele. É a seção 2, e a diferença é de escopo de confiança.</li>
+<li><strong>Verifique o fingerprint antes de confiar.</strong> <code>gpg --no-default-keyring --keyring /etc/apt/keyrings/docker.gpg --list-keys</code> e compare com o publicado na documentação oficial.<br><em>O que observar:</em> baixar a chave prova apenas que ela veio de <em>algum</em> lugar. Comparar o fingerprint é o único passo que liga a chave ao mantenedor real — e é o passo que quase todo tutorial omite.</li>
+<li><strong>Veja o APT recusar pacote sem assinatura.</strong> Adicione um repositório qualquer sem chave e tente instalar.<br><em>O que observar:</em> o APT bloqueia e sugere <code>--allow-unauthenticated</code>. Leia o que essa flag faz antes de usá-la: ela desliga exatamente o controle que você configurou nos passos 1 e 2.</li>
+<li><strong>Fixe a versão em produção.</strong> Pin do <code>docker-ce</code> em <code>/etc/apt/preferences.d/</code> e <code>apt-mark hold docker-ce</code>.<br><em>O que observar:</em> rode <code>apt upgrade</code> depois e confirme que o pacote ficou parado. Sem isso, um <code>upgrade</code> de rotina troca a versão do runtime debaixo da sua aplicação, sem aviso (seção 3).</li>
+<li><strong>Gere o inventário do que você está rodando.</strong> <code>syft nginx:1.24-alpine -o cyclonedx-json &gt; nginx.sbom.json</code>.<br><em>O que observar:</em> conte quantos componentes apareceram. Uma imagem "simples" costuma trazer dezenas de bibliotecas que ninguém escolheu conscientemente — é o que a seção 6 chama de lista de ingredientes.</li>
+<li><strong>Cruze o inventário com CVEs.</strong> <code>grype sbom:./nginx.sbom.json</code>.<br><em>O que observar:</em> repare na velocidade. Responder "quais imagens são afetadas por esta CVE nova?" leva segundos com SBOM e levaria um dia varrendo Dockerfiles. Essa diferença de tempo é o argumento inteiro do SBOM.</li>
+<li><strong>Olhe para os pacotes de linguagem com a mesma lente.</strong> Num projeto Python seu, rode <code>pip-audit</code> e verifique se existe lockfile com hash.<br><em>O que observar:</em> sem lockfile, dois builds do mesmo commit podem instalar versões diferentes. É por isso que a seção 5 põe lockfile como primeira mitigação: sem build determinístico, nenhuma das outras tem base.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O repositório do Docker está configurado com <code>signed-by</code> e você conferiu o fingerprint.</li>
+<li>Você tem um SBOM em arquivo e a lista de CVEs que ele revelou.</li>
+<li><code>apt upgrade</code> não troca a versão do pacote que você fixou.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>"NO_PUBKEY" no <code>apt update</code> significa que o caminho em <code>signed-by=</code> não bate com onde a chave foi salva — o erro é quase sempre de caminho, não de chave. E se o <code>grype</code> não achar nada numa imagem antiga, confirme que o banco de vulnerabilidades foi baixado: na primeira execução ele precisa de rede.</p>
+<h4>Vá além</h4>
+<p>Leia o caso do xz-utils na seção 8 e depois responda: qual dos controles deste exercício teria detectado aquele ataque? A resposta honesta é nenhum — o pacote era assinado, versionado e legítimo. Entender esse limite é o que justifica mirror interno com whitelist e revisão de dependência no PR.</p>"""
                 ),
                 "practical_en": (
-                    "(1) Add the official Docker repository on an Ubuntu VM via "
-                    "<code>signed-by=/etc/apt/keyrings/...</code>. Verify the fingerprint "
-                    "first.<br>(2) Pin the <code>docker-ce</code> version in "
-                    "<code>/etc/apt/preferences.d/docker</code> and mark it with <code>apt-mark "
-                    "hold</code>.<br>(3) Install <code>syft</code> and generate a CycloneDX SBOM "
-                    "of the <code>nginx:1.24-alpine</code> image: <code>syft nginx:1.24-alpine "
-                    "-o cyclonedx-json &gt; nginx.sbom.json</code>.<br>(4) Install "
-                    "<code>grype</code> and cross the SBOM against CVEs: <code>grype "
-                    "sbom:./nginx.sbom.json</code>.<br>(5) Bonus: try <code>apt install</code> "
-                    "of a package that has no signature, observe APT's error, and research what "
-                    "<code>--allow-unauthenticated</code> does (and why you should not use it)."
+                    """<p><strong>Goal:</strong> install third-party software while verifying <em>who</em> it came from, then inventory what you just brought in — the difference between trusting a repository and knowing what it handed you.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A clean Ubuntu VM with <code>sudo</code>.</li>
+<li>Docker installed for the SBOM steps, or willingness to install <code>syft</code> and <code>grype</code> from their official scripts.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Add the Docker repository the right way.</strong> Download the key into <code>/etc/apt/keyrings/</code> and reference it with <code>signed-by=</code> on the repository line.<br><em>What to look for:</em> compare with the old method, <code>apt-key add</code>. There, the key could sign <em>any</em> repository on the machine; with <code>signed-by</code> it is valid only for that one. That is section 2, and the difference is the scope of trust.</li>
+<li><strong>Verify the fingerprint before trusting it.</strong> <code>gpg --no-default-keyring --keyring /etc/apt/keyrings/docker.gpg --list-keys</code> and compare with the one published in the official docs.<br><em>What to look for:</em> downloading a key only proves it came from <em>somewhere</em>. Comparing the fingerprint is the one step that ties the key to the real maintainer — and the step almost every tutorial omits.</li>
+<li><strong>Watch APT refuse an unsigned package.</strong> Add any repository without a key and try to install from it.<br><em>What to look for:</em> APT blocks and suggests <code>--allow-unauthenticated</code>. Read what that flag does before using it: it disables exactly the control you configured in steps 1 and 2.</li>
+<li><strong>Pin the version for production.</strong> Pin <code>docker-ce</code> in <code>/etc/apt/preferences.d/</code> and <code>apt-mark hold docker-ce</code>.<br><em>What to look for:</em> run <code>apt upgrade</code> afterwards and confirm the package stayed put. Without this, a routine upgrade swaps the runtime under your application, unannounced (section 3).</li>
+<li><strong>Generate an inventory of what you are running.</strong> <code>syft nginx:1.24-alpine -o cyclonedx-json &gt; nginx.sbom.json</code>.<br><em>What to look for:</em> count how many components showed up. A "simple" image usually carries dozens of libraries nobody consciously chose — what section 6 calls the ingredient list.</li>
+<li><strong>Cross the inventory against CVEs.</strong> <code>grype sbom:./nginx.sbom.json</code>.<br><em>What to look for:</em> notice the speed. Answering "which images are affected by this new CVE?" takes seconds with an SBOM and would take a day scanning Dockerfiles. That time difference is the entire argument for SBOM.</li>
+<li><strong>Apply the same lens to language packages.</strong> In one of your Python projects, run <code>pip-audit</code> and check whether a lockfile with hashes exists.<br><em>What to look for:</em> without a lockfile, two builds of the same commit can install different versions. That is why section 5 puts lockfiles first among mitigations: without deterministic builds, none of the others have a foundation.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The Docker repository is configured with <code>signed-by</code> and you checked the fingerprint.</li>
+<li>You have an SBOM file and the list of CVEs it revealed.</li>
+<li><code>apt upgrade</code> does not change the version of the package you pinned.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>"NO_PUBKEY" on <code>apt update</code> means the path in <code>signed-by=</code> does not match where the key was saved — the error is almost always the path, not the key. And if <code>grype</code> finds nothing in an old image, confirm the vulnerability database downloaded: the first run needs network access.</p>
+<h4>Go further</h4>
+<p>Read the xz-utils case in section 8, then answer: which control from this exercise would have caught that attack? The honest answer is none — the package was signed, versioned, and legitimate. Understanding that limit is what justifies an internal mirror with an allow-list and dependency review in the PR.</p>"""
                 ),
             },
             "materials": [
@@ -5332,35 +5548,62 @@ flowchart LR
 """
                 ),
                 "practical": (
-                    "(1) Configure sua app para emitir JSON estruturado com "
-                    "<code>structlog</code> (Python) ou similar, incluindo "
-                    "<code>trace_id</code> e <code>user_id</code> em cada linha.<br>"
-                    "(2) Localmente, leia com <code>jq</code>: "
-                    "<code>./app | jq 'select(.level==\"error\")'</code>.<br>"
-                    "(3) Suba Loki + Promtail + Grafana via docker-compose "
-                    "(<a href='https://grafana.com/docs/loki/latest/setup/install/docker/'>guia</a>) "
-                    "e envie os logs.<br>"
-                    "(4) Em Grafana, crie dashboard com:<br>"
-                    "&nbsp;&nbsp;• taxa de erros nos últimos 5min;<br>"
-                    "&nbsp;&nbsp;• top 10 user_ids com mais erros;<br>"
-                    "&nbsp;&nbsp;• grafico de logs por nível ao longo do tempo.<br>"
-                    "(5) Bônus: simule uma sessão de incidente, pegue um trace_id de erro, "
-                    "filtre todos os logs com aquele trace_id e reconstitua a request "
-                    "completa."
+                    """<p><strong>Objetivo:</strong> reconstituir uma requisição inteira que atravessou vários serviços a partir de um único identificador — e, no caminho, descobrir o que você está logando hoje que nunca deveria ter sido gravado.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Docker Compose e uma aplicação simples em Python (ou a linguagem que preferir).</li>
+<li><code>jq</code> instalado. É a ferramenta que torna log JSON legível no terminal.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Compare log de texto com log estruturado.</strong> Primeiro emita <code>print(f"usuário {uid} falhou no login")</code>; depois troque por JSON com <code>structlog</code>, com <code>level</code>, <code>event</code>, <code>user_id</code> e <code>trace_id</code>.<br><em>O que observar:</em> tente responder "quantos erros do usuário X na última hora?" nas duas versões. Na primeira você precisa de regex frágil; na segunda é um filtro por campo. É a seção 2, e a diferença aparece quando o volume cresce.</li>
+<li><strong>Filtre no terminal antes de montar qualquer stack.</strong> <code>./app | jq 'select(.level=="error")'</code>.<br><em>O que observar:</em> log estruturado já é útil <em>sem</em> infraestrutura nenhuma. Isso importa: muita gente adia logging estruturado esperando ter Elastic, e perde o ganho que já estava disponível no dia um.</li>
+<li><strong>Propague um <code>trace_id</code> entre dois serviços.</strong> Gere no primeiro, passe via header, registre nos dois.<br><em>O que observar:</em> agora <code>jq 'select(.trace_id=="abc")'</code> nos dois logs reconstrói a requisição inteira, em ordem. Sem esse campo, você tem dois conjuntos de linhas sem ligação nenhuma — é a seção 3, e é o que separa investigar de adivinhar.</li>
+<li><strong>Audite o que você está gravando sem perceber.</strong> Leia as suas próprias linhas de log procurando senha, token, CPF, e-mail ou número de cartão.<br><em>O que observar:</em> costuma aparecer pelo menos um. Repare que o log geralmente tem retenção longa, backup e acesso mais amplo que o banco de dados — então dado pessoal ali é um risco maior, não menor. É a seção 4, e o caso da seção 10 mostra o preço.</li>
+<li><strong>Suba Loki, Promtail e Grafana e mande os logs.</strong> Via docker-compose.<br><em>O que observar:</em> repare em como o Loki indexa: por <em>label</em>, não pelo conteúdo. Por isso ele é barato — e por isso label com alta cardinalidade (como <code>user_id</code>) derruba o desempenho. Label é para dimensão pequena e fixa (seção 5).</li>
+<li><strong>Monte o painel e encontre o gargalo.</strong> Taxa de erro nos últimos cinco minutos, top 10 <code>user_id</code> com mais erros, e volume por nível ao longo do tempo.<br><em>O que observar:</em> o painel de "top usuários com erro" costuma revelar que poucos usuários geram a maioria dos erros — e isso muda completamente a priorização da investigação.</li>
+<li><strong>Ensaie o uso em incidente.</strong> Provoque um erro, pegue o <code>trace_id</code> dele no painel e filtre todos os logs daquele identificador.<br><em>O que observar:</em> cronometre. Se levar mais de um minuto para reconstruir a requisição, o seu logging ainda não está pronto para um incidente real — e é melhor descobrir isso agora (seção 8).</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Um <code>trace_id</code> reconstrói a requisição completa atravessando os dois serviços.</li>
+<li>Nenhuma linha de log contém dado pessoal ou credencial.</li>
+<li>O painel responde "quantos erros agora?" sem você escrever consulta na hora.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o Promtail não envia nada, o problema quase sempre é caminho de arquivo no <code>scrape_configs</code> — confira com <code>docker logs promtail</code>. E se o Grafana mostra tudo como uma linha só, o parser JSON não está configurado na fonte de dados: sem isso o Loki trata a linha como texto e você perde os campos.</p>
+<h4>Vá além</h4>
+<p>Calcule o custo de reter esses logs por 90 dias no volume que a sua aplicação gera hoje (seção 7). Depois decida quais níveis merecem esse tempo: normalmente <code>DEBUG</code> vale dias, <code>ERROR</code> vale meses, e auditoria vale anos. Retenção uniforme é cara e, pior, quase sempre curta demais justamente no que importa.</p>"""
                 ),
                 "practical_en": (
-                    "(1) Configure your app to emit structured JSON with <code>structlog</code> "
-                    "(Python) or similar, including <code>trace_id</code> and "
-                    "<code>user_id</code> on every line.<br>(2) Locally, read with "
-                    "<code>jq</code>: <code>./app | jq 'select(.level==\"error\")'</code>.<br>(3) "
-                    "Bring up Loki + Promtail + Grafana via docker-compose (<a "
-                    "href='https://grafana.com/docs/loki/latest/setup/install/docker/'>guide</a>) "
-                    "and ship the logs.<br>(4) In Grafana, create a dashboard "
-                    "with:<br>&nbsp;&nbsp;• error rate over the last 5 minutes;<br>&nbsp;&nbsp;• "
-                    "top 10 user_ids with the most errors;<br>&nbsp;&nbsp;• a graph of logs by "
-                    "level over time.<br>(5) Bonus: simulate an incident session — grab a "
-                    "trace_id from an error, filter all logs with that trace_id, and reconstruct "
-                    "the full request."
+                    """<p><strong>Goal:</strong> reconstruct an entire request that crossed several services from a single identifier — and, along the way, discover what you are logging today that should never have been written down.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Docker Compose and a simple Python application (or your language of choice).</li>
+<li><code>jq</code> installed. It is what makes JSON logs readable in a terminal.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Compare text logs with structured logs.</strong> First emit <code>print(f"user {uid} failed login")</code>; then switch to JSON with <code>structlog</code>, carrying <code>level</code>, <code>event</code>, <code>user_id</code>, and <code>trace_id</code>.<br><em>What to look for:</em> try answering "how many errors from user X in the last hour?" in both versions. The first needs fragile regex; the second is a field filter. That is section 2, and the difference shows up as volume grows.</li>
+<li><strong>Filter in the terminal before building any stack.</strong> <code>./app | jq 'select(.level=="error")'</code>.<br><em>What to look for:</em> structured logging is already useful <em>without</em> any infrastructure. That matters: many people postpone structured logging until they have Elastic, and lose the benefit that was available on day one.</li>
+<li><strong>Propagate a <code>trace_id</code> across two services.</strong> Generate it in the first, pass it via header, log it in both.<br><em>What to look for:</em> now <code>jq 'select(.trace_id=="abc")'</code> across both logs reconstructs the whole request, in order. Without that field you have two sets of lines with no connection — that is section 3, and what separates investigating from guessing.</li>
+<li><strong>Audit what you are recording without noticing.</strong> Read your own log lines hunting for passwords, tokens, national IDs, emails, or card numbers.<br><em>What to look for:</em> at least one usually turns up. Notice that logs typically have long retention, backups, and broader access than the database — so personal data there is a bigger risk, not a smaller one. That is section 4, and the case in section 10 shows the price.</li>
+<li><strong>Bring up Loki, Promtail, and Grafana and ship the logs.</strong> Via docker-compose.<br><em>What to look for:</em> notice how Loki indexes: by <em>label</em>, not by content. That is why it is cheap — and why a high-cardinality label (like <code>user_id</code>) destroys its performance. Labels are for small, fixed dimensions (section 5).</li>
+<li><strong>Build the dashboard and find the concentration.</strong> Error rate over the last five minutes, top 10 <code>user_id</code> by errors, and volume by level over time.<br><em>What to look for:</em> the "top users by error" panel usually reveals that a handful of users generate most errors — and that completely changes how you prioritize the investigation.</li>
+<li><strong>Rehearse the incident use.</strong> Trigger an error, grab its <code>trace_id</code> from the dashboard, and filter every log carrying that identifier.<br><em>What to look for:</em> time yourself. If reconstructing the request takes more than a minute, your logging is not ready for a real incident — better to learn that now (section 8).</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>One <code>trace_id</code> reconstructs the full request across both services.</li>
+<li>No log line contains personal data or credentials.</li>
+<li>The dashboard answers "how many errors right now?" without you writing a query on the spot.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If Promtail ships nothing, the problem is almost always a file path in <code>scrape_configs</code> — check with <code>docker logs promtail</code>. And if Grafana shows everything as one line, the JSON parser is not configured on the data source: without it Loki treats the line as text and you lose the fields.</p>
+<h4>Go further</h4>
+<p>Compute the cost of retaining these logs for 90 days at the volume your application produces today (section 7). Then decide which levels deserve that time: usually <code>DEBUG</code> is worth days, <code>ERROR</code> months, and audit trails years. Uniform retention is expensive and, worse, almost always too short for exactly the part that matters.</p>"""
                 ),
             },
             "materials": [
@@ -5605,27 +5848,62 @@ flowchart LR
 """
                 ),
                 "practical": (
-                    "Pegue uma feature que sua equipe vai construir nas próximas 2 semanas "
-                    "(ex.: upload de avatar, exportação de relatório, login social). Faça um "
-                    "threat model STRIDE de 1 página:<br>"
-                    "(1) Diagrama de fluxo (data flow diagram simples).<br>"
-                    "(2) Liste 1 ameaça por categoria STRIDE, total 6.<br>"
-                    "(3) Para cada uma, escreva 1 mitigação concreta.<br>"
-                    "(4) Para cada mitigação, marque: 'já temos / vamos implementar / "
-                    "aceitamos como risco'.<br>"
-                    "(5) Compartilhe com o time. Peça crítica honesta.<br>"
-                    "(6) Bônus: depois do feature deploy, revise o doc, quantas das "
-                    "mitigações realmente entraram? O que aprendeu?"
+                    """<p><strong>Objetivo:</strong> produzir um threat model de uma página que caiba numa reunião de trinta minutos — e descobrir que a parte difícil não é achar ameaça, é escolher o que <em>não</em> vai ser mitigado, e registrar essa escolha.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma feature real que a sua equipe vai construir nas próximas duas semanas. Exercício com feature inventada não gera decisão de verdade.</li>
+<li>Um documento compartilhado e, se possível, trinta minutos de duas outras pessoas.</li>
+<li>Cerca de uma hora e meia para a primeira versão.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Desenhe o fluxo de dados antes de pensar em ameaça.</strong> Caixas para processos, setas para dados, e uma linha pontilhada onde o dado cruza fronteira de confiança.<br><em>O que observar:</em> as ameaças se concentram nas <em>travessias</em> de fronteira, não dentro das caixas. Desenhar primeiro é o que faz a lista sair focada em vez de genérica (seção 3).</li>
+<li><strong>Percorra o STRIDE uma categoria por vez.</strong> Uma ameaça para cada letra, seis no total, específicas à sua feature.<br><em>O que observar:</em> a dificuldade não é igual entre as letras. Spoofing e Tampering saem fáceis; Repudiation quase sempre trava o grupo. Essa dificuldade é informação: a categoria que ninguém consegue preencher costuma ser a menos coberta no sistema real.</li>
+<li><strong>Escreva uma mitigação concreta para cada ameaça.</strong> Nada de "validar input" — escreva <em>onde</em>, <em>o quê</em> e <em>como se verifica</em>.<br><em>O que observar:</em> mitigação vaga é a marca do shift-left teatro da seção 2. Se você não consegue transformar a linha numa tarefa que alguém pegaria amanhã, ela não é mitigação, é intenção.</li>
+<li><strong>Classifique cada uma em três baldes.</strong> "Já temos", "vamos implementar" ou "aceitamos como risco".<br><em>O que observar:</em> o terceiro balde é o mais importante do documento. Risco aceito <em>conscientemente e por escrito</em> é gestão; risco aceito por omissão é acidente esperando data. É aqui que o exercício gera valor de verdade.</li>
+<li><strong>Leve para o time e peça crítica honesta.</strong> Trinta minutos, com a pergunta aberta: o que está faltando?<br><em>O que observar:</em> repare quem levanta o quê. Quem conhece o código acha ameaça que você não veria; quem conhece o produto acha impacto que você subestimou. É esse encontro que a seção 6 chama de security champion funcionando.</li>
+<li><strong>Combine o gatilho de revisão agora, não depois.</strong> Escreva no documento quando ele será revisto — por exemplo, no dia do deploy da feature.<br><em>O que observar:</em> sem data marcada, nenhum threat model é revisitado. O documento vira arqueologia em três semanas, e essa é a forma mais comum de o processo morrer sozinho.</li>
+<li><strong>Depois do deploy, volte e conte.</strong> Quantas mitigações do balde "vamos implementar" realmente entraram?<br><em>O que observar:</em> esse número é a sua métrica de maturidade, e ele costuma ser menor do que o esperado da primeira vez. Isso não é fracasso — é a linha de base que torna a segunda rodada melhor.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O documento cabe em uma página e alguém de fora entende sem explicação verbal.</li>
+<li>Existe pelo menos um risco explicitamente aceito, com justificativa.</li>
+<li>Há uma data marcada para revisar, e ela está no calendário de alguém.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se a reunião virar debate sobre probabilidade de ataque, corte: threat model lista o que <em>pode</em> acontecer, priorização vem depois e com outros dados. E se todas as seis ameaças caírem em "aceitamos como risco", ou a feature é mesmo trivial, ou o time está com medo de criar trabalho — e essa segunda hipótese é um problema cultural, não técnico (seção 8).</p>
+<h4>Vá além</h4>
+<p>Meça as quatro métricas DORA da sua equipe hoje (seção 5) e guarde os números. Depois releia o caso da seção 9 e repare no que mudou lá primeiro: não foi ferramenta, foi quem passou a ser responsável pelo quê. Ferramenta sem essa mudança produz relatório que ninguém lê.</p>"""
                 ),
                 "practical_en": (
-                    "Pick a feature your team will build in the next 2 weeks (e.g. avatar "
-                    "upload, report export, social login). Do a 1-page STRIDE threat "
-                    "model:<br>(1) Flow diagram (simple data flow diagram).<br>(2) List 1 threat "
-                    "per STRIDE category — 6 total.<br>(3) For each one, write 1 concrete "
-                    "mitigation.<br>(4) For each mitigation, mark: 'we already have it / we will "
-                    "implement / we accept as risk'.<br>(5) Share with the team. Ask for honest "
-                    "critique.<br>(6) Bonus: after the feature deploys, review the doc — how "
-                    "many mitigations actually landed? What did you learn?"
+                    """<p><strong>Goal:</strong> produce a one-page threat model that fits in a thirty-minute meeting — and discover that the hard part is not finding threats, it is choosing what will <em>not</em> be mitigated, and recording that choice.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A real feature your team will build in the next two weeks. An invented feature produces no real decisions.</li>
+<li>A shared document and, if possible, thirty minutes from two other people.</li>
+<li>About an hour and a half for the first version.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Draw the data flow before thinking about threats.</strong> Boxes for processes, arrows for data, and a dotted line wherever data crosses a trust boundary.<br><em>What to look for:</em> threats cluster at the boundary <em>crossings</em>, not inside the boxes. Drawing first is what makes the list focused instead of generic (section 3).</li>
+<li><strong>Walk STRIDE one category at a time.</strong> One threat per letter, six in total, specific to your feature.<br><em>What to look for:</em> the letters are not equally hard. Spoofing and Tampering come easily; Repudiation almost always stalls the group. That difficulty is information: the category nobody can fill is usually the least covered in the real system.</li>
+<li><strong>Write a concrete mitigation for each threat.</strong> No "validate input" — write <em>where</em>, <em>what</em>, and <em>how it is verified</em>.<br><em>What to look for:</em> vague mitigations are the hallmark of the shift-left theater in section 2. If you cannot turn the line into a task someone could pick up tomorrow, it is not a mitigation, it is an intention.</li>
+<li><strong>Sort each one into three buckets.</strong> "Already have it", "will implement", or "accepted as risk".<br><em>What to look for:</em> the third bucket is the most important part of the document. Risk accepted <em>consciously and in writing</em> is management; risk accepted by omission is an accident with a pending date. This is where the exercise earns its keep.</li>
+<li><strong>Take it to the team and ask for honest criticism.</strong> Thirty minutes, with an open question: what is missing?<br><em>What to look for:</em> notice who raises what. People who know the code find threats you would not see; people who know the product find impact you underestimated. That meeting is what section 6 calls a security champion working.</li>
+<li><strong>Agree on the review trigger now, not later.</strong> Write into the document when it will be revisited — for instance, on the feature's deploy day.<br><em>What to look for:</em> with no date set, no threat model is ever revisited. The document becomes archaeology in three weeks, and that is the most common way the process dies on its own.</li>
+<li><strong>After the deploy, come back and count.</strong> How many mitigations from the "will implement" bucket actually shipped?<br><em>What to look for:</em> that number is your maturity metric, and it is usually lower than expected the first time. That is not failure — it is the baseline that makes the second round better.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The document fits on one page and an outsider understands it without a verbal walkthrough.</li>
+<li>At least one risk is explicitly accepted, with justification.</li>
+<li>There is a review date, and it sits on someone's calendar.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the meeting turns into a debate about attack probability, cut it short: a threat model lists what <em>can</em> happen, prioritization comes later and with other data. And if all six threats land in "accepted as risk", either the feature really is trivial or the team is afraid of creating work — and that second possibility is a cultural problem, not a technical one (section 8).</p>
+<h4>Go further</h4>
+<p>Measure your team's four DORA metrics today (section 5) and keep the numbers. Then reread the case in section 9 and notice what changed there first: not tooling, but who became responsible for what. Tooling without that change produces reports nobody reads.</p>"""
                 ),
             },
             "materials": [

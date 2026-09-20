@@ -1036,26 +1036,60 @@ own cost.</p>
 """
                 ),
                 "practical": (
-                    "Suba <code>kind create cluster</code> local. Crie um Deployment de NGINX "
-                    "com 3 réplicas via <code>kubectl create deploy nginx --image=nginx:1.25 "
-                    "--replicas=3</code>. Exponha via <code>kubectl expose deploy nginx --port=80 "
-                    "--type=ClusterIP</code>. Use <code>kubectl port-forward svc/nginx 8080:80</code> "
-                    "e abra <code>http://localhost:8080</code>. Em seguida, escreva um manifest "
-                    "Deployment+Service+ConfigMap em YAML, aplique com <code>kubectl apply</code>, "
-                    "e depois remova com <code>kubectl delete -f</code>. Por fim, instale o NGINX "
-                    "Ingress Controller via Helm e crie um Ingress roteando <code>app.local</code> "
-                    "para o Service."
+                    """<p><strong>Objetivo:</strong> sentir na prática a frase que abre a aula — você não manda, você declara — subindo a mesma aplicação de três formas e observando o cluster reconciliar sozinho o que você pediu.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li><code>kind</code> (ou minikube), <code>kubectl</code> e <code>helm</code> instalados. Docker rodando.</li>
+<li>Cerca de duas horas. Não pule o passo 3: é ele que ensina a diferença entre imperativo e declarativo.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Suba o cluster e olhe o que veio junto.</strong> <code>kind create cluster</code> e então <code>kubectl get pods -A</code>.<br><em>O que observar:</em> você não pediu nada e já existem pods rodando — API server, scheduler, CoreDNS, kube-proxy. É o "cérebro e músculo" da seção 2 aparecendo antes da sua primeira aplicação.</li>
+<li><strong>Crie um Deployment pelo caminho imperativo.</strong> <code>kubectl create deploy nginx --image=nginx:1.25 --replicas=3</code>, depois <code>kubectl get pods -w</code>.<br><em>O que observar:</em> três pods nascem sozinhos. Agora apague um: <code>kubectl delete pod NOME</code>. Outro aparece em segundos, sem você mandar. Você declarou "quero três" e o controlador passou a perseguir esse número — esse é o modelo mental inteiro em uma frase.</li>
+<li><strong>Refaça a mesma coisa de forma declarativa.</strong> <code>kubectl get deploy nginx -o yaml &gt; nginx.yaml</code>, limpe os campos de status, edite as réplicas para 2 e aplique com <code>kubectl apply -f nginx.yaml</code>.<br><em>O que observar:</em> o arquivo é a fonte da verdade e pode ir para o Git; o comando do passo 2 não pode. É por isso que a seção 11 chama GitOps de consequência natural, e não de ferramenta extra.</li>
+<li><strong>Descubra por que ninguém fala com o IP do pod.</strong> Anote o IP de um pod (<code>kubectl get pod -o wide</code>), apague o pod e veja o IP do substituto.<br><em>O que observar:</em> o IP mudou. Agora crie o Service (<code>kubectl expose deploy nginx --port=80</code>) e repita a destruição: o nome do Service continua resolvendo. É exatamente o problema que a seção 6 descreve, sentido na mão.</li>
+<li><strong>Quebre uma probe de propósito.</strong> Acrescente uma <code>readinessProbe</code> apontando para um path que não existe e aplique.<br><em>O que observar:</em> os pods sobem, ficam <code>Running</code>, mas nunca entram em <code>READY</code> — e o Service para de mandar tráfego para eles. Running não significa pronto: é a confusão da seção 8, e a causa de metade das cascatas de falha em cluster novo.</li>
+<li><strong>Separe configuração de imagem.</strong> Crie um ConfigMap com uma página HTML e monte-o como volume no lugar do index do nginx.<br><em>O que observar:</em> a mesma imagem serve conteúdos diferentes conforme o ConfigMap. Agora rode <code>kubectl get secret -o yaml</code> em qualquer Secret e repare: é base64, não criptografia — a mecânica é igual à do ConfigMap, as garantias não (seção 9).</li>
+<li><strong>Coloque um Ingress na frente.</strong> Instale o NGINX Ingress Controller via Helm e crie um Ingress roteando <code>app.local</code> para o Service.<br><em>O que observar:</em> um único ponto de entrada passa a distribuir por host e por path. Compare com a alternativa de um <code>type: LoadBalancer</code> por serviço e você entende o custo que o Ingress economiza.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Apagar um pod não derruba a aplicação, e você sabe explicar quem o recria.</li>
+<li>Você tem um YAML que reconstrói tudo do zero com um <code>kubectl apply -f</code>.</li>
+<li>Você consegue dizer a diferença entre <code>Running</code> e <code>READY</code> sem consultar a aula.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Pod em <code>ImagePullBackOff</code> é nome ou tag de imagem errados — <code>kubectl describe pod</code> mostra o motivo exato na seção Events, que é sempre o primeiro lugar a olhar. Ingress que não responde no kind costuma ser falta do <code>extraPortMappings</code> na criação do cluster; nesse caso, use <code>kubectl port-forward</code> para seguir o exercício.</p>
+<h4>Vá além</h4>
+<p>Empacote tudo num chart Helm com <code>values.yaml</code> separando dev de prod (seção 10). Depois pergunte-se, com honestidade, o que da seção 15 se aplica ao seu caso real: se a sua aplicação é um único serviço com tráfego previsível, Kubernetes talvez seja a ferramenta errada — e saber disso vale tanto quanto saber operá-lo.</p>"""
                 ),
                 "practical_en": (
-                    "Spin up a local <code>kind create cluster</code>. Create an NGINX Deployment "
-                    "with 3 replicas via <code>kubectl create deploy nginx --image=nginx:1.25 "
-                    "--replicas=3</code>. Expose it via <code>kubectl expose deploy nginx --port=80 "
-                    "--type=ClusterIP</code>. Use <code>kubectl port-forward svc/nginx 8080:80</code> "
-                    "and open <code>http://localhost:8080</code>. Then write a "
-                    "Deployment+Service+ConfigMap manifest in YAML, apply it with <code>kubectl apply</code>, "
-                    "and afterwards remove it with <code>kubectl delete -f</code>. Finally, install the NGINX "
-                    "Ingress Controller via Helm and create an Ingress routing <code>app.local</code> "
-                    "to the Service."
+                    """<p><strong>Goal:</strong> feel the sentence that opens the lesson — you do not command, you declare — by deploying the same application three ways and watching the cluster reconcile what you asked for on its own.</p>
+<h4>Before you start</h4>
+<ul>
+<li><code>kind</code> (or minikube), <code>kubectl</code>, and <code>helm</code> installed. Docker running.</li>
+<li>About two hours. Do not skip step 3: it is the one that teaches imperative versus declarative.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Start the cluster and look at what came with it.</strong> <code>kind create cluster</code>, then <code>kubectl get pods -A</code>.<br><em>What to look for:</em> you asked for nothing and there are already pods running — API server, scheduler, CoreDNS, kube-proxy. That is the "brain and muscle" of section 2 showing up before your first application.</li>
+<li><strong>Create a Deployment the imperative way.</strong> <code>kubectl create deploy nginx --image=nginx:1.25 --replicas=3</code>, then <code>kubectl get pods -w</code>.<br><em>What to look for:</em> three pods appear on their own. Now delete one: <code>kubectl delete pod NAME</code>. Another shows up within seconds, unprompted. You declared "I want three" and a controller started chasing that number — that is the whole mental model in one sentence.</li>
+<li><strong>Redo the same thing declaratively.</strong> <code>kubectl get deploy nginx -o yaml &gt; nginx.yaml</code>, strip the status fields, change replicas to 2, and apply with <code>kubectl apply -f nginx.yaml</code>.<br><em>What to look for:</em> the file is the source of truth and can go into Git; the command from step 2 cannot. That is why section 11 calls GitOps a natural consequence rather than an extra tool.</li>
+<li><strong>Find out why nobody talks to a pod IP.</strong> Note a pod's IP (<code>kubectl get pod -o wide</code>), delete the pod, and check the replacement's IP.<br><em>What to look for:</em> the IP changed. Now create the Service (<code>kubectl expose deploy nginx --port=80</code>) and repeat the destruction: the Service name keeps resolving. It is exactly the problem section 6 describes, felt firsthand.</li>
+<li><strong>Break a probe on purpose.</strong> Add a <code>readinessProbe</code> pointing at a path that does not exist, and apply.<br><em>What to look for:</em> the pods start, sit at <code>Running</code>, but never reach <code>READY</code> — and the Service stops sending traffic to them. Running does not mean ready: that is the confusion in section 8, and the cause of half the failure cascades in a new cluster.</li>
+<li><strong>Separate configuration from image.</strong> Create a ConfigMap holding an HTML page and mount it over nginx's index file.<br><em>What to look for:</em> the same image serves different content depending on the ConfigMap. Now run <code>kubectl get secret -o yaml</code> on any Secret and notice: that is base64, not encryption — same mechanics as a ConfigMap, very different guarantees (section 9).</li>
+<li><strong>Put an Ingress in front.</strong> Install the NGINX Ingress Controller via Helm and create an Ingress routing <code>app.local</code> to the Service.<br><em>What to look for:</em> a single entry point now splits traffic by host and path. Compare that with one <code>type: LoadBalancer</code> per service and the cost the Ingress saves becomes obvious.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>Deleting a pod does not take the application down, and you can explain who recreates it.</li>
+<li>You have a YAML that rebuilds everything from scratch with one <code>kubectl apply -f</code>.</li>
+<li>You can state the difference between <code>Running</code> and <code>READY</code> without looking at the lesson.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>A pod in <code>ImagePullBackOff</code> means a wrong image name or tag — <code>kubectl describe pod</code> shows the exact reason in the Events section, which is always the first place to look. An Ingress that does not answer on kind is usually missing <code>extraPortMappings</code> at cluster creation; in that case use <code>kubectl port-forward</code> to keep going.</p>
+<h4>Go further</h4>
+<p>Package everything into a Helm chart with a <code>values.yaml</code> separating dev from prod (section 10). Then ask yourself honestly which parts of section 15 apply to your real case: if your application is a single service with predictable traffic, Kubernetes may be the wrong tool — and knowing that is worth as much as knowing how to operate it.</p>"""
                 ),
             },
             "materials": [
@@ -1986,22 +2020,62 @@ everything else, being static, can't reach.</li>
 </ol>"""
                 ),
                 "practical": (
-                    "Em cluster local, rode <code>kube-bench run --targets master,node</code>. "
-                    "Identifique 3 findings High e corrija (ex.: <code>--anonymous-auth=false</code>). "
-                    "Aplique label <code>pod-security.kubernetes.io/enforce=restricted</code> em "
-                    "um namespace e tente subir um pod com <code>privileged: true</code>, "
-                    "confirme rejeição. Por fim, crie um Deployment com securityContext completo "
-                    "(runAsNonRoot, readOnlyRootFilesystem, drop ALL caps) e debug os erros até "
-                    "rodar limpo."
+                    """<p><strong>Objetivo:</strong> sair de um cluster "default" e chegar a um cluster que rejeita pod inseguro sozinho — entendendo por que cada flag existe, em vez de copiar um <code>securityContext</code> pronto da internet.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um cluster local (<code>kind create cluster</code> ou minikube), <code>kubectl</code> e <code>helm</code>.</li>
+<li>Reserve umas duas horas. Metade vai embora depurando pod que não sobe — e é exatamente aí que o exercício ensina.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Meça antes de mexer em nada.</strong> Rode o kube-bench como Job: <code>kubectl apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/main/job.yaml</code> e depois <code>kubectl logs job/kube-bench</code>. Anote quantos FAIL apareceram.<br><em>O que observar:</em> guarde esse número. Sem linha de base você não tem como saber se o hardening melhorou alguma coisa — começar por "aplicar as boas práticas" sem medir é o erro mais comum da área.</li>
+<li><strong>Escolha três findings High e entenda o vetor antes de corrigir.</strong> Pegue, por exemplo, <code>--anonymous-auth=true</code> no kubelet. Antes de mudar, pergunte: o que exatamente um atacante faz com isso?<br><em>O que observar:</em> com anonymous-auth ligado, <code>curl -k https://NODE:10250/pods</code> devolve a lista de pods sem credencial nenhuma. Corrija e repita o curl: agora vem 401. Essa é a diferença entre "fechei um finding" e "fechei um vetor".</li>
+<li><strong>Ligue o Pod Security Standard no modo que avisa antes de bloquear.</strong> <code>kubectl label ns demo pod-security.kubernetes.io/warn=restricted pod-security.kubernetes.io/enforce=baseline</code>.<br><em>O que observar:</em> o <code>warn</code> mostra, no momento do apply, o que o <code>enforce=restricted</code> bloquearia. É assim que se adota PSS sem derrubar workload em produção — a ordem da seção 3 da aula.</li>
+<li><strong>Suba o enforce e quebre de propósito.</strong> Troque para <code>enforce=restricted</code> e tente <code>kubectl run bad --image=nginx --privileged</code>.<br><em>O que observar:</em> a rejeição cita o campo exato que violou a política. Leia a mensagem inteira, não só a primeira linha: ela é o contrato do que aquele namespace aceita.</li>
+<li><strong>Faça um Deployment passar no restricted, do zero.</strong> Vá acrescentando <code>runAsNonRoot</code>, <code>runAsUser</code>, <code>allowPrivilegeEscalation: false</code>, <code>capabilities.drop: [ALL]</code>, <code>seccompProfile: RuntimeDefault</code> e <code>readOnlyRootFilesystem: true</code>, um de cada vez.<br><em>O que observar:</em> com o filesystem somente leitura o nginx quebra, porque precisa escrever em <code>/var/cache/nginx</code> e <code>/var/run</code>. A correção certa é montar <code>emptyDir</code> nesses paths, não remover a flag. Esse é o exercício de verdade: cada erro te obriga a descobrir o que a imagem realmente faz.</li>
+<li><strong>Feche o token de ServiceAccount.</strong> Antes, rode <code>kubectl exec POD -- cat /var/run/secrets/kubernetes.io/serviceaccount/token</code>. Depois, ponha <code>automountServiceAccountToken: false</code> no pod e repita.<br><em>O que observar:</em> na primeira vez você recebe um JWT válido; na segunda, o arquivo não existe. Com esse token na mão, quem estiver dentro do pod conversa com a API do cluster — é o vetor da seção 8, e o que mais passa despercebido.</li>
+<li><strong>Meça de novo.</strong> Rode o kube-bench outra vez e compare com o número do passo 1.<br><em>O que observar:</em> alguns FAIL não vão sair, porque dependem de flag do control plane que o kind não expõe. Saber separar "não corrigi" de "não se aplica aqui" é metade do trabalho de quem usa benchmark de conformidade.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O número de FAIL caiu <em>e</em> você sabe dizer, em uma frase, qual vetor cada correção fechou.</li>
+<li>Um pod com <code>privileged: true</code> é rejeitado já no apply, com mensagem clara.</li>
+<li>Seu Deployment roda com filesystem somente leitura e sem nenhuma capability.</li>
+<li>O token de ServiceAccount não está mais montado nos pods que não precisam dele.</li>
+</ul>
+<h4>Se der errado</h4>
+<p><code>CreateContainerConfigError</code> junto com <code>runAsNonRoot</code> quase sempre quer dizer que a imagem declara <code>USER root</code> no Dockerfile — o Kubernetes não tem como adivinhar outro UID. E se a política simplesmente não faz efeito, confira onde você pôs o label: Pod Security é aplicado por <em>namespace</em>, não por pod.</p>
+<h4>Vá além</h4>
+<p>Aplique <code>enforce=restricted</code> em todos os namespaces menos <code>kube-system</code> e veja o que quebra. A pergunta que fecha o exercício não é "como faço passar", e sim: quais workloads do seu cluster realmente precisam de privilégio, e o que exatamente eles fazem com ele?</p>"""
                 ),
                 "practical_en": (
-                    "On a local cluster, run <code>kube-bench run --targets master,node</code>. "
-                    "Identify 3 High findings and fix them (e.g., <code>--anonymous-auth=false</code>). "
-                    "Apply the <code>pod-security.kubernetes.io/enforce=restricted</code> label to "
-                    "a namespace and try to deploy a pod with <code>privileged: true</code>, "
-                    "confirm it's rejected. Finally, create a Deployment with a full securityContext "
-                    "(runAsNonRoot, readOnlyRootFilesystem, drop ALL caps) and debug the errors until "
-                    "it runs clean."
+                    """<p><strong>Goal:</strong> move from a "default" cluster to one that rejects insecure pods on its own — understanding why each flag exists, instead of copying a ready-made <code>securityContext</code> off the internet.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A local cluster (<code>kind create cluster</code> or minikube), <code>kubectl</code>, and <code>helm</code>.</li>
+<li>Set aside about two hours. Half of it goes into debugging pods that will not start — and that is exactly where the lesson lands.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Measure before you change anything.</strong> Run kube-bench as a Job: <code>kubectl apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/main/job.yaml</code>, then <code>kubectl logs job/kube-bench</code>. Write down how many FAILs you got.<br><em>What to look for:</em> keep that number. Without a baseline you cannot tell whether hardening improved anything — starting from "apply the best practices" without measuring is the most common mistake in this space.</li>
+<li><strong>Pick three High findings and understand the vector before fixing it.</strong> Take <code>--anonymous-auth=true</code> on the kubelet, for example. Before changing it, ask: what exactly does an attacker do with this?<br><em>What to look for:</em> with anonymous-auth on, <code>curl -k https://NODE:10250/pods</code> returns the pod list with no credential at all. Fix it and repeat the curl: now you get a 401. That is the difference between "I closed a finding" and "I closed a vector".</li>
+<li><strong>Turn on Pod Security Standards in the mode that warns before it blocks.</strong> <code>kubectl label ns demo pod-security.kubernetes.io/warn=restricted pod-security.kubernetes.io/enforce=baseline</code>.<br><em>What to look for:</em> <code>warn</code> shows you, at apply time, what <code>enforce=restricted</code> would have blocked. That is how you adopt PSS without taking production down — the order described in section 3 of the lesson.</li>
+<li><strong>Raise enforce and break things on purpose.</strong> Switch to <code>enforce=restricted</code> and try <code>kubectl run bad --image=nginx --privileged</code>.<br><em>What to look for:</em> the rejection names the exact field that violated the policy. Read the whole message, not just the first line: it is the contract of what that namespace accepts.</li>
+<li><strong>Get a Deployment through restricted, from scratch.</strong> Add <code>runAsNonRoot</code>, <code>runAsUser</code>, <code>allowPrivilegeEscalation: false</code>, <code>capabilities.drop: [ALL]</code>, <code>seccompProfile: RuntimeDefault</code>, and <code>readOnlyRootFilesystem: true</code>, one at a time.<br><em>What to look for:</em> with a read-only filesystem nginx breaks, because it needs to write to <code>/var/cache/nginx</code> and <code>/var/run</code>. The right fix is mounting <code>emptyDir</code> at those paths, not dropping the flag. This is the real exercise: every failure forces you to learn what the image actually does.</li>
+<li><strong>Close the ServiceAccount token.</strong> First run <code>kubectl exec POD -- cat /var/run/secrets/kubernetes.io/serviceaccount/token</code>. Then set <code>automountServiceAccountToken: false</code> on the pod and repeat.<br><em>What to look for:</em> the first time you get a valid JWT; the second time the file does not exist. With that token in hand, whoever is inside the pod can talk to the cluster API — the vector from section 8, and the one most often missed.</li>
+<li><strong>Measure again.</strong> Run kube-bench once more and compare against the number from step 1.<br><em>What to look for:</em> some FAILs will not go away, because they depend on control plane flags that kind does not expose. Telling "I did not fix it" apart from "it does not apply here" is half the job of working with a compliance benchmark.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The FAIL count dropped <em>and</em> you can say, in one sentence, which vector each fix closed.</li>
+<li>A pod with <code>privileged: true</code> is rejected at apply time, with a clear message.</li>
+<li>Your Deployment runs with a read-only filesystem and no capabilities at all.</li>
+<li>The ServiceAccount token is no longer mounted in pods that do not need it.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p><code>CreateContainerConfigError</code> together with <code>runAsNonRoot</code> almost always means the image declares <code>USER root</code> in its Dockerfile — Kubernetes has no way to guess another UID. And if the policy simply has no effect, check where you put the label: Pod Security applies per <em>namespace</em>, not per pod.</p>
+<h4>Go further</h4>
+<p>Apply <code>enforce=restricted</code> to every namespace except <code>kube-system</code> and see what breaks. The question that closes the exercise is not "how do I make it pass", but: which workloads in your cluster genuinely need privilege, and what exactly do they do with it?</p>"""
                 ),
             },
             "materials": [
@@ -2776,17 +2850,58 @@ declare.</p>
 """
                 ),
                 "practical": (
-                    "Em cluster com Cilium ou Calico, aplique <code>default-deny</code> em um NS "
-                    "de teste, depois <code>allow-dns</code>, depois NP permitindo ingress de um "
-                    "pod 'web' para um pod 'api'. Use <code>kubectl exec</code> + <code>nc -zv</code> "
-                    "para validar bloqueios e permissões. Por fim, instale Hubble e veja fluxos "
-                    "permitidos/negados em tempo real."
+                    """<p><strong>Objetivo:</strong> sair de um namespace onde todo pod fala com todo pod e chegar a um default-deny que só permite o que você declarou — <em>vendo</em> o tráfego ser negado, em vez de acreditar que foi.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um cluster com CNI que <em>aplica</em> NetworkPolicy: Cilium ou Calico. No kind, crie com <code>disableDefaultCNI: true</code> e instale o Cilium depois.</li>
+<li>Atenção a esse detalhe: com o CNI padrão do kind, o objeto NetworkPolicy é aceito e silenciosamente ignorado. É a pegadinha da seção 1, e ela já custou noite de produção a muita gente.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Monte o instrumento de medição antes da primeira política.</strong> <code>kubectl run web --image=nginx</code>, <code>kubectl run client --image=nicolaka/netshoot -- sleep infinity</code>, e então <code>kubectl exec client -- curl -s -m3 web</code>.<br><em>O que observar:</em> responde. Guarde esse comando — ele é o seu instrumento durante o exercício inteiro, e é o que diferencia "apliquei o YAML" de "verifiquei o efeito".</li>
+<li><strong>Aplique default-deny de ingress e egress no namespace.</strong> Um <code>podSelector: {}</code> com <code>policyTypes: [Ingress, Egress]</code> e nenhuma regra.<br><em>O que observar:</em> o mesmo curl agora falha. Mas repare <em>como</em> falha: ele nem chega a resolver o nome. Você acabou de derrubar o DNS junto — é a seção 4 acontecendo com você, em vez de ser lida.</li>
+<li><strong>Libere o DNS, e só ele.</strong> Uma policy de egress para o namespace <code>kube-system</code>, pod <code>kube-dns</code>, portas 53 UDP e TCP.<br><em>O que observar:</em> o nome volta a resolver, mas a conexão continua não acontecendo. A mensagem de erro mudou de "could not resolve" para "connection timed out" — e é essa mudança de mensagem que serve de diagnóstico.</li>
+<li><strong>Libere o caminho client → web, e nada mais.</strong> Ingress no <code>web</code> com <code>from.podSelector</code> apontando para o label do <code>client</code>.<br><em>O que observar:</em> o curl funciona. Agora suba um terceiro pod sem esse label e rode o mesmo curl: timeout. Uma política só, duas respostas diferentes, decididas pela label.</li>
+<li><strong>Caia na armadilha do AND/OR de propósito.</strong> Escreva um <code>from:</code> com dois itens na lista (OR) e depois com dois campos dentro do mesmo item (AND). Rode o teste nos dois.<br><em>O que observar:</em> os dois YAML são quase idênticos na tela e abrem conjuntos de tráfego completamente diferentes. É a seção 5, e é o erro que mais escapa em revisão de pull request.</li>
+<li><strong>Veja o fluxo, não só o resultado.</strong> Instale o Hubble e deixe <code>hubble observe --verdict DROPPED -f</code> rodando enquanto repete o curl do pod sem label.<br><em>O que observar:</em> cada DROP aparece com origem, destino, porta e a política que decidiu. Sem isso, NetworkPolicy é uma caixa preta onde você só sabe que algo não funcionou — o ponto cego da seção 8.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O curl do <code>client</code> passa e o do pod sem label não, e você consegue explicar a diferença sem abrir o YAML.</li>
+<li><code>hubble observe</code> mostra o DROP com a política que o causou.</li>
+<li>Você sabe dizer por que o DNS precisa de uma regra própria depois de um default-deny.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se <em>tudo</em> continua funcionando depois do default-deny, seu CNI não aplica NetworkPolicy — confirme com <code>kubectl get pods -n kube-system</code> que Cilium ou Calico estão mesmo lá. Se <em>nada</em> funciona mesmo com as regras certas, quase sempre falta a regra de DNS, ou o <code>podSelector: {}</code> pegou mais pods do que você imaginava.</p>
+<h4>Vá além</h4>
+<p>Troque a saída para a internet por um CIDR estático e depois por FQDN (política do Cilium). A pergunta que fica: por que o CIDR envelhece mal, e o que acontece no dia em que o provedor troca a faixa de IP da API que o seu serviço consome?</p>"""
                 ),
                 "practical_en": (
-                    "On a cluster with Cilium or Calico, apply <code>default-deny</code> in a test NS, then "
-                    "<code>allow-dns</code>, then an NP allowing ingress from a 'web' pod to an 'api' pod. "
-                    "Use <code>kubectl exec</code> + <code>nc -zv</code> to validate blocks and allows. "
-                    "Finally, install Hubble and watch allowed/denied flows in real time."
+                    """<p><strong>Goal:</strong> go from a namespace where every pod talks to every pod to a default-deny that allows only what you declared — <em>watching</em> traffic get dropped, instead of assuming it was.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A cluster with a CNI that actually <em>enforces</em> NetworkPolicy: Cilium or Calico. On kind, create it with <code>disableDefaultCNI: true</code> and install Cilium afterwards.</li>
+<li>Mind this detail: with kind's default CNI, a NetworkPolicy object is accepted and silently ignored. That is the trap in section 1, and it has already cost people a production night.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Build your measuring instrument before the first policy.</strong> <code>kubectl run web --image=nginx</code>, <code>kubectl run client --image=nicolaka/netshoot -- sleep infinity</code>, then <code>kubectl exec client -- curl -s -m3 web</code>.<br><em>What to look for:</em> it answers. Keep that command — it is your instrument for the whole exercise, and it is what separates "I applied the YAML" from "I verified the effect".</li>
+<li><strong>Apply ingress and egress default-deny to the namespace.</strong> A <code>podSelector: {}</code> with <code>policyTypes: [Ingress, Egress]</code> and no rules.<br><em>What to look for:</em> the same curl now fails. But notice <em>how</em> it fails: it never even resolves the name. You just took DNS down with it — section 4 happening to you instead of being read.</li>
+<li><strong>Allow DNS, and only DNS.</strong> An egress policy to namespace <code>kube-system</code>, pod <code>kube-dns</code>, ports 53 UDP and TCP.<br><em>What to look for:</em> the name resolves again, but the connection still does not happen. The error changed from "could not resolve" to "connection timed out" — and that change of message is your diagnosis.</li>
+<li><strong>Allow the client → web path, and nothing else.</strong> Ingress on <code>web</code> with <code>from.podSelector</code> matching the <code>client</code> label.<br><em>What to look for:</em> the curl works. Now start a third pod without that label and run the same curl: timeout. One policy, two different answers, decided by a label.</li>
+<li><strong>Walk into the AND/OR trap on purpose.</strong> Write a <code>from:</code> with two items in the list (OR), then with two fields inside the same item (AND). Test both.<br><em>What to look for:</em> the two YAMLs look nearly identical on screen and open completely different sets of traffic. That is section 5, and it is the mistake that most often slips through pull request review.</li>
+<li><strong>Watch the flow, not just the outcome.</strong> Install Hubble and leave <code>hubble observe --verdict DROPPED -f</code> running while you repeat the curl from the unlabeled pod.<br><em>What to look for:</em> every DROP shows source, destination, port, and the policy that decided. Without this, NetworkPolicy is a black box where all you know is that something did not work — the blind spot from section 8.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The curl from <code>client</code> succeeds and the one from the unlabeled pod does not, and you can explain the difference without opening the YAML.</li>
+<li><code>hubble observe</code> shows the DROP along with the policy that caused it.</li>
+<li>You can say why DNS needs a rule of its own after a default-deny.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If <em>everything</em> still works after the default-deny, your CNI is not enforcing NetworkPolicy — confirm with <code>kubectl get pods -n kube-system</code> that Cilium or Calico is really there. If <em>nothing</em> works even with the right rules, you are almost certainly missing the DNS rule, or your <code>podSelector: {}</code> caught more pods than you meant.</p>
+<h4>Go further</h4>
+<p>Replace internet egress with a static CIDR, then with FQDN (Cilium policy). The question that remains: why does a CIDR age badly, and what happens the day the provider changes the IP range of the API your service depends on?</p>"""
                 ),
             },
             "materials": [
@@ -3539,17 +3654,58 @@ built on the already validated baseline.</li>
 """
                 ),
                 "practical": (
-                    "Instale Kyverno via Helm. Aplique policy bloqueando imagens com tag "
-                    "<code>:latest</code> em modo <code>audit</code>. Faça <code>kubectl apply</code> "
-                    "de um pod com <code>image: nginx:latest</code> e veja o <code>PolicyReport</code>. "
-                    "Promova para <code>Enforce</code> e confirme que o apply é rejeitado com "
-                    "mensagem clara."
+                    """<p><strong>Objetivo:</strong> instalar uma política que o cluster passa a aplicar sozinho, em todo apply, sem depender de ninguém lembrar — e percorrer a progressão audit → warn → enforce sem rejeitar workload em massa no caminho.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um cluster local com <code>helm</code>. Vale reaproveitar o do exercício de Kubernetes.</li>
+<li>Uma hora. Se você já tem workloads rodando nesse cluster, melhor ainda: o passo 3 fica mais realista.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Instale o Kyverno e confirme que o webhook foi registrado.</strong> <code>helm install kyverno kyverno/kyverno -n kyverno --create-namespace</code>, depois <code>kubectl get validatingwebhookconfigurations</code>.<br><em>O que observar:</em> o webhook aparece listado. Esse objeto é o gancho da seção 1: a partir de agora, todo apply no cluster passa por ele antes de ser gravado no etcd. Nada acontece "depois" — acontece no caminho.</li>
+<li><strong>Escreva a política em modo <code>Audit</code>, nunca direto em Enforce.</strong> Uma <code>ClusterPolicy</code> que reprova imagem com tag <code>:latest</code>, com <code>validationFailureAction: Audit</code>.<br><em>O que observar:</em> aplique um pod com <code>image: nginx:latest</code>. Ele <em>sobe</em>. A violação aparece em <code>kubectl get policyreport -A</code>. Esse é o ponto da seção 7: você descobre o tamanho do problema antes de bloquear qualquer coisa.</li>
+<li><strong>Meça o estrago potencial.</strong> Rode <code>kubectl get policyreport -A</code> e conte quantos recursos já existentes violariam a regra.<br><em>O que observar:</em> em cluster com uso real, esse número costuma surpreender. Se você tivesse começado por Enforce, teria bloqueado todos eles de uma vez — é o anti-padrão da seção 13 e o motivo pelo qual times desistem de admission policy.</li>
+<li><strong>Promova para <code>Enforce</code> e tente violar.</strong> Troque para <code>validationFailureAction: Enforce</code> e repita o apply do pod com <code>:latest</code>.<br><em>O que observar:</em> o apply é rejeitado e a mensagem vem da sua própria política. Escreva essa mensagem pensando em quem vai lê-la às 3h da manhã: "use uma tag imutável em vez de :latest" ensina, "policy violation" não.</li>
+<li><strong>Veja mutating rodar antes de validating.</strong> Crie uma policy de <code>mutate</code> que injeta um label padrão, e uma de <code>validate</code> que exige exatamente esse label.<br><em>O que observar:</em> o pod passa, mesmo você não tendo posto o label. A ordem da seção 9 não é detalhe de implementação: é o que torna possível corrigir automaticamente em vez de só recusar.</li>
+<li><strong>Descubra o limite da ferramenta.</strong> Com a política de <code>:latest</code> ativa, suba um pod válido e depois, dentro dele, baixe e execute um binário qualquer.<br><em>O que observar:</em> o admission controller não vê nada — ele já fez o trabalho dele no momento do apply. É o limite honesto da seção 12, e a razão de runtime security existir como camada separada.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Um pod com <code>:latest</code> é rejeitado no apply, com mensagem que explica o que fazer.</li>
+<li>Você tem o número de violações pré-existentes que o modo Audit revelou.</li>
+<li>Você consegue explicar por que mutating roda antes de validating, e o que isso viabiliza.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o apply passa mesmo em Enforce, confira o <code>match</code> da policy: <code>kinds</code> costuma estar em <code>Pod</code> enquanto você aplica um <code>Deployment</code> — e o Deployment cria o pod depois, por outro caminho. Se o cluster inteiro travar e nenhum apply funcionar, você acabou de viver a seção 8 na prática: o webhook virou ponto único de falha. <code>failurePolicy: Ignore</code> existe justamente para esse risco.</p>
+<h4>Vá além</h4>
+<p>Acrescente verificação de assinatura com Cosign (seção 10) e exija que a imagem venha assinada pelo seu pipeline. Depois responda: bloquear <code>:latest</code> garante proveniência? A resposta é não — e entender por que separa política de higiene de política de cadeia de suprimentos.</p>"""
                 ),
                 "practical_en": (
-                    "Install Kyverno via Helm. Apply a policy blocking images with the <code>:latest</code> "
-                    "tag in <code>audit</code> mode. Run <code>kubectl apply</code> on a pod with "
-                    "<code>image: nginx:latest</code> and inspect the <code>PolicyReport</code>. Promote to "
-                    "<code>Enforce</code> and confirm the apply is rejected with a clear message."
+                    """<p><strong>Goal:</strong> install a policy the cluster enforces by itself on every apply, with nobody having to remember it — and walk the audit → warn → enforce progression without mass-rejecting workloads along the way.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A local cluster with <code>helm</code>. Reusing the one from the Kubernetes exercise is fine.</li>
+<li>One hour. If you already have workloads running there, even better: step 3 gets more realistic.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Install Kyverno and confirm the webhook got registered.</strong> <code>helm install kyverno kyverno/kyverno -n kyverno --create-namespace</code>, then <code>kubectl get validatingwebhookconfigurations</code>.<br><em>What to look for:</em> the webhook shows up in the list. That object is the hook from section 1: from now on every apply in the cluster passes through it before anything is written to etcd. Nothing happens "afterwards" — it happens on the way in.</li>
+<li><strong>Write the policy in <code>Audit</code> mode, never straight to Enforce.</strong> A <code>ClusterPolicy</code> that rejects images tagged <code>:latest</code>, with <code>validationFailureAction: Audit</code>.<br><em>What to look for:</em> apply a pod with <code>image: nginx:latest</code>. It <em>starts</em>. The violation shows up in <code>kubectl get policyreport -A</code>. That is the point of section 7: you learn the size of the problem before blocking anything.</li>
+<li><strong>Measure the potential damage.</strong> Run <code>kubectl get policyreport -A</code> and count how many existing resources would violate the rule.<br><em>What to look for:</em> in a cluster with real usage, that number is usually surprising. Had you started at Enforce, you would have blocked all of them at once — the anti-pattern from section 13, and the reason teams abandon admission policies.</li>
+<li><strong>Promote to <code>Enforce</code> and try to violate it.</strong> Switch to <code>validationFailureAction: Enforce</code> and repeat the <code>:latest</code> apply.<br><em>What to look for:</em> the apply is rejected and the message comes from your own policy. Write that message for whoever reads it at 3am: "use an immutable tag instead of :latest" teaches, "policy violation" does not.</li>
+<li><strong>Watch mutating run before validating.</strong> Create a <code>mutate</code> policy that injects a default label, and a <code>validate</code> policy that requires exactly that label.<br><em>What to look for:</em> the pod passes even though you never set the label. The ordering in section 9 is not an implementation detail: it is what makes automatic correction possible instead of plain refusal.</li>
+<li><strong>Find the tool's limit.</strong> With the <code>:latest</code> policy active, start a valid pod and then, inside it, download and run any binary.<br><em>What to look for:</em> the admission controller sees nothing — its job ended at apply time. That is the honest limit from section 12, and the reason runtime security exists as a separate layer.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>A pod with <code>:latest</code> is rejected at apply, with a message that says what to do.</li>
+<li>You have the count of pre-existing violations that Audit mode revealed.</li>
+<li>You can explain why mutating runs before validating, and what that enables.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the apply passes even under Enforce, check the policy's <code>match</code>: <code>kinds</code> is often set to <code>Pod</code> while you are applying a <code>Deployment</code> — and the Deployment creates the pod later, through a different path. If the whole cluster freezes and no apply works, you just lived section 8: the webhook became a single point of failure. <code>failurePolicy: Ignore</code> exists for exactly that risk.</p>
+<h4>Go further</h4>
+<p>Add signature verification with Cosign (section 10) and require images signed by your pipeline. Then answer this: does blocking <code>:latest</code> guarantee provenance? It does not — and understanding why separates hygiene policy from supply chain policy.</p>"""
                 ),
             },
             "materials": [
@@ -4127,17 +4283,60 @@ program sustainable.</p>
 """
                 ),
                 "practical": (
-                    "Defina device posture mínima (disco criptografado, MFA hardware key, OS "
-                    "atualizado, EDR rodando). Configure Cloudflare Access (ou Tailscale, ou "
-                    "Pomerium) para que uma ferramenta interna (ex.: Grafana, ArgoCD) só seja "
-                    "acessível a dispositivos que cumpram a posture. Verifique a trilha de "
-                    "auditoria de quem acessou o que e quando."
+                    """<p><strong>Objetivo:</strong> publicar uma ferramenta interna sem VPN e sem abrir porta nenhuma — e provar, medindo, a frase que define Zero Trust: a decisão de acesso é tomada <em>por requisição</em>, não uma vez no login.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma VM Linux (local ou cloud) com Docker instalado.</li>
+<li>Uma conta gratuita de Cloudflare Zero Trust (até 50 usuários) com um domínio seu, ou Tailscale se preferir não usar domínio.</li>
+<li>Reserve umas duas horas. A parte demorada é entender o painel, não digitar comando.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Suba o alvo ouvindo só em localhost.</strong> Use o Grafana como "ferramenta interna" porque sobe com um comando: <code>docker run -d --name grafana -p 127.0.0.1:3000:3000 grafana/grafana</code>. Repare no <code>127.0.0.1:</code> antes da porta.<br><em>O que observar:</em> <code>curl localhost:3000</code> responde; <code>curl SEU_IP_PUBLICO:3000</code> não. Esse é o ponto de partida do modelo — o recurso não é exposto e depois protegido, ele nunca é exposto.</li>
+<li><strong>Publique por identidade, não por rede.</strong> Instale o <code>cloudflared</code>, rode <code>cloudflared tunnel login</code>, crie o túnel e aponte o hostname para <code>http://localhost:3000</code>.<br><em>O que observar:</em> o túnel é uma conexão de <em>saída</em> da VM. Confirme com <code>ss -ltnp</code> que nenhuma porta de entrada nova apareceu. Você acabou de publicar um serviço na internet sem abrir firewall.</li>
+<li><strong>Ponha a política de identidade na frente.</strong> No painel Zero Trust, em Access &gt; Applications, crie uma aplicação para esse hostname e exija login com e-mail do seu domínio mais MFA.<br><em>O que observar:</em> abra a URL numa janela anônima. A tela de login aparece <em>antes</em> de qualquer byte do Grafana chegar ao seu navegador. Esse proxy é exatamente o PEP (Policy Enforcement Point) da seção 3 da aula.</li>
+<li><strong>Acrescente postura de dispositivo.</strong> Instale o cliente WARP e exija na política pelo menos uma checagem de postura (disco criptografado ou versão mínima de SO). Sem o WARP, use país de origem como critério, que é mais fraco mas já mostra o mecanismo.<br><em>O que observar:</em> dois dispositivos, <em>a mesma identidade</em>, resultados diferentes. É isso que "não confie no usuário, avalie o contexto" significa na prática.</li>
+<li><strong>Prove o "por requisição".</strong> Faça login, abra o Grafana e deixe a aba aberta. No painel, em Access &gt; Users, revogue a sua sessão. Volte à aba e clique em qualquer link.<br><em>O que observar:</em> a <em>próxima</em> requisição cai na tela de login, embora a sessão do Grafana ainda existisse no servidor. Compare com uma VPN: lá, revogar o usuário não interrompe a conexão já estabelecida — ele continua dentro até desconectar.</li>
+<li><strong>Leia a trilha de auditoria.</strong> Em Logs &gt; Access, encontre suas requisições: identidade, dispositivo, país, política avaliada, permitido ou negado.<br><em>O que observar:</em> cada linha é <em>uma decisão</em>, não uma sessão. Essa granularidade é o que o perímetro nunca teve — no modelo antigo, o log dizia "fulano conectou na VPN às 9h" e nada mais.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li><code>ss -ltnp</code> na VM não mostra nenhuma porta pública do Grafana, e mesmo assim a ferramenta abre pela internet.</li>
+<li>Um e-mail fora da política recebe negação, e essa negação aparece no log com o motivo.</li>
+<li>Revogar a sessão derruba o acesso na requisição seguinte, sem reiniciar nada.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Erro 1033 do Cloudflare significa que o túnel caiu — verifique se o <code>cloudflared</code> continua rodando. Loop infinito na tela de login costuma ser cookie de terceiros bloqueado no navegador. E se você entrar <em>sem</em> login, a política provavelmente ficou como "Bypass" em vez de "Allow": é o erro mais comum e o mais silencioso, porque tudo parece funcionar.</p>
+<h4>Vá além</h4>
+<p>Repita a ideia para serviço-a-serviço em vez de humano: suba dois pods num cluster kind e faça um provar identidade ao outro por mTLS, como na seção 5 da aula. A pergunta que fecha o exercício: quando a identidade é o pod e não a pessoa, o que passa a fazer o papel do MFA?</p>"""
                 ),
                 "practical_en": (
-                    "Define a minimum device posture (encrypted disk, MFA hardware key, updated OS, EDR "
-                    "running). Configure Cloudflare Access (or Tailscale, or Pomerium) so an internal tool "
-                    "(e.g. Grafana, ArgoCD) is only reachable by devices that meet the posture. Check the "
-                    "audit trail of who accessed what and when."
+                    """<p><strong>Goal:</strong> publish an internal tool with no VPN and no open port — and prove, by measuring it, the sentence that defines Zero Trust: the access decision is made <em>per request</em>, not once at login.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A Linux VM (local or cloud) with Docker installed.</li>
+<li>A free Cloudflare Zero Trust account (up to 50 users) with a domain you own, or Tailscale if you would rather not use a domain.</li>
+<li>Set aside about two hours. The slow part is understanding the dashboard, not typing commands.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Start the target listening on localhost only.</strong> Use Grafana as the "internal tool" because it starts with one command: <code>docker run -d --name grafana -p 127.0.0.1:3000:3000 grafana/grafana</code>. Note the <code>127.0.0.1:</code> before the port.<br><em>What to look for:</em> <code>curl localhost:3000</code> answers; <code>curl YOUR_PUBLIC_IP:3000</code> does not. That is the model's starting point — the resource is not exposed and then protected, it is never exposed.</li>
+<li><strong>Publish through identity, not through the network.</strong> Install <code>cloudflared</code>, run <code>cloudflared tunnel login</code>, create the tunnel, and point the hostname at <code>http://localhost:3000</code>.<br><em>What to look for:</em> the tunnel is an <em>outbound</em> connection from the VM. Confirm with <code>ss -ltnp</code> that no new inbound port appeared. You just published a service on the internet without opening a firewall.</li>
+<li><strong>Put the identity policy in front.</strong> In the Zero Trust dashboard, under Access &gt; Applications, create an application for that hostname and require login with an email from your domain plus MFA.<br><em>What to look for:</em> open the URL in a private window. The login screen appears <em>before</em> a single byte of Grafana reaches your browser. That proxy is exactly the PEP (Policy Enforcement Point) from section 3 of the lesson.</li>
+<li><strong>Add device posture.</strong> Install the WARP client and require at least one posture check in the policy (disk encryption or a minimum OS version). Without WARP, use country of origin as the criterion — weaker, but it still shows the mechanism.<br><em>What to look for:</em> two devices, <em>the same identity</em>, different outcomes. That is what "do not trust the user, evaluate the context" means in practice.</li>
+<li><strong>Prove the "per request" part.</strong> Log in, open Grafana, and leave the tab open. In the dashboard, under Access &gt; Users, revoke your own session. Go back to the tab and click any link.<br><em>What to look for:</em> the <em>next</em> request lands on the login screen, even though the Grafana session still existed on the server. Compare that with a VPN: there, revoking the user does not interrupt an established connection — they stay inside until they disconnect.</li>
+<li><strong>Read the audit trail.</strong> Under Logs &gt; Access, find your requests: identity, device, country, policy evaluated, allowed or denied.<br><em>What to look for:</em> each line is <em>one decision</em>, not one session. That granularity is what the perimeter never had — in the old model the log said "so-and-so connected to the VPN at 9am" and nothing more.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li><code>ss -ltnp</code> on the VM shows no public Grafana port, and the tool still opens over the internet.</li>
+<li>An email outside the policy is denied, and that denial shows up in the log with a reason.</li>
+<li>Revoking the session kills access on the very next request, with nothing restarted.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>Cloudflare error 1033 means the tunnel dropped — check that <code>cloudflared</code> is still running. An endless login loop is usually third-party cookies blocked in the browser. And if you get in <em>without</em> logging in, the policy is probably set to "Bypass" instead of "Allow": it is the most common mistake and the quietest one, because everything appears to work.</p>
+<h4>Go further</h4>
+<p>Repeat the idea service-to-service instead of human-to-service: start two pods in a kind cluster and have one prove its identity to the other over mTLS, as in section 5 of the lesson. The question that closes the exercise: when the identity is the pod and not the person, what now plays the role of MFA?</p>"""
                 ),
             },
             "materials": [
@@ -4722,19 +4921,58 @@ necessary.</li>
 """
                 ),
                 "practical": (
-                    "Instale Falco via Helm. Faça <code>kubectl exec -it &lt;pod&gt; -- bash</code> "
-                    "em um pod e veja o alerta 'Terminal shell in container' nos logs do Falco. "
-                    "Tune a regra para ignorar pods com label <code>debug=true</code> mas mantenha "
-                    "alerta para pods sem essa label. Em seguida, configure Falcosidekick para "
-                    "enviar alertas para um webhook simples (httpbin.org) e simule um evento "
-                    "high-severity."
+                    """<p><strong>Objetivo:</strong> detectar, em tempo real, um comportamento que <em>nenhum</em> scanner de imagem pegaria — e depois afinar a regra até ela parar de gritar sem parar de proteger.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um cluster local com <code>helm</code>. Kernel razoavelmente recente ajuda: o driver eBPF é o obstáculo número 1 aqui.</li>
+<li>Cerca de uma hora e meia, sendo boa parte esperando o Falco acumular eventos.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Instale o Falco e confirme que ele enxerga o kernel.</strong> <code>helm install falco falcosecurity/falco -n falco --create-namespace --set driver.kind=ebpf</code>, depois <code>kubectl logs -n falco -l app.kubernetes.io/name=falco</code>.<br><em>O que observar:</em> a linha "Falco initialized with N rules" é a prova de que o driver carregou. Se o pod entra em CrashLoopBackOff, o problema é o driver, não a configuração — e é onde metade das pessoas desiste.</li>
+<li><strong>Dispare o alerta clássico.</strong> <code>kubectl run alvo --image=nginx</code> e em seguida <code>kubectl exec -it alvo -- bash</code>.<br><em>O que observar:</em> nos logs do Falco aparece "Terminal shell in container". Agora repare no que acabou de acontecer: a imagem é a oficial do nginx, sem CVE nenhuma, aprovada por qualquer scanner. O que é anômalo é o <em>comportamento</em>. É essa a fronteira entre segurança de build e segurança de runtime.</li>
+<li><strong>Meça o ruído antes de afinar qualquer coisa.</strong> Deixe rodando quinze minutos com o cluster em uso normal e conte os alertas.<br><em>O que observar:</em> a maioria provavelmente é legítima — sidecar, probe, job de cron. Uma regra que dispara o dia inteiro é uma regra que ninguém lê, e é o anti-padrão da seção 10: a ferramenta continua instalada e para de proteger.</li>
+<li><strong>Afine com exceção, não com desligamento.</strong> Escreva uma regra customizada que ignora pods com label <code>debug=true</code> mas continua alertando para todos os outros.<br><em>O que observar:</em> exec no pod com a label não gera alerta; sem a label, gera. Desligar a regra inteira teria resolvido o ruído e removido a proteção junto — é a diferença entre afinar e silenciar.</li>
+<li><strong>Leve o alerta para onde alguém realmente vê.</strong> Configure o Falcosidekick apontando para um webhook simples (um <code>nc -l -p 8888</code> já serve).<br><em>O que observar:</em> o JSON chega com regra, prioridade, pod, namespace, comando e usuário. Esses campos são exatamente o que o roteiro de resposta da seção 7 consome — alerta sem esses dados vira trabalho manual de investigação.</li>
+<li><strong>Ensaie a resposta, na ordem certa.</strong> Com o alerta na tela, execute os primeiros passos da seção 7: identificar o pod, preservar evidência (<code>kubectl logs</code>, <code>kubectl cp</code>), isolar com uma NetworkPolicy de deny, e só então matar o pod.<br><em>O que observar:</em> se você matar o pod primeiro, perde a evidência junto. Em resposta a incidente, a ordem importa mais que a velocidade — e essa é a lição que só gruda ensaiando.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Um exec em pod comum gera alerta e num pod <code>debug=true</code> não.</li>
+<li>O webhook recebe o JSON completo do evento.</li>
+<li>Você consegue recitar a ordem dos passos de resposta e explicar por que "matar o pod" não é o primeiro.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Falco em CrashLoop é quase sempre driver: tente <code>driver.kind=modern_ebpf</code>. Se nenhum alerta aparece mas o Falco está saudável, confira o filtro de prioridade no <code>values.yaml</code> — o default pode estar acima da severidade da regra que você está testando.</p>
+<h4>Vá além</h4>
+<p>Mapeie os alertas que você conseguiu gerar contra o MITRE ATT&amp;CK for Containers (seção 5) e ache uma técnica sem cobertura nenhuma. Escrever a regra que preenche essa lacuna é o exercício seguinte — e é assim que times maduros priorizam detecção.</p>"""
                 ),
                 "practical_en": (
-                    "Install Falco via Helm. Run <code>kubectl exec -it &lt;pod&gt; -- bash</code> in a pod "
-                    "and see the 'Terminal shell in container' alert in Falco logs. Tune the rule to ignore "
-                    "pods with label <code>debug=true</code> but keep the alert for pods without that label. "
-                    "Then configure Falcosidekick to send alerts to a simple webhook (httpbin.org) and "
-                    "simulate a high-severity event."
+                    """<p><strong>Goal:</strong> detect, in real time, a behavior that <em>no</em> image scanner would catch — then tune the rule until it stops screaming without stopping protecting.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A local cluster with <code>helm</code>. A reasonably recent kernel helps: the eBPF driver is obstacle number one here.</li>
+<li>About an hour and a half, much of it waiting for Falco to accumulate events.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Install Falco and confirm it can see the kernel.</strong> <code>helm install falco falcosecurity/falco -n falco --create-namespace --set driver.kind=ebpf</code>, then <code>kubectl logs -n falco -l app.kubernetes.io/name=falco</code>.<br><em>What to look for:</em> the line "Falco initialized with N rules" proves the driver loaded. If the pod enters CrashLoopBackOff, the problem is the driver, not your configuration — and it is where half of people give up.</li>
+<li><strong>Trigger the classic alert.</strong> <code>kubectl run target --image=nginx</code>, then <code>kubectl exec -it target -- bash</code>.<br><em>What to look for:</em> "Terminal shell in container" shows up in Falco's logs. Now notice what just happened: the image is the official nginx, with no CVEs, approved by any scanner. What is anomalous is the <em>behavior</em>. That is the line between build-time and runtime security.</li>
+<li><strong>Measure the noise before tuning anything.</strong> Let it run for fifteen minutes with the cluster in normal use and count the alerts.<br><em>What to look for:</em> most are probably legitimate — a sidecar, a probe, a cron job. A rule that fires all day is a rule nobody reads, and that is the anti-pattern from section 10: the tool stays installed and stops protecting.</li>
+<li><strong>Tune with an exception, not with a switch-off.</strong> Write a custom rule that ignores pods labeled <code>debug=true</code> while still alerting on everything else.<br><em>What to look for:</em> exec into the labeled pod produces no alert; without the label, it does. Disabling the whole rule would have fixed the noise and removed the protection with it — that is the difference between tuning and silencing.</li>
+<li><strong>Send the alert where someone will actually see it.</strong> Configure Falcosidekick pointing at a simple webhook (an <code>nc -l -p 8888</code> will do).<br><em>What to look for:</em> the JSON arrives with rule, priority, pod, namespace, command, and user. Those fields are exactly what the response playbook in section 7 consumes — an alert without them turns into manual investigation.</li>
+<li><strong>Rehearse the response, in the right order.</strong> With the alert on screen, run the first steps from section 7: identify the pod, preserve evidence (<code>kubectl logs</code>, <code>kubectl cp</code>), isolate it with a deny NetworkPolicy, and only then kill the pod.<br><em>What to look for:</em> if you kill the pod first, the evidence goes with it. In incident response, order matters more than speed — and that lesson only sticks by rehearsing it.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>An exec into a normal pod alerts, and into a <code>debug=true</code> pod does not.</li>
+<li>The webhook receives the full event JSON.</li>
+<li>You can recite the response steps in order and explain why "kill the pod" is not the first one.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>Falco in CrashLoop is almost always the driver: try <code>driver.kind=modern_ebpf</code>. If no alerts show up but Falco is healthy, check the priority filter in <code>values.yaml</code> — the default may sit above the severity of the rule you are testing.</p>
+<h4>Go further</h4>
+<p>Map the alerts you managed to generate against MITRE ATT&amp;CK for Containers (section 5) and find a technique with no coverage at all. Writing the rule that fills that gap is the next exercise — and it is how mature teams prioritize detection.</p>"""
                 ),
             },
             "materials": [
@@ -5355,18 +5593,60 @@ service:
 """
                 ),
                 "practical": (
-                    "Instrumente uma app Python com <code>opentelemetry-instrument python "
-                    "app.py</code>. Configure exportador OTLP para Grafana Tempo. Faça uma "
-                    "request que passe por 3 microserviços (use docker-compose). No Grafana, "
-                    "navegue do log com erro → trace_id → span tree e identifique o gargalo de "
-                    "latência. Configure alerta em p99 &gt; 1s queimando error budget de 99.9% SLO."
+                    """<p><strong>Objetivo:</strong> investigar uma latência real navegando log → trace → span, e sair com um SLO numérico em vez da pergunta vaga "está funcionando bem?".</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Docker Compose, Python 3 e um editor. O stack (Grafana + Tempo + Prometheus + Loki) sobe pelo <code>docker-compose</code> do repositório oficial do Tempo.</li>
+<li>Três serviços HTTP pequenos que chamam um ao outro em cadeia. Podem ser trinta linhas cada — o conteúdo não importa, a cadeia importa.</li>
+<li>Duas a três horas. É o exercício mais longo da fase, e o que mais muda a forma de depurar.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Injete latência de propósito no serviço do meio.</strong> Um <code>time.sleep()</code> aleatório entre 0 e 2 segundos no serviço B, antes de instrumentar qualquer coisa.<br><em>O que observar:</em> pelo log do serviço A, tudo que você vê é "a requisição demorou". Passe cinco minutos tentando descobrir <em>onde</em> só com logs. Essa frustração é o argumento da seção 1, e ela ensina mais que o parágrafo.</li>
+<li><strong>Instrumente sem tocar no código.</strong> Rode cada serviço com <code>opentelemetry-instrument python app.py</code> e exporte via OTLP para o Tempo.<br><em>O que observar:</em> você não escreveu uma linha de instrumentação e já tem spans. É o valor do padrão da seção 3: trocar o backend depois não exige reescrever nada.</li>
+<li><strong>Navegue da consequência para a causa.</strong> No Grafana, ache um log de requisição lenta, clique no <code>trace_id</code> e abra a árvore de spans.<br><em>O que observar:</em> a barra do serviço B domina o gráfico. Você saiu de "está lento" para "está lento <em>aqui</em>" em dois cliques. Essa navegação é a correlação da seção 8 — e ela só existe porque o <code>trace_id</code> está no log.</li>
+<li><strong>Veja por que média engana.</strong> Monte dois painéis para a mesma rota: média e p99.<br><em>O que observar:</em> com latência aleatória entre 0 e 2s, a média fica em torno de 1s e parece aceitável, enquanto o p99 denuncia o problema. A seção 5 em um gráfico: a média esconde exatamente o usuário que está sofrendo.</li>
+<li><strong>Cause um problema de cardinalidade de propósito.</strong> Acrescente um label com o ID do usuário (ou um UUID por requisição) numa métrica do Prometheus e gere algumas centenas de requisições.<br><em>O que observar:</em> o número de séries temporais explode e o uso de memória do Prometheus sobe junto. É a armadilha da seção 6 — e é assim que um Prometheus morre, sem nenhum erro de configuração aparente.</li>
+<li><strong>Transforme "funciona bem" em número.</strong> Defina um SLO de 99,9% de requisições abaixo de 1s, calcule o error budget do mês e monte um alerta sobre a taxa de queima, não sobre o valor instantâneo.<br><em>O que observar:</em> um pico isolado de p99 não dispara nada; uma degradação sustentada dispara. É a diferença entre alerta acionável e ruído, que é o assunto da seção 10.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você consegue, em menos de um minuto, sair de um log de erro e chegar ao span que causou a lentidão.</li>
+<li>Seus painéis mostram p99 e não média, e você sabe explicar a diferença para alguém de produto.</li>
+<li>Seu alerta dispara por queima de error budget, não por um pico isolado.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Trace sem span filho quase sempre é propagação de contexto quebrada — o cabeçalho <code>traceparent</code> não está sendo repassado entre os serviços. Se o Grafana não liga log e trace, o log não tem o campo <code>trace_id</code> extraído: é o elo da correlação, e sem ele cada pilar volta a ser uma ilha.</p>
+<h4>Vá além</h4>
+<p>Ligue sampling em 10% (seção 7) e repita a investigação. A pergunta que importa: o trace que você precisava ainda estava lá? Se não, o problema não é a taxa e sim a <em>estratégia</em> — amostrar aleatoriamente descarta justamente o caso raro que você queria investigar.</p>"""
                 ),
                 "practical_en": (
-                    "Instrument a Python app with <code>opentelemetry-instrument python app.py</code>. "
-                    "Configure an OTLP exporter to Grafana Tempo. Make a request that goes through 3 "
-                    "microservices (use docker-compose). In Grafana, navigate from the error log → trace_id → "
-                    "span tree and identify the latency bottleneck. Configure an alert on p99 &gt; 1s burning "
-                    "the error budget of a 99.9% SLO."
+                    """<p><strong>Goal:</strong> investigate real latency by walking log → trace → span, and come out with a numeric SLO instead of the vague question "is it working well?".</p>
+<h4>Before you start</h4>
+<ul>
+<li>Docker Compose, Python 3, and an editor. The stack (Grafana + Tempo + Prometheus + Loki) comes up from the official Tempo <code>docker-compose</code>.</li>
+<li>Three tiny HTTP services calling each other in a chain. Thirty lines each is plenty — the content does not matter, the chain does.</li>
+<li>Two to three hours. It is the longest exercise in this phase, and the one that most changes how you debug.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Inject latency on purpose into the middle service.</strong> A random <code>time.sleep()</code> between 0 and 2 seconds in service B, before instrumenting anything.<br><em>What to look for:</em> from service A's logs, all you see is "the request was slow". Spend five minutes trying to find out <em>where</em> using logs alone. That frustration is the argument of section 1, and it teaches more than the paragraph does.</li>
+<li><strong>Instrument without touching the code.</strong> Run each service with <code>opentelemetry-instrument python app.py</code> and export over OTLP to Tempo.<br><em>What to look for:</em> you wrote no instrumentation code and already have spans. That is the value of the standard in section 3: swapping the backend later requires no rewrite.</li>
+<li><strong>Navigate from symptom to cause.</strong> In Grafana, find a slow request log, click the <code>trace_id</code>, and open the span tree.<br><em>What to look for:</em> service B's bar dominates the chart. You went from "it is slow" to "it is slow <em>here</em>" in two clicks. That navigation is the correlation from section 8 — and it only exists because <code>trace_id</code> is in the log.</li>
+<li><strong>See why averages mislead.</strong> Build two panels for the same route: average and p99.<br><em>What to look for:</em> with latency uniform between 0 and 2s, the average sits near 1s and looks acceptable while p99 exposes the problem. Section 5 in one chart: the average hides exactly the user who is suffering.</li>
+<li><strong>Cause a cardinality problem on purpose.</strong> Add a label carrying the user ID (or a per-request UUID) to a Prometheus metric and generate a few hundred requests.<br><em>What to look for:</em> the time series count explodes and Prometheus memory climbs with it. That is the trap in section 6 — and it is how a Prometheus dies, with no obvious configuration error.</li>
+<li><strong>Turn "works well" into a number.</strong> Define a 99.9% SLO for requests under 1s, compute the monthly error budget, and alert on burn rate rather than on the instantaneous value.<br><em>What to look for:</em> an isolated p99 spike triggers nothing; sustained degradation does. That is the difference between an actionable alert and noise, which is what section 10 is about.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>You can go from an error log to the span that caused the slowness in under a minute.</li>
+<li>Your panels show p99 rather than average, and you can explain the difference to someone in product.</li>
+<li>Your alert fires on error budget burn, not on a single spike.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>A trace with no child spans is almost always broken context propagation — the <code>traceparent</code> header is not being forwarded between services. If Grafana will not link log to trace, the log is missing an extracted <code>trace_id</code> field: that is the link of correlation, and without it each pillar goes back to being an island.</p>
+<h4>Go further</h4>
+<p>Turn on 10% sampling (section 7) and repeat the investigation. The question that matters: was the trace you needed still there? If not, the problem is not the rate but the <em>strategy</em> — random sampling throws away exactly the rare case you wanted to investigate.</p>"""
                 ),
             },
             "materials": [
@@ -5872,17 +6152,60 @@ flowchart LR
 """
                 ),
                 "practical": (
-                    "Use Chaos Mesh para injetar 100ms de latência em chamadas para o DB de "
-                    "uma aplicação em staging por 10 minutos. Meça impacto em p99 e veja se "
-                    "alertas configurados disparam. Em seguida, faça experimento de pod-kill "
-                    "aleatório a cada 5 min por 1 hora e veja se o cluster recupera. Documente "
-                    "em postmortem: hipótese, métricas, findings, action items."
+                    """<p><strong>Objetivo:</strong> rodar um experimento de verdade — com hipótese escrita antes, métrica definida antes e critério de parada antes — e descobrir que a diferença entre ciência e vandalismo está justamente nesses três "antes".</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um cluster de staging (nunca produção nesta primeira vez) com uma aplicação que fale com um banco.</li>
+<li>Prometheus e Grafana já coletando métricas dessa aplicação. Sem medição, não existe experimento — só estrago.</li>
+<li>Duas horas, e um documento em branco aberto ao lado.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Escreva o steady state antes de instalar qualquer ferramenta.</strong> Defina em números: p99 abaixo de X ms, taxa de erro abaixo de Y%, throughput acima de Z rps. Observe o sistema por trinta minutos e confirme que esses números se sustentam.<br><em>O que observar:</em> se a métrica oscila muito sem nenhum experimento rodando, ela não serve de steady state. Métrica boa é estável em repouso e sensível ao que você vai injetar — é o critério da seção 2, e pular isso invalida tudo que vier depois.</li>
+<li><strong>Escreva a hipótese em uma frase falsificável.</strong> Algo como "com 100 ms extras de latência até o banco, o p99 sobe menos de 300 ms e nenhum alerta dispara".<br><em>O que observar:</em> repare que a frase pode estar <em>errada</em>. Hipótese que não pode falhar não é hipótese; é expectativa. A seção 1 chama isso de primeiro princípio por um motivo.</li>
+<li><strong>Defina o critério de parada antes de apertar o botão.</strong> Escreva: "aborto se a taxa de erro passar de 5% ou se o p99 dobrar". Deixe o comando de rollback já digitado em outro terminal.<br><em>O que observar:</em> esse é o kill switch da seção 9. Testá-lo <em>antes</em> de precisar dele é o que separa experimento de incidente autoinfligido.</li>
+<li><strong>Injete a falha, pequena e por tempo curto.</strong> Com o Chaos Mesh, um <code>NetworkChaos</code> de 100 ms de delay nas chamadas ao banco, por dez minutos.<br><em>O que observar:</em> acompanhe o painel em tempo real. A pergunta não é "quebrou?", e sim: o comportamento bateu com a hipótese? Uma hipótese confirmada te dá confiança; uma refutada te dá uma correção a fazer. As duas são resultados válidos.</li>
+<li><strong>Verifique se o alerta disparou.</strong> Se o p99 estourou o SLO e nenhum alerta soou, você acabou de achar uma falha — não na aplicação, mas na sua detecção.<br><em>O que observar:</em> este costuma ser o achado mais valioso do exercício inteiro, e ele não aparece em nenhum teste automatizado. É o que a seção 8 chama de validar o controle, não a infraestrutura.</li>
+<li><strong>Repita com pod-kill e escreva o postmortem.</strong> Mate um pod aleatório a cada cinco minutos por uma hora, depois documente: hipótese, o que aconteceu, o que surpreendeu, e quais action items nasceram daí.<br><em>O que observar:</em> um experimento sem documento escrito vira história oral e se perde em duas semanas. O que sustenta o programa ao longo do tempo é o registro, não a ferramenta.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você tem uma hipótese escrita e um resultado dizendo se ela se confirmou ou não.</li>
+<li>O kill switch foi acionado pelo menos uma vez, de propósito, para provar que funciona.</li>
+<li>Existe pelo menos um action item concreto que você não teria descoberto sem o experimento.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o experimento não produz efeito nenhum, confira o seletor do Chaos Mesh: quase sempre ele está mirando namespace ou label que não existe, e o objeto é aceito sem aplicar nada. E se a aplicação cair inteira com 100 ms de latência, não trate como falha do exercício — esse é exatamente o tipo de fragilidade que você foi procurar.</p>
+<h4>Vá além</h4>
+<p>Faça um Game Day com duas pessoas (seção 7): uma injeta a falha sem avisar qual, a outra investiga usando só os painéis. Cronometre o tempo até o diagnóstico correto. Esse número é a sua métrica de maturidade de detecção, e melhorá-lo vale mais que qualquer ferramenta nova.</p>"""
                 ),
                 "practical_en": (
-                    "Use Chaos Mesh to inject 100ms of latency into calls to an application's DB in staging "
-                    "for 10 minutes. Measure the impact on p99 and see whether configured alerts fire. Then "
-                    "run a random pod-kill experiment every 5 min for 1 hour and see whether the cluster "
-                    "recovers. Document in a postmortem: hypothesis, metrics, findings, action items."
+                    """<p><strong>Goal:</strong> run a real experiment — with the hypothesis written first, the metric defined first, and the abort criterion set first — and discover that the difference between science and vandalism lies in exactly those three "firsts".</p>
+<h4>Before you start</h4>
+<ul>
+<li>A staging cluster (never production on this first run) with an application that talks to a database.</li>
+<li>Prometheus and Grafana already collecting metrics from it. Without measurement there is no experiment — only damage.</li>
+<li>Two hours, and a blank document open beside you.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Write the steady state before installing any tool.</strong> Define it in numbers: p99 below X ms, error rate below Y%, throughput above Z rps. Watch the system for thirty minutes and confirm those numbers hold.<br><em>What to look for:</em> if the metric swings wildly with no experiment running, it is not a usable steady state. A good metric is stable at rest and sensitive to what you are about to inject — the criterion from section 2, and skipping it invalidates everything that follows.</li>
+<li><strong>Write the hypothesis as one falsifiable sentence.</strong> Something like "with 100 ms of extra latency to the database, p99 rises by less than 300 ms and no alert fires".<br><em>What to look for:</em> notice the sentence can be <em>wrong</em>. A hypothesis that cannot fail is not a hypothesis; it is an expectation. Section 1 calls this the first principle for a reason.</li>
+<li><strong>Define the abort criterion before pressing anything.</strong> Write it down: "abort if error rate passes 5% or p99 doubles". Keep the rollback command already typed in another terminal.<br><em>What to look for:</em> that is the kill switch from section 9. Testing it <em>before</em> you need it is what separates an experiment from a self-inflicted incident.</li>
+<li><strong>Inject the fault, small and short.</strong> With Chaos Mesh, a <code>NetworkChaos</code> adding 100 ms of delay to database calls, for ten minutes.<br><em>What to look for:</em> watch the dashboard live. The question is not "did it break?" but: did the behavior match the hypothesis? A confirmed hypothesis gives you confidence; a refuted one gives you a fix. Both are valid results.</li>
+<li><strong>Check whether the alert fired.</strong> If p99 blew past the SLO and no alert sounded, you just found a failure — not in the application, but in your detection.<br><em>What to look for:</em> this is usually the most valuable finding of the whole exercise, and it shows up in no automated test. It is what section 8 calls validating the control rather than the infrastructure.</li>
+<li><strong>Repeat with pod-kill and write the postmortem.</strong> Kill a random pod every five minutes for an hour, then document: hypothesis, what happened, what surprised you, and which action items came out of it.<br><em>What to look for:</em> an experiment with no written record becomes oral history and evaporates in two weeks. What sustains the program over time is the record, not the tool.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>You have a written hypothesis and a result stating whether it held.</li>
+<li>The kill switch was triggered at least once, on purpose, to prove it works.</li>
+<li>There is at least one concrete action item you would not have found without the experiment.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the experiment has no effect at all, check the Chaos Mesh selector: it is almost always aimed at a namespace or label that does not exist, and the object is accepted without applying anything. And if the whole application collapses under 100 ms of latency, do not treat that as a failed exercise — that fragility is precisely what you came looking for.</p>
+<h4>Go further</h4>
+<p>Run a Game Day with two people (section 7): one injects a fault without saying which, the other investigates using dashboards only. Time how long it takes to reach the correct diagnosis. That number is your detection maturity metric, and improving it is worth more than any new tool.</p>"""
                 ),
             },
             "materials": [
@@ -6404,18 +6727,62 @@ Action item: revisar todos templates de Deployment para liveness mais leve.</cod
 """
                 ),
                 "practical": (
-                    "Crie runbook 'pod comprometido': aplique NetworkPolicy bloqueando egress, "
-                    "adicione label <code>quarantine=true</code>, faça snapshot do pod, notifique "
-                    "canal #incident. Automatize via webhook do Falco → workflow do Argo Events. "
-                    "Em seguida, faça tabletop exercise com 2 colegas: 'às 2h chega alerta de "
-                    "exfil de 5GB para domínio russo', pratique IC/Operations/Comms roles."
+                    """<p><strong>Objetivo:</strong> ter um runbook que outra pessoa consiga executar às 3 da manhã sem te ligar — e descobrir, ensaiando, onde ele é ambíguo antes que a ambiguidade custe caro.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um cluster local com Falco instalado (reaproveite o do exercício de Runtime Security).</li>
+<li>Duas pessoas dispostas a gastar quarenta minutos com você no passo 6. Sozinho dá para fazer, mas rende bem menos.</li>
+<li>Um documento compartilhado para o runbook. Ele é o entregável principal, não o script.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Defina severidade antes de qualquer incidente existir.</strong> Escreva, em uma página, o que é SEV1, SEV2 e SEV3 na <em>sua</em> realidade, com exemplos concretos e quem é acordado em cada nível.<br><em>O que observar:</em> a parte difícil não é escrever, é concordar. Discutir isso agora leva vinte minutos; discutir às 3 da manhã, com o sistema fora do ar, custa a primeira hora do incidente — é o ponto da seção 3.</li>
+<li><strong>Escreva o runbook "pod comprometido" na ordem certa.</strong> Contenção antes de investigação: aplicar NetworkPolicy de deny egress, marcar com label <code>quarantine=true</code>, capturar evidência (<code>kubectl logs</code>, <code>kubectl cp</code>, <code>kubectl describe</code>), notificar o canal, e só então decidir se mata.<br><em>O que observar:</em> repare que "matar o pod" é a última linha, não a primeira. Contenção para o sangramento sem destruir a evidência — é a seção 5, e é contraintuitivo sob pressão.</li>
+<li><strong>Execute o runbook você mesmo, uma vez, com cronômetro.</strong> Dispare um alerta de propósito (um <code>kubectl exec</code> num pod) e siga o seu próprio documento, linha por linha, sem improvisar.<br><em>O que observar:</em> você vai travar em pelo menos um passo por causa de uma instrução vaga tipo "isole o pod". Cada trava dessas é um bug no runbook, e só aparece executando.</li>
+<li><strong>Automatize a parte repetitiva, nunca a decisão.</strong> Ligue o webhook do Falco a um workflow que aplica a NetworkPolicy e o label automaticamente, mas que <em>não</em> mata o pod.<br><em>O que observar:</em> a fronteira da seção 8 fica clara aqui: automatizar contenção reversível é ganho puro; automatizar ação destrutiva transforma um falso positivo em incidente de verdade.</li>
+<li><strong>Teste o que acontece quando a automação erra.</strong> Dispare o alerta num pod legítimo e veja o workflow isolá-lo indevidamente.<br><em>O que observar:</em> quanto tempo você leva para desfazer? Se não houver um caminho rápido de reversão, a automação é mais arriscada que o problema que ela resolve.</li>
+<li><strong>Faça o tabletop, sem tocar em teclado nenhum.</strong> Cenário: "2h07, alerta de exfiltração de 5 GB para um domínio desconhecido". Distribua os papéis de Incident Commander, Operations e Communications e conduza quarenta minutos de decisão falada.<br><em>O que observar:</em> a regra da seção 2 aparece sozinha — quem decide não deve estar digitando. Quando o IC vai para o teclado, a coordenação para, e o exercício mostra isso em minutos.</li>
+<li><strong>Escreva o postmortem blameless.</strong> Troque toda pergunta "quem fez" por "o que permitiu que isso acontecesse".<br><em>O que observar:</em> a mudança de pergunta muda as ações que saem do documento: de "falar com o fulano" para "adicionar validação no pipeline". É a seção 7 em uma linha.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Alguém que não escreveu o runbook consegue executá-lo do começo ao fim sem te perguntar nada.</li>
+<li>A contenção acontece automaticamente e a decisão destrutiva continua humana.</li>
+<li>Você tem um postmortem cujos action items são mudanças de sistema, não de pessoa.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o tabletop virar discussão técnica de como o ataque funcionou, o IC perdeu o controle do exercício — a função dele é decidir e coordenar, não resolver. E se o webhook do Falco não chega ao workflow, teste primeiro contra um <code>nc -l</code> para saber se o problema está no emissor ou no receptor.</p>
+<h4>Vá além</h4>
+<p>Mapeie o cenário do tabletop no MITRE ATT&amp;CK (seção 10) e identifique qual técnica você teria detectado e qual teria passado batido. Essa lacuna vira a próxima regra do Falco — e é assim que resposta a incidente alimenta detecção, fechando o ciclo da seção 1.</p>"""
                 ),
                 "practical_en": (
-                    "Create a 'compromised pod' runbook: apply a NetworkPolicy blocking egress, add label "
-                    "<code>quarantine=true</code>, snapshot the pod, notify the #incident channel. Automate "
-                    "via a Falco webhook → Argo Events workflow. Then run a tabletop exercise with 2 "
-                    "colleagues: 'at 2am an alert arrives of 5GB exfil to a Russian domain', practice "
-                    "IC/Operations/Comms roles."
+                    """<p><strong>Goal:</strong> end up with a runbook someone else can execute at 3am without calling you — and find out, by rehearsing, where it is ambiguous before the ambiguity gets expensive.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A local cluster with Falco installed (reuse the one from the Runtime Security exercise).</li>
+<li>Two people willing to spend forty minutes with you on step 6. Doing it alone works, but yields far less.</li>
+<li>A shared document for the runbook. That document is the real deliverable, not the script.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Define severity before any incident exists.</strong> Write, in one page, what SEV1, SEV2, and SEV3 mean in <em>your</em> reality, with concrete examples and who gets woken up at each level.<br><em>What to look for:</em> the hard part is not writing it, it is agreeing. Having this argument now takes twenty minutes; having it at 3am with the system down costs the first hour of the incident — the point of section 3.</li>
+<li><strong>Write the "compromised pod" runbook in the right order.</strong> Containment before investigation: apply a deny-egress NetworkPolicy, label it <code>quarantine=true</code>, capture evidence (<code>kubectl logs</code>, <code>kubectl cp</code>, <code>kubectl describe</code>), notify the channel, and only then decide whether to kill it.<br><em>What to look for:</em> notice that "kill the pod" is the last line, not the first. Stop the bleeding without destroying the evidence — section 5, and deeply counterintuitive under pressure.</li>
+<li><strong>Execute your own runbook once, with a stopwatch.</strong> Trigger an alert on purpose (a <code>kubectl exec</code> into a pod) and follow your document line by line, improvising nothing.<br><em>What to look for:</em> you will get stuck on at least one step because of a vague instruction like "isolate the pod". Every stall is a bug in the runbook, and it only surfaces by executing.</li>
+<li><strong>Automate the repetitive part, never the decision.</strong> Wire the Falco webhook to a workflow that applies the NetworkPolicy and the label automatically, but does <em>not</em> kill the pod.<br><em>What to look for:</em> the boundary from section 8 becomes obvious here: automating reversible containment is pure gain; automating a destructive action turns a false positive into a real incident.</li>
+<li><strong>Test what happens when the automation is wrong.</strong> Trigger the alert on a legitimate pod and watch the workflow isolate it unfairly.<br><em>What to look for:</em> how long does it take you to undo? If there is no fast reversal path, the automation is riskier than the problem it solves.</li>
+<li><strong>Run the tabletop, with nobody touching a keyboard.</strong> Scenario: "2:07am, alert for 5 GB exfiltrated to an unknown domain". Assign Incident Commander, Operations, and Communications, and run forty minutes of spoken decision-making.<br><em>What to look for:</em> the rule from section 2 emerges on its own — whoever decides should not be typing. The moment the IC reaches for the keyboard, coordination stops, and the exercise shows that within minutes.</li>
+<li><strong>Write the blameless postmortem.</strong> Replace every "who did it" question with "what allowed this to happen".<br><em>What to look for:</em> changing the question changes the actions that come out: from "talk to that person" to "add validation in the pipeline". That is section 7 in one line.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>Someone who did not write the runbook can execute it end to end without asking you anything.</li>
+<li>Containment happens automatically and the destructive decision stays human.</li>
+<li>You have a postmortem whose action items are system changes, not people changes.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the tabletop turns into a technical debate about how the attack works, the IC lost control of the exercise — their job is to decide and coordinate, not to solve. And if the Falco webhook never reaches the workflow, test it against a plain <code>nc -l</code> first to learn whether the problem is the sender or the receiver.</p>
+<h4>Go further</h4>
+<p>Map the tabletop scenario onto MITRE ATT&amp;CK (section 10) and identify which technique you would have detected and which would have slipped through. That gap becomes your next Falco rule — and that is how incident response feeds detection, closing the cycle from section 1.</p>"""
                 ),
             },
             "materials": [
@@ -6980,20 +7347,60 @@ $ aws configservice put-conformance-pack \\
 """
                 ),
                 "practical": (
-                    "Configure AWS Config Rules: <code>s3-bucket-public-read-prohibited</code>, "
-                    "<code>encrypted-volumes</code>, <code>iam-password-policy</code>, "
-                    "<code>vpc-flow-logs-enabled</code>. Crie um Conformance Pack que agrupe "
-                    "10+ regras alinhadas com LGPD. Configure entrega de relatório semanal em "
-                    "bucket S3 com Object Lock. Teste violando uma regra (criando bucket público) "
-                    "e veja AWS Config marcar como NON_COMPLIANT em minutos."
+                    """<p><strong>Objetivo:</strong> transformar "a gente segue as boas práticas" em evidência que se gera sozinha — e ver a diferença entre auditoria como projeto de fim de ano e auditoria como propriedade contínua do sistema.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma conta AWS onde você possa criar recursos (o free tier cobre a maior parte; AWS Config cobra por regra avaliada, então apague no fim).</li>
+<li>Uma hora e meia. O passo 5 leva alguns minutos de espera, e essa espera é parte do aprendizado.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Escolha o controle antes da ferramenta.</strong> Pegue um princípio concreto da LGPD — por exemplo, segurança na guarda do dado pessoal — e escreva qual configuração técnica o materializa: bucket não público, volume criptografado, flow log ligado.<br><em>O que observar:</em> essa tradução de princípio jurídico para configuração verificável é o trabalho de verdade. Ferramenta sem esse mapeamento gera relatório que ninguém sabe interpretar — é o teatro da seção 15.</li>
+<li><strong>Ative o AWS Config e ligue quatro regras gerenciadas.</strong> <code>s3-bucket-public-read-prohibited</code>, <code>encrypted-volumes</code>, <code>iam-password-policy</code> e <code>vpc-flow-logs-enabled</code>.<br><em>O que observar:</em> em poucos minutos o painel já mostra recursos NON_COMPLIANT que você nem sabia que existiam. Esse primeiro retrato costuma ser desconfortável — e é exatamente o valor dele.</li>
+<li><strong>Viole uma regra de propósito e cronometre.</strong> Crie um bucket com leitura pública e acompanhe o console.<br><em>O que observar:</em> em questão de minutos o recurso aparece como NON_COMPLIANT, sem ninguém ter rodado nada. Compare com o modelo antigo: alguém descobriria isso na auditoria, meses depois. A diferença de latência <em>é</em> o continuous da seção 7.</li>
+<li><strong>Agrupe num Conformance Pack.</strong> Junte dez ou mais regras num pacote com nome do framework que você escolheu no passo 1.<br><em>O que observar:</em> o score agregado vira um número acompanhável ao longo do tempo. Um número que sobe e desce sozinho é o que permite conversa com a liderança sem slide inventado.</li>
+<li><strong>Gere evidência que se guarda sozinha.</strong> Configure entrega periódica do relatório num bucket S3 com Object Lock ativado.<br><em>O que observar:</em> o Object Lock impede que o relatório seja alterado depois — inclusive por você. Evidência que o auditado pode editar não é evidência, e é por isso que a seção 10 insiste em imutabilidade.</li>
+<li><strong>Prove a diferença entre SOC 2 Type I e Type II.</strong> Olhe o histórico de compliance de um recurso ao longo dos dias no Config.<br><em>O que observar:</em> Type I pergunta "o controle existe hoje?"; Type II pergunta "o controle funcionou ao longo de seis meses?". Esse histórico é literalmente a resposta da segunda pergunta — é a seção 13 virando artefato.</li>
+<li><strong>Apague tudo.</strong> Remova as regras, o Conformance Pack e os buckets criados.<br><em>O que observar:</em> confira a fatura no dia seguinte. Saber o custo do controle faz parte de decidir quais controles valem a pena — e é o que evita a proposta de "ligar tudo" que nunca sobrevive ao orçamento.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Violar uma configuração aparece como NON_COMPLIANT sem intervenção humana.</li>
+<li>Existe um relatório imutável entregue automaticamente num bucket.</li>
+<li>Você consegue apontar, para cada regra, qual princípio da LGPD ela sustenta.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Regra presa em <code>NOT_APPLICABLE</code> quase sempre significa que não há recurso do tipo avaliado naquela região — o Config é regional. E se nada é avaliado, confira se o Configuration Recorder está de fato ligado: ativar as regras sem ligar o recorder é o erro silencioso mais comum aqui.</p>
+<h4>Vá além</h4>
+<p>Escreva uma regra customizada em Lambda para algo que nenhuma regra gerenciada cobre — por exemplo, "todo recurso precisa ter a tag <code>data-classification</code>". É a base da seção 11: sem tagging consistente, nenhuma política de dados consegue sequer saber onde o dado pessoal está.</p>"""
                 ),
                 "practical_en": (
-                    "Configure AWS Config Rules: <code>s3-bucket-public-read-prohibited</code>, "
-                    "<code>encrypted-volumes</code>, <code>iam-password-policy</code>, "
-                    "<code>vpc-flow-logs-enabled</code>. Create a Conformance Pack grouping 10+ rules aligned "
-                    "with LGPD. Configure weekly report delivery to an S3 bucket with Object Lock. Test by "
-                    "violating a rule (creating a public bucket) and watch AWS Config mark it NON_COMPLIANT "
-                    "within minutes."
+                    """<p><strong>Goal:</strong> turn "we follow best practices" into evidence that generates itself — and see the difference between auditing as a year-end project and auditing as a continuous property of the system.</p>
+<h4>Before you start</h4>
+<ul>
+<li>An AWS account where you can create resources (free tier covers most of it; AWS Config bills per rule evaluation, so clean up at the end).</li>
+<li>An hour and a half. Step 5 involves some waiting, and that wait is part of the lesson.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Pick the control before the tool.</strong> Take one concrete privacy principle — say, security in the custody of personal data — and write down which technical configuration makes it real: bucket not public, volume encrypted, flow logs on.<br><em>What to look for:</em> that translation from legal principle to verifiable configuration is the actual work. A tool without that mapping produces reports nobody knows how to read — the theater described in section 15.</li>
+<li><strong>Enable AWS Config and turn on four managed rules.</strong> <code>s3-bucket-public-read-prohibited</code>, <code>encrypted-volumes</code>, <code>iam-password-policy</code>, and <code>vpc-flow-logs-enabled</code>.<br><em>What to look for:</em> within minutes the dashboard already shows NON_COMPLIANT resources you did not know existed. That first picture is usually uncomfortable — and that discomfort is its value.</li>
+<li><strong>Violate a rule on purpose and time it.</strong> Create a publicly readable bucket and watch the console.<br><em>What to look for:</em> within minutes the resource shows up as NON_COMPLIANT, with nobody running anything. Compare that with the old model, where someone would find it at audit time months later. That latency difference <em>is</em> the "continuous" in section 7.</li>
+<li><strong>Group them into a Conformance Pack.</strong> Bundle ten or more rules under the name of the framework you chose in step 1.<br><em>What to look for:</em> the aggregate score becomes a number you can track over time. A number that moves on its own is what makes a conversation with leadership possible without an invented slide.</li>
+<li><strong>Produce evidence that stores itself.</strong> Configure periodic report delivery to an S3 bucket with Object Lock enabled.<br><em>What to look for:</em> Object Lock prevents the report from being altered afterwards — including by you. Evidence the audited party can edit is not evidence, which is why section 10 insists on immutability.</li>
+<li><strong>Prove the difference between SOC 2 Type I and Type II.</strong> Look at a resource's compliance history across days in Config.<br><em>What to look for:</em> Type I asks "does the control exist today?"; Type II asks "did the control work across six months?". That history is literally the answer to the second question — section 13 turned into an artifact.</li>
+<li><strong>Delete everything.</strong> Remove the rules, the Conformance Pack, and the buckets you created.<br><em>What to look for:</em> check the bill the next day. Knowing the cost of a control is part of deciding which controls are worth it — and it is what prevents the "turn everything on" proposal that never survives a budget review.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>Violating a configuration shows up as NON_COMPLIANT with no human involved.</li>
+<li>There is an immutable report delivered automatically to a bucket.</li>
+<li>You can point, for each rule, at the privacy principle it upholds.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>A rule stuck at <code>NOT_APPLICABLE</code> almost always means there is no resource of that type in that region — Config is regional. And if nothing gets evaluated at all, check that the Configuration Recorder is actually on: enabling rules without the recorder is the quietest common mistake here.</p>
+<h4>Go further</h4>
+<p>Write a custom Lambda rule for something no managed rule covers — for example, "every resource must carry a <code>data-classification</code> tag". That is the foundation of section 11: without consistent tagging, no data policy can even locate where personal data lives.</p>"""
                 ),
             },
             "materials": [

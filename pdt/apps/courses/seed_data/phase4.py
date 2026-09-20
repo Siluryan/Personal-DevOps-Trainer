@@ -788,44 +788,62 @@ that exist.</li>
 </ul>"""
                 ),
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Escreva Dockerfile multi-stage para app Python: stage builder "
-                    "com toolchain, stage final com python:3.12-slim, USER não-root, "
-                    "HEALTHCHECK, CMD em JSON.</li>"
-                    "<li>Crie .dockerignore excluindo .git, .env, __pycache__, etc.</li>"
-                    "<li>Build com BuildKit + cache mount: "
-                    "<code>DOCKER_BUILDKIT=1 docker build -t app .</code>.</li>"
-                    "<li>Use <code>dive app:latest</code> para inspecionar camadas e "
-                    "achar bytes desperdiçados.</li>"
-                    "<li>Compare tamanho: full vs slim vs distroless. Quanto cada "
-                    "transição economiza?</li>"
-                    "<li>Rode com limites: <code>--memory=256m --cpus=0.5 "
-                    "--read-only --cap-drop=ALL --security-opt=no-new-privileges</code>.</li>"
-                    "<li>Configure HEALTHCHECK e veja status com <code>docker ps</code> "
-                    "(coluna 'STATUS' mostra 'healthy').</li>"
-                    "<li>Bonus: build multi-arch com buildx para amd64+arm64.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> reduzir uma imagem em ordem de grandeza sem quebrar a aplicação — e entender de onde cada megabyte veio, em vez de copiar um Dockerfile multi-stage pronto.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Docker com BuildKit e uma aplicação Python simples com dependências.</li>
+<li>Instale o <code>dive</code> — é ele que torna as camadas visíveis.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Construa a versão ingênua e meça.</strong> Um Dockerfile de estágio único partindo de <code>python:3.12</code>, com <code>COPY . .</code> antes do <code>pip install</code>.<br><em>O que observar:</em> anote o tamanho com <code>docker images</code>. Depois mude uma linha de código e rebuilde: o <code>pip install</code> roda tudo de novo, porque o <code>COPY</code> invalidou o cache. É a lição de ordenação de camadas, sentida no relógio.</li>
+<li><strong>Inverta a ordem e cronometre de novo.</strong> <code>COPY requirements.txt</code>, <code>pip install</code>, e só então <code>COPY . .</code>.<br><em>O que observar:</em> o rebuild após mudança de código agora é quase instantâneo. Duas linhas trocadas de lugar, e o ciclo de desenvolvimento muda de minutos para segundos.</li>
+<li><strong>Descubra o que você está enviando sem querer.</strong> Crie o <code>.dockerignore</code> com <code>.git</code>, <code>.env</code>, <code>__pycache__</code> e afins.<br><em>O que observar:</em> compare o tamanho do contexto de build antes e depois (o Docker imprime isso na primeira linha). O <code>.git</code> sozinho costuma ser dezenas de megabytes — e um <code>.env</code> copiado para dentro da imagem é vazamento de credencial pronto.</li>
+<li><strong>Separe compilar de executar.</strong> Multi-stage: um estágio com toolchain, um final com <code>python:3.12-slim</code> levando só o que roda.<br><em>O que observar:</em> compare os tamanhos. Compilador, headers e cache de pacote ficaram para trás — e cada um deles seria superfície de ataque disponível para quem entrasse no container.</li>
+<li><strong>Olhe para dentro com o <code>dive</code>.</strong> <code>dive app:latest</code>.<br><em>O que observar:</em> procure por arquivo grande em camada que você não esperava. Arquivo apagado numa camada <em>seguinte</em> continua ocupando espaço na anterior — por isso <code>RUN apt-get install ... &amp;&amp; rm -rf /var/lib/apt/lists/*</code> precisa estar no mesmo <code>RUN</code>.</li>
+<li><strong>Reduza o privilégio do processo.</strong> Acrescente <code>USER</code> não-root e rode com <code>--read-only --cap-drop=ALL --security-opt=no-new-privileges --memory=256m</code>.<br><em>O que observar:</em> algo provavelmente quebra com o filesystem somente leitura. Resolva com <code>--tmpfs</code> no caminho exato e não removendo a flag — o mesmo raciocínio que aparece de novo em Kubernetes.</li>
+<li><strong>Faça o container dizer se está saudável.</strong> Um <code>HEALTHCHECK</code> no Dockerfile.<br><em>O que observar:</em> <code>docker ps</code> passa a mostrar <code>healthy</code>. Sem isso, "o container está rodando" não significa "a aplicação responde" — a mesma distinção entre Running e READY do Kubernetes.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você tem os tamanhos das três versões: ingênua, slim e multi-stage.</li>
+<li>Rebuild após mudar uma linha de código leva segundos, não minutos.</li>
+<li>O container roda como usuário não-root, com filesystem somente leitura.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se a aplicação não encontra as dependências no estágio final, é porque o <code>pip install</code> foi para um caminho que você não copiou — use <code>--target</code> ou um virtualenv e copie o diretório inteiro. E se o <code>HEALTHCHECK</code> marcar <code>unhealthy</code> sempre, confira se a ferramenta que ele usa (<code>curl</code>, por exemplo) existe na imagem final: em imagem slim, normalmente não existe.</p>
+<h4>Vá além</h4>
+<p>Troque a base por distroless e compare tamanho e contagem de CVEs com <code>trivy</code>. Depois tente entrar no container com <code>docker exec ... sh</code>: não há shell. Essa é a troca da seção sobre minimalismo — menos superfície de ataque em troca de depuração mais difícil, e vale saber qual dos dois lados importa mais no seu caso.</p>"""
                 ),
                 "practical_en": (
-                    "<p><strong>Complete hands-on exercise</strong>:</p>"
-                    "<ol>"
-                    "<li>Write a multi-stage Dockerfile for a Python app: a builder "
-                    "stage with the toolchain, a final stage with python:3.12-slim, "
-                    "non-root USER, HEALTHCHECK, CMD in JSON form.</li>"
-                    "<li>Create a .dockerignore excluding .git, .env, __pycache__, etc.</li>"
-                    "<li>Build with BuildKit + cache mount: "
-                    "<code>DOCKER_BUILDKIT=1 docker build -t app .</code>.</li>"
-                    "<li>Use <code>dive app:latest</code> to inspect layers and "
-                    "find wasted bytes.</li>"
-                    "<li>Compare sizes: full vs slim vs distroless. How much does each "
-                    "transition save?</li>"
-                    "<li>Run with limits: <code>--memory=256m --cpus=0.5 "
-                    "--read-only --cap-drop=ALL --security-opt=no-new-privileges</code>.</li>"
-                    "<li>Configure HEALTHCHECK and check status with <code>docker ps</code> "
-                    "(the 'STATUS' column shows 'healthy').</li>"
-                    "<li>Bonus: build multi-arch with buildx for amd64+arm64.</li>"
-                    "</ol>"
+                    """<p><strong>Goal:</strong> shrink an image by an order of magnitude without breaking the application — and understand where each megabyte came from, instead of copying a ready-made multi-stage Dockerfile.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Docker with BuildKit and a simple Python application with dependencies.</li>
+<li>Install <code>dive</code> — it is what makes layers visible.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Build the naive version and measure.</strong> A single-stage Dockerfile from <code>python:3.12</code>, with <code>COPY . .</code> before <code>pip install</code>.<br><em>What to look for:</em> note the size with <code>docker images</code>. Then change one line of code and rebuild: <code>pip install</code> runs all over again, because the <code>COPY</code> invalidated the cache. The layer-ordering lesson, felt on the clock.</li>
+<li><strong>Flip the order and time it again.</strong> <code>COPY requirements.txt</code>, <code>pip install</code>, and only then <code>COPY . .</code>.<br><em>What to look for:</em> rebuilding after a code change is now nearly instant. Two lines swapped, and the development loop drops from minutes to seconds.</li>
+<li><strong>Find out what you are shipping by accident.</strong> Create <code>.dockerignore</code> with <code>.git</code>, <code>.env</code>, <code>__pycache__</code>, and friends.<br><em>What to look for:</em> compare the build context size before and after (Docker prints it on the first line). <code>.git</code> alone is usually tens of megabytes — and a <code>.env</code> copied into the image is a ready-made credential leak.</li>
+<li><strong>Separate building from running.</strong> Multi-stage: one stage with the toolchain, a final one on <code>python:3.12-slim</code> carrying only what runs.<br><em>What to look for:</em> compare sizes. Compiler, headers, and package caches stayed behind — and each of them would have been attack surface for anyone who got inside the container.</li>
+<li><strong>Look inside with <code>dive</code>.</strong> <code>dive app:latest</code>.<br><em>What to look for:</em> hunt for a large file in a layer you did not expect. A file deleted in a <em>later</em> layer still occupies space in the earlier one — which is why <code>RUN apt-get install ... &amp;&amp; rm -rf /var/lib/apt/lists/*</code> must live in the same <code>RUN</code>.</li>
+<li><strong>Reduce the process's privilege.</strong> Add a non-root <code>USER</code> and run with <code>--read-only --cap-drop=ALL --security-opt=no-new-privileges --memory=256m</code>.<br><em>What to look for:</em> something probably breaks under a read-only filesystem. Fix it with <code>--tmpfs</code> at the exact path rather than dropping the flag — the same reasoning returns in Kubernetes.</li>
+<li><strong>Make the container report its health.</strong> A <code>HEALTHCHECK</code> in the Dockerfile.<br><em>What to look for:</em> <code>docker ps</code> now shows <code>healthy</code>. Without it, "the container is running" does not mean "the application answers" — the same Running versus READY distinction from Kubernetes.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>You have sizes for all three versions: naive, slim, and multi-stage.</li>
+<li>Rebuilding after a one-line change takes seconds, not minutes.</li>
+<li>The container runs as a non-root user with a read-only filesystem.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the application cannot find its dependencies in the final stage, <code>pip install</code> wrote to a path you did not copy — use <code>--target</code> or a virtualenv and copy the whole directory. And if <code>HEALTHCHECK</code> always reports <code>unhealthy</code>, check that the tool it uses (<code>curl</code>, say) exists in the final image: on slim images it usually does not.</p>
+<h4>Go further</h4>
+<p>Switch the base to distroless and compare size and CVE count with <code>trivy</code>. Then try entering the container with <code>docker exec ... sh</code>: there is no shell. That is the minimalism trade-off — less attack surface in exchange for harder debugging, and it is worth knowing which side matters more in your case.</p>"""
                 ),
             },
             "materials": [
@@ -1568,26 +1586,62 @@ everything still technically available for deployment.</li>
 </ul>"""
                 ),
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Pegue uma imagem sua. Substitua base por distroless ou wolfi. "
-                    "Compare tamanho com <code>docker images</code>.</li>"
-                    "<li>Pin por digest sha256.</li>"
-                    "<li>Adicione USER não-root, capabilities reduzidas, "
-                    "<code>--read-only --cap-drop=ALL</code>.</li>"
-                    "<li>Scan com <code>trivy image</code> antes/depois, quantos "
-                    "CVEs sumiram?</li>"
-                    "<li>Configure GitHub Actions com Trivy + assinatura Cosign + "
-                    "atestado SLSA L3.</li>"
-                    "<li>Em K8s (kind), instale Kyverno e crie policy que exige "
-                    "imagens assinadas.</li>"
-                    "<li>Tente subir Pod com imagem não-assinada → veja rejeição.</li>"
-                    "<li>Bonus: configure Renovate para autoatualizar digests com "
-                    "patches de segurança.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> reduzir a contagem de CVEs de uma imagem sua trocando a base — e fechar o ciclo fazendo um cluster recusar qualquer imagem que não tenha passado pelo seu pipeline.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma imagem que você já construiu (a do exercício anterior serve), <code>trivy</code> e <code>cosign</code>.</li>
+<li>Um cluster local (kind) para os dois últimos passos.</li>
+<li>Cerca de duas horas e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Estabeleça a linha de base.</strong> <code>trivy image SUA_IMAGEM</code> e anote a contagem por severidade.<br><em>O que observar:</em> repare que a maior parte das CVEs vem da <em>base</em>, não do seu código. Isso muda a estratégia: a alavanca mais eficiente é trocar a base, não corrigir a sua aplicação.</li>
+<li><strong>Troque a base e meça de novo.</strong> Migre para distroless ou Wolfi e rode o mesmo scan.<br><em>O que observar:</em> compare os dois números lado a lado. A queda costuma ser drástica, e ela vem de uma única linha no Dockerfile — cada pacote que não está lá é uma CVE que não pode existir (seção 1).</li>
+<li><strong>Fixe por digest, não por tag.</strong> Troque <code>FROM imagem:3.12-slim</code> por <code>FROM imagem@sha256:...</code>.<br><em>O que observar:</em> a tag pode apontar para conteúdo diferente amanhã sem aviso; o digest não. É a única forma de garantir que o build de hoje e o de amanhã produzem a mesma coisa, e é pré-requisito para qualquer conversa sobre reprodutibilidade (seção 2).</li>
+<li><strong>Reduza o privilégio em execução.</strong> <code>USER</code> não-root, <code>--read-only</code>, <code>--cap-drop=ALL</code>.<br><em>O que observar:</em> teste que a aplicação ainda funciona. A maioria dos serviços não precisa de nenhuma capability — e descobrir quais precisam, uma a uma, é o que evita o <code>--privileged</code> preguiçoso (seção 3).</li>
+<li><strong>Integre o scan ao pipeline com critério.</strong> Trivy na Action, falhando só em CRITICAL corrigível.<br><em>O que observar:</em> bloquear por CVE sem correção disponível trava o deploy sem melhorar nada. O critério importa mais que a ferramenta — é o mesmo raciocínio do tópico de SCA.</li>
+<li><strong>Assine e anexe proveniência.</strong> Cosign keyless no pipeline, mais atestado SLSA.<br><em>O que observar:</em> a assinatura prova <em>quem</em> construiu; o atestado prova <em>como</em>. Juntos eles respondem a pergunta que um scan não responde: esta imagem veio mesmo do meu código, pelo meu processo? (seção 5)</li>
+<li><strong>Exija tudo isso no cluster.</strong> Kyverno com policy que só aceita imagem assinada pela sua identidade.<br><em>O que observar:</em> tente subir um pod com uma imagem pública qualquer. Rejeitado. Sem essa exigência no ponto de execução, assinar é um ritual sem consequência.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você tem a contagem de CVEs antes e depois da troca de base.</li>
+<li>O Dockerfile referencia a base por digest.</li>
+<li>O cluster rejeita imagem não assinada e aceita a sua.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se a aplicação não roda em distroless, quase sempre falta uma biblioteca de sistema — a imagem não tem gerenciador de pacote, então a solução é copiar o arquivo do estágio builder. E se o Kyverno rejeitar tudo, confirme que a policy está restrita ao namespace certo e que a identidade esperada bate exatamente com a do seu workflow.</p>
+<h4>Vá além</h4>
+<p>Configure Renovate para atualizar os digests automaticamente quando sair patch de segurança. Aí o pin deixa de ser um congelamento e vira um <em>controle</em>: você sabe exatamente qual conteúdo está rodando e ainda recebe correção sem ação manual — que é o equilíbrio que o pin sozinho não dá.</p>"""
                 ),
                 "practical_en": (
-                    '<p><strong>Complete hands-on exercise</strong>:</p><ol><li>Take one of your images. Replace the base with distroless or wolfi. Compare size with <code>docker images</code>.</li><li>Pin by sha256 digest.</li><li>Add a non-root USER, reduced capabilities, <code>--read-only --cap-drop=ALL</code>.</li><li>Scan with <code>trivy image</code> before/after — how many CVEs disappeared?</li><li>Configure GitHub Actions with Trivy + Cosign signing + SLSA L3 attestation.</li><li>On K8s (kind), install Kyverno and create a policy that requires signed images.</li><li>Try to start a Pod with an unsigned image → see the rejection.</li><li>Bonus: configure Renovate to auto-update digests with security patches.</li></ol>'
+                    """<p><strong>Goal:</strong> cut your image's CVE count by swapping the base — and close the loop by making a cluster refuse any image that did not come through your pipeline.</p>
+<h4>Before you start</h4>
+<ul>
+<li>An image you already built (the one from the previous exercise works), plus <code>trivy</code> and <code>cosign</code>.</li>
+<li>A local cluster (kind) for the last two steps.</li>
+<li>About two and a half hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Establish the baseline.</strong> <code>trivy image YOUR_IMAGE</code> and note the count by severity.<br><em>What to look for:</em> notice most CVEs come from the <em>base</em>, not from your code. That changes strategy: the most effective lever is swapping the base, not patching your application.</li>
+<li><strong>Swap the base and measure again.</strong> Move to distroless or Wolfi and rerun the same scan.<br><em>What to look for:</em> compare both numbers side by side. The drop is usually dramatic, and it comes from a single line in the Dockerfile — every package that is not there is a CVE that cannot exist (section 1).</li>
+<li><strong>Pin by digest, not by tag.</strong> Replace <code>FROM image:3.12-slim</code> with <code>FROM image@sha256:...</code>.<br><em>What to look for:</em> a tag can point at different content tomorrow without warning; a digest cannot. It is the only way to guarantee today's and tomorrow's builds produce the same thing, and a prerequisite for any conversation about reproducibility (section 2).</li>
+<li><strong>Reduce runtime privilege.</strong> Non-root <code>USER</code>, <code>--read-only</code>, <code>--cap-drop=ALL</code>.<br><em>What to look for:</em> verify the application still works. Most services need no capabilities at all — and finding out which ones do, one at a time, is what prevents the lazy <code>--privileged</code> (section 3).</li>
+<li><strong>Wire the scan into the pipeline with a criterion.</strong> Trivy in the Action, failing only on fixable CRITICALs.<br><em>What to look for:</em> blocking on a CVE with no available fix stops deploys without improving anything. The criterion matters more than the tool — the same reasoning as the SCA topic.</li>
+<li><strong>Sign and attach provenance.</strong> Keyless Cosign in the pipeline, plus a SLSA attestation.<br><em>What to look for:</em> the signature proves <em>who</em> built it; the attestation proves <em>how</em>. Together they answer the question a scan cannot: did this image really come from my code, through my process? (section 5)</li>
+<li><strong>Require all of it in the cluster.</strong> Kyverno with a policy accepting only images signed by your identity.<br><em>What to look for:</em> try deploying a pod with any public image. Rejected. Without that requirement at the point of execution, signing is a ritual with no consequence.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>You have CVE counts before and after the base swap.</li>
+<li>The Dockerfile references its base by digest.</li>
+<li>The cluster rejects unsigned images and accepts yours.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the application will not run on distroless, a system library is almost always missing — the image has no package manager, so the fix is copying the file from the builder stage. And if Kyverno rejects everything, confirm the policy is scoped to the right namespace and that the expected identity exactly matches your workflow's.</p>
+<h4>Go further</h4>
+<p>Configure Renovate to update digests automatically when security patches land. Pinning then stops being a freeze and becomes a <em>control</em>: you know exactly what content is running and still get fixes without manual action — the balance that pinning alone does not provide.</p>"""
                 ),
             },
             "materials": [
@@ -2230,25 +2284,62 @@ blast radius of the other, with no segmentation between them.</li>
 </ul>"""
                 ),
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>No GHCR: configure tag immutability, retenção (manter 30 "
-                    "semver, apagar untagged após 7d), autenticação OIDC do GitHub "
-                    "Actions (sem PAT estático).</li>"
-                    "<li>Faça push de imagem com tag SHA + tag semver.</li>"
-                    "<li>Adicione assinatura Cosign (keyless OIDC).</li>"
-                    "<li>Anexe SBOM como referrer.</li>"
-                    "<li>Em K8s local (kind), instale Argo CD Image Updater. "
-                    "Configure para atualizar manifest automaticamente em nova "
-                    "versão semver.</li>"
-                    "<li>Configure pull-through cache (em ECR) para Docker Hub.</li>"
-                    "<li>Em registry privado, instale Trivy operator e veja "
-                    "achados CRDs em K8s.</li>"
-                    "<li>Bonus: build multi-arch (amd64+arm64) e teste em ambos.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> parar de depender de token estático e de tag mutável — deixando o registro capaz de responder, sozinho, de onde veio cada imagem que ele guarda.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um repositório no GitHub com Actions e permissão no GHCR.</li>
+<li><code>cosign</code>, <code>syft</code> e um cluster local para o passo 6.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Elimine o token estático do pipeline.</strong> Autentique no GHCR usando o token OIDC do próprio Actions, sem PAT.<br><em>O que observar:</em> procure um PAT nos secrets do repositório. Não deve existir. Token estático é o elo mais fraco porque não expira e não tem identidade — quem o rouba é indistinguível de você (seção 2).</li>
+<li><strong>Publique com duas tags e entenda o papel de cada uma.</strong> Uma por SHA do commit e uma semver.<br><em>O que observar:</em> a semver comunica para humanos; a de SHA identifica sem ambiguidade. Elas resolvem problemas diferentes, e usar só uma delas sempre deixa uma pergunta sem resposta.</li>
+<li><strong>Ative imutabilidade e tente sobrescrever.</strong> Faça push de conteúdo novo na mesma tag semver.<br><em>O que observar:</em> recusado. Sem imutabilidade, "estamos rodando a v1.2.3" não garante nada — a mesma tag pode ter conteúdo diferente do testado, que é exatamente o problema da seção 3.</li>
+<li><strong>Assine no pipeline, sem chave para guardar.</strong> Cosign keyless com o OIDC do GitHub.<br><em>O que observar:</em> a identidade que assina é o workflow, e ela fica registrada publicamente. Não há chave privada para vazar nem para rotacionar — o problema de gestão de chave simplesmente deixa de existir.</li>
+<li><strong>Anexe o SBOM como referrer.</strong> Gere com <code>syft</code> e anexe via Cosign.<br><em>O que observar:</em> o inventário passa a ser recuperável a partir da própria imagem, em qualquer máquina. Compare com guardar o SBOM num bucket: ali ele se desatualiza e ninguém percebe.</li>
+<li><strong>Configure retenção antes de acumular.</strong> Manter as últimas versões semver e apagar imagens sem tag depois de alguns dias.<br><em>O que observar:</em> cada build de PR gera uma imagem. Em um mês isso vira centenas de gigabytes de coisa que ninguém vai usar — e a limpeza é muito mais fácil configurada agora do que resolvida depois (seção 4).</li>
+<li><strong>Proteja o CI do rate limit alheio.</strong> Configure pull-through cache para as imagens base vindas do Docker Hub.<br><em>O que observar:</em> o benefício não é só velocidade. No dia em que o registro público estiver instável ou o limite for atingido, o seu build continua funcionando — é a independência da seção 5.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O pipeline publica no GHCR sem nenhum PAT armazenado.</li>
+<li>Sobrescrever uma tag semver é recusado.</li>
+<li>O SBOM é recuperável a partir da imagem, em outra máquina.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o push falhar com permissão negada, acrescente <code>packages: write</code> ao bloco <code>permissions</code> do workflow — o token padrão é somente leitura. E se a imagem não aparecer no seu perfil, confira a visibilidade do pacote: ele nasce privado, e isso costuma confundir na primeira vez.</p>
+<h4>Vá além</h4>
+<p>Configure um build multi-arquitetura (amd64 e arm64) com buildx e teste nos dois. Depois olhe o manifest: uma tag apontando para várias imagens. Entender essa indireção explica por que "a imagem" nem sempre é um artefato só — e por que digest e tag se comportam de forma diferente aí.</p>"""
                 ),
                 "practical_en": (
-                    '<p><strong>Complete hands-on exercise</strong>:</p><ol><li>On GHCR: configure tag immutability, retention (keep 30 semver, delete untagged after 7d), GitHub Actions OIDC auth (no static PAT).</li><li>Push an image with a SHA tag + a semver tag.</li><li>Add Cosign signing (keyless OIDC).</li><li>Attach an SBOM as a referrer.</li><li>On local K8s (kind), install Argo CD Image Updater. Configure it to update the manifest automatically on a new semver version.</li><li>Configure a pull-through cache (on ECR) for Docker Hub.</li><li>On a private registry, install the Trivy operator and see findings as CRDs in K8s.</li><li>Bonus: multi-arch build (amd64+arm64) and test on both.</li></ol>'
+                    """<p><strong>Goal:</strong> stop depending on static tokens and mutable tags — leaving the registry able to answer, on its own, where each image it holds came from.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A GitHub repository with Actions and GHCR permissions.</li>
+<li><code>cosign</code>, <code>syft</code>, and a local cluster for step 6.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Remove the static token from the pipeline.</strong> Authenticate to GHCR with the Actions OIDC token, no PAT.<br><em>What to look for:</em> go looking for a PAT in repository secrets. There should be none. A static token is the weakest link because it never expires and carries no identity — whoever steals it is indistinguishable from you (section 2).</li>
+<li><strong>Publish two tags and understand each one's role.</strong> One by commit SHA and one semver.<br><em>What to look for:</em> semver communicates to humans; the SHA identifies unambiguously. They solve different problems, and using only one always leaves a question unanswered.</li>
+<li><strong>Enable immutability and try to overwrite.</strong> Push new content to the same semver tag.<br><em>What to look for:</em> refused. Without immutability, "we are running v1.2.3" guarantees nothing — the same tag can hold different content from what you tested, exactly the problem in section 3.</li>
+<li><strong>Sign in the pipeline, with no key to store.</strong> Keyless Cosign with GitHub OIDC.<br><em>What to look for:</em> the signing identity is the workflow, recorded publicly. There is no private key to leak or rotate — the key management problem simply stops existing.</li>
+<li><strong>Attach the SBOM as a referrer.</strong> Generate it with <code>syft</code> and attach via Cosign.<br><em>What to look for:</em> the inventory becomes retrievable from the image itself, on any machine. Compare with keeping the SBOM in a bucket: there it goes stale and nobody notices.</li>
+<li><strong>Configure retention before things pile up.</strong> Keep recent semver versions and delete untagged images after a few days.<br><em>What to look for:</em> every PR build produces an image. Within a month that becomes hundreds of gigabytes nobody will use — and cleanup is far easier configured now than solved later (section 4).</li>
+<li><strong>Shield CI from somebody else's rate limit.</strong> Configure a pull-through cache for base images from Docker Hub.<br><em>What to look for:</em> the benefit is not only speed. On the day the public registry is unstable or the limit is hit, your build keeps working — the independence from section 5.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The pipeline publishes to GHCR with no PAT stored.</li>
+<li>Overwriting a semver tag is refused.</li>
+<li>The SBOM is retrievable from the image, on another machine.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the push fails with permission denied, add <code>packages: write</code> to the workflow's <code>permissions</code> block — the default token is read-only. And if the image does not show up on your profile, check package visibility: it starts private, which tends to confuse people the first time.</p>
+<h4>Go further</h4>
+<p>Configure a multi-architecture build (amd64 and arm64) with buildx and test on both. Then inspect the manifest: one tag pointing at several images. Understanding that indirection explains why "the image" is not always a single artifact — and why digests and tags behave differently there.</p>"""
                 ),
             },
             "materials": [
@@ -3042,27 +3133,60 @@ of conditionals inside a single YAML.</li>
 </ul>"""
                 ),
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Suba app + Postgres + Redis com Compose v2: healthchecks, "
-                    "<code>depends_on</code> com <code>condition: service_healthy</code>, "
-                    "volumes nomeados, secrets via arquivo.</li>"
-                    "<li>Crie <code>compose.dev.yaml</code> com bind mount + DEBUG=1 "
-                    "e <code>compose.prod.yaml</code> com replicas=3 e tag por SHA.</li>"
-                    "<li>Configure rede backend interna (sem acesso à internet) para "
-                    "DB.</li>"
-                    "<li>Use <code>--profile dev</code> para opcionalmente subir "
-                    "MailHog/PgAdmin.</li>"
-                    "<li>Bonus: converta para Swarm (<code>docker stack deploy</code>) "
-                    "e teste em 3 nós (pode ser 3 VMs/Docker Desktops).</li>"
-                    "<li>Bonus 2: rode mesma app em Nomad com job HCL e veja diferença "
-                    "de UX.</li>"
-                    "<li>Bonus 3: configure backup automático do volume pgdata via "
-                    "cron + <code>docker run alpine tar</code>.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> fazer uma stack de três serviços subir na ordem certa sozinha — e descobrir que <code>depends_on</code> sem <code>condition</code> não garante quase nada.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Docker Compose v2 e uma aplicação que use Postgres e Redis.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Suba os três serviços do jeito ingênuo e veja falhar.</strong> <code>depends_on</code> simples, sem healthcheck.<br><em>O que observar:</em> a aplicação sobe antes do banco aceitar conexão e morre. O <code>depends_on</code> sozinho só garante ordem de <em>início</em>, não de prontidão — é a confusão mais comum com Compose.</li>
+<li><strong>Corrija com healthcheck e condição.</strong> <code>healthcheck</code> no Postgres e <code>depends_on: condition: service_healthy</code> na aplicação.<br><em>O que observar:</em> agora a aplicação espera o banco responder de verdade. Compare com a solução preguiçosa (<code>sleep 10</code> no entrypoint): esta funciona sempre, aquela funciona até a máquina estar lenta.</li>
+<li><strong>Isole o banco da internet.</strong> Uma rede <code>backend</code> marcada como <code>internal</code>, à qual o Postgres pertence e o mundo externo não.<br><em>O que observar:</em> de dentro do container do banco, <code>curl</code> para fora falha. O banco continua acessível pela aplicação e invisível para o resto — segmentação de rede em quatro linhas de YAML.</li>
+<li><strong>Entenda o limite do <code>.env</code>.</strong> Ponha a senha do banco num <code>.env</code> e depois rode <code>docker compose config</code>.<br><em>O que observar:</em> a senha aparece em texto claro na saída, e também em <code>docker inspect</code>. É o limite da seção 3: <code>.env</code> serve para configuração, não para segredo — e a alternativa no Compose é montar o valor como arquivo.</li>
+<li><strong>Componha ambientes em vez de duplicar arquivos.</strong> Um <code>compose.yaml</code> base, mais <code>compose.dev.yaml</code> (bind mount, DEBUG) e <code>compose.prod.yaml</code> (réplicas, tag por SHA).<br><em>O que observar:</em> o mesmo arquivo base serve os dois. Duplicar o YAML inteiro por ambiente é o caminho para eles divergirem em silêncio — e aí "funciona em dev" perde o valor de teste (seção 2).</li>
+<li><strong>Torne opcional o que é opcional.</strong> Use <code>--profile dev</code> para subir ferramentas auxiliares como PgAdmin ou MailHog.<br><em>O que observar:</em> sem o perfil, elas nem são criadas. Isso mantém o ambiente de produção limpo usando o mesmo arquivo — e evita a ferramenta de depuração exposta acidentalmente.</li>
+<li><strong>Descubra onde o Compose para de bastar.</strong> Tente escalar um serviço com estado para três réplicas.<br><em>O que observar:</em> as três disputam o mesmo volume. Compose não resolve estado distribuído — reconhecer esse limite é o que indica a hora de olhar para Swarm, Nomad ou Kubernetes, em vez de forçar a ferramenta errada (seções 4 e 5).</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li><code>docker compose up</code> sobe tudo na ordem certa, sem <code>sleep</code> em lugar nenhum.</li>
+<li>O container do banco não alcança a internet.</li>
+<li>Dev e produção saem do mesmo arquivo base, com overrides.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o healthcheck do Postgres nunca ficar saudável, use <code>pg_isready -U usuario</code> com o usuário correto — o default nem sempre existe na imagem. E se a rede interna quebrar a aplicação, lembre que ela também bloqueia saída para a internet: o serviço que precisa falar com API externa não pode estar só nessa rede.</p>
+<h4>Vá além</h4>
+<p>Converta a stack para Swarm com <code>docker stack deploy</code> e rode em três nós. A sintaxe é quase a mesma, mas os conceitos mudam: rede overlay, service em vez de container, réplicas distribuídas. Essa comparação é a melhor introdução possível ao que Kubernetes resolve — e ao custo que ele cobra por isso.</p>"""
                 ),
                 "practical_en": (
-                    '<p><strong>Complete hands-on exercise</strong>:</p><ol><li>Bring up app + Postgres + Redis with Compose v2: healthchecks, <code>depends_on</code> with <code>condition: service_healthy</code>, named volumes, secrets via file.</li><li>Create <code>compose.dev.yaml</code> with bind mount + DEBUG=1 and <code>compose.prod.yaml</code> with replicas=3 and a SHA tag.</li><li>Configure an internal backend network (no internet access) for the DB.</li><li>Use <code>--profile dev</code> to optionally bring up MailHog/PgAdmin.</li><li>Bonus: convert to Swarm (<code>docker stack deploy</code>) and test on 3 nodes (can be 3 VMs/Docker Desktops).</li><li>Bonus 2: run the same app on Nomad with an HCL job and see the UX difference.</li><li>Bonus 3: configure automatic backup of the pgdata volume via cron + <code>docker run alpine tar</code>.</li></ol>'
+                    """<p><strong>Goal:</strong> get a three-service stack to start in the right order by itself — and discover that <code>depends_on</code> without a <code>condition</code> guarantees almost nothing.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Docker Compose v2 and an application that uses Postgres and Redis.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Start all three the naive way and watch it fail.</strong> A plain <code>depends_on</code>, no healthcheck.<br><em>What to look for:</em> the application starts before the database accepts connections and dies. <code>depends_on</code> alone only guarantees <em>start</em> order, not readiness — the most common confusion with Compose.</li>
+<li><strong>Fix it with a healthcheck and a condition.</strong> A <code>healthcheck</code> on Postgres and <code>depends_on: condition: service_healthy</code> on the app.<br><em>What to look for:</em> now the application waits for the database to actually answer. Compare with the lazy fix (<code>sleep 10</code> in the entrypoint): this one always works, that one works until the machine is slow.</li>
+<li><strong>Isolate the database from the internet.</strong> A <code>backend</code> network marked <code>internal</code>, containing Postgres and not the outside world.<br><em>What to look for:</em> from inside the database container, <code>curl</code> to the internet fails. The database stays reachable by the app and invisible to everything else — network segmentation in four lines of YAML.</li>
+<li><strong>Learn the limit of <code>.env</code>.</strong> Put the database password in a <code>.env</code> and then run <code>docker compose config</code>.<br><em>What to look for:</em> the password appears in plain text in the output, and in <code>docker inspect</code> too. That is section 3's limit: <code>.env</code> is for configuration, not secrets — and Compose's alternative is mounting the value as a file.</li>
+<li><strong>Compose environments instead of duplicating files.</strong> A base <code>compose.yaml</code>, plus <code>compose.dev.yaml</code> (bind mount, DEBUG) and <code>compose.prod.yaml</code> (replicas, SHA tag).<br><em>What to look for:</em> the same base serves both. Duplicating the whole YAML per environment is how they silently diverge — and then "works in dev" stops being evidence (section 2).</li>
+<li><strong>Make optional things optional.</strong> Use <code>--profile dev</code> to bring up helper tools like PgAdmin or MailHog.<br><em>What to look for:</em> without the profile, they are not even created. That keeps production clean using the same file — and avoids the debugging tool accidentally left exposed.</li>
+<li><strong>Find where Compose stops being enough.</strong> Try scaling a stateful service to three replicas.<br><em>What to look for:</em> all three fight over the same volume. Compose does not solve distributed state — recognizing that limit is what tells you it is time for Swarm, Nomad, or Kubernetes, instead of forcing the wrong tool (sections 4 and 5).</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li><code>docker compose up</code> brings everything up in the right order, with no <code>sleep</code> anywhere.</li>
+<li>The database container cannot reach the internet.</li>
+<li>Dev and production come from the same base file, through overrides.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the Postgres healthcheck never turns healthy, use <code>pg_isready -U user</code> with the right user — the default does not always exist in the image. And if the internal network breaks the application, remember it also blocks internet egress: a service that must call an external API cannot live on that network alone.</p>
+<h4>Go further</h4>
+<p>Convert the stack to Swarm with <code>docker stack deploy</code> and run it across three nodes. The syntax is nearly identical, but the concepts change: overlay networks, services instead of containers, distributed replicas. That comparison is the best possible introduction to what Kubernetes solves — and what it charges for solving it.</p>"""
                 ),
             },
             "materials": [
@@ -3805,23 +3929,62 @@ instead of a format only your own platform understands.</li>
 </ul>"""
                 ),
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Gere SBOM da sua imagem com Syft "
-                    "(<code>syft myapp:dev -o cyclonedx-json &gt; sbom.json</code>).</li>"
-                    "<li>Anexe ao registry com <code>cosign attest</code>.</li>"
-                    "<li>Cruze com Trivy: <code>trivy sbom sbom.json</code>.</li>"
-                    "<li>Suba Dependency-Track local (Docker Compose) e envie SBOMs "
-                    "do CI.</li>"
-                    "<li>Crie um VEX para 1 CVE marcando como "
-                    "<code>not_affected</code> com justificativa.</li>"
-                    "<li>Configure GitHub Action que envia SBOM para "
-                    "Dependency-Track em todo build.</li>"
-                    "<li>Bonus: gere atestado SLSA L3 + SBOM como referrers no GHCR.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> responder em segundos à pergunta "quais dos nossos serviços usam esta biblioteca?" — e marcar uma CVE como não aplicável <em>com justificativa</em>, em vez de simplesmente ignorá-la.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma imagem sua, <code>syft</code>, <code>trivy</code> e <code>cosign</code>.</li>
+<li>Docker Compose para subir o Dependency-Track local.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Gere o inventário e leia o que tem dentro.</strong> <code>syft SUA_IMAGEM -o cyclonedx-json &gt; sbom.json</code>.<br><em>O que observar:</em> conte os componentes e procure por algum que você não reconhece. Quase toda imagem carrega dependências transitivas que ninguém escolheu — e você não pode proteger o que não sabe que tem.</li>
+<li><strong>Cruze com vulnerabilidades.</strong> <code>trivy sbom sbom.json</code>.<br><em>O que observar:</em> repare que o scan agora roda sobre o <em>arquivo</em>, sem precisar da imagem. Isso permite reavaliar um artefato antigo sem reconstruí-lo — e é o que torna o SBOM útil meses depois do build.</li>
+<li><strong>Prenda o SBOM ao artefato.</strong> <code>cosign attest</code> anexando o inventário à imagem no registro.<br><em>O que observar:</em> o SBOM deixa de ser um arquivo solto que alguém precisa lembrar de atualizar. Ele viaja com a imagem e está sempre sincronizado com o conteúdo que descreve.</li>
+<li><strong>Centralize para poder perguntar.</strong> Suba o Dependency-Track e envie o SBOM.<br><em>O que observar:</em> agora busque uma biblioteca qualquer pela interface. A resposta lista todos os projetos que a usam, em segundos. Essa é a pergunta que ninguém consegue responder sem inventário centralizado — e que aparece toda vez que sai uma CVE grave.</li>
+<li><strong>Escreva um VEX para uma CVE não aplicável.</strong> Escolha uma que exista na sua imagem mas cujo código vulnerável nunca é executado, e marque como <code>not_affected</code> com justificativa.<br><em>O que observar:</em> a diferença entre VEX e ignorar é a justificativa registrada e auditável. Ignorar é decisão invisível; VEX é decisão documentada que outra pessoa pode revisar e contestar.</li>
+<li><strong>Automatize a geração em todo build.</strong> Uma Action que gera o SBOM e envia ao Dependency-Track.<br><em>O que observar:</em> SBOM gerado manualmente envelhece na primeira semana. Só o que é automático continua verdadeiro — e inventário desatualizado é pior que nenhum, porque dá falsa confiança.</li>
+<li><strong>Simule o dia da CVE nova.</strong> Escolha uma biblioteca comum do seu inventário e finja que saiu uma vulnerabilidade crítica nela. Cronometre até ter a lista de serviços afetados.<br><em>O que observar:</em> com o SBOM centralizado, segundos. Sem ele, seria um dia varrendo repositório. Essa medição é o argumento inteiro da prática.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Uma busca por biblioteca devolve todos os projetos que a usam.</li>
+<li>O SBOM está anexado à imagem e recuperável a partir dela.</li>
+<li>Existe pelo menos um VEX com justificativa escrita.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o <code>syft</code> não detectar dependências de aplicação, confirme que o gerenciador deixou rastro na imagem — em build multi-stage bem enxuto, os metadados do pacote às vezes ficam para trás, e aí o SBOM sai incompleto sem avisar. E se o Dependency-Track recusar o arquivo, verifique a versão do formato CycloneDX: ele é exigente com o schema.</p>
+<h4>Vá além</h4>
+<p>Compare CycloneDX com SPDX gerando os dois para a mesma imagem. Depois pergunte-se qual das ferramentas que você usa consome cada um. A resposta costuma decidir o formato mais do que qualquer comparação de recursos — e é assim que se escolhe padrão no mundo real.</p>"""
                 ),
                 "practical_en": (
-                    '<p><strong>Complete hands-on exercise</strong>:</p><ol><li>Generate an SBOM for your image with Syft (<code>syft myapp:dev -o cyclonedx-json &gt; sbom.json</code>).</li><li>Attach it to the registry with <code>cosign attest</code>.</li><li>Cross-check with Trivy: <code>trivy sbom sbom.json</code>.</li><li>Bring up Dependency-Track locally (Docker Compose) and send SBOMs from CI.</li><li>Create a VEX for 1 CVE marking it as <code>not_affected</code> with a justification.</li><li>Configure a GitHub Action that sends the SBOM to Dependency-Track on every build.</li><li>Bonus: generate an SLSA L3 attestation + SBOM as referrers on GHCR.</li></ol>'
+                    """<p><strong>Goal:</strong> answer "which of our services use this library?" in seconds — and mark a CVE as not applicable <em>with justification</em>, rather than simply ignoring it.</p>
+<h4>Before you start</h4>
+<ul>
+<li>One of your images, plus <code>syft</code>, <code>trivy</code>, and <code>cosign</code>.</li>
+<li>Docker Compose to run Dependency-Track locally.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Generate the inventory and read what is inside.</strong> <code>syft YOUR_IMAGE -o cyclonedx-json &gt; sbom.json</code>.<br><em>What to look for:</em> count the components and find one you do not recognize. Nearly every image carries transitive dependencies nobody chose — and you cannot protect what you do not know you have.</li>
+<li><strong>Cross it against vulnerabilities.</strong> <code>trivy sbom sbom.json</code>.<br><em>What to look for:</em> notice the scan now runs over the <em>file</em>, with no image needed. That lets you reassess an old artifact without rebuilding it — and it is what makes SBOMs useful months after the build.</li>
+<li><strong>Bind the SBOM to the artifact.</strong> <code>cosign attest</code>, attaching the inventory to the image in the registry.<br><em>What to look for:</em> the SBOM stops being a loose file someone has to remember to update. It travels with the image and stays in sync with the content it describes.</li>
+<li><strong>Centralize so you can ask questions.</strong> Bring up Dependency-Track and upload the SBOM.<br><em>What to look for:</em> now search for any library in the UI. The answer lists every project using it, in seconds. That is the question nobody can answer without a central inventory — and it comes up every time a serious CVE lands.</li>
+<li><strong>Write a VEX for a non-applicable CVE.</strong> Pick one present in your image whose vulnerable code never executes, and mark it <code>not_affected</code> with justification.<br><em>What to look for:</em> the difference between VEX and ignoring is a recorded, auditable justification. Ignoring is an invisible decision; VEX is a documented one that someone else can review and challenge.</li>
+<li><strong>Automate generation on every build.</strong> An Action that generates the SBOM and uploads it to Dependency-Track.<br><em>What to look for:</em> a manually generated SBOM goes stale within a week. Only what is automatic stays true — and a stale inventory is worse than none, because it creates false confidence.</li>
+<li><strong>Simulate the day a new CVE drops.</strong> Pick a common library from your inventory and pretend a critical vulnerability was just published. Time how long it takes to list the affected services.<br><em>What to look for:</em> with a central SBOM, seconds. Without it, a day of scanning repositories. That measurement is the entire argument for the practice.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>A library search returns every project that uses it.</li>
+<li>The SBOM is attached to the image and retrievable from it.</li>
+<li>There is at least one VEX with a written justification.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If <code>syft</code> detects no application dependencies, confirm the package manager left traces in the image — in a very lean multi-stage build the package metadata sometimes stays behind, and the SBOM comes out incomplete without warning. And if Dependency-Track rejects the file, check the CycloneDX format version: it is strict about the schema.</p>
+<h4>Go further</h4>
+<p>Compare CycloneDX with SPDX by generating both for the same image. Then ask which of your existing tools consumes each one. That answer usually decides the format more than any feature comparison — and it is how standards actually get chosen.</p>"""
                 ),
             },
             "materials": [
@@ -4500,23 +4663,62 @@ starting small, proving measurable value, and expanding from real success
 is the pattern that consistently works in documented success cases.</p>"""
                 ),
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Suba Backstage local: <code>npx @backstage/create-app</code>, "
-                    "rode em dev mode.</li>"
-                    "<li>Configure auth GitHub.</li>"
-                    "<li>Importe 1 repositório como Component (catalog-info.yaml).</li>"
-                    "<li>Crie 1 template Scaffolder que gera repo + workflow básico.</li>"
-                    "<li>Adicione plugin Kubernetes para mostrar pods do seu cluster "
-                    "kind.</li>"
-                    "<li>Adicione TechDocs (Markdown no repo, renderizado).</li>"
-                    "<li>Bonus: instale Crossplane no cluster e crie XRD para "
-                    "<code>Database</code>; Backstage scaffolder dispara claim.</li>"
-                    "<li>Bonus 2: meça time-to-first-deploy com e sem template.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> medir quanto tempo leva hoje para um serviço novo sair do zero ao primeiro deploy — e depois reduzir esse número com um template, que é a única forma honesta de justificar uma plataforma interna.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Node.js 20+ para o Backstage, e um cluster local (kind) para o plugin de Kubernetes.</li>
+<li>Uma conta GitHub com permissão de criar repositório.</li>
+<li>Cerca de três horas. A instalação do Backstage sozinha leva um bom pedaço.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Meça o problema antes de construir a solução.</strong> Cronometre, manualmente, criar um serviço novo do zero: repositório, CI, Dockerfile, manifesto, primeiro deploy.<br><em>O que observar:</em> anote o tempo e, mais importante, quantas <em>decisões</em> você precisou tomar. Plataforma interna existe para eliminar decisão repetida, não para eliminar digitação — é a seção 1.</li>
+<li><strong>Suba o Backstage e conecte ao GitHub.</strong> <code>npx @backstage/create-app</code>, depois configure a autenticação.<br><em>O que observar:</em> repare que o Backstage sozinho não faz nada — ele é uma casca. O valor vem do catálogo e dos templates que você alimenta, e é por isso que instalar não é adotar (seção 3).</li>
+<li><strong>Importe um serviço real para o catálogo.</strong> Um <code>catalog-info.yaml</code> no repositório, com dono e ciclo de vida.<br><em>O que observar:</em> o campo de dono é o mais importante. Responder "quem mantém este serviço?" é a pergunta que mais trava incidente em organização grande, e o catálogo existe principalmente para isso.</li>
+<li><strong>Crie o template que elimina as decisões do passo 1.</strong> Um Scaffolder que gera repositório com CI, Dockerfile e catalog-info já preenchidos.<br><em>O que observar:</em> o template embute as boas práticas por padrão. Quem usa não precisa conhecê-las — que é exatamente a diferença entre documentar uma prática e torná-la o caminho mais fácil.</li>
+<li><strong>Meça de novo e compare.</strong> Cronometre a criação pelo template.<br><em>O que observar:</em> compare com o número do passo 1. Essa diferença, multiplicada pelo número de serviços novos por ano, é o retorno da plataforma — e é o argumento que sustenta o investimento diante de quem paga a conta.</li>
+<li><strong>Traga o contexto de runtime para o portal.</strong> Plugin de Kubernetes mostrando os pods do serviço, mais TechDocs renderizando o Markdown do repositório.<br><em>O que observar:</em> a pessoa deixa de trocar de ferramenta para responder "está rodando?" e "como uso isso?". Reduzir troca de contexto é metade do valor de um portal.</li>
+<li><strong>Reconheça o limite organizacional.</strong> Pergunte-se quem vai manter esse template daqui a seis meses.<br><em>O que observar:</em> plataforma sem time responsável vira mais um sistema abandonado — e aí ela piora a vida de todo mundo. É o ponto da seção 5: a estrutura organizacional decide se a plataforma funciona, não a ferramenta.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você tem os dois tempos: manual e via template.</li>
+<li>Um serviço criado pelo template já nasce com CI e catálogo preenchidos.</li>
+<li>O portal mostra pods e documentação do serviço sem sair dele.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o Backstage falhar no build, confira a versão do Node — ele é exigente e as mensagens de erro raramente apontam isso. E se o catálogo não encontra o <code>catalog-info.yaml</code>, verifique se a integração com o GitHub tem permissão de leitura no repositório: registro manual funciona, mas descoberta automática exige token com escopo.</p>
+<h4>Vá além</h4>
+<p>Instale o Crossplane e faça o template do Scaffolder provisionar um banco via claim (seção 4). A pergunta que fecha o exercício: o desenvolvedor precisa saber o que é um RDS para pedir um banco? Se a resposta for não, você entendeu o que self-service significa — e se for sim, a abstração ainda não está pronta.</p>"""
                 ),
                 "practical_en": (
-                    '<p><strong>Complete hands-on exercise</strong>:</p><ol><li>Bring up Backstage locally: <code>npx @backstage/create-app</code>, run in dev mode.</li><li>Configure GitHub auth.</li><li>Import 1 repository as a Component (catalog-info.yaml).</li><li>Create 1 Scaffolder template that generates a repo + basic workflow.</li><li>Add the Kubernetes plugin to show pods from your kind cluster.</li><li>Add TechDocs (Markdown in the repo, rendered).</li><li>Bonus: install Crossplane on the cluster and create an XRD for <code>Database</code>; the Backstage scaffolder fires a claim.</li><li>Bonus 2: measure time-to-first-deploy with and without the template.</li></ol>'
+                    """<p><strong>Goal:</strong> measure how long it takes today to get a new service from zero to first deploy — then reduce that number with a template, which is the only honest way to justify an internal platform.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Node.js 20+ for Backstage, and a local cluster (kind) for the Kubernetes plugin.</li>
+<li>A GitHub account able to create repositories.</li>
+<li>About three hours. The Backstage install alone eats a good chunk.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Measure the problem before building the solution.</strong> Time yourself creating a new service by hand: repository, CI, Dockerfile, manifest, first deploy.<br><em>What to look for:</em> note the time and, more importantly, how many <em>decisions</em> you had to make. Internal platforms exist to eliminate repeated decisions, not repeated typing — that is section 1.</li>
+<li><strong>Bring up Backstage and connect it to GitHub.</strong> <code>npx @backstage/create-app</code>, then configure authentication.<br><em>What to look for:</em> notice Backstage does nothing on its own — it is a shell. The value comes from the catalog and templates you feed it, which is why installing is not adopting (section 3).</li>
+<li><strong>Import a real service into the catalog.</strong> A <code>catalog-info.yaml</code> in the repository, with owner and lifecycle.<br><em>What to look for:</em> the owner field is the most important one. Answering "who maintains this service?" is the question that stalls incidents most in large organizations, and the catalog exists mainly for that.</li>
+<li><strong>Create the template that removes step 1's decisions.</strong> A Scaffolder that generates a repository with CI, Dockerfile, and catalog-info already filled in.<br><em>What to look for:</em> the template bakes in the good practices. Whoever uses it does not need to know them — exactly the difference between documenting a practice and making it the easiest path.</li>
+<li><strong>Measure again and compare.</strong> Time creation through the template.<br><em>What to look for:</em> compare with step 1's number. That difference, multiplied by new services per year, is the platform's return — and the argument that sustains the investment in front of whoever pays for it.</li>
+<li><strong>Bring runtime context into the portal.</strong> The Kubernetes plugin showing the service's pods, plus TechDocs rendering the repository's Markdown.<br><em>What to look for:</em> people stop switching tools to answer "is it running?" and "how do I use this?". Reducing context switching is half a portal's value.</li>
+<li><strong>Recognize the organizational limit.</strong> Ask who will maintain that template six months from now.<br><em>What to look for:</em> a platform with no owning team becomes one more abandoned system — and then it makes everyone's life worse. That is section 5's point: organizational structure decides whether a platform works, not the tooling.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>You have both timings: manual and via template.</li>
+<li>A service created by the template is born with CI and a filled-in catalog entry.</li>
+<li>The portal shows the service's pods and documentation without leaving it.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If Backstage fails to build, check your Node version — it is picky, and the error messages rarely say so. And if the catalog cannot find <code>catalog-info.yaml</code>, verify the GitHub integration has read access to the repository: manual registration works, but auto-discovery needs a scoped token.</p>
+<h4>Go further</h4>
+<p>Install Crossplane and have the Scaffolder template provision a database through a claim (section 4). The closing question: does the developer need to know what an RDS is in order to ask for a database? If the answer is no, you understood what self-service means — and if it is yes, the abstraction is not ready.</p>"""
                 ),
             },
             "materials": [
@@ -5295,25 +5497,60 @@ exactly for that scenario.</li>
 </ul>"""
                 ),
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Escreva policy OPA Rego que rejeita: bucket S3 público; SG "
-                    "com SSH 0.0.0.0/0; RDS sem encryption.</li>"
-                    "<li>Teste com <code>opa test</code> (3-5 unit tests).</li>"
-                    "<li>Configure Conftest no GitHub Actions: <code>terraform plan "
-                    "-out=tfplan && terraform show -json tfplan | conftest test -</code>.</li>"
-                    "<li>Em K8s local (kind), instale Kyverno; crie ClusterPolicy "
-                    "exigindo runAsNonRoot e cap drop ALL.</li>"
-                    "<li>Tente subir Pod violando, veja rejeição.</li>"
-                    "<li>Crie ClusterPolicy de mutate que injeta securityContext "
-                    "padrão se não tiver.</li>"
-                    "<li>Bonus: AWS SCP que bloqueia criação de bucket sem TLS via "
-                    "Terraform.</li>"
-                    "<li>Bonus 2: Cloud Custodian rule que para EC2 sem tag Owner.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> escrever a mesma regra uma vez e aplicá-la em dois pontos diferentes do ciclo — no pull request e no cluster — e entender por que só um dos dois nunca basta.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li><code>opa</code> e <code>conftest</code> instalados, um projeto Terraform e um cluster local (kind).</li>
+<li>Cerca de duas horas e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Escreva a regra em Rego e teste antes de aplicar.</strong> Uma policy que rejeita bucket S3 público, security group com SSH aberto e RDS sem criptografia. Depois <code>opa test</code> com casos que passam e casos que falham.<br><em>O que observar:</em> escrever teste para a política parece exagero até a primeira política que não pegava nada por causa de um caminho errado no JSON. Policy sem teste é policy que finge proteger (seção 2).</li>
+<li><strong>Aplique no plan, antes de existir infraestrutura.</strong> <code>terraform plan -out=tfplan &amp;&amp; terraform show -json tfplan | conftest test -</code>.<br><em>O que observar:</em> a violação é pega <em>antes</em> do apply, no pull request. Custo de corrigir aqui: alguns minutos. Depois do apply: um recurso público exposto e uma conversa desconfortável (seção 3).</li>
+<li><strong>Aplique a mesma ideia no cluster.</strong> Kyverno com uma ClusterPolicy exigindo <code>runAsNonRoot</code> e <code>capabilities.drop: [ALL]</code>.<br><em>O que observar:</em> compare a legibilidade com o Rego do passo 1. O Kyverno usa YAML e não exige linguagem nova; o Rego é mais expressivo e serve fora do Kubernetes. É a escolha da seção 4, e ela é sobre o time, não sobre a ferramenta.</li>
+<li><strong>Tente violar e leia a rejeição.</strong> Suba um pod sem <code>securityContext</code>.<br><em>O que observar:</em> a mensagem vem da sua política. Escreva-a para quem vai lê-la sob pressão: dizer o que fazer é mais útil que dizer o que foi violado.</li>
+<li><strong>Corrija automaticamente em vez de só recusar.</strong> Uma policy de <code>mutate</code> que injeta o <code>securityContext</code> padrão quando ele não existe.<br><em>O que observar:</em> o pod passa a subir seguro sem ninguém alterar YAML. Mutação é o que permite elevar o padrão de segurança sem quebrar dezenas de manifestos legados de uma vez.</li>
+<li><strong>Descubra por que um ponto só não basta.</strong> Com a policy do cluster ativa, crie um bucket público direto pelo console da AWS.<br><em>O que observar:</em> o Kyverno não vê nada — ele só enxerga o cluster. E o Conftest não vê recurso criado fora do Terraform. Por isso a seção 1 fala em aplicar a mesma regra em vários pontos: cada um cobre um caminho diferente.</li>
+<li><strong>Feche o caminho que sobrou.</strong> Uma SCP ou regra de detecção na cloud para o recurso criado à mão.<br><em>O que observar:</em> agora os três caminhos estão cobertos: código, admissão e conta. Cobertura de política é sobre <em>caminhos de entrada</em>, não sobre número de regras.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li><code>opa test</code> passa com casos positivos e negativos.</li>
+<li>Um PR com recurso inseguro é reprovado pelo Conftest.</li>
+<li>Um pod sem <code>securityContext</code> é corrigido ou rejeitado pelo Kyverno.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se a regra Rego nunca casa, imprima o JSON do plan e confira o caminho: a estrutura do <code>terraform show -json</code> é aninhada e diferente do HCL, e esse é o erro mais comum. E se o Kyverno aceitar um pod que deveria rejeitar, confira o <code>match</code>: aplicar a <code>Pod</code> não pega o <code>Deployment</code>, que cria o pod por outro caminho.</p>
+<h4>Vá além</h4>
+<p>Pegue uma das suas políticas e calcule quantos recursos existentes ela reprovaria hoje. Se for um número grande, comece em modo auditoria — o mesmo raciocínio do tópico de Admission Controllers. Política que bloqueia metade da empresa no primeiro dia é desligada no segundo.</p>"""
                 ),
                 "practical_en": (
-                    '<p><strong>Complete hands-on exercise</strong>:</p><ol><li>Write an OPA Rego policy that rejects: a public S3 bucket; an SG with SSH 0.0.0.0/0; RDS without encryption.</li><li>Test with <code>opa test</code> (3–5 unit tests).</li><li>Configure Conftest in GitHub Actions: <code>terraform plan -out=tfplan && terraform show -json tfplan | conftest test -</code>.</li><li>On local K8s (kind), install Kyverno; create a ClusterPolicy requiring runAsNonRoot and cap drop ALL.</li><li>Try to start a violating Pod and see the rejection.</li><li>Create a mutating ClusterPolicy that injects a default securityContext if missing.</li><li>Bonus: an AWS SCP that blocks creating a bucket without TLS via Terraform.</li><li>Bonus 2: a Cloud Custodian rule that stops EC2 without an Owner tag.</li></ol>'
+                    """<p><strong>Goal:</strong> write the same rule once and enforce it at two different points of the lifecycle — in the pull request and in the cluster — and understand why either one alone is never enough.</p>
+<h4>Before you start</h4>
+<ul>
+<li><code>opa</code> and <code>conftest</code> installed, a Terraform project, and a local cluster (kind).</li>
+<li>About two and a half hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Write the rule in Rego and test it before applying.</strong> A policy rejecting public S3 buckets, security groups with SSH open, and unencrypted RDS. Then <code>opa test</code> with passing and failing cases.<br><em>What to look for:</em> writing tests for a policy feels excessive until the first policy that caught nothing because of a wrong JSON path. An untested policy is a policy that pretends to protect (section 2).</li>
+<li><strong>Enforce on the plan, before infrastructure exists.</strong> <code>terraform plan -out=tfplan &amp;&amp; terraform show -json tfplan | conftest test -</code>.<br><em>What to look for:</em> the violation is caught <em>before</em> apply, in the pull request. Cost to fix here: a few minutes. After apply: an exposed public resource and an uncomfortable conversation (section 3).</li>
+<li><strong>Apply the same idea in the cluster.</strong> Kyverno with a ClusterPolicy requiring <code>runAsNonRoot</code> and <code>capabilities.drop: [ALL]</code>.<br><em>What to look for:</em> compare its readability with the Rego from step 1. Kyverno uses YAML and needs no new language; Rego is more expressive and works outside Kubernetes. That is section 4's choice, and it is about the team, not the tool.</li>
+<li><strong>Try to violate it and read the rejection.</strong> Deploy a pod with no <code>securityContext</code>.<br><em>What to look for:</em> the message comes from your policy. Write it for whoever reads it under pressure: saying what to do is more useful than saying what was violated.</li>
+<li><strong>Fix automatically instead of only refusing.</strong> A <code>mutate</code> policy injecting the default <code>securityContext</code> when it is absent.<br><em>What to look for:</em> pods now start secure without anyone editing YAML. Mutation is what lets you raise the security bar without breaking dozens of legacy manifests at once.</li>
+<li><strong>Discover why one point is not enough.</strong> With the cluster policy active, create a public bucket directly in the AWS console.<br><em>What to look for:</em> Kyverno sees nothing — it only sees the cluster. And Conftest sees nothing created outside Terraform. That is why section 1 talks about enforcing the same rule at several points: each covers a different path.</li>
+<li><strong>Close the remaining path.</strong> An SCP or a cloud detection rule for resources created by hand.<br><em>What to look for:</em> now all three paths are covered: code, admission, and account. Policy coverage is about <em>entry paths</em>, not about rule count.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li><code>opa test</code> passes with both positive and negative cases.</li>
+<li>A PR with an insecure resource is rejected by Conftest.</li>
+<li>A pod without <code>securityContext</code> is either fixed or rejected by Kyverno.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If a Rego rule never matches, print the plan JSON and check the path: the structure of <code>terraform show -json</code> is nested and differs from HCL, and that is the most common mistake. And if Kyverno accepts a pod it should reject, check the <code>match</code>: targeting <code>Pod</code> does not catch a <code>Deployment</code>, which creates the pod through another path.</p>
+<h4>Go further</h4>
+<p>Take one of your policies and count how many existing resources it would reject today. If the number is large, start in audit mode — the same reasoning as the Admission Controllers topic. A policy that blocks half the company on day one is switched off on day two.</p>"""
                 ),
             },
             "materials": [
@@ -5964,25 +6201,62 @@ sees a different slice of the problem (section 1).</li>
 </ul>"""
                 ),
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Suba app vulnerável intencionalmente (ex.: OWASP Juice Shop "
-                    "ou DVWA) em Docker.</li>"
-                    "<li>Rode <code>zap-baseline.py -t http://localhost:3000</code>.</li>"
-                    "<li>Configure auth context e rode novamente cobrindo rotas "
-                    "autenticadas.</li>"
-                    "<li>Rode <code>nuclei</code> com templates CVE + exposures.</li>"
-                    "<li>Em CI (GitHub Actions), suba app efêmero em service container "
-                    "e rode ZAP baseline; falhe build em High.</li>"
-                    "<li>Configure headers de segurança no servidor; re-rode DAST e "
-                    "veja achados sumirem.</li>"
-                    "<li>Verifique sua app real no Mozilla Observatory.</li>"
-                    "<li>Bonus: faça PortSwigger Academy (gratuito) e ataque labs "
-                    "manualmente.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> atacar uma aplicação de propósito, ver os achados sumirem depois de uma correção, e entender o ponto cego que faz DAST precisar do SAST em vez de substituí-lo.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Docker para subir uma aplicação intencionalmente vulnerável (OWASP Juice Shop é a mais didática).</li>
+<li>OWASP ZAP e <code>nuclei</code>.</li>
+<li>Cerca de duas horas e meia. Só ataque alvo que você controla.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Suba o alvo e escaneie sem autenticação.</strong> Juice Shop em container, depois <code>zap-baseline.py -t http://localhost:3000</code>.<br><em>O que observar:</em> os achados são reais e verificáveis — o DAST testa a aplicação rodando, não o código. Compare com o SAST: lá você vê o trecho suspeito; aqui você vê o comportamento confirmado.</li>
+<li><strong>Descubra o ponto cego.</strong> Compare quantas rotas o scan visitou com quantas a aplicação tem.<br><em>O que observar:</em> sem autenticação, a maior parte da aplicação é invisível para o scanner — e normalmente é justamente ali que estão as funcionalidades sensíveis. Esse é o limite mais importante do DAST.</li>
+<li><strong>Configure o contexto autenticado e rode de novo.</strong> Sessão autenticada no ZAP, cobrindo as rotas internas.<br><em>O que observar:</em> a contagem de achados sobe bastante. A diferença entre as duas execuções é o tamanho do ponto cego que você acabou de eliminar — e é o passo que quase todo mundo pula.</li>
+<li><strong>Some uma ferramenta com foco diferente.</strong> <code>nuclei</code> com templates de CVE e de exposição.<br><em>O que observar:</em> o nuclei procura padrões conhecidos (arquivo exposto, versão vulnerável); o ZAP explora comportamento. A sobreposição é pequena, e é por isso que as duas convivem.</li>
+<li><strong>Corrija e prove a correção.</strong> Adicione headers de segurança no servidor e rode o mesmo scan.<br><em>O que observar:</em> um grupo de achados desaparece. Ter o antes e o depois, com o mesmo comando, é o que transforma segurança em algo mensurável em vez de opinião.</li>
+<li><strong>Coloque no pipeline sem travar todo mundo.</strong> Uma Action que sobe a aplicação num service container e roda o baseline, falhando só em High.<br><em>O que observar:</em> o baseline é rápido de propósito. O scan completo leva tempo demais para cada PR — rode o completo em agenda noturna e o baseline no PR (é a mesma lógica de camadas do linter).</li>
+<li><strong>Entenda o que o DAST nunca vai achar.</strong> Pense numa falha de lógica de negócio, como o usuário A conseguir ler o pedido do usuário B trocando um ID.<br><em>O que observar:</em> o scanner não sabe qual ID pertence a quem — ele não conhece a sua regra de negócio. É por isso que BOLA lidera o OWASP API Top 10 e continua invisível para ferramenta automática.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você tem as contagens de achados com e sem autenticação.</li>
+<li>Um grupo de achados sumiu depois de uma correção sua.</li>
+<li>O pipeline roda o baseline e falha em High.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o ZAP encontrar pouquíssimas rotas, provavelmente a aplicação é renderizada no cliente — use o spider com AJAX ou forneça um arquivo OpenAPI para guiar o scan. E se o scan na CI der timeout, limite o escopo às rotas mais importantes: baseline que nunca termina é baseline que será removido do pipeline.</p>
+<h4>Vá além</h4>
+<p>Faça alguns laboratórios do PortSwigger Academy manualmente e depois tente reproduzir o mesmo ataque com o scanner. A diferença entre o que você conseguiu à mão e o que a ferramenta achou é, exatamente, o espaço onde pentest humano continua insubstituível.</p>"""
                 ),
                 "practical_en": (
-                    '<p><strong>Complete hands-on exercise</strong>:</p><ol><li>Bring up an intentionally vulnerable app (e.g. OWASP Juice Shop or DVWA) in Docker.</li><li>Run <code>zap-baseline.py -t http://localhost:3000</code>.</li><li>Configure an auth context and run again covering authenticated routes.</li><li>Run <code>nuclei</code> with CVE + exposure templates.</li><li>In CI (GitHub Actions), bring up an ephemeral app as a service container and run ZAP baseline; fail the build on High.</li><li>Configure security headers on the server; re-run DAST and watch findings disappear.</li><li>Check your real app on Mozilla Observatory.</li><li>Bonus: do PortSwigger Academy (free) and attack labs manually.</li></ol>'
+                    """<p><strong>Goal:</strong> attack an application on purpose, watch findings disappear after a fix, and understand the blind spot that makes DAST need SAST rather than replace it.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Docker to run a deliberately vulnerable application (OWASP Juice Shop is the most instructive).</li>
+<li>OWASP ZAP and <code>nuclei</code>.</li>
+<li>About two and a half hours. Only attack targets you control.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Start the target and scan unauthenticated.</strong> Juice Shop in a container, then <code>zap-baseline.py -t http://localhost:3000</code>.<br><em>What to look for:</em> the findings are real and verifiable — DAST tests the running application, not the code. Compare with SAST: there you see the suspicious snippet; here you see confirmed behavior.</li>
+<li><strong>Discover the blind spot.</strong> Compare how many routes the scan visited with how many the application has.<br><em>What to look for:</em> without authentication, most of the application is invisible to the scanner — and that is usually where the sensitive functionality lives. This is DAST's most important limit.</li>
+<li><strong>Configure the authenticated context and rerun.</strong> An authenticated session in ZAP, covering internal routes.<br><em>What to look for:</em> the finding count rises sharply. The difference between the two runs is the size of the blind spot you just removed — and it is the step almost everyone skips.</li>
+<li><strong>Add a tool with a different focus.</strong> <code>nuclei</code> with CVE and exposure templates.<br><em>What to look for:</em> nuclei looks for known patterns (exposed files, vulnerable versions); ZAP explores behavior. The overlap is small, which is why both coexist.</li>
+<li><strong>Fix and prove the fix.</strong> Add security headers on the server and rerun the same scan.<br><em>What to look for:</em> a group of findings disappears. Having a before and after from the same command is what turns security into something measurable instead of an opinion.</li>
+<li><strong>Put it in the pipeline without blocking everyone.</strong> An Action that starts the app in a service container and runs the baseline, failing only on High.<br><em>What to look for:</em> the baseline is deliberately fast. A full scan takes far too long for every PR — run the full one on a nightly schedule and the baseline on PRs (the same layering logic as linting).</li>
+<li><strong>Understand what DAST will never find.</strong> Think of a business logic flaw, like user A reading user B's order by changing an ID.<br><em>What to look for:</em> the scanner does not know which ID belongs to whom — it does not know your business rules. That is why BOLA leads the OWASP API Top 10 and stays invisible to automated tools.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>You have finding counts with and without authentication.</li>
+<li>A group of findings disappeared after a fix of yours.</li>
+<li>The pipeline runs the baseline and fails on High.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If ZAP finds very few routes, the application is probably client-rendered — use the AJAX spider or supply an OpenAPI file to guide the scan. And if the CI scan times out, narrow the scope to the most important routes: a baseline that never finishes is a baseline that gets removed from the pipeline.</p>
+<h4>Go further</h4>
+<p>Work through a few PortSwigger Academy labs by hand, then try reproducing the same attack with the scanner. The gap between what you achieved manually and what the tool found is exactly the space where human pentesting remains irreplaceable.</p>"""
                 ),
             },
             "materials": [
@@ -6811,25 +7085,62 @@ configuration can still work around.</li>
 </ul>"""
                 ),
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Implemente OAuth 2.0 Authorization Code + PKCE em FastAPI/"
-                    "Express (use Authlib/passport).</li>"
-                    "<li>Valide JWT corretamente: iss, aud, exp, signature via JWKS.</li>"
-                    "<li>Implemente BOLA-resistant: cada endpoint checa "
-                    "<code>resource.owner == user.id</code>.</li>"
-                    "<li>Adicione rate limit Redis sliding window por user.</li>"
-                    "<li>Use Pydantic/Zod para validar input com schemas.</li>"
-                    "<li>Configure response_model para evitar excessive data exposure.</li>"
-                    "<li>Implemente webhook receiver com HMAC verification.</li>"
-                    "<li>Adicione headers de segurança (CSP, HSTS) e teste com "
-                    "Mozilla Observatory.</li>"
-                    "<li>Carga: <code>k6 run script.js</code> simula burst, veja 429.</li>"
-                    "<li>Bonus: mTLS entre 2 microsserviços com Linkerd local.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> explorar um BOLA na sua própria API — trocando um ID e lendo o dado de outra pessoa — e depois fechar a falha que lidera o OWASP API Top 10 justamente por ser invisível para ferramenta automática.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma API sua em FastAPI ou Express, com pelo menos dois usuários e um recurso que pertence a cada um.</li>
+<li>Redis para o rate limit e <code>k6</code> para o teste de carga.</li>
+<li>Cerca de três horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Explore o BOLA antes de corrigir.</strong> Autentique como usuário A e chame <code>GET /orders/{id}</code> com o ID de um pedido do usuário B.<br><em>O que observar:</em> se vier 200, você acabou de ler dado alheio <em>estando corretamente autenticado</em>. Autenticação responde "quem é você"; autorização responde "isso é seu". Confundir as duas é a falha número 1 da seção 2 — e nenhum scanner acha, porque ele não sabe de quem é o pedido.</li>
+<li><strong>Corrija no lugar certo.</strong> Em cada endpoint que recebe ID, verifique <code>recurso.dono == usuario.id</code> antes de devolver.<br><em>O que observar:</em> repita o ataque: 404 ou 403. Repare que a checagem precisa estar em <em>todo</em> endpoint — uma rota esquecida basta. É por isso que essa falha é tão comum: ela exige disciplina em cada ponto, não uma correção central.</li>
+<li><strong>Valide o token de verdade.</strong> Verifique assinatura via JWKS, mais <code>iss</code>, <code>aud</code> e <code>exp</code>.<br><em>O que observar:</em> teste com um token expirado e com um assinado por outra autoridade. Decodificar um JWT não é validar — e biblioteca que só decodifica, usada sem verificação, é um vetor de autenticação completo (seção 1).</li>
+<li><strong>Deixe o schema rejeitar antes do seu código.</strong> Pydantic ou Zod na entrada, e <code>response_model</code> na saída.<br><em>O que observar:</em> mande um campo a mais no corpo e veja ser rejeitado. Depois confira a resposta: o <code>response_model</code> impede que campo interno vaze por acidente — é a outra metade do problema, o excesso de exposição.</li>
+<li><strong>Feche o mass assignment.</strong> Tente enviar <code>{"is_admin": true}</code> num endpoint de atualização de perfil.<br><em>O que observar:</em> se o campo for aceito, o corpo da requisição está virando parâmetro direto do ORM. A correção é lista explícita de campos permitidos — nunca repassar o corpo inteiro (seção 5).</li>
+<li><strong>Aplique rate limit por usuário e prove com carga.</strong> Janela deslizante no Redis, depois <code>k6</code> simulando rajada.<br><em>O que observar:</em> o 429 aparece. Mas verifique também se você está enviando <code>Retry-After</code>: sem ele, o cliente bem-intencionado tenta de novo imediatamente e piora a situação (seção 4).</li>
+<li><strong>Verifique webhook com comparação em tempo constante.</strong> HMAC no receptor, comparando com <code>hmac.compare_digest</code> e não com <code>==</code>.<br><em>O que observar:</em> o <code>==</code> sai mais cedo no primeiro byte diferente, e essa diferença de tempo é mensurável em rede. É uma falha real de segurança escondida num operador que parece inofensivo.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O ataque de troca de ID falha em todos os endpoints que recebem ID.</li>
+<li>Token expirado ou de outro emissor é recusado.</li>
+<li><code>k6</code> em rajada recebe 429 com <code>Retry-After</code>.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o JWT for aceito mesmo expirado, provavelmente a biblioteca está só decodificando — procure a função que verifica, não a que lê. E se o rate limit não funcionar atrás de proxy, você está limitando pelo IP do proxy: use a identidade do usuário, ou o <code>X-Forwarded-For</code> corretamente configurado, como no tópico de Web Servers.</p>
+<h4>Vá além</h4>
+<p>Suba dois microsserviços com mTLS via Linkerd local. Depois responda: com mTLS, ainda é preciso validar o JWT no serviço de trás? A resposta é sim — mTLS prova qual <em>serviço</em> está chamando, não qual <em>usuário</em>. Confundir os dois níveis de identidade é um erro de arquitetura caro.</p>"""
                 ),
                 "practical_en": (
-                    '<p><strong>Complete hands-on exercise</strong>:</p><ol><li>Implement OAuth 2.0 Authorization Code + PKCE in FastAPI/Express (use Authlib/passport).</li><li>Validate JWTs correctly: iss, aud, exp, signature via JWKS.</li><li>Implement BOLA-resistant checks: every endpoint verifies <code>resource.owner == user.id</code>.</li><li>Add a Redis sliding-window rate limit per user.</li><li>Use Pydantic/Zod to validate input with schemas.</li><li>Configure response_model to avoid excessive data exposure.</li><li>Implement a webhook receiver with HMAC verification.</li><li>Add security headers (CSP, HSTS) and test with Mozilla Observatory.</li><li>Load: <code>k6 run script.js</code> simulates a burst, watch for 429.</li><li>Bonus: mTLS between 2 microservices with local Linkerd.</li></ol>'
+                    """<p><strong>Goal:</strong> exploit a BOLA in your own API — swapping an ID and reading someone else's data — then close the flaw that leads the OWASP API Top 10 precisely because automated tools cannot see it.</p>
+<h4>Before you start</h4>
+<ul>
+<li>An API of yours in FastAPI or Express, with at least two users and a resource owned by each.</li>
+<li>Redis for rate limiting and <code>k6</code> for load testing.</li>
+<li>About three hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Exploit the BOLA before fixing it.</strong> Authenticate as user A and call <code>GET /orders/{id}</code> with an order ID belonging to user B.<br><em>What to look for:</em> if you get a 200, you just read someone else's data <em>while correctly authenticated</em>. Authentication answers "who are you"; authorization answers "is this yours". Conflating them is failure number one in section 2 — and no scanner finds it, because it does not know whose order that is.</li>
+<li><strong>Fix it in the right place.</strong> In every endpoint that takes an ID, verify <code>resource.owner == user.id</code> before returning.<br><em>What to look for:</em> repeat the attack: 404 or 403. Notice the check must exist in <em>every</em> endpoint — one forgotten route is enough. That is why this flaw is so common: it demands discipline at each point, not one central fix.</li>
+<li><strong>Validate the token properly.</strong> Verify the signature via JWKS, plus <code>iss</code>, <code>aud</code>, and <code>exp</code>.<br><em>What to look for:</em> test with an expired token and one signed by another authority. Decoding a JWT is not validating it — and a library that only decodes, used without verification, is a complete authentication bypass (section 1).</li>
+<li><strong>Let the schema reject before your code runs.</strong> Pydantic or Zod on input, and <code>response_model</code> on output.<br><em>What to look for:</em> send an extra field in the body and watch it be rejected. Then check the response: <code>response_model</code> prevents internal fields from leaking by accident — the other half of the problem, excessive exposure.</li>
+<li><strong>Close mass assignment.</strong> Try sending <code>{"is_admin": true}</code> to a profile update endpoint.<br><em>What to look for:</em> if the field is accepted, the request body is being passed straight into the ORM. The fix is an explicit allow-list of fields — never forward the whole body (section 5).</li>
+<li><strong>Apply per-user rate limiting and prove it under load.</strong> A Redis sliding window, then <code>k6</code> simulating a burst.<br><em>What to look for:</em> the 429 appears. But also check you are sending <code>Retry-After</code>: without it, a well-behaved client retries immediately and makes things worse (section 4).</li>
+<li><strong>Verify webhooks with constant-time comparison.</strong> HMAC on the receiver, compared with <code>hmac.compare_digest</code> rather than <code>==</code>.<br><em>What to look for:</em> <code>==</code> returns early at the first differing byte, and that timing difference is measurable over the network. A real security flaw hiding inside a harmless-looking operator.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The ID-swapping attack fails on every endpoint that takes an ID.</li>
+<li>An expired token, or one from another issuer, is refused.</li>
+<li>A <code>k6</code> burst receives 429 with <code>Retry-After</code>.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If an expired JWT is accepted, the library is probably only decoding — look for the function that verifies, not the one that reads. And if rate limiting fails behind a proxy, you are limiting by the proxy's IP: use the user identity, or a correctly configured <code>X-Forwarded-For</code>, as in the Web Servers topic.</p>
+<h4>Go further</h4>
+<p>Run two microservices with mTLS via a local Linkerd. Then answer: with mTLS in place, do you still need to validate the JWT in the downstream service? The answer is yes — mTLS proves which <em>service</em> is calling, not which <em>user</em>. Conflating those two identity levels is an expensive architectural mistake.</p>"""
                 ),
             },
             "materials": [
@@ -7474,25 +7785,60 @@ API Security lesson.</li>
 </ul>"""
                 ),
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Em Docker Compose, suba Loki + Promtail + Grafana.</li>"
-                    "<li>Configure sua app para emitir JSON estruturado em stdout "
-                    "(structlog/pino/logback-json).</li>"
-                    "<li>Adicione campos: ts, level, service, trace_id, request_id, "
-                    "user_id_hash.</li>"
-                    "<li>Configure Promtail para coletar dos containers Docker.</li>"
-                    "<li>No Grafana, configure datasource Loki e busque "
-                    "<code>{service=\"api\"} | json | level=\"error\"</code>.</li>"
-                    "<li>Implemente sanitização de PII (CPF, email) em VRL/Vector.</li>"
-                    "<li>Adicione tracing com OpenTelemetry; correlacione log e trace "
-                    "via trace_id.</li>"
-                    "<li>Configure retenção: 7d hot.</li>"
-                    "<li>Bonus: alertas em spike de erro 5xx via Grafana → Slack.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> fazer o log responder a perguntas em vez de só existir — e descobrir, medindo, por que o Loki é barato e o que essa escolha custa.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Docker Compose e uma aplicação HTTP que você possa instrumentar.</li>
+<li>Cerca de duas horas e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Compare texto livre com JSON respondendo a mesma pergunta.</strong> Emita as duas formas e tente contar erros de um usuário específico na última hora.<br><em>O que observar:</em> no texto livre você precisa de regex frágil que quebra quando alguém muda a mensagem; no JSON é um filtro por campo. É a seção 2, e a diferença cresce com o volume.</li>
+<li><strong>Defina os campos antes de coletar.</strong> <code>ts</code>, <code>level</code>, <code>service</code>, <code>trace_id</code>, <code>request_id</code> e um hash do usuário.<br><em>O que observar:</em> repare no <em>hash</em> do usuário, não no identificador em claro. Log costuma ter retenção longa e acesso mais amplo que o banco — dado pessoal ali é risco de conformidade, como no tópico de Log Management.</li>
+<li><strong>Colete com agente dedicado, não a partir da aplicação.</strong> Promtail lendo os logs dos containers, com a aplicação apenas escrevendo em stdout.<br><em>O que observar:</em> a aplicação não sabe para onde o log vai. Trocar Loki por outro backend não exige mudar uma linha do código — é a separação de responsabilidade da seção 3.</li>
+<li><strong>Consulte e entenda como o Loki indexa.</strong> <code>{service="api"} | json | level="error"</code>.<br><em>O que observar:</em> o que está entre chaves é <em>label</em> (indexado); o resto é varredura no conteúdo. Por isso ele é barato — e por isso label com alta cardinalidade, como <code>user_id</code>, destrói o desempenho (seção 4).</li>
+<li><strong>Prove o custo da cardinalidade.</strong> Adicione <code>request_id</code> como label e observe o comportamento.<br><em>O que observar:</em> cada valor único cria um stream novo. A ingestão degrada rapidamente. A regra prática: o que tem poucos valores vira label, o que tem muitos fica no conteúdo do JSON.</li>
+<li><strong>Sanitize o dado pessoal no caminho.</strong> Configure uma transformação (VRL no Vector, ou pipeline no Promtail) que mascara e-mail e documento antes de armazenar.<br><em>O que observar:</em> sanitizar na coleta protege inclusive contra o log que alguém escreveu errado na aplicação. É uma rede de segurança que não depende de todo desenvolvedor lembrar.</li>
+<li><strong>Correlacione log e trace.</strong> Instrumente com OpenTelemetry e garanta que o <code>trace_id</code> aparece nas duas fontes.<br><em>O que observar:</em> do log de erro você chega ao trace em um clique. Sem esse campo em comum, log e trace são dois sistemas separados que falam do mesmo evento sem se conhecer.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Uma consulta devolve os erros de um serviço filtrados por nível.</li>
+<li>Nenhum dado pessoal em claro chega ao armazenamento.</li>
+<li>Um <code>trace_id</code> leva do log ao trace correspondente.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o Promtail não envia nada, confira o caminho dos arquivos em <code>scrape_configs</code> e as permissões — ler log de container exige acesso ao diretório do Docker. E se o Grafana não decompõe os campos, falta o estágio <code>| json</code> na consulta: sem ele o Loki trata a linha como texto puro.</p>
+<h4>Vá além</h4>
+<p>Configure retenção em camadas: alguns dias em acesso rápido, arquivamento depois (seção 5). Calcule o custo mensal nos dois modelos para o volume que a sua aplicação gera. Retenção uniforme é cara e, pior, quase sempre curta demais justamente para o log de auditoria, que é o que alguém vai pedir daqui a um ano.</p>"""
                 ),
                 "practical_en": (
-                    '<p><strong>Complete hands-on exercise</strong>:</p><ol><li>In Docker Compose, bring up Loki + Promtail + Grafana.</li><li>Configure your app to emit structured JSON on stdout (structlog/pino/logback-json).</li><li>Add fields: ts, level, service, trace_id, request_id, user_id_hash.</li><li>Configure Promtail to collect from Docker containers.</li><li>In Grafana, configure the Loki datasource and search <code>{service="api"} | json | level="error"</code>.</li><li>Implement PII sanitization (CPF, email) in VRL/Vector.</li><li>Add tracing with OpenTelemetry; correlate log and trace via trace_id.</li><li>Configure retention: 7d hot.</li><li>Bonus: alerts on a 5xx error spike via Grafana → Slack.</li></ol>'
+                    """<p><strong>Goal:</strong> make logs answer questions instead of merely existing — and discover, by measuring, why Loki is cheap and what that choice costs.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Docker Compose and an HTTP application you can instrument.</li>
+<li>About two and a half hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Compare free text with JSON answering the same question.</strong> Emit both forms and try counting one specific user's errors in the last hour.<br><em>What to look for:</em> with free text you need brittle regex that breaks when someone edits the message; with JSON it is a field filter. That is section 2, and the gap widens with volume.</li>
+<li><strong>Define the fields before collecting anything.</strong> <code>ts</code>, <code>level</code>, <code>service</code>, <code>trace_id</code>, <code>request_id</code>, and a hash of the user.<br><em>What to look for:</em> note the <em>hash</em> of the user, not the plain identifier. Logs usually have long retention and broader access than the database — personal data there is a compliance risk, as in the Log Management topic.</li>
+<li><strong>Collect with a dedicated agent, not from the application.</strong> Promtail reading container logs, with the application only writing to stdout.<br><em>What to look for:</em> the application does not know where logs go. Swapping Loki for another backend requires no code change — the separation of concerns from section 3.</li>
+<li><strong>Query it and understand how Loki indexes.</strong> <code>{service="api"} | json | level="error"</code>.<br><em>What to look for:</em> what sits inside the braces is a <em>label</em> (indexed); the rest is a content scan. That is why it is cheap — and why a high-cardinality label like <code>user_id</code> destroys performance (section 4).</li>
+<li><strong>Prove the cost of cardinality.</strong> Add <code>request_id</code> as a label and watch the behavior.<br><em>What to look for:</em> every unique value creates a new stream. Ingestion degrades fast. The rule of thumb: few distinct values become labels, many distinct values stay inside the JSON content.</li>
+<li><strong>Sanitize personal data in transit.</strong> Configure a transform (VRL in Vector, or a Promtail pipeline) that masks emails and national IDs before storage.<br><em>What to look for:</em> sanitizing at collection also protects against the log some developer wrote badly in the application. It is a safety net that does not depend on everyone remembering.</li>
+<li><strong>Correlate logs with traces.</strong> Instrument with OpenTelemetry and make sure <code>trace_id</code> appears in both sources.<br><em>What to look for:</em> from an error log you reach the trace in one click. Without that shared field, logs and traces are two separate systems describing the same event without knowing each other.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>A query returns a service's errors filtered by level.</li>
+<li>No plaintext personal data reaches storage.</li>
+<li>A <code>trace_id</code> takes you from the log to the matching trace.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If Promtail ships nothing, check the file paths in <code>scrape_configs</code> and the permissions — reading container logs needs access to Docker's directory. And if Grafana does not break out the fields, the query is missing the <code>| json</code> stage: without it Loki treats the line as plain text.</p>
+<h4>Go further</h4>
+<p>Configure tiered retention: a few days in fast access, archival afterwards (section 5). Compute the monthly cost of both models at the volume your application produces. Uniform retention is expensive and, worse, almost always too short for the audit logs somebody will ask for a year from now.</p>"""
                 ),
             },
             "materials": [
