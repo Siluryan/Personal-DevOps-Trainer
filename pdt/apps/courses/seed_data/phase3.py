@@ -654,50 +654,62 @@ no traceability.'</li>
 Configure branch protection to make that impossible, even for
 admins.</p>""",
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Configure SSH signing key local + GitHub. Verifique commits aparecem "
-                    "como 'Verified'.</li>"
-                    "<li>Em um repo pessoal, configure branch protection em <code>main</code>: "
-                    "PR obrigatório, 1 review, status checks (CI básico), bloquear force-push, "
-                    "linear history, signed commits.</li>"
-                    "<li>Crie um PR com 5 commits: 'wip', 'fix typo', 'feat: real', 'wip 2', "
-                    "'fix lint'. Faça <code>git rebase -i HEAD~5</code> para squashar/reordenar "
-                    "tornando 1 ou 2 commits semânticos.</li>"
-                    "<li>Push -force-with-lease no branch (não em main). Verifique que main "
-                    "está protegida, tente <code>git push -f origin main</code> e veja a "
-                    "rejeição.</li>"
-                    "<li>Mergeie via squash. Confira histórico em main: "
-                    "<code>git log --oneline --graph --all</code>.</li>"
-                    "<li>Simule incidente: faça commit ruim em main local, depois recupere "
-                    "via <code>reflog</code> sem perder dado.</li>"
-                    "<li>Bonus: configure <code>commitlint</code> + Husky para validar "
-                    "Conventional Commits localmente; <code>release-please</code> para "
-                    "gerar changelog/versionamento automático no GitHub Actions.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> destruir o histórico local de propósito e recuperá-lo inteiro — saindo com a convicção prática de que no Git quase nada se perde, e sabendo exatamente qual comando usar quando o pânico bater.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um repositório pessoal no GitHub que você possa estragar à vontade.</li>
+<li>Git 2.34+ (a assinatura por chave SSH exige essa versão).</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Assine seus commits com a chave SSH que você já tem.</strong> <code>git config gpg.format ssh</code>, aponte <code>user.signingkey</code> e ative <code>commit.gpgsign</code>. Registre a chave como signing key no GitHub.<br><em>O que observar:</em> o selo "Verified" aparece no commit. Sem assinatura, qualquer pessoa pode fazer um commit com o seu nome e e-mail — <code>git config user.name</code> aceita qualquer coisa. Ver isso torna a assinatura uma necessidade óbvia, não burocracia.</li>
+<li><strong>Proteja a <code>main</code> e teste a proteção.</strong> PR obrigatório, um review, status check, bloqueio de force-push, histórico linear e commits assinados.<br><em>O que observar:</em> tente <code>git push -f origin main</code>. A rejeição vem do servidor, não do seu cliente — e é essa a diferença: proteção que depende de disciplina individual falha no primeiro dia ruim de alguém (seção 3).</li>
+<li><strong>Crie a bagunça que todo mundo cria.</strong> Cinco commits num branch: "wip", "fix typo", "feat: real", "wip 2", "fix lint".<br><em>O que observar:</em> leia esse <code>git log</code> como se fosse de outra pessoa, daqui a seis meses. Nenhuma linha explica por que a mudança existe — é o problema que a seção 4 descreve, e ele só dói depois.</li>
+<li><strong>Reescreva em commits que contam uma história.</strong> <code>git rebase -i HEAD~5</code>, agrupando em um ou dois commits semânticos.<br><em>O que observar:</em> o rebase reescreve hashes: são commits <em>novos</em>. Por isso reescrever branch compartilhado quebra o histórico de quem já puxou — e por isso só se faz isso no seu próprio branch (seção 5).</li>
+<li><strong>Use <code>--force-with-lease</code> e entenda a diferença.</strong> Publique o branch reescrito com <code>git push --force-with-lease</code>.<br><em>O que observar:</em> o <code>--force</code> puro sobrescreve sem perguntar; o <code>--force-with-lease</code> recusa se alguém publicou algo que você não viu. É uma flag a mais e evita exatamente o acidente da seção 8.</li>
+<li><strong>Cause o desastre e recupere.</strong> Na <code>main</code> local, faça <code>git reset --hard HEAD~3</code> e veja três commits sumirem. Depois <code>git reflog</code> e <code>git reset --hard HASH</code>.<br><em>O que observar:</em> voltou tudo. O reflog guarda para onde o HEAD apontou nos últimos 90 dias, mesmo para commits que nenhum branch referencia. Esse é o comando que salva a maioria dos pânicos (seção 6).</li>
+<li><strong>Faça o merge por squash e compare o resultado.</strong> <code>git log --oneline --graph --all</code> na <code>main</code>.<br><em>O que observar:</em> o histórico ficou legível, com um commit por mudança lógica. Compare com o que seria a bagunça do passo 3 — e repare que a escolha de estratégia de merge é sobre <em>quem vai ler isso depois</em>.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Seus commits aparecem como "Verified" no GitHub.</li>
+<li><code>git push -f origin main</code> é rejeitado pelo servidor.</li>
+<li>Você recuperou commits "perdidos" usando o reflog, sem consultar tutorial.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o rebase interativo travar em conflito, resolva o arquivo e use <code>git rebase --continue</code>; se quiser desistir, <code>git rebase --abort</code> devolve tudo ao estado anterior. E se o commit não aparecer como Verified, confira que o e-mail do commit é um e-mail verificado na sua conta do GitHub — a chave certa com e-mail errado não vale.</p>
+<h4>Vá além</h4>
+<p>Configure <code>commitlint</code> com Husky para validar Conventional Commits antes do commit existir, e depois <code>release-please</code> para gerar changelog automaticamente. Aí a mensagem de commit deixa de ser documentação e vira <em>entrada de um processo</em> — o que muda completamente o incentivo para escrevê-la bem.</p>"""
                 ),
                 "practical_en": (
-                    "<p><strong>Full hands-on exercise</strong>:</p>"
-                    "<ol>"
-                    "<li>Configure a local SSH signing key + GitHub. Verify commits show up "
-                    "as 'Verified'.</li>"
-                    "<li>In a personal repo, configure branch protection on <code>main</code>: "
-                    "required PR, 1 review, status checks (basic CI), block force-push, "
-                    "linear history, signed commits.</li>"
-                    "<li>Create a PR with 5 commits: 'wip', 'fix typo', 'feat: real', 'wip 2', "
-                    "'fix lint'. Run <code>git rebase -i HEAD~5</code> to squash/reorder it "
-                    "into 1 or 2 semantic commits.</li>"
-                    "<li>Push force-with-lease on the branch (not on main). Verify main is "
-                    "protected, try <code>git push -f origin main</code> and see the "
-                    "rejection.</li>"
-                    "<li>Merge via squash. Check main's history: "
-                    "<code>git log --oneline --graph --all</code>.</li>"
-                    "<li>Simulate an incident: make a bad commit on local main, then recover "
-                    "via <code>reflog</code> without losing data.</li>"
-                    "<li>Bonus: configure <code>commitlint</code> + Husky to validate "
-                    "Conventional Commits locally; <code>release-please</code> to generate "
-                    "an automatic changelog/version bump in GitHub Actions.</li>"
-                    "</ol>"
+                    """<p><strong>Goal:</strong> destroy your local history on purpose and recover all of it — walking away with the practical conviction that almost nothing is lost in Git, and knowing exactly which command to reach for when panic hits.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A personal GitHub repository you can freely wreck.</li>
+<li>Git 2.34+ (SSH key signing requires that version).</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Sign your commits with the SSH key you already have.</strong> <code>git config gpg.format ssh</code>, point <code>user.signingkey</code> at it, and enable <code>commit.gpgsign</code>. Register the key as a signing key on GitHub.<br><em>What to look for:</em> the "Verified" badge appears on the commit. Without signing, anyone can create a commit with your name and email — <code>git config user.name</code> accepts anything. Seeing that makes signing an obvious necessity rather than bureaucracy.</li>
+<li><strong>Protect <code>main</code> and test the protection.</strong> Required PR, one review, status checks, force-push blocking, linear history, and signed commits.<br><em>What to look for:</em> try <code>git push -f origin main</code>. The rejection comes from the server, not your client — and that is the difference: protection that depends on individual discipline fails on someone's first bad day (section 3).</li>
+<li><strong>Create the mess everyone creates.</strong> Five commits on a branch: "wip", "fix typo", "feat: real", "wip 2", "fix lint".<br><em>What to look for:</em> read that <code>git log</code> as if it were someone else's, six months from now. Not one line explains why the change exists — the problem section 4 describes, and it only hurts later.</li>
+<li><strong>Rewrite into commits that tell a story.</strong> <code>git rebase -i HEAD~5</code>, squashing into one or two semantic commits.<br><em>What to look for:</em> rebase rewrites hashes: these are <em>new</em> commits. That is why rewriting a shared branch breaks history for whoever already pulled — and why you only do it on your own branch (section 5).</li>
+<li><strong>Use <code>--force-with-lease</code> and understand the difference.</strong> Publish the rewritten branch with <code>git push --force-with-lease</code>.<br><em>What to look for:</em> plain <code>--force</code> overwrites without asking; <code>--force-with-lease</code> refuses if someone published something you have not seen. One extra flag, and it prevents exactly the accident in section 8.</li>
+<li><strong>Cause the disaster and recover.</strong> On local <code>main</code>, run <code>git reset --hard HEAD~3</code> and watch three commits vanish. Then <code>git reflog</code> and <code>git reset --hard HASH</code>.<br><em>What to look for:</em> everything came back. The reflog remembers where HEAD pointed for the last 90 days, even for commits no branch references. That is the command that rescues most panics (section 6).</li>
+<li><strong>Merge with squash and compare the result.</strong> <code>git log --oneline --graph --all</code> on <code>main</code>.<br><em>What to look for:</em> the history reads cleanly, one commit per logical change. Compare with the mess from step 3 — and notice that choosing a merge strategy is about <em>who will read this later</em>.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>Your commits show as "Verified" on GitHub.</li>
+<li><code>git push -f origin main</code> is rejected by the server.</li>
+<li>You recovered "lost" commits through the reflog, without consulting a tutorial.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If an interactive rebase stalls on a conflict, resolve the file and use <code>git rebase --continue</code>; to back out, <code>git rebase --abort</code> restores the previous state. And if a commit is not Verified, check that the commit email is a verified email on your GitHub account — the right key with the wrong email does not count.</p>
+<h4>Go further</h4>
+<p>Set up <code>commitlint</code> with Husky to validate Conventional Commits before the commit exists, then <code>release-please</code> to generate changelogs automatically. At that point the commit message stops being documentation and becomes <em>an input to a process</em> — which completely changes the incentive to write it well.</p>"""
                 ),
             },
             "materials": [
@@ -1687,42 +1699,62 @@ a random deploy when a new version changes behavior without
 warning.</li>
 </ul>""",
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Configure backend remoto S3+DynamoDB com encryption, versionamento "
-                    "e bucket policy negando deleção sem MFA.</li>"
-                    "<li>Crie um módulo <code>s3-secure-bucket</code> com: versionamento, "
-                    "encryption KMS, public access block, lifecycle (mover para IA após 30d).</li>"
-                    "<li>Use o módulo em dois ambientes (<code>envs/dev</code> e "
-                    "<code>envs/staging</code>) com tfvars diferentes.</li>"
-                    "<li>Configure <code>tflint</code> + <code>tfsec</code> em pre-commit "
-                    "e em CI (GitHub Actions com OIDC para AWS).</li>"
-                    "<li>Faça plan, apply, depois mude algo no console manualmente. Rode "
-                    "plan novamente e veja o drift. Use <code>terraform apply -refresh-only</code> "
-                    "ou re-aplique para reconciliar.</li>"
-                    "<li>Importe um recurso pré-existente usando <code>import</code> block.</li>"
-                    "<li>Bonus: configure Atlantis (ou GitHub Actions) para postar plan no "
-                    "comentário do PR e exigir 'apply' como comando manual.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> provocar drift de propósito, vê-lo no <code>plan</code> e reconciliar — entendendo que o valor do IaC não está em criar recursos, e sim em detectar quando a realidade se afasta do código.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Conta AWS, Terraform 1.5+ (o <code>import</code> em bloco exige) e a AWS CLI configurada.</li>
+<li>Um repositório Git para versionar o código.</li>
+<li>Cerca de três horas. É o exercício mais longo da fase.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Trate o state como o ativo crítico que ele é.</strong> Backend em S3 com versionamento e criptografia, e lock em DynamoDB.<br><em>O que observar:</em> abra o arquivo de state e procure por valores sensíveis. Eles estão lá, em texto claro. É por isso que a seção 4 pede paranoia: quem lê o state lê segredo, e state local no laptop é o pior lugar possível para ele.</li>
+<li><strong>Escreva um módulo em vez de copiar e colar.</strong> Um <code>s3-secure-bucket</code> com versionamento, criptografia KMS, bloqueio de acesso público e lifecycle.<br><em>O que observar:</em> instancie o módulo duas vezes, em <code>envs/dev</code> e <code>envs/staging</code>, com tfvars diferentes. A segurança passa a ser padrão em vez de lembrança — quem usa o módulo herda as boas práticas sem precisar conhecê-las (seção 5).</li>
+<li><strong>Leia o plan como se fosse revisão de código.</strong> <code>terraform plan</code> antes de qualquer apply.<br><em>O que observar:</em> procure especificamente por linhas de destruição. Um <code>plan</code> que recria um recurso em vez de alterá-lo pode significar perda de dado — e essa leitura de trinta segundos é a última barreira antes do estrago.</li>
+<li><strong>Cause drift de propósito.</strong> Depois do apply, vá ao console e mude alguma coisa à mão — uma tag, uma regra de lifecycle.<br><em>O que observar:</em> rode <code>terraform plan</code> de novo. Ele acusa a diferença, item por item. Essa detecção é o ponto da seção 7: sem IaC, essa mudança manual ficaria invisível para sempre.</li>
+<li><strong>Escolha conscientemente qual lado ganha.</strong> Ou <code>terraform apply</code> (o código vence e desfaz a mudança manual) ou <code>apply -refresh-only</code> (a realidade vence e entra no state).<br><em>O que observar:</em> são decisões opostas e ambas são legítimas. O errado é não decidir — drift que fica sem resolver acumula até o próximo apply causar surpresa.</li>
+<li><strong>Traga para o código um recurso que já existe.</strong> Use um bloco <code>import</code> para adotar um recurso criado à mão.<br><em>O que observar:</em> depois do import, o <code>plan</code> deve ficar limpo. Se ainda aparecer diferença, é porque a sua configuração não descreve o recurso real — e ajustar isso é exatamente o trabalho de adotar infraestrutura legada.</li>
+<li><strong>Ponha as checagens no caminho.</strong> <code>tflint</code> e <code>tfsec</code> em pre-commit e na CI, com OIDC para AWS.<br><em>O que observar:</em> escreva de propósito um bucket sem criptografia e tente commitar. O bloqueio acontece antes do código existir, e a CI repete a mesma checagem — que é a paridade que a seção 9 recomenda.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O <code>plan</code> detecta uma mudança que você fez pelo console.</li>
+<li>O mesmo módulo cria buckets em dois ambientes, com variáveis diferentes.</li>
+<li>Um recurso pré-existente foi importado e o <code>plan</code> ficou limpo.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>"Error acquiring the state lock" quase sempre é execução anterior interrompida — confira a tabela do DynamoDB e use <code>force-unlock</code> só quando tiver certeza de que ninguém está aplicando. E se o <code>plan</code> quiser destruir e recriar tudo, você provavelmente mudou um atributo que força recriação; o próprio plan indica isso com <code>forces replacement</code>.</p>
+<h4>Vá além</h4>
+<p>Configure o plan como comentário automático no pull request, com o apply exigindo comando manual. Assim a revisão passa a ser sobre o <em>efeito</em> da mudança, não sobre o diff do HCL — e é aí que o IaC começa a prevenir incidente em vez de só registrar infraestrutura.</p>"""
                 ),
                 "practical_en": (
-                    "<p><strong>Full hands-on exercise</strong>:</p>"
-                    "<ol>"
-                    "<li>Configure a remote S3+DynamoDB backend with encryption, versioning "
-                    "and a bucket policy denying deletion without MFA.</li>"
-                    "<li>Create an <code>s3-secure-bucket</code> module with: versioning, "
-                    "KMS encryption, public access block, lifecycle (move to IA after 30d).</li>"
-                    "<li>Use the module in two environments (<code>envs/dev</code> and "
-                    "<code>envs/staging</code>) with different tfvars.</li>"
-                    "<li>Configure <code>tflint</code> + <code>tfsec</code> in pre-commit "
-                    "and in CI (GitHub Actions with OIDC for AWS).</li>"
-                    "<li>Run plan, apply, then change something manually in the console. Run "
-                    "plan again and see the drift. Use <code>terraform apply -refresh-only</code> "
-                    "or re-apply to reconcile.</li>"
-                    "<li>Import a pre-existing resource using an <code>import</code> block.</li>"
-                    "<li>Bonus: configure Atlantis (or GitHub Actions) to post the plan as a "
-                    "PR comment and require 'apply' as a manual command.</li>"
-                    "</ol>"
+                    """<p><strong>Goal:</strong> cause drift on purpose, see it in <code>plan</code>, and reconcile — understanding that IaC's value is not in creating resources but in detecting when reality drifts away from the code.</p>
+<h4>Before you start</h4>
+<ul>
+<li>An AWS account, Terraform 1.5+ (block <code>import</code> requires it), and a configured AWS CLI.</li>
+<li>A Git repository to version the code.</li>
+<li>About three hours. It is the longest exercise in this phase.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Treat state as the critical asset it is.</strong> An S3 backend with versioning and encryption, plus DynamoDB locking.<br><em>What to look for:</em> open the state file and search for sensitive values. They are there, in plain text. That is why section 4 asks for paranoia: whoever reads the state reads secrets, and local state on a laptop is the worst possible place for them.</li>
+<li><strong>Write a module instead of copy-pasting.</strong> An <code>s3-secure-bucket</code> with versioning, KMS encryption, public access block, and lifecycle rules.<br><em>What to look for:</em> instantiate it twice, in <code>envs/dev</code> and <code>envs/staging</code>, with different tfvars. Security becomes the default instead of something to remember — whoever uses the module inherits the practices without having to know them (section 5).</li>
+<li><strong>Read the plan like a code review.</strong> <code>terraform plan</code> before any apply.<br><em>What to look for:</em> hunt specifically for destroy lines. A <code>plan</code> that recreates a resource instead of updating it can mean data loss — and that thirty-second read is the last barrier before the damage.</li>
+<li><strong>Cause drift on purpose.</strong> After the apply, go into the console and change something by hand — a tag, a lifecycle rule.<br><em>What to look for:</em> run <code>terraform plan</code> again. It reports the difference, item by item. That detection is section 7's point: without IaC, that manual change would stay invisible forever.</li>
+<li><strong>Consciously choose which side wins.</strong> Either <code>terraform apply</code> (code wins and undoes the manual change) or <code>apply -refresh-only</code> (reality wins and enters the state).<br><em>What to look for:</em> these are opposite decisions and both are legitimate. What is wrong is not deciding — unresolved drift accumulates until the next apply produces a surprise.</li>
+<li><strong>Bring an existing resource into the code.</strong> Use an <code>import</code> block to adopt something created by hand.<br><em>What to look for:</em> after importing, <code>plan</code> should be clean. If differences remain, your configuration does not describe the real resource — and closing that gap is exactly the work of adopting legacy infrastructure.</li>
+<li><strong>Put the checks in the path.</strong> <code>tflint</code> and <code>tfsec</code> in pre-commit and in CI, with OIDC to AWS.<br><em>What to look for:</em> deliberately write a bucket without encryption and try to commit. The block happens before the code exists, and CI repeats the same check — the parity section 9 recommends.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li><code>plan</code> detects a change you made through the console.</li>
+<li>The same module creates buckets in two environments, with different variables.</li>
+<li>A pre-existing resource was imported and <code>plan</code> came back clean.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>"Error acquiring the state lock" is almost always an interrupted previous run — check the DynamoDB table and use <code>force-unlock</code> only when you are certain nobody is applying. And if <code>plan</code> wants to destroy and recreate everything, you probably changed an attribute that forces replacement; the plan itself flags this with <code>forces replacement</code>.</p>
+<h4>Go further</h4>
+<p>Configure the plan to be posted automatically as a pull request comment, with apply requiring a manual command. Review then becomes about the <em>effect</em> of the change rather than the HCL diff — and that is where IaC starts preventing incidents instead of merely recording infrastructure.</p>"""
                 ),
             },
             "materials": [
@@ -2567,42 +2599,62 @@ becomes a question mark over whether the role still works as
 expected.</li>
 </ul>""",
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Crie role <code>webserver</code> com tasks/handlers/templates/defaults "
-                    "que: instala nginx, copia config (template Jinja2), habilita systemd, "
-                    "configura logrotate.</li>"
-                    "<li>Adicione role <code>hardening</code>: SSH só com chave, fail2ban, "
-                    "ufw básico, automatic security updates.</li>"
-                    "<li>Use <code>ansible-vault</code> para senha do banco em "
-                    "<code>group_vars/prod/secrets.yml</code>.</li>"
-                    "<li>Configure inventário dinâmico AWS EC2 com filtros por tag.</li>"
-                    "<li>Rode o playbook duas vezes; verifique <code>changed=0</code> na "
-                    "segunda (idempotência).</li>"
-                    "<li>Configure Molecule com Docker para testar a role em CI.</li>"
-                    "<li>Adicione <code>ansible-lint</code> em pre-commit.</li>"
-                    "<li>Bonus: AWX em Docker Compose para rodar o playbook por UI com "
-                    "survey de variáveis.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> rodar o mesmo playbook duas vezes e ver <code>changed=0</code> na segunda — que é a prova concreta de idempotência, e o que separa Ansible de um script shell com SSH.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Uma ou duas VMs alcançáveis por SSH com chave, e Ansible instalado na sua máquina.</li>
+<li>Docker para o passo 6 (Molecule).</li>
+<li>Cerca de duas horas e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Comece pelo caminho errado, para entender o certo.</strong> Escreva uma task com o módulo <code>command</code> rodando <code>apt install nginx</code> e execute duas vezes.<br><em>O que observar:</em> as duas execuções reportam <code>changed</code>, porque o Ansible não tem como saber o que o comando fez. Agora troque pelo módulo <code>apt</code>: a segunda execução reporta <code>ok</code>. É a seção 3, e é a diferença entre declarar estado e executar comando.</li>
+<li><strong>Estruture como role, não como playbook solto.</strong> Uma role <code>webserver</code> com <code>tasks</code>, <code>handlers</code>, <code>templates</code> e <code>defaults</code>.<br><em>O que observar:</em> o handler só roda quando algo realmente mudou. Altere o template e observe o reload do nginx acontecer; rode de novo sem mudar nada e o handler fica quieto. Isso evita reiniciar serviço em produção sem motivo (seção 2).</li>
+<li><strong>Use template Jinja2 com variável, não arquivo fixo.</strong> Gere o <code>nginx.conf</code> a partir de variáveis em <code>defaults</code>.<br><em>O que observar:</em> mude uma variável e rode de novo: só o que depende dela muda. Essa é a parametrização que permite a mesma role servir dev e produção sem duplicação (seção 5).</li>
+<li><strong>Proteja o segredo com ansible-vault.</strong> Ponha a senha do banco em <code>group_vars/prod/secrets.yml</code> cifrado.<br><em>O que observar:</em> o arquivo pode ir para o Git cifrado. Tente abrir sem a senha e veja o conteúdo ilegível. Repare também no cuidado: variável de vault aparece em texto claro no log se você usar <code>-v</code> demais ou esquecer <code>no_log: true</code> (seção 4).</li>
+<li><strong>Prove a idempotência, que é o ponto do exercício.</strong> Rode o playbook duas vezes seguidas.<br><em>O que observar:</em> na segunda, <code>changed=0</code>. Se algum item continua mudando toda vez, você achou uma task não idempotente — normalmente um <code>command</code> ou <code>shell</code> sem <code>creates</code>/<code>changed_when</code>. Corrigir isso é o trabalho.</li>
+<li><strong>Teste a role antes de tocar em máquina real.</strong> Configure Molecule com Docker e rode <code>molecule test</code>.<br><em>O que observar:</em> o Molecule cria container limpo, aplica a role, verifica e destrói. Testar configuração em ambiente descartável é o que permite mexer em produção com confiança (seção 7).</li>
+<li><strong>Descubra os hosts em vez de listá-los à mão.</strong> Configure inventário dinâmico da AWS filtrando por tag.<br><em>O que observar:</em> instância nova com a tag certa entra no inventário sozinha. Inventário estático envelhece em silêncio — e aplicar playbook num host que não existe mais é menos ruim do que esquecer um host que existe (seção 6).</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>A segunda execução do playbook reporta <code>changed=0</code>.</li>
+<li>O handler de reload só dispara quando o template muda de verdade.</li>
+<li><code>molecule test</code> passa do início ao fim.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se alguma task reporta <code>changed</code> toda vez, ela quase sempre usa <code>command</code> ou <code>shell</code> — acrescente <code>creates:</code> ou <code>changed_when:</code> para ensinar ao Ansible como reconhecer que o trabalho já foi feito. E se o vault falhar na CI, lembre que o arquivo de senha não pode estar no repositório: use variável de ambiente ou o gerenciador de segredos do runner.</p>
+<h4>Vá além</h4>
+<p>Releia a seção 9 e escreva, para a sua própria infraestrutura, onde fica a fronteira: Terraform cria a VM, Ansible configura o que roda dentro dela. Tentar usar um no lugar do outro funciona mal nos dois sentidos — e reconhecer essa divisão evita a discussão improdutiva de "qual dos dois adotar".</p>"""
                 ),
                 "practical_en": (
-                    "<p><strong>Full hands-on exercise</strong>:</p>"
-                    "<ol>"
-                    "<li>Create a <code>webserver</code> role with tasks/handlers/templates/defaults "
-                    "that: installs nginx, copies config (Jinja2 template), enables systemd, "
-                    "configures logrotate.</li>"
-                    "<li>Add a <code>hardening</code> role: SSH key-only, fail2ban, "
-                    "basic ufw, automatic security updates.</li>"
-                    "<li>Use <code>ansible-vault</code> for the DB password in "
-                    "<code>group_vars/prod/secrets.yml</code>.</li>"
-                    "<li>Configure AWS EC2 dynamic inventory with tag filters.</li>"
-                    "<li>Run the playbook twice; verify <code>changed=0</code> on the "
-                    "second run (idempotency).</li>"
-                    "<li>Configure Molecule with Docker to test the role in CI.</li>"
-                    "<li>Add <code>ansible-lint</code> to pre-commit.</li>"
-                    "<li>Bonus: AWX on Docker Compose to run the playbook via UI with "
-                    "a variable survey.</li>"
-                    "</ol>"
+                    """<p><strong>Goal:</strong> run the same playbook twice and see <code>changed=0</code> the second time — the concrete proof of idempotence, and what separates Ansible from a shell script over SSH.</p>
+<h4>Before you start</h4>
+<ul>
+<li>One or two VMs reachable over SSH with a key, and Ansible installed on your machine.</li>
+<li>Docker for step 6 (Molecule).</li>
+<li>About two and a half hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Start with the wrong approach, to understand the right one.</strong> Write a task using the <code>command</code> module running <code>apt install nginx</code> and execute it twice.<br><em>What to look for:</em> both runs report <code>changed</code>, because Ansible has no way to know what the command did. Now switch to the <code>apt</code> module: the second run reports <code>ok</code>. That is section 3, and the difference between declaring state and executing commands.</li>
+<li><strong>Structure it as a role, not a loose playbook.</strong> A <code>webserver</code> role with <code>tasks</code>, <code>handlers</code>, <code>templates</code>, and <code>defaults</code>.<br><em>What to look for:</em> the handler runs only when something actually changed. Modify the template and watch nginx reload; run again without changes and the handler stays quiet. That prevents restarting production services for no reason (section 2).</li>
+<li><strong>Use a Jinja2 template with variables, not a fixed file.</strong> Generate <code>nginx.conf</code> from variables in <code>defaults</code>.<br><em>What to look for:</em> change one variable and rerun: only what depends on it changes. That parameterization is what lets the same role serve dev and production without duplication (section 5).</li>
+<li><strong>Protect the secret with ansible-vault.</strong> Put the database password in an encrypted <code>group_vars/prod/secrets.yml</code>.<br><em>What to look for:</em> the file can go into Git encrypted. Try opening it without the password and see unreadable content. Note the caveat too: vault variables appear in plain text in logs if you use too much <code>-v</code> or forget <code>no_log: true</code> (section 4).</li>
+<li><strong>Prove idempotence, which is the point of the exercise.</strong> Run the playbook twice in a row.<br><em>What to look for:</em> the second run reports <code>changed=0</code>. If something keeps changing every time, you found a non-idempotent task — usually a <code>command</code> or <code>shell</code> without <code>creates</code>/<code>changed_when</code>. Fixing that is the work.</li>
+<li><strong>Test the role before touching a real machine.</strong> Configure Molecule with Docker and run <code>molecule test</code>.<br><em>What to look for:</em> Molecule creates a clean container, applies the role, verifies, and destroys. Testing configuration in a disposable environment is what lets you touch production with confidence (section 7).</li>
+<li><strong>Discover hosts instead of listing them by hand.</strong> Configure a dynamic AWS inventory filtered by tag.<br><em>What to look for:</em> a new instance with the right tag joins the inventory by itself. Static inventories age silently — and applying a playbook to a host that no longer exists is less bad than forgetting a host that does (section 6).</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The second playbook run reports <code>changed=0</code>.</li>
+<li>The reload handler fires only when the template really changes.</li>
+<li><code>molecule test</code> passes end to end.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If a task reports <code>changed</code> every time, it almost always uses <code>command</code> or <code>shell</code> — add <code>creates:</code> or <code>changed_when:</code> to teach Ansible how to recognize the work is already done. And if vault fails in CI, remember the password file cannot live in the repository: use an environment variable or the runner's secret manager.</p>
+<h4>Go further</h4>
+<p>Reread section 9 and write down, for your own infrastructure, where the boundary sits: Terraform creates the VM, Ansible configures what runs inside it. Using either one in the other's place works badly in both directions — and recognizing that split avoids the unproductive "which of the two should we adopt" debate.</p>"""
                 ),
             },
             "materials": [
@@ -3259,36 +3311,62 @@ script. If the pattern had been OIDC with an ephemeral token (section
 before it expired on its own — drastically limiting the blast radius of
 the same incident.</p>""",
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Configure Vault em Docker. Habilite KV-v2 e crie segredos.</li>"
-                    "<li>Configure GitHub Actions com OIDC para AWS, sem armazenar access "
-                    "keys no GitHub. Job baixa secret do Secrets Manager e usa.</li>"
-                    "<li>Em K8s local (kind/minikube), instale External Secrets Operator. "
-                    "Crie ExternalSecret apontando para AWS Secrets Manager (ou Vault).</li>"
-                    "<li>Configure gitleaks como pre-commit hook + GitHub Action. Faça commit "
-                    "com fake AWS key e veja o bloqueio.</li>"
-                    "<li>Habilite GitHub Secret Scanning no seu repo público.</li>"
-                    "<li>Configure rotação automática de RDS via AWS Secrets Manager.</li>"
-                    "<li>Bonus: SOPS + KMS, criptografe arquivo de config, commite, "
-                    "decripte localmente para uso.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> tentar commitar uma credencial e ser barrado <em>antes</em> do commit existir — e depois montar um pipeline inteiro em que nenhuma chave estática precisa ser guardada em lugar nenhum.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Docker, um repositório no GitHub e conta AWS (ou Vault local, se preferir não usar cloud).</li>
+<li>Instale <code>gitleaks</code> e <code>pre-commit</code>.</li>
+<li>Cerca de duas horas e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Comece pela barreira mais barata.</strong> Configure o <code>gitleaks</code> como hook de pre-commit e tente commitar uma chave AWS falsa no formato real.<br><em>O que observar:</em> o commit é bloqueado. Repare no que isso significa: o segredo nunca entra no histórico. Removê-lo depois exige reescrever histórico e rotacionar a credencial — prevenir custa segundos, remediar custa um dia.</li>
+<li><strong>Prove por que "eu removi no commit seguinte" não resolve.</strong> Force um commit com segredo usando <code>--no-verify</code>, depois remova o arquivo num commit novo e rode <code>git log -p</code>.<br><em>O que observar:</em> a chave continua visível no histórico, para sempre, para qualquer pessoa que clonar. É por isso que toda credencial commitada deve ser considerada vazada e rotacionada, mesmo em repositório privado.</li>
+<li><strong>Suba um Vault e entenda o modelo de acesso.</strong> Vault em Docker, engine KV-v2, um segredo criado e uma policy de leitura.<br><em>O que observar:</em> o segredo é lido por <em>identidade</em>, com token que expira, e cada leitura fica registrada no audit log. Compare com arquivo <code>.env</code>: lá não há expiração, não há identidade e não há registro de quem leu.</li>
+<li><strong>Elimine a chave estática do CI.</strong> Configure OIDC entre GitHub Actions e AWS e faça o job ler um segredo do Secrets Manager.<br><em>O que observar:</em> procure por chave da AWS nos secrets do repositório. Não existe. A credencial é emitida por execução e morre em minutos — não há o que vazar de um arquivo, porque não há arquivo.</li>
+<li><strong>Injete segredo no Kubernetes sem colá-lo no manifesto.</strong> Instale o External Secrets Operator num cluster local e crie um <code>ExternalSecret</code>.<br><em>O que observar:</em> o manifesto que vai para o Git contém apenas uma <em>referência</em>; o valor vem do gerenciador em tempo de execução. Isso é o que torna GitOps compatível com segredo — sem isso, ou o segredo vaza no repositório, ou o cluster não é declarativo.</li>
+<li><strong>Ligue a rotação e observe o efeito.</strong> Configure rotação automática de credencial de banco no Secrets Manager.<br><em>O que observar:</em> a aplicação precisa reler o segredo, não guardá-lo na memória para sempre. Rotação só funciona se o consumidor colaborar — e descobrir isso agora evita a indisponibilidade da primeira rotação real.</li>
+<li><strong>Ative a rede de segurança do provedor.</strong> Habilite o Secret Scanning no repositório.<br><em>O que observar:</em> é a camada que pega o que passou pelas anteriores. Defesa de segredo é em camadas: hook local, CI, e varredura do provedor — cada uma pega o que a outra deixou passar.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Um commit com credencial é bloqueado localmente.</li>
+<li>O pipeline acessa a AWS sem nenhuma chave estática armazenada.</li>
+<li>Um pod recebe segredo do gerenciador sem que ele apareça em nenhum manifesto versionado.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o gitleaks não barrar a sua chave de teste, provavelmente o formato não casou com nenhuma regra — use um formato real (<code>AKIA</code> seguido de 16 caracteres) para testar de verdade. E se o External Secrets não sincroniza, olhe o status do <code>SecretStore</code> antes do <code>ExternalSecret</code>: o erro quase sempre está na autenticação do store, não no segredo em si.</p>
+<h4>Vá além</h4>
+<p>Configure SOPS com KMS, cifre um arquivo de configuração e commite-o. Depois compare as duas abordagens: SOPS versiona o segredo cifrado junto do código; o gerenciador externo mantém o segredo fora do repositório. A escolha depende de quem precisa decifrar e onde — e saber articular esse trade-off vale mais que dominar qualquer uma das ferramentas.</p>"""
                 ),
                 "practical_en": (
-                    "<p><strong>Full hands-on exercise</strong>:</p>"
-                    "<ol>"
-                    "<li>Configure Vault in Docker. Enable KV-v2 and create secrets.</li>"
-                    "<li>Configure GitHub Actions with OIDC for AWS, without storing access "
-                    "keys in GitHub. The job pulls a secret from Secrets Manager and uses it.</li>"
-                    "<li>On local K8s (kind/minikube), install External Secrets Operator. "
-                    "Create an ExternalSecret pointing at AWS Secrets Manager (or Vault).</li>"
-                    "<li>Configure gitleaks as a pre-commit hook + GitHub Action. Commit "
-                    "a fake AWS key and watch the block.</li>"
-                    "<li>Enable GitHub Secret Scanning on your public repo.</li>"
-                    "<li>Configure automatic RDS rotation via AWS Secrets Manager.</li>"
-                    "<li>Bonus: SOPS + KMS — encrypt a config file, commit it, "
-                    "decrypt locally for use.</li>"
-                    "</ol>"
+                    """<p><strong>Goal:</strong> try to commit a credential and get blocked <em>before</em> the commit exists — then build a whole pipeline where no static key has to be stored anywhere.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Docker, a GitHub repository, and an AWS account (or a local Vault, if you would rather avoid cloud).</li>
+<li>Install <code>gitleaks</code> and <code>pre-commit</code>.</li>
+<li>About two and a half hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Start with the cheapest barrier.</strong> Configure <code>gitleaks</code> as a pre-commit hook and try committing a fake AWS key in the real format.<br><em>What to look for:</em> the commit is blocked. Notice what that means: the secret never enters history. Removing it later requires rewriting history and rotating the credential — preventing costs seconds, remediating costs a day.</li>
+<li><strong>Prove why "I removed it in the next commit" does not work.</strong> Force a commit with a secret using <code>--no-verify</code>, remove the file in a later commit, then run <code>git log -p</code>.<br><em>What to look for:</em> the key is still visible in history, forever, to anyone who clones. That is why every committed credential must be treated as leaked and rotated, even in a private repository.</li>
+<li><strong>Bring up Vault and understand the access model.</strong> Vault in Docker, KV-v2 engine, one secret, and a read policy.<br><em>What to look for:</em> the secret is read by <em>identity</em>, with an expiring token, and every read is written to the audit log. Compare with a <code>.env</code> file: no expiry, no identity, no record of who read it.</li>
+<li><strong>Remove the static key from CI.</strong> Configure OIDC between GitHub Actions and AWS and have the job read a secret from Secrets Manager.<br><em>What to look for:</em> go looking for an AWS key in the repository secrets. There is none. The credential is issued per run and dies in minutes — there is nothing to leak from a file, because there is no file.</li>
+<li><strong>Inject secrets into Kubernetes without pasting them into manifests.</strong> Install the External Secrets Operator on a local cluster and create an <code>ExternalSecret</code>.<br><em>What to look for:</em> the manifest that goes into Git contains only a <em>reference</em>; the value comes from the manager at runtime. That is what makes GitOps compatible with secrets — without it, either the secret leaks into the repo or the cluster stops being declarative.</li>
+<li><strong>Enable rotation and watch the consequence.</strong> Configure automatic database credential rotation in Secrets Manager.<br><em>What to look for:</em> the application has to re-read the secret rather than caching it forever. Rotation only works if the consumer cooperates — and learning that now avoids the outage on your first real rotation.</li>
+<li><strong>Turn on the provider's safety net.</strong> Enable Secret Scanning on the repository.<br><em>What to look for:</em> it is the layer that catches what slipped past the others. Secret defense is layered: local hook, CI, and provider scanning — each one catches what the previous missed.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>A commit containing a credential is blocked locally.</li>
+<li>The pipeline reaches AWS with no static key stored anywhere.</li>
+<li>A pod receives a secret from the manager without it appearing in any versioned manifest.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If gitleaks does not block your test key, the format probably matched no rule — use a real shape (<code>AKIA</code> followed by 16 characters) to test properly. And if External Secrets does not sync, check the <code>SecretStore</code> status before the <code>ExternalSecret</code>: the error is almost always in the store's authentication, not the secret itself.</p>
+<h4>Go further</h4>
+<p>Configure SOPS with KMS, encrypt a configuration file, and commit it. Then compare the two approaches: SOPS versions the encrypted secret next to the code; an external manager keeps the secret out of the repository. The choice depends on who needs to decrypt and where — and being able to articulate that trade-off is worth more than mastering either tool.</p>"""
                 ),
             },
             "materials": [
@@ -4119,38 +4197,62 @@ Git is automatically reverted by <code>selfHeal</code> on the next
 reconciliation.</p>
 """,
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Crie repo Python com app simples e suite de testes.</li>"
-                    "<li>Adicione GitHub Actions: lint (ruff), test (pytest), security "
-                    "(trivy + semgrep + gitleaks), build (Docker para GHCR), assina com "
-                    "Cosign.</li>"
-                    "<li>Configure tag por SHA + tag semver (release-please).</li>"
-                    "<li>Adicione environment <code>production</code> com required reviewers + "
-                    "wait timer 10min.</li>"
-                    "<li>Implemente canary: deploy para 10% → smoke test → 50% → 100%, "
-                    "com rollback automático em error rate.</li>"
-                    "<li>Bonus: Argo CD em kind cluster apontando para repo de manifests; "
-                    "demonstre GitOps (mude manifest, veja Argo aplicar).</li>"
-                    "<li>Bonus 2: meça suas DORA metrics com Four Keys do Google.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> construir um pipeline que recusa o seu próprio código quando ele está ruim — e depois fazer um deploy gradual que volta sozinho quando a taxa de erro sobe.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um repositório no GitHub com uma aplicação Python simples e alguns testes.</li>
+<li>Permissão para publicar no GHCR (o registro de container do GitHub).</li>
+<li>Cerca de três horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Monte o pipeline de qualidade e quebre-o de propósito.</strong> Jobs de lint (<code>ruff</code>), teste (<code>pytest</code>) e segurança (<code>trivy</code>, <code>semgrep</code>, <code>gitleaks</code>).<br><em>O que observar:</em> abra um PR com um teste falhando e um com estilo quebrado. Confirme que os dois são recusados. Um pipeline que nunca reprovou nada não está protegendo — só gastando minutos de runner.</li>
+<li><strong>Cronometre o pipeline inteiro.</strong> Anote o tempo do push até o resultado final.<br><em>O que observar:</em> acima de dez minutos, as pessoas param de esperar e começam a fazer outra coisa — e o feedback perde o efeito. Se passar disso, paralelize os jobs; a velocidade do pipeline é requisito, não detalhe (seção 2).</li>
+<li><strong>Construa um artefato imutável.</strong> Imagem Docker publicada no GHCR com tag pelo SHA do commit, não por <code>latest</code>.<br><em>O que observar:</em> a tag por SHA aponta sempre para o mesmo conteúdo. Com <code>latest</code>, "o que está em produção" é uma pergunta sem resposta confiável — é a seção 5, e é o que torna rollback possível.</li>
+<li><strong>Assine a imagem e verifique a assinatura.</strong> Use o Cosign no pipeline e depois valide localmente.<br><em>O que observar:</em> tente verificar uma imagem não assinada e veja a falha. A assinatura liga o artefato ao pipeline que o produziu — e é o que permite, depois, exigir proveniência no admission controller.</li>
+<li><strong>Separe deploy de release.</strong> Configure um environment de produção com reviewer obrigatório e espera de dez minutos.<br><em>O que observar:</em> o código chega pronto até a porta da produção e espera decisão humana. Essa separação é a seção 1 deixando de ser jogo de siglas: entrega contínua é o artefato sempre pronto, implantação contínua é a porta aberta automaticamente.</li>
+<li><strong>Faça o deploy gradual e observe a métrica.</strong> 10% do tráfego, smoke test, 50%, 100%.<br><em>O que observar:</em> introduza um bug que só aparece sob tráfego real e veja o canário pegá-lo com 10% dos usuários afetados em vez de 100%. É essa redução de blast radius que justifica a complexidade (seção 4).</li>
+<li><strong>Automatize o rollback pela métrica, não pelo olho.</strong> Regra que reverte quando a taxa de erro passa de um limite.<br><em>O que observar:</em> cronometre quanto tempo leva entre o erro começar e o rollback concluir. Esse número é o seu MTTR real — e melhorá-lo vale mais que reduzir a frequência de deploy.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Um PR com teste falhando ou segredo commitado é recusado automaticamente.</li>
+<li>A imagem em produção é identificável pelo SHA e tem assinatura verificável.</li>
+<li>Um canário com erro volta sozinho, sem ninguém apertar botão.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o push para o GHCR falhar, confira as permissões do job: é preciso <code>packages: write</code> no bloco <code>permissions</code> do workflow. E se o canário nunca reverte, verifique se a métrica que ele observa realmente reflete o erro — rollback automático apoiado em métrica errada é pior que não ter rollback.</p>
+<h4>Vá além</h4>
+<p>Meça as quatro métricas DORA do seu repositório (seção 7) com os dados que o próprio GitHub já tem: frequência de deploy, lead time, taxa de falha e tempo de recuperação. Depois escolha <em>uma</em> para melhorar no próximo mês. Melhorar as quatro ao mesmo tempo não funciona, e escolher uma obriga a priorizar de verdade.</p>"""
                 ),
                 "practical_en": (
-                    "<p><strong>Full hands-on exercise</strong>:</p>"
-                    "<ol>"
-                    "<li>Create a Python repo with a simple app and a test suite.</li>"
-                    "<li>Add GitHub Actions: lint (ruff), test (pytest), security "
-                    "(trivy + semgrep + gitleaks), build (Docker to GHCR), sign with "
-                    "Cosign.</li>"
-                    "<li>Configure tagging by SHA + semver tag (release-please).</li>"
-                    "<li>Add a <code>production</code> environment with required reviewers + "
-                    "a 10-minute wait timer.</li>"
-                    "<li>Implement canary: deploy to 10% → smoke test → 50% → 100%, "
-                    "with automatic rollback on error rate.</li>"
-                    "<li>Bonus: Argo CD on a kind cluster pointing at a manifests repo; "
-                    "demonstrate GitOps (change a manifest, watch Argo apply it).</li>"
-                    "<li>Bonus 2: measure your DORA metrics with Google's Four Keys.</li>"
-                    "</ol>"
+                    """<p><strong>Goal:</strong> build a pipeline that refuses your own code when it is bad — then run a gradual deploy that rolls itself back when the error rate climbs.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A GitHub repository with a simple Python application and a few tests.</li>
+<li>Permission to publish to GHCR (GitHub's container registry).</li>
+<li>About three hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Build the quality pipeline and break it on purpose.</strong> Jobs for lint (<code>ruff</code>), tests (<code>pytest</code>), and security (<code>trivy</code>, <code>semgrep</code>, <code>gitleaks</code>).<br><em>What to look for:</em> open one PR with a failing test and one with broken style. Confirm both are rejected. A pipeline that has never failed anything is not protecting you — it is just burning runner minutes.</li>
+<li><strong>Time the whole pipeline.</strong> Note the duration from push to final result.<br><em>What to look for:</em> beyond ten minutes people stop waiting and start something else — and the feedback loses its effect. If you exceed that, parallelize the jobs; pipeline speed is a requirement, not a detail (section 2).</li>
+<li><strong>Build an immutable artifact.</strong> A Docker image published to GHCR tagged by commit SHA, not by <code>latest</code>.<br><em>What to look for:</em> a SHA tag always points at the same content. With <code>latest</code>, "what is in production" is a question with no reliable answer — that is section 5, and what makes rollback possible.</li>
+<li><strong>Sign the image and verify the signature.</strong> Use Cosign in the pipeline, then validate locally.<br><em>What to look for:</em> try verifying an unsigned image and watch it fail. The signature ties the artifact to the pipeline that produced it — and it is what later lets you require provenance in an admission controller.</li>
+<li><strong>Separate deploy from release.</strong> Configure a production environment with a required reviewer and a ten-minute wait.<br><em>What to look for:</em> the code arrives ready at production's door and waits for a human decision. That separation is section 1 ceasing to be an acronym game: continuous delivery means the artifact is always ready, continuous deployment means the door opens automatically.</li>
+<li><strong>Deploy gradually and watch the metric.</strong> 10% of traffic, smoke test, 50%, 100%.<br><em>What to look for:</em> introduce a bug that only appears under real traffic and watch the canary catch it with 10% of users affected instead of 100%. That blast radius reduction is what justifies the complexity (section 4).</li>
+<li><strong>Automate rollback on the metric, not on your eyes.</strong> A rule that reverts when error rate crosses a threshold.<br><em>What to look for:</em> time how long it takes from the error starting to the rollback completing. That number is your real MTTR — and improving it is worth more than reducing deploy frequency.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>A PR with a failing test or a committed secret is rejected automatically.</li>
+<li>The production image is identifiable by SHA and carries a verifiable signature.</li>
+<li>A failing canary rolls back on its own, with nobody pressing a button.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the push to GHCR fails, check the job permissions: you need <code>packages: write</code> in the workflow's <code>permissions</code> block. And if the canary never reverts, verify that the metric it watches actually reflects the error — automatic rollback driven by the wrong metric is worse than no rollback at all.</p>
+<h4>Go further</h4>
+<p>Measure your repository's four DORA metrics (section 7) using data GitHub already holds: deploy frequency, lead time, change failure rate, and time to restore. Then pick <em>one</em> to improve next month. Improving all four at once does not work, and choosing one forces real prioritization.</p>"""
                 ),
             },
             "materials": [
@@ -4780,40 +4882,62 @@ fixers are aggressive enough to change semantics by accident,
 not just style.</li>
 </ul>""",
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Em projeto Python, configure <code>pyproject.toml</code> com "
-                    "Ruff cobrindo: pycodestyle, pyflakes, isort, pyupgrade, bugbear, "
-                    "bandit, simplify.</li>"
-                    "<li>Adicione mypy ou pyright em modo strict para tipo.</li>"
-                    "<li>Configure pre-commit com hooks: ruff, hadolint, shellcheck, "
-                    "gitleaks, tflint (se houver TF), markdownlint, yamllint.</li>"
-                    "<li>Adicione GitHub Action que roda <code>pre-commit run "
-                    "--all-files</code>.</li>"
-                    "<li>Configure VS Code para mostrar lint inline (extensions Ruff, "
-                    "Pylance).</li>"
-                    "<li>Rode em legado: arrume os fáceis com <code>--fix</code>, "
-                    "documente os que precisam supressão consciente.</li>"
-                    "<li>Bonus: bot de auto-format que comita correções no PR.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> aplicar linter num projeto que nunca teve — e aprender a diferença entre corrigir automaticamente, suprimir conscientemente e ignorar, que é a decisão que decide se o linter fica ou é desligado em duas semanas.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um projeto Python real e, se possível, com algum código legado. Projeto novo e limpo não ensina o passo 5.</li>
+<li><code>pip install ruff mypy pre-commit</code>.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Meça a dívida antes de configurar.</strong> Rode <code>ruff check .</code> com um conjunto amplo de regras e conte os erros.<br><em>O que observar:</em> num projeto legado costumam ser centenas. Esse número assusta e é justamente o motivo pelo qual times desligam linter no primeiro dia — o passo 5 existe para lidar com ele.</li>
+<li><strong>Escolha as regras com intenção.</strong> No <code>pyproject.toml</code>, ative pycodestyle, pyflakes, isort, pyupgrade, bugbear, bandit e simplify.<br><em>O que observar:</em> leia o que cada família cobre. <code>bugbear</code> e <code>bandit</code> pegam bug e risco de segurança, não estilo — e é essa distinção que justifica o linter para quem acha que a discussão é sobre aspas simples ou duplas (seção 1).</li>
+<li><strong>Separe o que se conserta sozinho.</strong> Rode <code>ruff check --fix</code> e veja quanto caiu.<br><em>O que observar:</em> grande parte some sem intervenção — import desordenado, sintaxe antiga, comparação redundante. Auto-fix é o que torna a adoção viável; só o que sobra exige decisão humana (seção 5).</li>
+<li><strong>Trate o que sobrou em três baldes.</strong> Corrigir agora, suprimir com justificativa (<code>noqa</code> com o código e um comentário), ou desativar a regra no projeto inteiro.<br><em>O que observar:</em> <code>noqa</code> sem código nem motivo é o mesmo que desligar o linter em silêncio. Supressão consciente e documentada é legítima; supressão em branco é dívida disfarçada (seção 6).</li>
+<li><strong>Ligue o mypy sem travar o projeto.</strong> Comece sem <code>strict</code>, depois ative e compare o volume de erros.<br><em>O que observar:</em> em legado, <code>strict</code> de cara costuma inviabilizar. Adote módulo a módulo, com <code>strict</code> só onde o código já está anotado — é como se chega lá sem paralisar o time.</li>
+<li><strong>Estenda para o que não é Python.</strong> Pre-commit com <code>hadolint</code>, <code>shellcheck</code>, <code>yamllint</code>, <code>markdownlint</code> e <code>gitleaks</code>.<br><em>O que observar:</em> o Dockerfile e o shell script costumam ser onde mora o pior código do repositório, justamente por nunca terem passado por revisão automatizada. O <code>hadolint</code> normalmente acha problema real na primeira execução (seção 3).</li>
+<li><strong>Garanta a paridade entre local e CI.</strong> Uma action rodando <code>pre-commit run --all-files</code>.<br><em>O que observar:</em> a CI executa exatamente os mesmos hooks. Quando local e CI divergem, aparece o clássico "passa aqui e falha lá", e a confiança no pipeline cai junto (seção 4).</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li><code>ruff check .</code> passa limpo, e toda supressão tem código e justificativa.</li>
+<li>O pre-commit bloqueia commit com problema de estilo, Dockerfile ou shell.</li>
+<li>A CI roda os mesmos hooks do ambiente local.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o pre-commit ficar lento demais, limite os hooks pesados aos arquivos modificados em vez de rodar sobre o projeto inteiro — hook lento é hook que as pessoas contornam com <code>--no-verify</code>. E se o <code>--fix</code> quebrar algum comportamento, é sinal de que faltava teste ali: aproveite e escreva o teste antes de seguir.</p>
+<h4>Vá além</h4>
+<p>Configure o linter no editor (seção 7) e compare a experiência: o erro aparece enquanto você digita, e não minutos depois no pipeline. Esse encurtamento do ciclo é o que faz a regra ser internalizada em vez de contornada — e é a diferença entre linter que educa e linter que irrita.</p>"""
                 ),
                 "practical_en": (
-                    "<p><strong>Full hands-on exercise</strong>:</p>"
-                    "<ol>"
-                    "<li>In a Python project, configure <code>pyproject.toml</code> with "
-                    "Ruff covering: pycodestyle, pyflakes, isort, pyupgrade, bugbear, "
-                    "bandit, simplify.</li>"
-                    "<li>Add mypy or pyright in strict mode for types.</li>"
-                    "<li>Configure pre-commit with hooks: ruff, hadolint, shellcheck, "
-                    "gitleaks, tflint (if you have TF), markdownlint, yamllint.</li>"
-                    "<li>Add a GitHub Action that runs <code>pre-commit run "
-                    "--all-files</code>.</li>"
-                    "<li>Configure VS Code to show lint inline (Ruff, Pylance "
-                    "extensions).</li>"
-                    "<li>Run on legacy code: fix easy ones with <code>--fix</code>, "
-                    "document those that need a conscious suppression.</li>"
-                    "<li>Bonus: an auto-format bot that commits fixes on the PR.</li>"
-                    "</ol>"
+                    """<p><strong>Goal:</strong> introduce linting into a project that never had it — and learn the difference between auto-fixing, consciously suppressing, and ignoring, the decision that determines whether the linter stays or gets switched off in two weeks.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A real Python project, ideally with some legacy code. A clean new project will not teach step 5.</li>
+<li><code>pip install ruff mypy pre-commit</code>.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Measure the debt before configuring anything.</strong> Run <code>ruff check .</code> with a broad rule set and count the errors.<br><em>What to look for:</em> on legacy code it is usually hundreds. That number is intimidating, and it is exactly why teams disable linters on day one — step 5 exists to deal with it.</li>
+<li><strong>Choose rules deliberately.</strong> In <code>pyproject.toml</code>, enable pycodestyle, pyflakes, isort, pyupgrade, bugbear, bandit, and simplify.<br><em>What to look for:</em> read what each family covers. <code>bugbear</code> and <code>bandit</code> catch bugs and security risks, not style — and that distinction is what justifies linting to anyone who thinks the debate is about single versus double quotes (section 1).</li>
+<li><strong>Separate what fixes itself.</strong> Run <code>ruff check --fix</code> and see how much drops.<br><em>What to look for:</em> a large share disappears with no intervention — unsorted imports, outdated syntax, redundant comparisons. Auto-fix is what makes adoption feasible; only the remainder needs human judgment (section 5).</li>
+<li><strong>Sort the remainder into three buckets.</strong> Fix now, suppress with justification (<code>noqa</code> with the code and a comment), or disable the rule project-wide.<br><em>What to look for:</em> a bare <code>noqa</code> with no code or reason is the same as silently switching the linter off. Documented, deliberate suppression is legitimate; blank suppression is disguised debt (section 6).</li>
+<li><strong>Turn on mypy without stalling the project.</strong> Start without <code>strict</code>, then enable it and compare error volume.<br><em>What to look for:</em> on legacy code, <code>strict</code> right away is usually unworkable. Adopt module by module, with <code>strict</code> only where the code is already annotated — that is how you get there without paralyzing the team.</li>
+<li><strong>Extend beyond Python.</strong> Pre-commit with <code>hadolint</code>, <code>shellcheck</code>, <code>yamllint</code>, <code>markdownlint</code>, and <code>gitleaks</code>.<br><em>What to look for:</em> the Dockerfile and shell scripts are usually where the repository's worst code lives, precisely because they never went through automated review. <code>hadolint</code> typically finds a real problem on its first run (section 3).</li>
+<li><strong>Guarantee parity between local and CI.</strong> An action running <code>pre-commit run --all-files</code>.<br><em>What to look for:</em> CI executes exactly the same hooks. When local and CI diverge, you get the classic "passes here, fails there", and trust in the pipeline drops with it (section 4).</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li><code>ruff check .</code> passes clean, and every suppression carries a code and a justification.</li>
+<li>Pre-commit blocks commits with style, Dockerfile, or shell problems.</li>
+<li>CI runs the same hooks as your local environment.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If pre-commit gets too slow, limit heavy hooks to changed files instead of the whole project — a slow hook is a hook people bypass with <code>--no-verify</code>. And if <code>--fix</code> breaks behavior, that is a sign tests were missing there: write the test before moving on.</p>
+<h4>Go further</h4>
+<p>Configure the linter in your editor (section 7) and compare the experience: errors appear as you type rather than minutes later in the pipeline. That shortened loop is what makes a rule get internalized instead of worked around — the difference between a linter that teaches and one that annoys.</p>"""
                 ),
             },
             "materials": [
@@ -5458,34 +5582,62 @@ constantly; outdated rules stop catching what is already
 known today.</li>
 </ul>""",
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Rode <code>semgrep --config p/owasp-top-ten</code> no seu repo. "
-                    "Triagem: para cada achado High, decida se é FP ou bug real.</li>"
-                    "<li>Adicione Bandit (se Python) ou gosec (se Go) e configure no CI.</li>"
-                    "<li>Habilite GitHub CodeQL no repo (gratuito para públicos).</li>"
-                    "<li>Configure Semgrep como required check no PR, diff-only.</li>"
-                    "<li>Escreva 2 custom rules: uma para anti-pattern do seu projeto "
-                    "(ex.: <code>print()</code> em código de produção), outra para padrão "
-                    "de PII em logs.</li>"
-                    "<li>Documente processo de triagem no SECURITY.md.</li>"
-                    "<li>Bonus: complemente com OWASP ZAP em DAST contra staging.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> fazer a triagem de achados reais e chegar a um pipeline que só bloqueia o que merece bloqueio — porque SAST que grita em tudo é desligado em duas semanas, e aí protege zero.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um repositório com código de verdade (quanto mais antigo, melhor o exercício) e <code>pip install semgrep</code>.</li>
+<li>Um arquivo <code>SECURITY.md</code>, mesmo que vazio por enquanto.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Rode contra tudo e meça o tamanho do problema.</strong> <code>semgrep --config p/owasp-top-ten .</code>.<br><em>O que observar:</em> conte os achados por severidade. Esse número inicial não é para ser corrigido de uma vez — ele é a linha de base contra a qual você vai medir progresso.</li>
+<li><strong>Faça triagem de verdade em cinco achados High.</strong> Para cada um, abra o código e decida: bug real, falso positivo ou verdadeiro-mas-não-explorável.<br><em>O que observar:</em> a terceira categoria é a mais interessante e a que ninguém espera. Código que <em>parece</em> vulnerável mas cujo input nunca vem de fora é achado legítimo da ferramenta e não é risco — e saber distinguir isso é a habilidade central aqui.</li>
+<li><strong>Documente o processo antes de automatizar.</strong> No <code>SECURITY.md</code>, escreva quem faz triagem, em quanto tempo e como se registra um falso positivo.<br><em>O que observar:</em> sem esse processo escrito, o primeiro achado urgente vira discussão. Com ele, vira tarefa. A diferença aparece justamente no dia em que ninguém tem tempo.</li>
+<li><strong>Bloqueie só o diff, não o repositório inteiro.</strong> Configure o Semgrep como required check rodando em modo diff.<br><em>O que observar:</em> o PR é avaliado pelo que ele <em>introduz</em>. Exigir que o legado inteiro seja corrigido antes de qualquer merge é o caminho mais rápido para o time desligar a ferramenta — e a dívida antiga continua visível no relatório, só não bloqueia.</li>
+<li><strong>Escreva uma regra para o anti-padrão do <em>seu</em> projeto.</strong> Por exemplo, <code>print()</code> em código de produção, ou uso de uma função interna já deprecada.<br><em>O que observar:</em> regras genéricas pegam problema genérico; a regra que conhece o seu código pega o problema que se repete nos seus PRs. É onde o SAST deixa de ser commodity.</li>
+<li><strong>Escreva a segunda regra para dado pessoal em log.</strong> Um padrão que detecte CPF, e-mail ou token sendo registrado.<br><em>O que observar:</em> rode contra o histórico do projeto. Achados aqui costumam aparecer, e eles cruzam com o tópico de Log Management — dado pessoal em log é risco de conformidade, não só de segurança.</li>
+<li><strong>Some uma segunda ferramenta e compare.</strong> Habilite o CodeQL (gratuito em repositório público) e veja o que ele acha que o Semgrep não achou.<br><em>O que observar:</em> a sobreposição é parcial. Ferramentas de SAST têm pontos cegos diferentes, e a interseção é menor do que se imagina — o que justifica ter duas, desde que a triagem dê conta.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Cinco achados High estão classificados, com justificativa escrita para cada um.</li>
+<li>O PR é bloqueado por achado novo e não pela dívida antiga.</li>
+<li>Existem duas regras customizadas funcionando.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o Semgrep demorar demais, restrinja os caminhos analisados no <code>.semgrepignore</code> — dependência de terceiro não é o seu código e só gera ruído. E se a regra customizada não casar nada, teste o padrão no playground do Semgrep antes: a sintaxe de metavariável tem sutilezas que erram silenciosamente.</p>
+<h4>Vá além</h4>
+<p>Pegue um achado que você classificou como falso positivo e escreva a exceção na própria regra, em vez de suprimir no código. Assim a correção vale para o repositório inteiro e para o futuro — e é a diferença entre afinar a ferramenta e remendar caso a caso.</p>"""
                 ),
                 "practical_en": (
-                    "<p><strong>Full hands-on exercise</strong>:</p>"
-                    "<ol>"
-                    "<li>Run <code>semgrep --config p/owasp-top-ten</code> on your repo. "
-                    "Triage: for each High finding, decide if it is an FP or a real bug.</li>"
-                    "<li>Add Bandit (if Python) or gosec (if Go) and configure it in CI.</li>"
-                    "<li>Enable GitHub CodeQL on the repo (free for public repos).</li>"
-                    "<li>Configure Semgrep as a required PR check, diff-only.</li>"
-                    "<li>Write 2 custom rules: one for a project anti-pattern "
-                    "(e.g. <code>print()</code> in production code), another for PII "
-                    "patterns in logs.</li>"
-                    "<li>Document the triage process in SECURITY.md.</li>"
-                    "<li>Bonus: complement with OWASP ZAP as DAST against staging.</li>"
-                    "</ol>"
+                    """<p><strong>Goal:</strong> triage real findings and arrive at a pipeline that blocks only what deserves blocking — because SAST that screams at everything gets switched off in two weeks, and then protects nothing.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A repository with real code (the older, the better for this exercise) and <code>pip install semgrep</code>.</li>
+<li>A <code>SECURITY.md</code> file, even an empty one for now.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Run against everything and measure the size of the problem.</strong> <code>semgrep --config p/owasp-top-ten .</code>.<br><em>What to look for:</em> count findings by severity. That starting number is not meant to be fixed all at once — it is the baseline you will measure progress against.</li>
+<li><strong>Genuinely triage five High findings.</strong> For each, open the code and decide: real bug, false positive, or true-but-not-exploitable.<br><em>What to look for:</em> the third category is the most interesting and the one nobody expects. Code that <em>looks</em> vulnerable but whose input never comes from outside is a legitimate finding and not a risk — and telling those apart is the core skill here.</li>
+<li><strong>Document the process before automating it.</strong> In <code>SECURITY.md</code>, write who triages, within what time, and how a false positive is recorded.<br><em>What to look for:</em> without that written process, the first urgent finding becomes a debate. With it, it becomes a task. The difference shows up precisely on the day nobody has time.</li>
+<li><strong>Block the diff, not the whole repository.</strong> Configure Semgrep as a required check running in diff mode.<br><em>What to look for:</em> the PR is judged by what it <em>introduces</em>. Requiring the entire legacy base to be fixed before any merge is the fastest route to the team disabling the tool — and the old debt stays visible in reports, it just does not block.</li>
+<li><strong>Write a rule for <em>your</em> project's anti-pattern.</strong> For instance, <code>print()</code> in production code, or use of an internal function you deprecated.<br><em>What to look for:</em> generic rules catch generic problems; a rule that knows your codebase catches the problem that keeps recurring in your PRs. That is where SAST stops being a commodity.</li>
+<li><strong>Write the second rule for personal data in logs.</strong> A pattern detecting national IDs, emails, or tokens being logged.<br><em>What to look for:</em> run it over the project's history. Findings usually show up, and they connect to the Log Management topic — personal data in logs is a compliance risk, not only a security one.</li>
+<li><strong>Add a second tool and compare.</strong> Enable CodeQL (free on public repositories) and see what it finds that Semgrep did not.<br><em>What to look for:</em> overlap is partial. SAST tools have different blind spots, and the intersection is smaller than people assume — which justifies running two, as long as triage can keep up.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>Five High findings are classified, each with a written justification.</li>
+<li>PRs are blocked by new findings and not by old debt.</li>
+<li>Two custom rules are working.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If Semgrep takes too long, restrict the analyzed paths in <code>.semgrepignore</code> — third-party dependencies are not your code and only add noise. And if a custom rule matches nothing, test the pattern in Semgrep's playground first: metavariable syntax has subtleties that fail silently.</p>
+<h4>Go further</h4>
+<p>Take one finding you classified as a false positive and encode the exception in the rule itself, rather than suppressing it in the code. That way the fix applies across the whole repository and into the future — the difference between tuning the tool and patching case by case.</p>"""
                 ),
             },
             "materials": [
@@ -6112,38 +6264,62 @@ review before any release. Combining that with Cosign and Rekor (the
 Sigstore ecosystem) lets you generate cryptographically verifiable attestations
 about which level each artifact actually reached.</p>""",
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Configure Dependabot/Renovate no repo com groups.</li>"
-                    "<li>Rode <code>trivy fs .</code> e <code>trivy image</code>; gere "
-                    "SBOM com <code>syft</code>.</li>"
-                    "<li>Falhe CI em CVEs criticais (<code>--exit-code 1</code>).</li>"
-                    "<li>Documente SLA de remediação no SECURITY.md.</li>"
-                    "<li>Configure pin por hash em <code>requirements.txt</code> "
-                    "(pip-tools).</li>"
-                    "<li>Simule: encontre CVE conhecido em uma versão antiga, faça PR de "
-                    "update, verifique CI passa.</li>"
-                    "<li>Bonus: gere atestado SLSA L3 com Sigstore.</li>"
-                    "<li>Bonus 2: configure pull-through cache em registry interno para "
-                    "imagens base.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> descobrir que a maioria das CVEs do seu projeto não precisa ser corrigida hoje — e sair com um critério objetivo para decidir quais precisam, em vez de reagir ao número total.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um projeto com dependências reais e um <code>Dockerfile</code>.</li>
+<li><code>trivy</code> e <code>syft</code> instalados.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Escaneie e leve o susto do número bruto.</strong> <code>trivy fs .</code> e <code>trivy image SUA_IMAGEM</code>.<br><em>O que observar:</em> costumam aparecer dezenas ou centenas. Se a reação for "precisamos corrigir tudo", o programa morre na primeira semana. O objetivo dos próximos passos é transformar esse número em uma lista curta e acionável.</li>
+<li><strong>Entenda por que CVSS sozinho não prioriza.</strong> Pegue três CVEs críticas e procure cada uma no catálogo KEV e no score EPSS.<br><em>O que observar:</em> algumas críticas têm probabilidade de exploração baixíssima e nenhuma exploração conhecida; outras, com score menor, estão no KEV — ou seja, sendo exploradas <em>agora</em>. Priorizar por CVSS ignora exatamente essa informação (seção 2).</li>
+<li><strong>Verifique se o código vulnerável é sequer alcançável.</strong> Para uma CVE, encontre a função afetada e veja se o seu projeto a chama.<br><em>O que observar:</em> muitas vezes a biblioteca está presente mas o caminho vulnerável nunca é executado. Isso não elimina o risco (a dependência pode mudar), mas muda a urgência — e é o tipo de análise que separa correção com propósito de correção por ansiedade.</li>
+<li><strong>Escreva o SLA antes de automatizar.</strong> No <code>SECURITY.md</code>: crítica em KEV, prazo curto; crítica sem exploração conhecida, prazo médio; média e baixa, próxima janela.<br><em>O que observar:</em> o SLA é o que transforma "temos 200 CVEs" em "temos 3 fora do prazo". Sem ele, todo relatório é igualmente alarmante e, portanto, igualmente ignorado (seção 5).</li>
+<li><strong>Bloqueie a CI segundo o seu critério, não o do default.</strong> <code>trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed</code>.<br><em>O que observar:</em> repare no <code>--ignore-unfixed</code>: bloquear por vulnerabilidade sem correção disponível não protege ninguém e só impede deploy. É uma flag pequena com efeito grande na adoção.</li>
+<li><strong>Torne o build determinístico.</strong> Gere <code>requirements.txt</code> com hashes via pip-tools e fixe a imagem base por digest.<br><em>O que observar:</em> agora dois builds do mesmo commit instalam exatamente as mesmas versões. Sem isso, o scan de ontem não descreve o artefato de hoje — e o relatório vira ficção.</li>
+<li><strong>Feche o ciclo com atualização automática.</strong> Configure Dependabot ou Renovate com agrupamento de PRs.<br><em>O que observar:</em> sem agrupamento, chegam dezenas de PRs por semana e ninguém revisa nenhum. Com agrupamento, chega um por ecossistema. Adoção falha por volume, não por falta de ferramenta.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Existe um SLA escrito que transforma a lista bruta em uma lista de pendências reais.</li>
+<li>A CI bloqueia por crítica corrigível e não por vulnerabilidade sem patch.</li>
+<li>O build é reproduzível, com hash nas dependências e digest na imagem base.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o Trivy não achar nada numa imagem antiga, ele provavelmente não conseguiu baixar o banco de vulnerabilidades — a primeira execução precisa de rede. E se o número de achados variar entre execuções sem o código mudar, é sinal de que o seu build não está fixado: o scan está olhando para artefatos diferentes.</p>
+<h4>Vá além</h4>
+<p>Gere um SBOM com <code>syft</code> e guarde-o junto do artefato. Depois simule o dia seguinte de uma CVE nova: com o SBOM, responder "quais serviços usam essa biblioteca?" leva segundos. Sem ele, leva um dia — e é essa diferença que justifica o esforço de gerar inventário em todo build.</p>"""
                 ),
                 "practical_en": (
-                    "<p><strong>Full hands-on exercise</strong>:</p>"
-                    "<ol>"
-                    "<li>Configure Dependabot/Renovate on the repo with groups.</li>"
-                    "<li>Run <code>trivy fs .</code> and <code>trivy image</code>; generate "
-                    "an SBOM with <code>syft</code>.</li>"
-                    "<li>Fail CI on critical CVEs (<code>--exit-code 1</code>).</li>"
-                    "<li>Document remediation SLAs in SECURITY.md.</li>"
-                    "<li>Configure hash pinning in <code>requirements.txt</code> "
-                    "(pip-tools).</li>"
-                    "<li>Simulate: find a known CVE in an old version, open an update PR, "
-                    "verify CI passes.</li>"
-                    "<li>Bonus: generate an SLSA L3 attestation with Sigstore.</li>"
-                    "<li>Bonus 2: configure a pull-through cache in an internal registry for "
-                    "base images.</li>"
-                    "</ol>"
+                    """<p><strong>Goal:</strong> discover that most of your project's CVEs do not need fixing today — and leave with an objective criterion for deciding which ones do, instead of reacting to the total count.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A project with real dependencies and a <code>Dockerfile</code>.</li>
+<li><code>trivy</code> and <code>syft</code> installed.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Scan and take the shock of the raw number.</strong> <code>trivy fs .</code> and <code>trivy image YOUR_IMAGE</code>.<br><em>What to look for:</em> dozens or hundreds usually appear. If the reaction is "we must fix everything", the program dies in week one. The next steps exist to turn that number into a short, actionable list.</li>
+<li><strong>Understand why CVSS alone does not prioritize.</strong> Take three critical CVEs and look each one up in the KEV catalog and its EPSS score.<br><em>What to look for:</em> some criticals have a very low probability of exploitation and no known exploitation; others, scored lower, are in KEV — meaning they are being exploited <em>right now</em>. Prioritizing by CVSS ignores exactly that information (section 2).</li>
+<li><strong>Check whether the vulnerable code is reachable at all.</strong> For one CVE, find the affected function and see whether your project calls it.<br><em>What to look for:</em> often the library is present but the vulnerable path never executes. That does not eliminate the risk (dependencies change), but it changes urgency — and this analysis separates fixing with purpose from fixing out of anxiety.</li>
+<li><strong>Write the SLA before automating.</strong> In <code>SECURITY.md</code>: critical and in KEV, short deadline; critical with no known exploitation, medium; medium and low, next window.<br><em>What to look for:</em> the SLA is what turns "we have 200 CVEs" into "we have 3 past due". Without it every report is equally alarming and therefore equally ignored (section 5).</li>
+<li><strong>Fail CI on your criterion, not the default one.</strong> <code>trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed</code>.<br><em>What to look for:</em> note <code>--ignore-unfixed</code>: blocking on a vulnerability with no available fix protects nobody and only stops deploys. A small flag with a large effect on adoption.</li>
+<li><strong>Make the build deterministic.</strong> Generate <code>requirements.txt</code> with hashes via pip-tools and pin the base image by digest.<br><em>What to look for:</em> now two builds of the same commit install exactly the same versions. Without that, yesterday's scan does not describe today's artifact — and the report becomes fiction.</li>
+<li><strong>Close the loop with automatic updates.</strong> Configure Dependabot or Renovate with PR grouping.<br><em>What to look for:</em> without grouping, dozens of PRs arrive weekly and nobody reviews any. With grouping, one arrives per ecosystem. Adoption fails on volume, not on lack of tooling.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>There is a written SLA turning the raw list into a real backlog.</li>
+<li>CI blocks on fixable criticals and not on vulnerabilities with no patch.</li>
+<li>The build is reproducible, with hashed dependencies and a digest-pinned base image.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If Trivy finds nothing in an old image, it probably could not download the vulnerability database — the first run needs network access. And if the finding count changes between runs without code changes, your build is not pinned: the scan is looking at different artifacts.</p>
+<h4>Go further</h4>
+<p>Generate an SBOM with <code>syft</code> and store it alongside the artifact. Then simulate the day after a new CVE drops: with the SBOM, answering "which services use this library?" takes seconds. Without it, a day — and that difference is what justifies generating an inventory on every build.</p>"""
                 ),
             },
             "materials": [
@@ -6755,40 +6931,60 @@ into smaller parts (section 1.1) instead of approving without reading it all.</l
 tends to create misunderstandings that only get worse in writing.</li>
 </ol>""",
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Crie PR template em <code>.github/pull_request_template.md</code> "
-                    "com checklist (auth, validação, log sem PII, testes, backward "
-                    "compat).</li>"
-                    "<li>Configure CODEOWNERS: <code>/security/</code> exige sec-team; "
-                    "migrations exigem DBA; .md exige docs.</li>"
-                    "<li>Configure branch protection com 1 review obrigatório + signed "
-                    "commits + status checks.</li>"
-                    "<li>Configure auto-assignment round-robin para distribuir.</li>"
-                    "<li>Adicione codecov bot que comenta cobertura no PR.</li>"
-                    "<li>Crie um PR de teste com 'mau-pattern' (SQL concat, log com PII) "
-                    "e veja se SAST + reviewer pegam.</li>"
-                    "<li>Bonus: configure GitHub Insights para acompanhar TTFR e "
-                    "merge time.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> montar um PR que a máquina revisa sozinha nas partes mecânicas, para que o humano gaste atenção onde só humano resolve — e testar isso com um PR propositalmente ruim.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um repositório no GitHub com pelo menos um colaborador, e permissão de administrador nele.</li>
+<li>Cerca de uma hora e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Escreva o template de PR pensando em quem revisa.</strong> Em <code>.github/pull_request_template.md</code>, um checklist curto: autenticação, validação de entrada, log sem dado pessoal, testes, compatibilidade retroativa.<br><em>O que observar:</em> mantenha curto. Checklist longo é marcado sem ler — e aí ele piora a revisão em vez de melhorar, porque cria a sensação de que alguém verificou (seção 1).</li>
+<li><strong>Defina quem precisa olhar o quê.</strong> Um <code>CODEOWNERS</code> exigindo o time de segurança em caminhos sensíveis, DBA em migrations e documentação em <code>.md</code>.<br><em>O que observar:</em> o reviewer certo é atribuído automaticamente, sem ninguém lembrar de marcar. Depender de memória para chamar o revisor certo é o que faz mudança arriscada passar despercebida (seção 3).</li>
+<li><strong>Feche o caminho alternativo.</strong> Branch protection com um review obrigatório, commits assinados e status checks.<br><em>O que observar:</em> tente merge sem review. É recusado. Processo que depende de acordo informal não sobrevive à urgência — e é justamente na urgência que a revisão é mais necessária.</li>
+<li><strong>Automatize o que é mecânico.</strong> Coloque linter, SAST, cobertura e detecção de segredo para comentar direto no PR.<br><em>O que observar:</em> a revisão humana deixa de gastar tempo com vírgula, import e formatação. O que sobra para a pessoa é o que máquina não faz: a mudança resolve o problema certo? A abordagem é a melhor disponível? (seção 4)</li>
+<li><strong>Crie o PR ruim de propósito e veja o que passa.</strong> Concatenação de string em SQL, um log com dado pessoal e uma função sem teste.<br><em>O que observar:</em> anote quais problemas a automação pegou e quais só um humano pegaria. Essa lista é o mapa do que a sua revisão humana precisa priorizar — e ela é diferente em cada projeto.</li>
+<li><strong>Meça o tempo até o primeiro comentário.</strong> Acompanhe quanto tempo os PRs da semana levam para receber a primeira resposta.<br><em>O que observar:</em> PR parado é trabalho parado, e ainda cresce de tamanho enquanto espera. Esse tempo costuma ser a maior fonte de lead time num time pequeno — e quase nunca é medido.</li>
+<li><strong>Reduza o tamanho antes de melhorar o processo.</strong> Olhe o número de linhas dos seus últimos PRs.<br><em>O que observar:</em> acima de umas poucas centenas de linhas, a revisão vira aprovação simbólica. Nenhuma ferramenta conserta PR grande demais — dividir é o único caminho, e é o anti-padrão número um da seção 5.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Um PR tocando caminho sensível puxa automaticamente o revisor certo.</li>
+<li>Merge sem review é recusado pelo servidor.</li>
+<li>Você tem a lista do que a automação pegou e do que escapou no PR ruim.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o <code>CODEOWNERS</code> não atribui ninguém, confira se o arquivo está em <code>.github/</code>, na raiz ou em <code>docs/</code> — em outro lugar ele é ignorado em silêncio. E se o bot de cobertura não comenta, normalmente falta permissão de <code>pull-requests: write</code> no workflow.</p>
+<h4>Vá além</h4>
+<p>Combine com o time uma regra de tamanho máximo de PR e acompanhe o efeito no tempo de revisão por um mês. A hipótese que vale testar: PRs menores são revisados mais rápido <em>e</em> com mais atenção — e o ganho aparece nas duas pontas, não só na velocidade.</p>"""
                 ),
                 "practical_en": (
-                    "<p><strong>Full hands-on exercise</strong>:</p>"
-                    "<ol>"
-                    "<li>Create a PR template in <code>.github/pull_request_template.md</code> "
-                    "with a checklist (auth, validation, logs without PII, tests, backward "
-                    "compat).</li>"
-                    "<li>Configure CODEOWNERS: <code>/security/</code> requires sec-team; "
-                    "migrations require a DBA; .md requires docs.</li>"
-                    "<li>Configure branch protection with 1 required review + signed "
-                    "commits + status checks.</li>"
-                    "<li>Configure round-robin auto-assignment to distribute load.</li>"
-                    "<li>Add a codecov bot that comments coverage on the PR.</li>"
-                    "<li>Create a test PR with a bad pattern (SQL concat, PII in logs) "
-                    "and see if SAST + the reviewer catch it.</li>"
-                    "<li>Bonus: configure GitHub Insights to track TTFR and "
-                    "merge time.</li>"
-                    "</ol>"
+                    """<p><strong>Goal:</strong> build a PR flow where machines review the mechanical parts, so humans spend attention where only humans help — and test it with a deliberately bad PR.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A GitHub repository with at least one collaborator, and admin rights on it.</li>
+<li>About an hour and a half.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Write the PR template for whoever reviews.</strong> In <code>.github/pull_request_template.md</code>, a short checklist: authentication, input validation, logs free of personal data, tests, backward compatibility.<br><em>What to look for:</em> keep it short. A long checklist gets ticked without reading — and then it makes review worse rather than better, because it creates the impression someone checked (section 1).</li>
+<li><strong>Define who must look at what.</strong> A <code>CODEOWNERS</code> requiring the security team on sensitive paths, a DBA on migrations, and docs owners on <code>.md</code>.<br><em>What to look for:</em> the right reviewer is assigned automatically, with nobody remembering to tag them. Relying on memory to summon the right reviewer is how risky changes slip through (section 3).</li>
+<li><strong>Close the alternate path.</strong> Branch protection with one required review, signed commits, and status checks.<br><em>What to look for:</em> try merging without review. Refused. A process that depends on informal agreement does not survive urgency — and urgency is exactly when review matters most.</li>
+<li><strong>Automate what is mechanical.</strong> Have linters, SAST, coverage, and secret detection comment directly on the PR.<br><em>What to look for:</em> human review stops burning time on commas, imports, and formatting. What remains for the person is what machines cannot do: does this change solve the right problem? Is this the best available approach? (section 4)</li>
+<li><strong>Create the bad PR on purpose and see what gets through.</strong> String concatenation in SQL, a log containing personal data, and a function with no test.<br><em>What to look for:</em> note which problems automation caught and which only a human would. That list maps what your human review needs to prioritize — and it differs by project.</li>
+<li><strong>Measure time to first comment.</strong> Track how long this week's PRs take to get a first response.<br><em>What to look for:</em> a stalled PR is stalled work, and it grows while it waits. That time is usually the biggest source of lead time in a small team — and almost never measured.</li>
+<li><strong>Shrink size before improving process.</strong> Look at the line counts of your recent PRs.<br><em>What to look for:</em> past a few hundred lines, review becomes symbolic approval. No tool fixes an oversized PR — splitting is the only path, and it is anti-pattern number one in section 5.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>A PR touching a sensitive path automatically pulls in the right reviewer.</li>
+<li>Merging without review is refused by the server.</li>
+<li>You have the list of what automation caught and what slipped through in the bad PR.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If <code>CODEOWNERS</code> assigns nobody, check the file lives in <code>.github/</code>, the root, or <code>docs/</code> — anywhere else it is silently ignored. And if the coverage bot does not comment, it usually lacks <code>pull-requests: write</code> permission in the workflow.</p>
+<h4>Go further</h4>
+<p>Agree a maximum PR size with the team and track the effect on review time for a month. The hypothesis worth testing: smaller PRs get reviewed faster <em>and</em> more carefully — the gain shows up at both ends, not just in speed.</p>"""
                 ),
             },
             "materials": [
@@ -7456,38 +7652,62 @@ produces exactly the same output) lets multiple independent parties
 verify the result without blindly trusting a single build
 infrastructure.</p>""",
                 "practical": (
-                    "<p><strong>Exercício prático completo</strong>:</p>"
-                    "<ol>"
-                    "<li>Suba imagem para GHCR com tag por commit SHA + tag semver.</li>"
-                    "<li>Habilite immutability nas tags.</li>"
-                    "<li>Gere SBOM com <code>syft</code>; anexe como referrer com Cosign.</li>"
-                    "<li>Assine imagem com <code>cosign sign</code> (keyless OIDC do GitHub).</li>"
-                    "<li>Verifique com <code>cosign verify</code> contra OIDC issuer.</li>"
-                    "<li>Configure Trivy operator (ou rescan periódico) no Harbor/ECR.</li>"
-                    "<li>Configure retenção: manter 30 versões semver + apagar untagged "
-                    "após 7d.</li>"
-                    "<li>Em K8s local (kind), instale Sigstore Policy Controller que "
-                    "rejeita imagens não assinadas.</li>"
-                    "<li>Bonus: gere atestado SLSA L3 com <code>slsa-github-generator</code>.</li>"
-                    "<li>Bonus 2: build multi-arch (amd64 + arm64) e teste em ambos.</li>"
-                    "</ol>"
+                    """<p><strong>Objetivo:</strong> fazer um cluster recusar uma imagem não assinada — fechando a cadeia que vai do build até o que efetivamente roda, em vez de confiar que o registro só tem coisa boa.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Um repositório no GitHub com Actions, permissão no GHCR e um cluster local (kind).</li>
+<li><code>cosign</code> e <code>syft</code> instalados.</li>
+<li>Cerca de duas horas e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Publique com tag que identifica, não com <code>latest</code>.</strong> Suba a imagem para o GHCR com tag por SHA do commit e também com semver.<br><em>O que observar:</em> a tag por SHA responde "de qual código veio esta imagem?" sem ambiguidade. É a base de tudo que vem depois: sem identidade estável, assinatura e SBOM não têm a que se referir (seção 2).</li>
+<li><strong>Torne as tags imutáveis e tente sobrescrever.</strong> Ative immutability e publique de novo na mesma tag.<br><em>O que observar:</em> é recusado. Sem isso, a tag <code>v1.2.3</code> pode apontar para conteúdo diferente amanhã — e aí o que você testou não é o que está rodando, mesmo com a mesma tag.</li>
+<li><strong>Assine sem gerenciar chave.</strong> <code>cosign sign</code> em modo keyless, usando o OIDC do GitHub Actions.<br><em>O que observar:</em> não existe chave privada para guardar ou rotacionar. A identidade que assina é o próprio workflow, registrada publicamente no log de transparência — e é isso que se verifica depois.</li>
+<li><strong>Verifique e tente enganar a verificação.</strong> <code>cosign verify</code> exigindo o issuer e a identidade corretos; depois tente verificar uma imagem assinada por outro repositório.<br><em>O que observar:</em> falha. Verificar "está assinada" não basta — o que importa é <em>quem</em> assinou. Esse detalhe é o que diferencia verificação real de teatro criptográfico.</li>
+<li><strong>Anexe o SBOM ao artefato.</strong> Gere com <code>syft</code> e anexe como referrer via Cosign.<br><em>O que observar:</em> o inventário viaja junto da imagem, não num diretório que alguém pode esquecer de atualizar. Quando a CVE nova aparecer, a resposta está anexada ao próprio artefato.</li>
+<li><strong>Faça o cluster exigir tudo isso.</strong> Instale o Sigstore Policy Controller no kind e configure para rejeitar imagem não assinada.<br><em>O que observar:</em> tente subir um <code>nginx:latest</code> qualquer. É rejeitado no apply. A cadeia se fecha aqui: não basta assinar, alguém precisa <em>exigir</em> a assinatura no ponto de execução.</li>
+<li><strong>Controle o custo antes que ele apareça.</strong> Configure retenção: manter as últimas versões semver e apagar imagens sem tag depois de alguns dias.<br><em>O que observar:</em> registro sem política de retenção cresce para sempre, e imagem de container é cara em armazenamento. É a seção 4, e é o tipo de configuração que ninguém faz até a fatura chamar atenção.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O cluster rejeita imagem não assinada e aceita a sua.</li>
+<li><code>cosign verify</code> falha quando o issuer ou a identidade não batem.</li>
+<li>O SBOM está anexado à imagem e é recuperável a partir dela.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se a assinatura keyless falhar na Action, falta <code>id-token: write</code> nas permissões do workflow — sem isso não há token OIDC para assinar. E se o Policy Controller rejeitar <em>todas</em> as imagens, inclusive as do sistema, verifique o namespace: ele só deve atuar onde você marcou, ou o cluster para de funcionar.</p>
+<h4>Vá além</h4>
+<p>Configure pull-through cache para as suas imagens base (seção 5) e meça duas coisas: tempo de build e o que acontece quando o registro público está fora do ar. A segunda medição é o argumento real do cache — não é velocidade, é não depender da disponibilidade de terceiro para conseguir fazer deploy.</p>"""
                 ),
                 "practical_en": (
-                    "<p><strong>Full hands-on exercise</strong>:</p>"
-                    "<ol>"
-                    "<li>Push an image to GHCR with a commit-SHA tag + a semver tag.</li>"
-                    "<li>Enable tag immutability.</li>"
-                    "<li>Generate an SBOM with <code>syft</code>; attach it as a referrer with Cosign.</li>"
-                    "<li>Sign the image with <code>cosign sign</code> (GitHub keyless OIDC).</li>"
-                    "<li>Verify with <code>cosign verify</code> against the OIDC issuer.</li>"
-                    "<li>Configure the Trivy operator (or periodic rescan) on Harbor/ECR.</li>"
-                    "<li>Configure retention: keep 30 semver versions + delete untagged "
-                    "after 7d.</li>"
-                    "<li>On local K8s (kind), install Sigstore Policy Controller that "
-                    "rejects unsigned images.</li>"
-                    "<li>Bonus: generate an SLSA L3 attestation with <code>slsa-github-generator</code>.</li>"
-                    "<li>Bonus 2: multi-arch build (amd64 + arm64) and test on both.</li>"
-                    "</ol>"
+                    """<p><strong>Goal:</strong> make a cluster refuse an unsigned image — closing the chain from build to what actually runs, instead of trusting that the registry only holds good things.</p>
+<h4>Before you start</h4>
+<ul>
+<li>A GitHub repository with Actions, GHCR permissions, and a local cluster (kind).</li>
+<li><code>cosign</code> and <code>syft</code> installed.</li>
+<li>About two and a half hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Publish with a tag that identifies, not with <code>latest</code>.</strong> Push the image to GHCR tagged by commit SHA and also by semver.<br><em>What to look for:</em> the SHA tag answers "which code produced this image?" without ambiguity. It is the foundation for everything that follows: without stable identity, signatures and SBOMs have nothing to refer to (section 2).</li>
+<li><strong>Make tags immutable and try to overwrite.</strong> Enable immutability and push again to the same tag.<br><em>What to look for:</em> refused. Without this, tag <code>v1.2.3</code> can point at different content tomorrow — and then what you tested is not what is running, same tag notwithstanding.</li>
+<li><strong>Sign without managing a key.</strong> <code>cosign sign</code> in keyless mode, using GitHub Actions OIDC.<br><em>What to look for:</em> there is no private key to store or rotate. The signing identity is the workflow itself, recorded publicly in the transparency log — and that is what gets verified later.</li>
+<li><strong>Verify, then try to fool the verification.</strong> <code>cosign verify</code> requiring the correct issuer and identity; then try verifying an image signed by a different repository.<br><em>What to look for:</em> it fails. Verifying "it is signed" is not enough — what matters is <em>who</em> signed it. That detail separates real verification from cryptographic theater.</li>
+<li><strong>Attach the SBOM to the artifact.</strong> Generate it with <code>syft</code> and attach it as a referrer via Cosign.<br><em>What to look for:</em> the inventory travels with the image, not in a directory someone might forget to update. When the next CVE lands, the answer is attached to the artifact itself.</li>
+<li><strong>Make the cluster demand all of it.</strong> Install the Sigstore Policy Controller on kind and configure it to reject unsigned images.<br><em>What to look for:</em> try deploying any <code>nginx:latest</code>. Rejected at apply time. The chain closes here: signing is not enough, someone has to <em>require</em> the signature at the point of execution.</li>
+<li><strong>Control cost before it shows up.</strong> Configure retention: keep the latest semver versions and delete untagged images after a few days.<br><em>What to look for:</em> a registry without retention grows forever, and container images are expensive storage. That is section 4, and the kind of configuration nobody does until the invoice draws attention.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The cluster rejects an unsigned image and accepts yours.</li>
+<li><code>cosign verify</code> fails when the issuer or identity does not match.</li>
+<li>The SBOM is attached to the image and retrievable from it.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If keyless signing fails in the Action, the workflow is missing <code>id-token: write</code> in its permissions — without it there is no OIDC token to sign with. And if the Policy Controller rejects <em>every</em> image, system ones included, check the namespace: it should only act where you labeled it, or the cluster stops working.</p>
+<h4>Go further</h4>
+<p>Configure a pull-through cache for your base images (section 5) and measure two things: build time, and what happens when the public registry is down. That second measurement is the cache's real argument — it is not speed, it is not depending on a third party's availability to be able to deploy.</p>"""
                 ),
             },
             "materials": [
