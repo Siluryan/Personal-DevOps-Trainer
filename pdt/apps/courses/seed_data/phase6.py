@@ -495,22 +495,60 @@ descriptors until the process crashes.</li>
 </ul>"""
                 ),
                 "practical": (
-                    "Crie um script <code>checklog.py</code> que: (1) recebe via "
-                    "<code>sys.argv</code> um caminho de arquivo de log; (2) abre com "
-                    "<code>with open()</code>; (3) conta linhas contendo "
-                    "<code>ERROR</code>, <code>WARN</code>, <code>INFO</code>; (4) imprime "
-                    "um sumário formatado com f-strings (largura fixa). Use type hints em "
-                    "todas as funções e rode <code>python -m mypy checklog.py</code> sem "
-                    "erros."
+                    """<p><strong>Objetivo:</strong> escrever um utilitário de linha de comando pequeno e, no caminho, esbarrar de propósito nas três armadilhas que derrubam quem chega de outra linguagem — atribuição que não copia, default mutável e type hint que o interpretador ignora.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Python 3.11 ou mais novo e um editor. Instale o <code>mypy</code>: <code>pip install mypy</code>.</li>
+<li>Um arquivo de log qualquer para servir de entrada. Se não tiver, <code>journalctl -n 500 &gt; app.log</code> resolve.</li>
+<li>Cerca de uma hora.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Escreva o esqueleto que lê o caminho do arquivo.</strong> Um <code>checklog.py</code> que pega <code>sys.argv[1]</code>, abre com <code>with open()</code> e conta linhas contendo ERROR, WARN e INFO.<br><em>O que observar:</em> rode sem argumento nenhum. O <code>IndexError</code> que aparece é feio e não explica nada a quem for usar o script. Trate esse caso com uma mensagem clara — a diferença entre script pessoal e ferramenta é quase toda aqui.</li>
+<li><strong>Prove que variável é nome, não caixa.</strong> Antes de seguir, abra o <code>python3</code> interativo: crie <code>a = [1, 2, 3]</code>, faça <code>b = a</code>, depois <code>b.append(4)</code> e imprima <code>a</code>.<br><em>O que observar:</em> <code>a</code> mudou. Agora repita com <code>b = a[:]</code> e veja a diferença. É a seção 2, e é a causa raiz de uma categoria inteira de bug que parece "ação à distância".</li>
+<li><strong>Caia na armadilha do default mutável, de propósito.</strong> Escreva <code>def acumula(item, destino=[]):</code> que dá append e retorna. Chame três vezes seguidas.<br><em>O que observar:</em> a lista cresce entre chamadas, como se a função lembrasse. Ela lembra mesmo: o default é avaliado <em>uma vez</em>, na definição. Corrija com <code>destino: list | None = None</code> — é a seção 5, e é pergunta clássica de entrevista.</li>
+<li><strong>Itere sobre o iterável, não sobre índices.</strong> Escreva a contagem usando <code>for i in range(len(linhas))</code> e depois reescreva como <code>for linha in arquivo</code>.<br><em>O que observar:</em> a segunda versão é menor, mais legível e não carrega o arquivo inteiro em memória. Abrir um log de 2 GB com cada abordagem deixa a diferença óbvia (seção 3).</li>
+<li><strong>Formate o sumário com f-string de largura fixa.</strong> Algo como <code>f"{nivel:&lt;8}{contagem:&gt;6}"</code>.<br><em>O que observar:</em> as colunas alinham sozinhas. Mas repare no aviso da seção 7: em chamada de <code>logging</code>, prefira <code>logger.info("x=%s", x)</code> — a f-string é avaliada mesmo quando aquele nível de log está desligado.</li>
+<li><strong>Anote tudo com type hints e rode o mypy.</strong> <code>python -m mypy checklog.py</code>.<br><em>O que observar:</em> o mypy acha erro que o Python executa sem reclamar — e essa é a lição inteira da seção 6: o hint não muda o runtime, ele alimenta a ferramenta. Rode também o script com um hint propositalmente errado e confirme que ele funciona assim mesmo.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li><code>python -m mypy checklog.py</code> passa sem nenhum erro.</li>
+<li>O script trata argumento faltando com mensagem útil em vez de traceback.</li>
+<li>Você consegue explicar, em uma frase, por que <code>destino=[]</code> é uma armadilha.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o mypy reclamar de <code>Optional</code> em todo lugar, é o comportamento correto: um parâmetro que aceita <code>None</code> precisa dizer isso no tipo. E <code>UnicodeDecodeError</code> ao ler o log quase sempre pede <code>open(path, encoding="utf-8", errors="replace")</code> — log de produção raramente é UTF-8 limpo.</p>
+<h4>Vá além</h4>
+<p>Troque o <code>sys.argv</code> por <code>argparse</code> e acrescente uma flag <code>--json</code>. Depois use <code>match</code> (seção 4) para despachar o formato de saída e repare: você vai querer usar destructuring, não comparar strings — é aí que fica claro que <code>match</code> não é um <code>switch</code> disfarçado.</p>"""
                 ),
                 "practical_en": (
-                    "Create a script <code>checklog.py</code> that: (1) receives a log file "
-                    "path via <code>sys.argv</code>; (2) opens it with "
-                    "<code>with open()</code>; (3) counts lines containing "
-                    "<code>ERROR</code>, <code>WARN</code>, <code>INFO</code>; (4) prints "
-                    "a formatted summary using f-strings (fixed width). Use type hints on "
-                    "every function and run <code>python -m mypy checklog.py</code> with no "
-                    "errors."
+                    """<p><strong>Goal:</strong> write a small command-line utility and, along the way, deliberately walk into the three traps that catch people arriving from other languages — assignment that does not copy, mutable defaults, and type hints the interpreter ignores.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Python 3.11 or newer and an editor. Install <code>mypy</code>: <code>pip install mypy</code>.</li>
+<li>Any log file to use as input. If you have none, <code>journalctl -n 500 &gt; app.log</code> will do.</li>
+<li>About an hour.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Write the skeleton that reads the file path.</strong> A <code>checklog.py</code> that takes <code>sys.argv[1]</code>, opens it with <code>with open()</code>, and counts lines containing ERROR, WARN, and INFO.<br><em>What to look for:</em> run it with no argument. The <code>IndexError</code> you get is ugly and explains nothing to whoever uses the script. Handle that case with a clear message — the difference between a personal script and a tool is almost entirely here.</li>
+<li><strong>Prove that a variable is a name, not a box.</strong> Before moving on, open interactive <code>python3</code>: create <code>a = [1, 2, 3]</code>, do <code>b = a</code>, then <code>b.append(4)</code> and print <code>a</code>.<br><em>What to look for:</em> <code>a</code> changed. Now repeat with <code>b = a[:]</code> and see the difference. That is section 2, and it is the root cause of a whole class of bugs that feel like action at a distance.</li>
+<li><strong>Walk into the mutable default trap on purpose.</strong> Write <code>def accumulate(item, target=[]):</code> that appends and returns. Call it three times in a row.<br><em>What to look for:</em> the list grows between calls, as if the function remembered. It does: the default is evaluated <em>once</em>, at definition time. Fix it with <code>target: list | None = None</code> — section 5, and a classic interview question.</li>
+<li><strong>Iterate over the iterable, not over indices.</strong> Write the counting with <code>for i in range(len(lines))</code>, then rewrite it as <code>for line in file</code>.<br><em>What to look for:</em> the second version is shorter, more readable, and never loads the whole file into memory. Opening a 2 GB log with each approach makes the difference obvious (section 3).</li>
+<li><strong>Format the summary with fixed-width f-strings.</strong> Something like <code>f"{level:&lt;8}{count:&gt;6}"</code>.<br><em>What to look for:</em> the columns line up on their own. But mind the warning in section 7: inside a <code>logging</code> call, prefer <code>logger.info("x=%s", x)</code> — an f-string is evaluated even when that log level is turned off.</li>
+<li><strong>Annotate everything and run mypy.</strong> <code>python -m mypy checklog.py</code>.<br><em>What to look for:</em> mypy finds errors that Python runs without complaining — and that is the whole lesson of section 6: hints do not change runtime, they feed the tooling. Also run the script with a deliberately wrong hint and confirm it still works.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li><code>python -m mypy checklog.py</code> passes with no errors.</li>
+<li>The script handles a missing argument with a useful message instead of a traceback.</li>
+<li>You can explain, in one sentence, why <code>target=[]</code> is a trap.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If mypy complains about <code>Optional</code> everywhere, that is correct behavior: a parameter that accepts <code>None</code> has to say so in its type. And a <code>UnicodeDecodeError</code> while reading the log almost always calls for <code>open(path, encoding="utf-8", errors="replace")</code> — production logs are rarely clean UTF-8.</p>
+<h4>Go further</h4>
+<p>Replace <code>sys.argv</code> with <code>argparse</code> and add a <code>--json</code> flag. Then use <code>match</code> (section 4) to dispatch on output format and notice: you will want destructuring, not string comparison — that is where it becomes clear <code>match</code> is not a disguised <code>switch</code>.</p>"""
                 ),
             },
             "materials": [
@@ -1207,20 +1245,60 @@ the opposite of <code>lines = open(f).readlines()</code>, which would
 materialize the entire file at once before processing anything.</p>"""
                 ),
                 "practical": (
-                    "Escreva <code>top_users.py</code> que lê um <code>access.log</code> "
-                    "(formato Combined do nginx/Apache) e imprime, em uma linha cada, os 10 "
-                    "IPs mais frequentes <em>e</em> a quantidade de requisições com status "
-                    "≥ 500 de cada um. Restrições: (1) use <code>collections.Counter</code>; "
-                    "(2) não carregue o arquivo todo em memória, use generator; "
-                    "(3) suporte arquivos <code>.gz</code> via <code>gzip.open</code>."
+                    """<p><strong>Objetivo:</strong> processar um log grande sem nunca carregá-lo na memória, e medir a diferença — em vez de aceitar "use generator" como regra decorada.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Python 3.11+, e um <code>access.log</code> no formato Combined do nginx. Se não tiver um grande, gere: repita um log pequeno até passar de 200 MB.</li>
+<li>Instale o <code>memory_profiler</code> (<code>pip install memory_profiler</code>). Ele é o que transforma a regra em evidência.</li>
+<li>Uma hora e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Escreva primeiro a versão errada, de propósito.</strong> Um <code>top_users.py</code> que faz <code>linhas = open(path).readlines()</code> e só depois processa.<br><em>O que observar:</em> rode com <code>python -m memory_profiler top_users.py</code> e anote o pico de memória. Ele será próximo do tamanho do arquivo. Guarde esse número: ele é o antes.</li>
+<li><strong>Troque por um generator e meça de novo.</strong> Substitua o <code>readlines()</code> por iteração direta no arquivo, encadeando as transformações com expressões geradoras.<br><em>O que observar:</em> o pico de memória fica praticamente constante, independente do tamanho do arquivo. É a seção 3 sendo literal: "não carrega tudo" não é figura de linguagem, é o que o profiler mostra.</li>
+<li><strong>Use <code>Counter</code> em vez de reinventar a contagem.</strong> Troque o dicionário com <code>if chave in d</code> por <code>collections.Counter</code> e use <code>most_common(10)</code>.<br><em>O que observar:</em> some um bloco inteiro de código, e o <code>most_common</code> já devolve ordenado. É o ponto da seção 4: esses nomes existem justamente porque todo mundo reimplementava isso, pior.</li>
+<li><strong>Escolha a estrutura certa e prove com o relógio.</strong> Monte uma lista com cem mil IPs e uma versão em <code>set</code>, depois cronometre <code>ip in lista</code> contra <code>ip in conjunto</code> com <code>timeit</code>.<br><em>O que observar:</em> a diferença é de ordens de grandeza, não de percentual. É a seção 1 deixando de ser tabela e virando número seu.</li>
+<li><strong>Modele o registro com <code>dataclass</code>.</strong> Crie uma <code>LinhaAcesso</code> com ip, status e bytes, em vez de tupla anônima.<br><em>O que observar:</em> o <code>repr</code> gratuito muda a experiência de depurar — imprimir o objeto passa a dizer o que ele é. Compare com <code>print(tupla)</code>, onde você precisa lembrar a ordem dos campos.</li>
+<li><strong>Suporte arquivo <code>.gz</code> sem duplicar o código.</strong> Escolha entre <code>open</code> e <code>gzip.open</code> conforme a extensão, e mantenha o resto do pipeline intacto.<br><em>O que observar:</em> como todo o processamento é preguiçoso, ele não sabe nem precisa saber de onde vieram as linhas. Essa indiferença é o que torna generator composável — a ideia central da seção 9.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O pico de memória é praticamente o mesmo para um log de 10 MB e um de 500 MB.</li>
+<li>O script processa <code>.log</code> e <code>.gz</code> com o mesmo caminho de código.</li>
+<li>Você tem os dois números de <code>timeit</code> (lista e set) anotados e sabe explicar a diferença.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o consumo de memória não cair, procure por um <code>list(...)</code> ou <code>sorted(...)</code> no meio do pipeline: qualquer um dos dois materializa tudo e anula o generator. E se o <code>Counter</code> vier vazio, imprima uma linha crua antes do parse — log Combined tem campos entre aspas, e o <code>split()</code> ingênuo quebra no lugar errado.</p>
+<h4>Vá além</h4>
+<p>Use <code>itertools.groupby</code> para agrupar acessos por hora sem materializar os grupos (seção 5), e acrescente um <code>StrEnum</code> para as faixas de status em vez de comparar números soltos (seção 8). A pergunta final: qual dessas mudanças deixou o código mais rápido e qual deixou mais difícil de escrever errado? Raramente é a mesma.</p>"""
                 ),
                 "practical_en": (
-                    "Write <code>top_users.py</code> that reads an <code>access.log</code> "
-                    "(nginx/Apache Combined format) and prints, one per line, the 10 most "
-                    "frequent IPs <em>and</em> the count of status ≥ 500 requests for each. "
-                    "Constraints: (1) use <code>collections.Counter</code>; "
-                    "(2) don't load the whole file into memory, use a generator; "
-                    "(3) support <code>.gz</code> files via <code>gzip.open</code>."
+                    """<p><strong>Goal:</strong> process a large log without ever loading it into memory, and measure the difference — instead of accepting "use a generator" as a memorized rule.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Python 3.11+ and an <code>access.log</code> in nginx Combined format. If you do not have a big one, generate it: repeat a small log until it passes 200 MB.</li>
+<li>Install <code>memory_profiler</code> (<code>pip install memory_profiler</code>). It is what turns the rule into evidence.</li>
+<li>An hour and a half.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Write the wrong version first, on purpose.</strong> A <code>top_users.py</code> that does <code>lines = open(path).readlines()</code> and only then processes.<br><em>What to look for:</em> run it under <code>python -m memory_profiler top_users.py</code> and note the peak memory. It will be close to the file size. Keep that number: it is your "before".</li>
+<li><strong>Switch to a generator and measure again.</strong> Replace <code>readlines()</code> with direct iteration over the file, chaining transformations as generator expressions.<br><em>What to look for:</em> peak memory stays basically flat regardless of file size. Section 3 taken literally: "does not load everything" is not a figure of speech, it is what the profiler shows.</li>
+<li><strong>Use <code>Counter</code> instead of reinventing counting.</strong> Replace the dictionary with <code>if key in d</code> by <code>collections.Counter</code> and use <code>most_common(10)</code>.<br><em>What to look for:</em> a whole block of code disappears, and <code>most_common</code> already returns sorted. That is the point of section 4: these names exist precisely because everyone kept reimplementing them, worse.</li>
+<li><strong>Pick the right structure and prove it with a clock.</strong> Build a list of a hundred thousand IPs and a <code>set</code> version, then time <code>ip in list</code> against <code>ip in set</code> with <code>timeit</code>.<br><em>What to look for:</em> the difference is orders of magnitude, not percentage points. Section 1 stops being a table and becomes your own number.</li>
+<li><strong>Model the record with a <code>dataclass</code>.</strong> Create an <code>AccessLine</code> with ip, status, and bytes instead of an anonymous tuple.<br><em>What to look for:</em> the free <code>repr</code> changes the debugging experience — printing the object now tells you what it is. Compare with <code>print(tuple)</code>, where you have to remember field order.</li>
+<li><strong>Support <code>.gz</code> files without duplicating code.</strong> Choose between <code>open</code> and <code>gzip.open</code> by extension, and leave the rest of the pipeline untouched.<br><em>What to look for:</em> because the whole pipeline is lazy, it neither knows nor needs to know where the lines came from. That indifference is what makes generators composable — the central idea of section 9.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>Peak memory is essentially the same for a 10 MB log and a 500 MB one.</li>
+<li>The script handles <code>.log</code> and <code>.gz</code> through the same code path.</li>
+<li>You have both <code>timeit</code> numbers (list and set) written down and can explain the difference.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If memory usage does not drop, look for a <code>list(...)</code> or <code>sorted(...)</code> in the middle of the pipeline: either one materializes everything and cancels the generator. And if <code>Counter</code> comes back empty, print a raw line before parsing — Combined logs quote some fields, and a naive <code>split()</code> breaks in the wrong place.</p>
+<h4>Go further</h4>
+<p>Use <code>itertools.groupby</code> to group accesses by hour without materializing the groups (section 5), and add a <code>StrEnum</code> for status ranges instead of comparing bare numbers (section 8). The closing question: which of those changes made the code faster, and which made it harder to write wrong? It is rarely the same one.</p>"""
                 ),
             },
             "materials": [
@@ -1904,22 +1982,62 @@ exceptions, without one masking the other.</p>
 """
                 ),
                 "practical": (
-                    "Implemente uma classe <code>RetryableHTTP</code> com método "
-                    "<code>get(url, retries=3)</code> que: (1) usa <code>requests.get</code>; "
-                    "(2) captura <code>requests.HTTPError</code> apenas em status 5xx; "
-                    "(3) faz retry com backoff exponencial (1s, 2s, 4s); (4) re-lança como "
-                    "<code>DeployError</code> personalizado, encadeando a exceção original "
-                    "com <code>raise ... from</code>. Adicione um context manager "
-                    "<code>timed</code> que registra a duração de cada chamada."
+                    """<p><strong>Objetivo:</strong> escrever um cliente HTTP com retry que falha de forma <em>legível</em> — e entender por que encadear a exceção original importa mais que a mensagem bonita que você escreveu por cima.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Python 3.11+ e <code>pip install requests</code>.</li>
+<li>Um endpoint que você controla para simular falha. <code>https://httpbin.org/status/500</code> serve, ou um Flask local de dez linhas.</li>
+<li>Cerca de uma hora e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Comece pelo erro que você <em>não</em> quer capturar.</strong> Escreva um <code>try/except Exception</code> em volta da chamada e rode com o serviço fora do ar.<br><em>O que observar:</em> o programa engole tudo, inclusive um <code>KeyboardInterrupt</code> se você apertar Ctrl+C na hora errada. É por isso que a seção 6 marca dois ramos da hierarquia como proibidos de capturar — <code>except Exception</code> já é largo demais, e <code>except:</code> é pior ainda.</li>
+<li><strong>Capture só o que você sabe tratar.</strong> Faça a classe <code>RetryableHTTP</code> com <code>get(url, retries=3)</code> capturando <code>requests.HTTPError</code> apenas quando o status for 5xx.<br><em>O que observar:</em> um 404 estoura na hora, sem retry. E deve mesmo: repetir uma requisição que o servidor recusou por conteúdo é gastar tempo para receber o mesmo não três vezes.</li>
+<li><strong>Implemente backoff exponencial e ouça o ritmo.</strong> Espere 1s, depois 2s, depois 4s entre as tentativas.<br><em>O que observar:</em> rode com o serviço fora e escute o intervalo crescendo. Depois imagine mil clientes seus fazendo retry fixo de 1s contra um serviço que acabou de cair: o retry vira o ataque. O backoff existe para isso, não para ser elegante.</li>
+<li><strong>Re-lance encadeando a exceção original.</strong> Crie uma <code>DeployError</code> própria e use <code>raise DeployError(...) from erro</code>.<br><em>O que observar:</em> compare o traceback com e sem o <code>from</code>. Com ele, aparece "The above exception was the direct cause of..." e você enxerga a causa real. Sem ele, a causa some e quem for depurar às 3h fica só com a sua mensagem.</li>
+<li><strong>Descubra os quatro papéis do <code>try</code>.</strong> Reescreva usando <code>else</code> (só roda se não houve exceção) e <code>finally</code> (roda sempre).<br><em>O que observar:</em> mover o caminho feliz para o <code>else</code> deixa explícito o que está protegido e o que não está. É a seção 7 — quatro blocos, quatro papéis, e a maioria das pessoas usa só dois.</li>
+<li><strong>Escreva o context manager <code>timed</code>.</strong> Use <code>@contextlib.contextmanager</code> para registrar a duração de cada chamada.<br><em>O que observar:</em> force uma exceção dentro do <code>with</code>. O tempo é registrado assim mesmo, porque o <code>finally</code> do context manager roda de qualquer jeito. É a seção 8: <code>with</code> é garantia, não conveniência — e é por isso que ele substitui o <code>try/finally</code> repetido em todo lugar.</li>
+<li><strong>Faça a classe se comportar como nativa.</strong> Acrescente <code>__repr__</code> à <code>DeployError</code> incluindo url e status.<br><em>O que observar:</em> o log de erro passa a dizer <em>qual</em> requisição falhou, sem você montar a string à mão em cada ponto. É o contrato dos dunder da seção 4.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Um 500 gera três tentativas com espera crescente; um 404 falha na primeira.</li>
+<li>O traceback final mostra a <code>DeployError</code> <em>e</em> a exceção original que a causou.</li>
+<li>O tempo é registrado mesmo quando a chamada levanta exceção.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o retry não acontece, confirme que você está chamando <code>response.raise_for_status()</code> — o <code>requests</code> não levanta exceção sozinho em status de erro, ele devolve o objeto normalmente. E se o traceback não mostra a causa, você escreveu <code>raise DeployError(...)</code> sem o <code>from</code>: a diferença é de cinco caracteres e muda completamente o que o próximo plantonista vê.</p>
+<h4>Vá além</h4>
+<p>Dispare três requisições em paralelo e agrupe as falhas num <code>ExceptionGroup</code>, tratando com <code>except*</code> (seção 9). A pergunta que fica: quando três coisas falham ao mesmo tempo, qual delas você reporta? A resposta honesta é "todas" — e é exatamente para isso que o <code>ExceptionGroup</code> foi criado.</p>"""
                 ),
                 "practical_en": (
-                    "Implement a <code>RetryableHTTP</code> class with a method "
-                    "<code>get(url, retries=3)</code> that: (1) uses "
-                    "<code>requests.get</code>; (2) catches <code>requests.HTTPError</code> "
-                    "only on 5xx status; (3) retries with exponential backoff (1s, 2s, 4s); "
-                    "(4) re-raises as a custom <code>DeployError</code>, chaining the "
-                    "original exception with <code>raise ... from</code>. Add a "
-                    "<code>timed</code> context manager that logs the duration of each call."
+                    """<p><strong>Goal:</strong> write an HTTP client with retry that fails <em>legibly</em> — and understand why chaining the original exception matters more than the nice message you wrote on top of it.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Python 3.11+ and <code>pip install requests</code>.</li>
+<li>An endpoint you control to simulate failure. <code>https://httpbin.org/status/500</code> works, or a ten-line local Flask app.</li>
+<li>About an hour and a half.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Start with the error you do <em>not</em> want to catch.</strong> Wrap the call in <code>try/except Exception</code> and run it with the service down.<br><em>What to look for:</em> the program swallows everything, including a <code>KeyboardInterrupt</code> if you hit Ctrl+C at the wrong moment. That is why section 6 marks two branches of the hierarchy as off-limits — <code>except Exception</code> is already too wide, and bare <code>except:</code> is worse.</li>
+<li><strong>Catch only what you know how to handle.</strong> Build the <code>RetryableHTTP</code> class with <code>get(url, retries=3)</code>, catching <code>requests.HTTPError</code> only when the status is 5xx.<br><em>What to look for:</em> a 404 raises immediately, with no retry. And it should: repeating a request the server rejected on content grounds just spends time collecting the same no three times.</li>
+<li><strong>Implement exponential backoff and listen to the rhythm.</strong> Wait 1s, then 2s, then 4s between attempts.<br><em>What to look for:</em> run it with the service down and hear the gap widen. Now picture a thousand of your clients retrying every fixed 1s against a service that just went down: the retry becomes the attack. Backoff exists for that, not for elegance.</li>
+<li><strong>Re-raise while chaining the original exception.</strong> Create your own <code>DeployError</code> and use <code>raise DeployError(...) from err</code>.<br><em>What to look for:</em> compare the traceback with and without <code>from</code>. With it you get "The above exception was the direct cause of..." and can see the real cause. Without it the cause vanishes, and whoever debugs at 3am is left with only your message.</li>
+<li><strong>Discover the four roles of <code>try</code>.</strong> Rewrite it using <code>else</code> (runs only when no exception occurred) and <code>finally</code> (always runs).<br><em>What to look for:</em> moving the happy path into <code>else</code> makes explicit what is protected and what is not. That is section 7 — four blocks, four roles, and most people use only two.</li>
+<li><strong>Write the <code>timed</code> context manager.</strong> Use <code>@contextlib.contextmanager</code> to record the duration of each call.<br><em>What to look for:</em> force an exception inside the <code>with</code>. The time is still recorded, because the context manager's <code>finally</code> runs regardless. Section 8: <code>with</code> is a guarantee, not a convenience — which is why it replaces the <code>try/finally</code> you would otherwise repeat everywhere.</li>
+<li><strong>Make the class behave like a native one.</strong> Add <code>__repr__</code> to <code>DeployError</code>, including url and status.<br><em>What to look for:</em> the error log now says <em>which</em> request failed, without you assembling the string by hand at every call site. That is the dunder contract from section 4.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>A 500 produces three attempts with growing waits; a 404 fails on the first.</li>
+<li>The final traceback shows the <code>DeployError</code> <em>and</em> the original exception that caused it.</li>
+<li>Timing is recorded even when the call raises.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the retry never happens, confirm you are calling <code>response.raise_for_status()</code> — <code>requests</code> does not raise on error statuses by itself, it returns the object normally. And if the traceback hides the cause, you wrote <code>raise DeployError(...)</code> without <code>from</code>: five characters of difference that completely change what the next on-call engineer sees.</p>
+<h4>Go further</h4>
+<p>Fire three requests in parallel and group the failures into an <code>ExceptionGroup</code>, handling them with <code>except*</code> (section 9). The question that remains: when three things fail at once, which one do you report? The honest answer is "all of them" — which is exactly why <code>ExceptionGroup</code> was created.</p>"""
                 ),
             },
             "materials": [
@@ -2568,22 +2686,60 @@ code 65 would require running a real subprocess on every test.</p>
 """
                 ),
                 "practical": (
-                    "Crie um CLI <code>diskhog.py</code> que: (1) recebe via "
-                    "<code>--root</code> um diretório (default <code>.</code>); "
-                    "(2) tem flag <code>--top N</code> (default 10); (3) percorre "
-                    "recursivamente com <code>Path.rglob('*')</code> e imprime os N maiores "
-                    "arquivos com tamanho legível (KB/MB/GB); (4) usa <code>logging</code> "
-                    "para mensagens de progresso em stderr; (5) sai com 0 normalmente, 2 "
-                    "se o root não existe."
+                    """<p><strong>Objetivo:</strong> escrever um CLI que se comporta bem quando <em>outro programa</em> o chama — porque é isso que separa um script que só você roda de uma ferramenta que entra num pipeline.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Python 3.11+ e um diretório com bastante coisa dentro para varrer (<code>~/Downloads</code> costuma servir).</li>
+<li>Cerca de uma hora e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Percorra a árvore com <code>pathlib</code>, não com strings.</strong> Um <code>diskhog.py</code> que usa <code>Path(root).rglob("*")</code> e coleta tamanho de cada arquivo.<br><em>O que observar:</em> repare que <code>Path</code> já sabe responder <code>.is_file()</code>, <code>.stat().st_size</code> e <code>.suffix</code> sem você manipular separador de caminho. Tente escrever a mesma coisa com <code>os.path.join</code> e concatenação e compare quantos bugs de barra você evitou (seção 1).</li>
+<li><strong>Trate o diretório que não existe.</strong> Rode com <code>--root /nao/existe</code>.<br><em>O que observar:</em> o traceback padrão é inútil para automação. Substitua por uma mensagem em stderr e <code>sys.exit(2)</code> — códigos de saída são o protocolo da seção 8, e é por eles que um <code>&amp;&amp;</code> no shell decide se continua.</li>
+<li><strong>Separe stdout de stderr de verdade.</strong> Mande o resultado (os N maiores arquivos) para stdout e todo o progresso para stderr, via <code>logging</code>.<br><em>O que observar:</em> agora rode <code>python diskhog.py | head -3</code>. O resultado é filtrado, mas as mensagens de progresso continuam aparecendo na tela. Esse é o contrato da seção 7 — e é o que permite o seu CLI compor com <code>grep</code>, <code>sort</code> e companhia.</li>
+<li><strong>Prove por que <code>logging</code> não é print enfeitado.</strong> Acrescente <code>--verbose</code> alternando entre <code>INFO</code> e <code>DEBUG</code>.<br><em>O que observar:</em> com <code>print</code> você teria que apagar linha por linha para diminuir o ruído; com <code>logging</code>, uma flag muda o nível inteiro sem tocar no código. É a seção 6, e a diferença aparece na segunda vez que você precisa depurar.</li>
+<li><strong>Documente o CLI com <code>argparse</code> e leia a saída de <code>--help</code>.</strong> Inclua <code>--root</code> (default <code>.</code>) e <code>--top</code> (default 10), com <code>help=</code> em cada um.<br><em>O que observar:</em> o <code>--help</code> sai pronto, sem você escrever documentação separada. E ele nunca desatualiza, porque é gerado da mesma definição que o parser usa (seção 4).</li>
+<li><strong>Queime-se com encoding, de propósito.</strong> Crie um arquivo com nome contendo acento e outro com bytes inválidos, e tente imprimir os nomes.<br><em>O que observar:</em> em algum ponto vem um <code>UnicodeDecodeError</code> ou um nome quebrado. Resolva com <code>errors="replace"</code> na leitura e entenda o que você trocou: legibilidade garantida em troca de fidelidade byte a byte (seção 2).</li>
+<li><strong>Leia a configuração de um YAML, com o carregador seguro.</strong> Um arquivo opcional definindo extensões a ignorar, carregado com <code>yaml.safe_load</code>.<br><em>O que observar:</em> procure o que <code>yaml.load</code> sem o loader seguro permite construir. A conclusão da seção 3 é direta: o modo inseguro executa objeto arbitrário do arquivo, e arquivo de configuração é entrada, não código.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li><code>python diskhog.py | head -3</code> filtra o resultado sem esconder o progresso.</li>
+<li><code>echo $?</code> devolve 0 no caminho normal e 2 quando o root não existe.</li>
+<li><code>--help</code> explica cada flag sem você ter escrito um README.</li>
+</ul>
+<h4>Se der errado</h4>
+<p><code>PermissionError</code> no meio do <code>rglob</code> é esperado em diretórios do sistema: capture e siga, registrando em DEBUG. E se nada sai quando você usa pipe, provavelmente você mandou tudo para stderr — troque a saída do resultado para <code>print()</code> puro e deixe o <code>logging</code> só com o progresso.</p>
+<h4>Vá além</h4>
+<p>Reescreva o mesmo CLI com <code>typer</code> (seção 5) e compare os dois arquivos lado a lado. A pergunta: o que você ganhou em linhas economizadas, e o que passou a depender de uma biblioteca externa? Nem sempre a resposta favorece a mesma opção — e saber decidir isso é o ponto.</p>"""
                 ),
                 "practical_en": (
-                    "Create a <code>diskhog.py</code> CLI that: (1) takes a directory via "
-                    "<code>--root</code> (default <code>.</code>); (2) has a <code>--top "
-                    "N</code> flag (default 10); (3) walks recursively with "
-                    "<code>Path.rglob('*')</code> and prints the N largest files with "
-                    "human-readable sizes (KB/MB/GB); (4) uses <code>logging</code> for "
-                    "progress messages on stderr; (5) exits 0 normally, 2 if root doesn't "
-                    "exist."
+                    """<p><strong>Goal:</strong> write a CLI that behaves well when <em>another program</em> calls it — because that is what separates a script only you run from a tool that fits into a pipeline.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Python 3.11+ and a directory with plenty inside to scan (<code>~/Downloads</code> usually works).</li>
+<li>About an hour and a half.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Walk the tree with <code>pathlib</code>, not strings.</strong> A <code>diskhog.py</code> using <code>Path(root).rglob("*")</code>, collecting each file's size.<br><em>What to look for:</em> notice <code>Path</code> already answers <code>.is_file()</code>, <code>.stat().st_size</code>, and <code>.suffix</code> without you touching a path separator. Try writing the same thing with <code>os.path.join</code> and concatenation, and count the slash bugs you avoided (section 1).</li>
+<li><strong>Handle the directory that does not exist.</strong> Run it with <code>--root /does/not/exist</code>.<br><em>What to look for:</em> the default traceback is useless to automation. Replace it with a stderr message and <code>sys.exit(2)</code> — exit codes are the protocol from section 8, and they are how a shell <code>&amp;&amp;</code> decides whether to continue.</li>
+<li><strong>Separate stdout from stderr for real.</strong> Send results (the top N files) to stdout and all progress to stderr, via <code>logging</code>.<br><em>What to look for:</em> now run <code>python diskhog.py | head -3</code>. The result gets filtered while progress messages still reach the screen. That is the contract from section 7 — and what lets your CLI compose with <code>grep</code>, <code>sort</code>, and friends.</li>
+<li><strong>Prove why <code>logging</code> is not a fancy print.</strong> Add <code>--verbose</code> switching between <code>INFO</code> and <code>DEBUG</code>.<br><em>What to look for:</em> with <code>print</code> you would delete lines one by one to cut noise; with <code>logging</code>, one flag changes the whole level without touching code. That is section 6, and the difference shows up the second time you need to debug.</li>
+<li><strong>Document the CLI with <code>argparse</code> and read <code>--help</code>.</strong> Include <code>--root</code> (default <code>.</code>) and <code>--top</code> (default 10), each with <code>help=</code>.<br><em>What to look for:</em> <code>--help</code> comes out complete, with no separate documentation written. And it never goes stale, because it is generated from the same definition the parser uses (section 4).</li>
+<li><strong>Burn yourself on encoding, on purpose.</strong> Create a file with an accented name and another with invalid bytes, then try printing the names.<br><em>What to look for:</em> at some point you get a <code>UnicodeDecodeError</code> or a mangled name. Fix it with <code>errors="replace"</code> and understand the trade you made: guaranteed readability in exchange for byte-for-byte fidelity (section 2).</li>
+<li><strong>Read configuration from YAML, with the safe loader.</strong> An optional file listing extensions to skip, loaded with <code>yaml.safe_load</code>.<br><em>What to look for:</em> look up what <code>yaml.load</code> without the safe loader allows a file to construct. Section 3's conclusion is blunt: the unsafe mode executes arbitrary objects from the file, and a config file is input, not code.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li><code>python diskhog.py | head -3</code> filters results without hiding progress.</li>
+<li><code>echo $?</code> returns 0 on the normal path and 2 when the root does not exist.</li>
+<li><code>--help</code> explains every flag without you writing a README.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>A <code>PermissionError</code> mid-<code>rglob</code> is expected in system directories: catch it and continue, logging at DEBUG. And if nothing appears when you pipe, you probably sent everything to stderr — switch the result output to plain <code>print()</code> and leave <code>logging</code> for progress only.</p>
+<h4>Go further</h4>
+<p>Rewrite the same CLI with <code>typer</code> (section 5) and compare the two files side by side. The question: what did you gain in saved lines, and what now depends on an external library? The answer does not always favor the same option — and knowing how to decide is the point.</p>"""
                 ),
             },
             "materials": [
@@ -3221,22 +3377,62 @@ compares in constant time, regardless of how many characters match.</p>
 """
                 ),
                 "practical": (
-                    "Implemente <code>gh_repos.py</code> que: (1) lê o token GitHub de "
-                    "<code>os.environ['GITHUB_TOKEN']</code>; (2) usa <code>Session</code> "
-                    "com retry configurado; (3) lista TODOS os repositórios de uma "
-                    "organização (paginação por Link header); (4) imprime nome, stars, "
-                    "última atualização em CSV no stdout; (5) gerencia rate limit lendo "
-                    "o header <code>X-RateLimit-Remaining</code> e dormindo se passar "
-                    "abaixo de 100."
+                    """<p><strong>Objetivo:</strong> consumir uma API paginada de verdade e sair convencido de que ignorar paginação não dá erro — dá resposta <em>incompleta</em>, que é muito pior.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Python 3.11+, <code>pip install requests</code> e um token do GitHub com escopo público (<code>read:org</code> basta).</li>
+<li>Exporte o token: <code>export GITHUB_TOKEN=...</code>. Ele nunca vai para o código nem para a URL — a seção 4 explica por quê, e o passo 5 mostra.</li>
+<li>Escolha uma organização com mais de cem repositórios públicos, senão o exercício de paginação não acontece.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Faça a versão ingênua primeiro e conte os resultados.</strong> Um <code>gh_repos.py</code> que chama <code>/orgs/NOME/repos</code> uma vez e imprime quantos vieram.<br><em>O que observar:</em> vieram exatamente 30, ou 100 se você pediu <code>per_page=100</code>. Nenhum erro, nenhum aviso. A resposta está errada e parece certa — é o ponto central da seção 5, e a razão de esse bug sobreviver meses em produção.</li>
+<li><strong>Siga o header <code>Link</code> até o fim.</strong> Faça o laço que segue <code>rel="next"</code> enquanto existir.<br><em>O que observar:</em> o total salta para o número real. Compare com o passo 1 e guarde a diferença: é exatamente o tanto de dado que a versão ingênua perdia em silêncio.</li>
+<li><strong>Ponha timeout em toda chamada.</strong> Acrescente <code>timeout=(5, 30)</code> e teste apontando para um IP que não responde.<br><em>O que observar:</em> sem timeout, o script fica pendurado para sempre — e num cron isso vira processo zumbi acumulando. É por isso que a seção 1 trata timeout como obrigatório, não como refinamento.</li>
+<li><strong>Troque chamadas soltas por <code>Session</code> e meça.</strong> Cronometre trinta requisições com <code>requests.get</code> direto e trinta com uma <code>Session</code>.<br><em>O que observar:</em> a <code>Session</code> é sensivelmente mais rápida porque reaproveita a conexão TCP e o handshake TLS, não só os headers. É a seção 2 virando número no seu relógio.</li>
+<li><strong>Verifique para onde o token está indo.</strong> Rode com uma URL de teste e inspecione o que sai: header <code>Authorization</code>, nunca query string.<br><em>O que observar:</em> token em query string vai parar no log de acesso do servidor, no histórico do navegador e no Referer. Header não. É uma diferença de uma linha de código com consequência permanente (seção 4).</li>
+<li><strong>Respeite o rate limit antes de levar 403.</strong> Leia <code>X-RateLimit-Remaining</code> e durma até <code>X-RateLimit-Reset</code> quando cair abaixo de 100.<br><em>O que observar:</em> a API te avisa <em>antes</em> de bloquear. Um cliente bem-educado usa esse aviso; um cliente ingênuo descobre o limite quando já está bloqueado, e aí a espera é imposta, não escolhida.</li>
+<li><strong>Configure retry só para o que vale repetir.</strong> Um <code>HTTPAdapter</code> com <code>Retry</code> para 5xx e 429, nunca para 4xx de conteúdo.<br><em>O que observar:</em> tentar de novo um 404 é desperdício; tentar de novo um 503 costuma funcionar. É o critério da seção 3, e ele é sobre <em>qual</em> falha, não sobre quantas vezes.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>O número de repositórios bate com o que o site da organização mostra.</li>
+<li>O token aparece só no header, e some se você imprimir a URL.</li>
+<li>O script desacelera sozinho ao se aproximar do rate limit, em vez de tomar 403.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o laço de paginação nunca termina, você provavelmente está remontando a URL à mão em vez de usar a que veio no header <code>Link</code> — use a que o servidor mandou. E 401 com token válido quase sempre é formato do header: precisa ser <code>Bearer SEU_TOKEN</code>, com o espaço.</p>
+<h4>Vá além</h4>
+<p>Reescreva com <code>httpx</code> e <code>asyncio</code> (seção 6) buscando várias páginas em paralelo, e depois responda: em qual ponto o paralelismo deixa de ajudar? O rate limit chega antes do limite de CPU — e essa é a lição de concorrência que só aparece consumindo API real.</p>"""
                 ),
                 "practical_en": (
-                    "Implement <code>gh_repos.py</code> that: (1) reads the GitHub token "
-                    "from <code>os.environ['GITHUB_TOKEN']</code>; (2) uses a "
-                    "<code>Session</code> with retry configured; (3) lists ALL repositories "
-                    "of an organization (pagination via Link header); (4) prints name, "
-                    "stars, last update as CSV on stdout; (5) manages rate limit by reading "
-                    "the <code>X-RateLimit-Remaining</code> header and sleeping if it drops "
-                    "below 100."
+                    """<p><strong>Goal:</strong> consume a genuinely paginated API and come away convinced that ignoring pagination does not produce an error — it produces an <em>incomplete</em> answer, which is far worse.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Python 3.11+, <code>pip install requests</code>, and a GitHub token with public scope (<code>read:org</code> is enough).</li>
+<li>Export the token: <code>export GITHUB_TOKEN=...</code>. It never goes into the code or the URL — section 4 explains why, and step 5 shows it.</li>
+<li>Pick an organization with more than a hundred public repositories, or the pagination exercise will not happen.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Write the naive version first and count the results.</strong> A <code>gh_repos.py</code> that calls <code>/orgs/NAME/repos</code> once and prints how many came back.<br><em>What to look for:</em> you got exactly 30, or 100 if you asked for <code>per_page=100</code>. No error, no warning. The answer is wrong and looks right — the core point of section 5, and the reason this bug survives for months in production.</li>
+<li><strong>Follow the <code>Link</code> header to the end.</strong> Loop while a <code>rel="next"</code> exists.<br><em>What to look for:</em> the total jumps to the real number. Compare with step 1 and keep the difference: that is exactly how much data the naive version was quietly dropping.</li>
+<li><strong>Put a timeout on every call.</strong> Add <code>timeout=(5, 30)</code> and test against an IP that never answers.<br><em>What to look for:</em> without a timeout the script hangs forever — and inside a cron that becomes a pile of zombie processes. That is why section 1 treats timeout as mandatory, not as polish.</li>
+<li><strong>Swap loose calls for a <code>Session</code> and measure.</strong> Time thirty requests with plain <code>requests.get</code> and thirty with a <code>Session</code>.<br><em>What to look for:</em> the <code>Session</code> is noticeably faster because it reuses the TCP connection and the TLS handshake, not just headers. Section 2 turned into a number on your own clock.</li>
+<li><strong>Check where the token actually goes.</strong> Run against a test URL and inspect what leaves: the <code>Authorization</code> header, never the query string.<br><em>What to look for:</em> a token in a query string ends up in the server's access log, in browser history, and in the Referer. A header does not. One line of code, permanent consequences (section 4).</li>
+<li><strong>Respect the rate limit before it gives you a 403.</strong> Read <code>X-RateLimit-Remaining</code> and sleep until <code>X-RateLimit-Reset</code> when it drops below 100.<br><em>What to look for:</em> the API warns you <em>before</em> blocking. A well-behaved client uses that warning; a naive one discovers the limit once already blocked, and then the wait is imposed rather than chosen.</li>
+<li><strong>Configure retry only for what is worth retrying.</strong> An <code>HTTPAdapter</code> with <code>Retry</code> for 5xx and 429, never for content-level 4xx.<br><em>What to look for:</em> retrying a 404 is waste; retrying a 503 usually works. That is the criterion from section 3, and it is about <em>which</em> failure, not how many times.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The repository count matches what the organization's page shows.</li>
+<li>The token appears only in the header, and vanishes if you print the URL.</li>
+<li>The script slows itself down near the rate limit instead of collecting a 403.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the pagination loop never ends, you are probably rebuilding the URL by hand instead of using the one from the <code>Link</code> header — use what the server sent. And a 401 with a valid token is almost always header formatting: it has to be <code>Bearer YOUR_TOKEN</code>, with the space.</p>
+<h4>Go further</h4>
+<p>Rewrite it with <code>httpx</code> and <code>asyncio</code> (section 6), fetching several pages in parallel, then answer: at what point does parallelism stop helping? The rate limit arrives before the CPU limit — and that is the concurrency lesson that only shows up against a real API.</p>"""
                 ),
             },
             "materials": [
@@ -3895,21 +4091,60 @@ seconds — especially anything that writes state or holds locks.</li>
 """
                 ),
                 "practical": (
-                    "Crie <code>backup_db.py</code> que: (1) executa "
-                    "<code>pg_dump</code> com timeout de 5 min, capturando saída; (2) gera "
-                    "arquivo em <code>/tmp/&lt;db&gt;-&lt;data&gt;.sql.gz</code> usando "
-                    "<code>gzip</code>; (3) sobe para S3 via <code>aws s3 cp</code> "
-                    "(também via subprocess); (4) limpa o arquivo local em "
-                    "<code>finally</code>; (5) registra no log: comando exato (escapado), "
-                    "duração e status."
+                    """<p><strong>Objetivo:</strong> escrever um script de backup que você aceitaria colocar num cron de produção — o que significa lidar com timeout, limpeza garantida, sinal e log auditável, não só com o caminho feliz.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Python 3.11+, um Postgres acessível (um container local serve) e a AWS CLI configurada, ou um bucket MinIO local.</li>
+<li>Duas horas. O passo 6 é o que realmente distingue script de ferramenta de produção.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Chame o <code>pg_dump</code> com lista de argumentos, nunca com string.</strong> <code>subprocess.run(["pg_dump", "-h", host, "-d", db], capture_output=True, timeout=300)</code>.<br><em>O que observar:</em> agora tente passar um nome de banco como <code>meudb; rm -rf /tmp/teste</code>. Com lista, isso vira literalmente um nome de banco inválido; com <code>shell=True</code> e string, viraria dois comandos. A seção 1 chama isso de defesa, não de estilo, por esse motivo exato.</li>
+<li><strong>Deixe o timeout estourar de propósito.</strong> Baixe o timeout para 1 segundo contra um banco grande.<br><em>O que observar:</em> vem <code>TimeoutExpired</code>, e o processo filho é morto. Sem timeout, um <code>pg_dump</code> travado seguraria o cron até a próxima execução — e aí você teria dois rodando ao mesmo tempo.</li>
+<li><strong>Comprima e escreva num temporário seguro.</strong> Use <code>tempfile.NamedTemporaryFile</code> (ou <code>mkstemp</code>) em vez de montar um nome previsível em <code>/tmp</code>.<br><em>O que observar:</em> procure por que <code>mktemp</code> foi abandonado (seção 6). O nome previsível cria uma janela em que outro processo cria o arquivo antes de você — e o seu backup passa a escrever onde alguém escolheu.</li>
+<li><strong>Garanta a limpeza com <code>finally</code>.</strong> Envolva o envio ao S3 num <code>try/finally</code> que apaga o arquivo local aconteça o que acontecer.<br><em>O que observar:</em> mate o script com Ctrl+C no meio do upload e confirme que o arquivo sumiu. Sem isso, o disco enche silenciosamente ao longo de semanas — e o sintoma aparece longe da causa.</li>
+<li><strong>Registre o comando exato, escapado.</strong> Use <code>shlex.join(cmd)</code> no log, junto com duração e código de saída.<br><em>O que observar:</em> esse log é o que permite reproduzir o problema meses depois, colando a linha no terminal. Log que diz "falhou ao fazer backup" não permite nada disso.</li>
+<li><strong>Trate <code>SIGTERM</code> em vez de morrer no meio.</strong> Registre um handler que marca uma flag e permite terminar a escrita corrente antes de sair.<br><em>O que observar:</em> mande <code>kill PID</code> durante a compressão. Sem handler, você fica com um <code>.gz</code> truncado que <em>parece</em> um backup. É a seção 8, e é o tipo de bug que só se descobre na hora de restaurar.</li>
+<li><strong>Passe o ambiente com cuidado.</strong> Em vez de herdar tudo, monte um <code>env</code> explícito com <code>PGPASSWORD</code> e o mínimo necessário.<br><em>O que observar:</em> herdar o ambiente inteiro leva junto variável de outro contexto e pode vazar segredo para o processo filho. A seção 3 trata isso como decisão, não como default aceito sem pensar.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Ctrl+C no meio não deixa arquivo órfão em disco.</li>
+<li>O log traz o comando reproduzível, a duração e o status de cada execução.</li>
+<li>Um <code>SIGTERM</code> produz saída limpa em vez de arquivo truncado.</li>
+</ul>
+<h4>Se der errado</h4>
+<p><code>FileNotFoundError</code> ao chamar <code>pg_dump</code> significa binário fora do <code>PATH</code> do processo — sem <code>shell=True</code>, o Python não expande <code>PATH</code> da mesma forma que o seu terminal interativo. E se a saída do <code>pg_dump</code> vier vazia sem erro, confira se você está lendo <code>stdout</code> em bytes: sem <code>text=True</code>, comparar com string nunca bate.</p>
+<h4>Vá além</h4>
+<p>Troque o <code>aws s3 cp</code> por <code>boto3</code> e compare as duas abordagens. Depois use Fabric (seção 7) para rodar o mesmo backup em três hosts. A pergunta que fecha: a partir de quantos hosts vale trocar o script por Ansible? A resposta tem menos a ver com quantidade e mais com quem vai manter isso depois de você.</p>"""
                 ),
                 "practical_en": (
-                    "Create <code>backup_db.py</code> that: (1) runs <code>pg_dump</code> "
-                    "with a 5-minute timeout, capturing output; (2) writes a file to "
-                    "<code>/tmp/&lt;db&gt;-&lt;date&gt;.sql.gz</code> using "
-                    "<code>gzip</code>; (3) uploads to S3 via <code>aws s3 cp</code> (also "
-                    "via subprocess); (4) cleans up the local file in <code>finally</code>; "
-                    "(5) logs the exact command (escaped), duration and status."
+                    """<p><strong>Goal:</strong> write a backup script you would be willing to put in a production cron — which means handling timeout, guaranteed cleanup, signals, and auditable logging, not just the happy path.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Python 3.11+, a reachable Postgres (a local container works), and the AWS CLI configured, or a local MinIO bucket.</li>
+<li>Two hours. Step 6 is what really separates a script from a production tool.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Call <code>pg_dump</code> with an argument list, never a string.</strong> <code>subprocess.run(["pg_dump", "-h", host, "-d", db], capture_output=True, timeout=300)</code>.<br><em>What to look for:</em> now try passing a database name like <code>mydb; rm -rf /tmp/test</code>. With a list it becomes literally an invalid database name; with <code>shell=True</code> and a string it would become two commands. That is exactly why section 1 calls this a defense, not a style choice.</li>
+<li><strong>Let the timeout fire on purpose.</strong> Lower it to 1 second against a large database.<br><em>What to look for:</em> you get <code>TimeoutExpired</code>, and the child process is killed. Without a timeout, a stuck <code>pg_dump</code> would hold the cron until the next run — and then you would have two running at once.</li>
+<li><strong>Compress into a safe temporary file.</strong> Use <code>tempfile.NamedTemporaryFile</code> (or <code>mkstemp</code>) instead of building a predictable name under <code>/tmp</code>.<br><em>What to look for:</em> look up why <code>mktemp</code> was abandoned (section 6). A predictable name opens a window where another process creates the file before you do — and your backup starts writing where someone else chose.</li>
+<li><strong>Guarantee cleanup with <code>finally</code>.</strong> Wrap the S3 upload in a <code>try/finally</code> that deletes the local file no matter what.<br><em>What to look for:</em> kill the script with Ctrl+C mid-upload and confirm the file is gone. Without this, the disk fills silently over weeks — and the symptom shows up far from the cause.</li>
+<li><strong>Log the exact command, escaped.</strong> Use <code>shlex.join(cmd)</code> in the log, along with duration and exit code.<br><em>What to look for:</em> that log is what lets you reproduce the problem months later by pasting the line into a terminal. A log that says "backup failed" allows none of that.</li>
+<li><strong>Handle <code>SIGTERM</code> instead of dying mid-write.</strong> Register a handler that sets a flag and lets the current write finish before exiting.<br><em>What to look for:</em> send <code>kill PID</code> during compression. Without a handler you end up with a truncated <code>.gz</code> that <em>looks</em> like a backup. That is section 8, and it is the kind of bug you only find at restore time.</li>
+<li><strong>Pass the environment deliberately.</strong> Instead of inheriting everything, build an explicit <code>env</code> with <code>PGPASSWORD</code> and the minimum needed.<br><em>What to look for:</em> inheriting the whole environment carries variables from other contexts and can leak secrets into the child process. Section 3 treats this as a decision, not a default accepted without thought.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>Ctrl+C mid-run leaves no orphan file on disk.</li>
+<li>The log carries a reproducible command, the duration, and the status of each run.</li>
+<li>A <code>SIGTERM</code> produces a clean exit instead of a truncated file.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>A <code>FileNotFoundError</code> when calling <code>pg_dump</code> means the binary is outside the process <code>PATH</code> — without <code>shell=True</code>, Python does not expand <code>PATH</code> the way your interactive shell does. And if <code>pg_dump</code> output comes back empty with no error, check whether you are reading <code>stdout</code> as bytes: without <code>text=True</code>, comparing against a string never matches.</p>
+<h4>Go further</h4>
+<p>Replace <code>aws s3 cp</code> with <code>boto3</code> and compare the two approaches. Then use Fabric (section 7) to run the same backup across three hosts. The closing question: at how many hosts is it worth trading the script for Ansible? The answer has less to do with count and more with who maintains this after you.</p>"""
                 ),
             },
             "materials": [
@@ -4526,21 +4761,62 @@ must share, use <code>asyncio.Lock</code>.</p>
 """
                 ),
                 "practical": (
-                    "Implemente <code>healthcheck.py</code> que recebe via CLI uma lista "
-                    "de URLs e verifica todas em paralelo, com no máximo 20 conexões "
-                    "simultâneas. Faça duas versões: (1) com "
-                    "<code>ThreadPoolExecutor + requests</code>; (2) com "
-                    "<code>asyncio + httpx + Semaphore(20)</code>. Compare o tempo total "
-                    "para 200 URLs. Trate timeouts (5s por URL) e imprima sumário no "
-                    "stderr (OK / FAIL counts) e os detalhes em JSON no stdout."
+                    """<p><strong>Objetivo:</strong> medir, no seu próprio relógio, por que "mais threads" resolve um tipo de problema e não faz diferença nenhuma no outro — em vez de decorar a explicação do GIL.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Python 3.11+, <code>pip install requests httpx</code>.</li>
+<li>Uma lista de 200 URLs num arquivo texto. Podem repetir; o que importa é a quantidade de espera de rede.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Estabeleça a linha de base sequencial.</strong> Um <code>healthcheck.py</code> que verifica as 200 URLs uma por uma, com <code>timeout=5</code>, e imprime o tempo total.<br><em>O que observar:</em> anote esse número. Repare que a CPU fica praticamente ociosa o tempo todo — o processo está esperando rede, não calculando. Esse detalhe decide tudo o que vem a seguir.</li>
+<li><strong>Use <code>ThreadPoolExecutor</code> com 20 workers e meça de novo.</strong><br><em>O que observar:</em> o tempo despenca, apesar do GIL. A seção 1 explica: o GIL é liberado durante I/O, então threads esperando rede não competem entre si. É o caso da seção 2, e cobre a maior parte dos scripts de automação.</li>
+<li><strong>Prove o outro lado do GIL.</strong> Troque a verificação de URL por um cálculo puro em CPU (uma soma longa, um hash repetido) e rode sequencial contra 20 threads.<br><em>O que observar:</em> agora as threads não ajudam — podem até piorar, pela troca de contexto. Mesmo código, mesma quantidade de threads, resultado oposto. A variável não é o paralelismo, é a natureza do trabalho.</li>
+<li><strong>Refaça a versão de rede com <code>asyncio</code> e <code>httpx</code>.</strong> Use um <code>Semaphore(20)</code> para limitar a concorrência.<br><em>O que observar:</em> tempo parecido com o das threads, mas com uma única thread e consumo de memória menor. É a seção 3: o ganho vem de alternar em pontos explícitos de espera, não de multiplicar threads.</li>
+<li><strong>Congele o loop de propósito.</strong> Ponha um <code>time.sleep(2)</code> síncrono dentro de uma corrotina.<br><em>O que observar:</em> <em>tudo</em> para, não só aquela tarefa. É a armadilha da seção 5, e ela é silenciosa: o programa não dá erro, só fica misteriosamente lento. Troque por <code>await asyncio.sleep(2)</code> e veja a concorrência voltar.</li>
+<li><strong>Veja um contador dar resultado errado.</strong> Faça 20 threads incrementarem uma variável compartilhada um milhão de vezes, sem <code>Lock</code>.<br><em>O que observar:</em> o total final não bate com o esperado. "Incrementar" parece uma operação só, mas são três (ler, somar, gravar) e a troca de thread pode acontecer no meio. É a seção 7, e é a razão de <code>Lock</code> existir mesmo para operação "simples".</li>
+<li><strong>Escolha o modelo pelo problema, e escreva sua conclusão.</strong> Monte uma tabela com os tempos de cada abordagem para I/O e para CPU.<br><em>O que observar:</em> a sua tabela deve reproduzir o guia da seção 9. A diferença é que agora ela é resultado de medição sua, e não vai embora da memória.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Você tem os tempos das três abordagens para o mesmo conjunto de 200 URLs.</li>
+<li>Você reproduziu um caso em que threads <em>não</em> ajudam, e sabe explicar por quê.</li>
+<li>O sumário vai para stderr e os detalhes em JSON para stdout, de forma que dê para redirecionar só o JSON.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se a versão async não fica mais rápida que a sequencial, procure uma chamada bloqueante no meio (<code>requests</code> em vez de <code>httpx</code>, por exemplo): uma única chamada síncrona basta para anular todo o benefício. E <code>RuntimeError: Event loop is closed</code> no fim costuma ser cliente <code>httpx</code> não fechado — use <code>async with</code>.</p>
+<h4>Vá além</h4>
+<p>Refaça o teste de CPU com <code>ProcessPoolExecutor</code> (seção 6) e veja o ganho aparecer. Depois meça o custo de <em>criar</em> os processos com uma carga pequena: em tarefa curta, a criação custa mais que o trabalho. Saber onde fica esse ponto de equilíbrio vale mais que a regra geral.</p>"""
                 ),
                 "practical_en": (
-                    "Implement <code>healthcheck.py</code> that takes a list of URLs via CLI "
-                    "and checks them all in parallel, with at most 20 simultaneous "
-                    "connections. Make two versions: (1) with <code>ThreadPoolExecutor + "
-                    "requests</code>; (2) with <code>asyncio + httpx + Semaphore(20)</code>. "
-                    "Compare total time for 200 URLs. Handle timeouts (5s per URL) and print "
-                    "a summary on stderr (OK / FAIL counts) and details as JSON on stdout."
+                    """<p><strong>Goal:</strong> measure, on your own clock, why "more threads" fixes one kind of problem and changes nothing in the other — instead of memorizing the GIL explanation.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Python 3.11+, <code>pip install requests httpx</code>.</li>
+<li>A list of 200 URLs in a text file. Repeats are fine; what matters is the amount of network waiting.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Establish the sequential baseline.</strong> A <code>healthcheck.py</code> that checks the 200 URLs one by one, with <code>timeout=5</code>, printing total time.<br><em>What to look for:</em> write that number down. Notice the CPU sits almost idle the whole time — the process is waiting on the network, not computing. That detail decides everything that follows.</li>
+<li><strong>Use <code>ThreadPoolExecutor</code> with 20 workers and measure again.</strong><br><em>What to look for:</em> the time collapses, GIL and all. Section 1 explains why: the GIL is released during I/O, so threads waiting on the network do not compete. That is the case in section 2, and it covers most automation scripts.</li>
+<li><strong>Prove the other side of the GIL.</strong> Replace the URL check with pure CPU work (a long sum, a repeated hash) and run sequential against 20 threads.<br><em>What to look for:</em> now threads do not help — they may even hurt, through context switching. Same code, same thread count, opposite result. The variable is not parallelism, it is the nature of the work.</li>
+<li><strong>Redo the network version with <code>asyncio</code> and <code>httpx</code>.</strong> Use a <code>Semaphore(20)</code> to cap concurrency.<br><em>What to look for:</em> time similar to threads, but with a single thread and lower memory use. That is section 3: the gain comes from switching at explicit wait points, not from multiplying threads.</li>
+<li><strong>Freeze the loop on purpose.</strong> Put a synchronous <code>time.sleep(2)</code> inside a coroutine.<br><em>What to look for:</em> <em>everything</em> stops, not just that task. That is the trap in section 5, and it is silent: the program throws no error, it just gets mysteriously slow. Swap in <code>await asyncio.sleep(2)</code> and watch concurrency return.</li>
+<li><strong>Watch a counter produce the wrong number.</strong> Have 20 threads increment a shared variable a million times, with no <code>Lock</code>.<br><em>What to look for:</em> the final total does not match. "Increment" looks like one operation but is three (read, add, store), and a thread switch can land in the middle. That is section 7, and the reason <code>Lock</code> exists even for "simple" operations.</li>
+<li><strong>Choose the model from the problem, and write your own conclusion.</strong> Build a table with the times of each approach for I/O and for CPU.<br><em>What to look for:</em> your table should reproduce the guide in section 9. The difference is that now it came from your own measurement, and it will not fade from memory.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>You have timings for all three approaches over the same 200 URLs.</li>
+<li>You reproduced a case where threads do <em>not</em> help, and can explain why.</li>
+<li>The summary goes to stderr and the JSON details to stdout, so the JSON alone can be redirected.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the async version is no faster than sequential, look for a blocking call in the middle (<code>requests</code> instead of <code>httpx</code>, for instance): a single synchronous call is enough to erase the whole benefit. And <code>RuntimeError: Event loop is closed</code> at the end is usually an unclosed <code>httpx</code> client — use <code>async with</code>.</p>
+<h4>Go further</h4>
+<p>Redo the CPU test with <code>ProcessPoolExecutor</code> (section 6) and watch the gain appear. Then measure the cost of <em>creating</em> the processes with a tiny workload: for short tasks, creation costs more than the work. Knowing where that break-even sits is worth more than the general rule.</p>"""
                 ),
             },
             "materials": [
@@ -5166,22 +5442,62 @@ e2e for "does the CLI exit 0 on a happy path in CI".</p>
 """
                 ),
                 "practical": (
-                    "Para o <code>top_users.py</code> que você escreveu na aula 6.2: "
-                    "(1) crie <code>tests/test_top_users.py</code>; (2) escreva uma "
-                    "fixture <code>access_log</code> usando <code>tmp_path</code> que "
-                    "gera um log fictício com 50 linhas, status variados; "
-                    "(3) parametrize 5 casos diferentes (top 1, top 3, vazio, todas 200, "
-                    "mistura); (4) garanta cobertura ≥ 90% com "
-                    "<code>pytest --cov=top_users --cov-fail-under=90</code>."
+                    """<p><strong>Objetivo:</strong> escrever uma suíte que pega um bug de verdade — e descobrir, no caminho, por que 100% de cobertura não significa que o código está testado.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>O <code>top_users.py</code> da aula de estruturas de dados. Se não fez, qualquer script que leia arquivo e agregue serve.</li>
+<li><code>pip install pytest pytest-cov</code>.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Crie a fixture que fabrica o arquivo de entrada.</strong> Uma fixture <code>access_log</code> usando <code>tmp_path</code> que escreve cinquenta linhas com status variados.<br><em>O que observar:</em> o <code>tmp_path</code> é apagado sozinho depois do teste, e cada teste ganha um diretório próprio. É a seção 3 na prática: fixture é injeção de dependência, não enfeite — o teste declara o que precisa e recebe pronto.</li>
+<li><strong>Escreva o primeiro teste e veja-o falhar de propósito.</strong> Antes de implementar, asserte o resultado errado e rode.<br><em>O que observar:</em> a saída do pytest mostra o valor esperado e o obtido lado a lado, sem você escrever nenhuma mensagem. É o motivo prático da seção 1: <code>assert</code> simples com introspecção, em vez de <code>assertEqual</code>.</li>
+<li><strong>Transforme cinco casos numa tabela, não num laço.</strong> Use <code>@pytest.mark.parametrize</code> para top 1, top 3, arquivo vazio, todos 200 e mistura.<br><em>O que observar:</em> cada caso vira um teste com nome próprio no relatório. Quando um quebra, você sabe <em>qual</em> sem depurar. Com um <code>for</code> dentro de um teste só, o primeiro erro esconde todos os outros (seção 4).</li>
+<li><strong>Teste o caminho de erro com <code>pytest.raises</code>.</strong> Passe um arquivo inexistente e capture a exceção, usando também o parâmetro <code>match</code>.<br><em>O que observar:</em> cuidado com a pegadinha da seção 6 — <code>match</code> é expressão regular, então parênteses e pontos do seu texto precisam de escape. Um <code>match</code> mal escrito passa por engano e não testa nada.</li>
+<li><strong>Isole a rede com mock, e depois erre de propósito.</strong> Se houver chamada externa, use <code>monkeypatch</code>; primeiro faça o patch no lugar errado (onde a função foi <em>definida</em>) e depois no certo (onde ela é <em>usada</em>).<br><em>O que observar:</em> o patch no lugar errado não tem efeito nenhum e o teste continua batendo na rede de verdade. É o erro mais comum com mocks, citado na seção 5, e ele falha em silêncio.</li>
+<li><strong>Chegue a 90% de cobertura e desconfie do número.</strong> <code>pytest --cov=top_users --cov-fail-under=90</code>.<br><em>O que observar:</em> agora apague uma <em>asserção</em> de dentro de um teste, mantendo a chamada. A cobertura não muda — as linhas continuam sendo executadas. A seção 8 em uma frase: cobertura mede execução, não verificação.</li>
+<li><strong>Organize a suíte com marks.</strong> Marque os testes lentos com <code>@pytest.mark.slow</code> e rode <code>pytest -m "not slow"</code>.<br><em>O que observar:</em> o ciclo rápido de desenvolvimento fica em segundos, e a suíte completa roda na CI. É o que sustenta a pirâmide da seção 10 sem transformar teste em obstáculo.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Os cinco casos parametrizados aparecem como testes nomeados no relatório.</li>
+<li>A cobertura passa de 90% e você consegue apontar um trecho coberto mas <em>não</em> verificado.</li>
+<li><code>pytest -m "not slow"</code> roda em poucos segundos.</li>
+</ul>
+<h4>Se der errado</h4>
+<p><code>ModuleNotFoundError</code> ao importar o módulo testado quase sempre é a raiz do projeto fora do <code>sys.path</code>: um <code>conftest.py</code> vazio na raiz costuma resolver. E se o mock parece não funcionar, imprima o objeto que você acha que está mockado — na maioria das vezes ele é outro, importado por outro caminho.</p>
+<h4>Vá além</h4>
+<p>Acrescente um teste de integração que roda o CLI de ponta a ponta com <code>subprocess</code> e compare o tempo com os unitários. A pergunta da seção 10: quantos desses você aguentaria rodar a cada commit? A resposta é o que define o formato da sua pirâmide — e por que invertê-la sai caro.</p>"""
                 ),
                 "practical_en": (
-                    "For the <code>top_users.py</code> you wrote in lesson 6.2: (1) create "
-                    "<code>tests/test_top_users.py</code>; (2) write an "
-                    "<code>access_log</code> fixture using <code>tmp_path</code> that "
-                    "generates a fake log with 50 lines and varied statuses; (3) parametrize "
-                    "5 different cases (top 1, top 3, empty, all 200s, mixed); (4) ensure ≥ "
-                    "90% coverage with <code>pytest --cov=top_users "
-                    "--cov-fail-under=90</code>."
+                    """<p><strong>Goal:</strong> write a suite that catches a real bug — and discover, along the way, why 100% coverage does not mean the code is tested.</p>
+<h4>Before you start</h4>
+<ul>
+<li>The <code>top_users.py</code> from the data structures lesson. If you skipped it, any script that reads a file and aggregates will do.</li>
+<li><code>pip install pytest pytest-cov</code>.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Create the fixture that fabricates the input file.</strong> An <code>access_log</code> fixture using <code>tmp_path</code> that writes fifty lines with varied statuses.<br><em>What to look for:</em> <code>tmp_path</code> cleans itself up after the test, and each test gets its own directory. Section 3 in practice: a fixture is dependency injection, not decoration — the test declares what it needs and receives it ready.</li>
+<li><strong>Write the first test and watch it fail on purpose.</strong> Before implementing, assert the wrong result and run.<br><em>What to look for:</em> pytest's output shows expected and actual side by side without you writing any message. That is the practical reason behind section 1: plain <code>assert</code> with introspection, instead of <code>assertEqual</code>.</li>
+<li><strong>Turn five cases into a table, not a loop.</strong> Use <code>@pytest.mark.parametrize</code> for top 1, top 3, empty file, all 200, and a mix.<br><em>What to look for:</em> each case becomes a separately named test in the report. When one breaks, you know <em>which</em> without debugging. With a <code>for</code> inside a single test, the first failure hides all the others (section 4).</li>
+<li><strong>Test the error path with <code>pytest.raises</code>.</strong> Pass a nonexistent file and capture the exception, using the <code>match</code> parameter too.<br><em>What to look for:</em> mind the trap in section 6 — <code>match</code> is a regular expression, so parentheses and dots in your text need escaping. A badly written <code>match</code> passes by accident and tests nothing.</li>
+<li><strong>Isolate the network with a mock, then get it wrong on purpose.</strong> If there is an external call, use <code>monkeypatch</code>; first patch in the wrong place (where the function is <em>defined</em>) and then in the right one (where it is <em>used</em>).<br><em>What to look for:</em> the wrong patch has no effect at all and the test keeps hitting the real network. It is the most common mocking mistake, called out in section 5, and it fails silently.</li>
+<li><strong>Reach 90% coverage and distrust the number.</strong> <code>pytest --cov=top_users --cov-fail-under=90</code>.<br><em>What to look for:</em> now delete an <em>assertion</em> from inside a test while keeping the call. Coverage does not move — the lines still execute. Section 8 in one sentence: coverage measures execution, not verification.</li>
+<li><strong>Organize the suite with marks.</strong> Tag slow tests with <code>@pytest.mark.slow</code> and run <code>pytest -m "not slow"</code>.<br><em>What to look for:</em> the fast development loop drops to seconds, and the full suite runs in CI. That is what sustains the pyramid from section 10 without turning tests into an obstacle.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>The five parametrized cases appear as named tests in the report.</li>
+<li>Coverage passes 90% and you can point at a section that is covered but <em>not</em> verified.</li>
+<li><code>pytest -m "not slow"</code> finishes in a few seconds.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>A <code>ModuleNotFoundError</code> importing the module under test is almost always the project root missing from <code>sys.path</code>: an empty <code>conftest.py</code> at the root usually fixes it. And if a mock seems not to work, print the object you believe is mocked — most of the time it is a different one, imported through another path.</p>
+<h4>Go further</h4>
+<p>Add an integration test that runs the CLI end to end with <code>subprocess</code> and compare its time against the unit tests. Section 10's question: how many of those could you stand running on every commit? The answer defines the shape of your pyramid — and why inverting it gets expensive.</p>"""
                 ),
             },
             "materials": [
@@ -5797,23 +6113,62 @@ local checks. That baseline scales from a personal CLI to a team-shared library.
 """
                 ),
                 "practical": (
-                    "Crie um projeto novo <code>uv init mytool</code> com src layout. "
-                    "Adicione: (1) dependências <code>typer, requests</code>; "
-                    "(2) dev deps <code>pytest, mypy, ruff</code>; "
-                    "(3) script entrypoint <code>mytool</code>; (4) configure ruff "
-                    "(line-length 100, regras E/F/I/B/UP) e mypy strict no "
-                    "<code>pyproject.toml</code>; (5) <code>.pre-commit-config.yaml</code> "
-                    "rodando ruff e mypy; (6) faça um commit propositalmente quebrando "
-                    "estilo e veja o pre-commit barrar."
+                    """<p><strong>Objetivo:</strong> montar um projeto que recusa código ruim <em>antes</em> do commit existir — e sentir a diferença entre checagem que roda na sua máquina e checagem que roda só na CI, tarde demais.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Instale o <code>uv</code> (<code>curl -LsSf https://astral.sh/uv/install.sh | sh</code>) e o <code>pre-commit</code>.</li>
+<li>Um repositório Git vazio para servir de cobaia.</li>
+<li>Cerca de uma hora e meia.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Crie o projeto com layout <code>src/</code>.</strong> <code>uv init mytool</code> e mova o pacote para <code>src/mytool/</code>.<br><em>O que observar:</em> tente importar o pacote sem instalá-lo. Com <code>src/</code>, o import falha — e falha de propósito. Sem <code>src/</code>, ele funcionaria pegando o diretório local, mascarando um erro que só apareceria na máquina de outra pessoa (seção 4).</li>
+<li><strong>Compare a velocidade do resolvedor.</strong> Adicione <code>typer</code> e <code>requests</code> com <code>uv add</code>, depois refaça o mesmo ambiente com <code>pip install</code> e cronometre os dois.<br><em>O que observar:</em> a diferença é grande o bastante para mudar hábito. É o argumento da seção 2, e ele importa mais na CI, onde esse tempo se multiplica por cada build do dia.</li>
+<li><strong>Centralize tudo no <code>pyproject.toml</code>.</strong> Dependências, dev deps (<code>pytest</code>, <code>mypy</code>, <code>ruff</code>), o entrypoint <code>mytool</code> e a configuração das ferramentas.<br><em>O que observar:</em> um arquivo só, versionado, em vez de <code>setup.py</code> mais <code>requirements.txt</code> mais <code>setup.cfg</code> desencontrados. Quem clonar o repositório reproduz o ambiente sem perguntar nada (seção 3).</li>
+<li><strong>Configure o ruff e deixe-o reclamar.</strong> <code>line-length = 100</code> e regras <code>E</code>, <code>F</code>, <code>I</code>, <code>B</code>, <code>UP</code>. Rode <code>ruff check .</code>.<br><em>O que observar:</em> repare que <code>I</code> ordena imports e <code>UP</code> moderniza sintaxe antiga — coisas que antes exigiam isort e pyupgrade separados. É a seção 5: uma ferramenta no lugar de quatro, e rápida o bastante para rodar a cada salvamento.</li>
+<li><strong>Ligue o mypy no modo que não trava o time.</strong> Comece sem <code>strict</code>, rode, e só então ligue <code>strict</code> para ver a diferença de volume de erros.<br><em>O que observar:</em> em código existente, <code>strict</code> de cara produz centenas de erros e a reação natural do time é desligar tudo. A seção 6 recomenda adoção gradual justamente por isso — a ferramenta que ninguém aguenta é a ferramenta que sai do projeto.</li>
+<li><strong>Mova a checagem para antes do commit.</strong> Crie o <code>.pre-commit-config.yaml</code> com ruff e mypy e rode <code>pre-commit install</code>.<br><em>O que observar:</em> agora quebre o estilo de propósito e tente commitar. O commit é <em>barrado</em>, não aceito e depois reprovado. É a seção 7: o erro nunca chega a existir no histórico, e ninguém precisa revisar vírgula em pull request.</li>
+<li><strong>Repita na CI o que roda local.</strong> Um workflow mínimo executando exatamente os mesmos comandos.<br><em>O que observar:</em> se a CI roda algo diferente do hook local, você terá a situação clássica de "passa aqui e falha lá". A seção 8 insiste em paridade por esse motivo, e o jeito mais simples de garantir é a CI chamar <code>pre-commit run --all-files</code>.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Um commit com estilo quebrado é recusado pelo hook, antes de virar commit.</li>
+<li><code>uv sync</code> num clone limpo reproduz o ambiente sem passo manual.</li>
+<li>A CI executa os mesmos comandos do hook local.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se o import do seu pacote falha nos testes, faltou instalá-lo em modo editável (<code>uv pip install -e .</code>) — é o preço do layout <code>src/</code>, e ele se paga. E se o pre-commit não dispara, confira se você rodou <code>pre-commit install</code>: criar o YAML sozinho não instala o hook no <code>.git/hooks</code>.</p>
+<h4>Vá além</h4>
+<p>Construa o wheel com <code>uv build</code> e instale-o num ambiente virtual limpo, sem o código-fonte por perto (seção 9). Se algo faltar no pacote, você descobre agora e não no dia do deploy — e essa é a única forma confiável de testar empacotamento.</p>"""
                 ),
                 "practical_en": (
-                    "Create a new project with <code>uv init mytool</code> using the src "
-                    "layout. Add: (1) dependencies <code>typer, requests</code>; (2) dev "
-                    "deps <code>pytest, mypy, ruff</code>; (3) a <code>mytool</code> script "
-                    "entrypoint; (4) configure ruff (line-length 100, rules E/F/I/B/UP) and "
-                    "mypy strict in <code>pyproject.toml</code>; (5) a "
-                    "<code>.pre-commit-config.yaml</code> running ruff and mypy; (6) make a "
-                    "commit that deliberately breaks style and watch pre-commit block it."
+                    """<p><strong>Goal:</strong> set up a project that refuses bad code <em>before</em> the commit exists — and feel the difference between checks that run on your machine and checks that only run in CI, too late.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Install <code>uv</code> (<code>curl -LsSf https://astral.sh/uv/install.sh | sh</code>) and <code>pre-commit</code>.</li>
+<li>An empty Git repository to experiment on.</li>
+<li>About an hour and a half.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Create the project with a <code>src/</code> layout.</strong> <code>uv init mytool</code>, then move the package into <code>src/mytool/</code>.<br><em>What to look for:</em> try importing the package without installing it. With <code>src/</code> the import fails — and it fails on purpose. Without <code>src/</code> it would work by picking up the local directory, masking an error that would only surface on someone else's machine (section 4).</li>
+<li><strong>Compare resolver speed.</strong> Add <code>typer</code> and <code>requests</code> with <code>uv add</code>, then rebuild the same environment with <code>pip install</code> and time both.<br><em>What to look for:</em> the difference is large enough to change habits. That is section 2's argument, and it matters more in CI, where that time multiplies by every build of the day.</li>
+<li><strong>Centralize everything in <code>pyproject.toml</code>.</strong> Dependencies, dev deps (<code>pytest</code>, <code>mypy</code>, <code>ruff</code>), the <code>mytool</code> entrypoint, and tool configuration.<br><em>What to look for:</em> one versioned file instead of mismatched <code>setup.py</code> plus <code>requirements.txt</code> plus <code>setup.cfg</code>. Whoever clones the repo reproduces the environment without asking anything (section 3).</li>
+<li><strong>Configure ruff and let it complain.</strong> <code>line-length = 100</code> and rules <code>E</code>, <code>F</code>, <code>I</code>, <code>B</code>, <code>UP</code>. Run <code>ruff check .</code>.<br><em>What to look for:</em> notice <code>I</code> sorts imports and <code>UP</code> modernizes old syntax — things that used to require separate isort and pyupgrade. That is section 5: one tool in place of four, fast enough to run on every save.</li>
+<li><strong>Enable mypy in the mode that does not stall the team.</strong> Start without <code>strict</code>, run it, and only then turn <code>strict</code> on to see the difference in error volume.<br><em>What to look for:</em> on existing code, <code>strict</code> right away produces hundreds of errors and the team's natural reaction is to switch everything off. Section 6 recommends gradual adoption for exactly that reason — the tool nobody can stand is the tool that leaves the project.</li>
+<li><strong>Move the checks before the commit.</strong> Create <code>.pre-commit-config.yaml</code> with ruff and mypy, then run <code>pre-commit install</code>.<br><em>What to look for:</em> now break the style on purpose and try to commit. The commit is <em>blocked</em>, not accepted and later rejected. That is section 7: the mistake never enters history, and nobody has to review commas in a pull request.</li>
+<li><strong>Repeat in CI what runs locally.</strong> A minimal workflow running exactly the same commands.<br><em>What to look for:</em> if CI runs something different from the local hook, you get the classic "passes here, fails there". Section 8 insists on parity for this reason, and the simplest guarantee is having CI call <code>pre-commit run --all-files</code>.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>A commit with broken style is refused by the hook, before becoming a commit.</li>
+<li><code>uv sync</code> on a clean clone reproduces the environment with no manual step.</li>
+<li>CI runs the same commands as the local hook.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If importing your package fails in tests, you forgot to install it editable (<code>uv pip install -e .</code>) — that is the price of the <code>src/</code> layout, and it pays for itself. And if pre-commit never fires, check that you ran <code>pre-commit install</code>: creating the YAML alone does not install the hook into <code>.git/hooks</code>.</p>
+<h4>Go further</h4>
+<p>Build the wheel with <code>uv build</code> and install it into a clean virtual environment with no source code nearby (section 9). If something is missing from the package you find out now rather than on deploy day — and that is the only reliable way to test packaging.</p>"""
                 ),
             },
             "materials": [
@@ -6462,25 +6817,62 @@ applied with security and operability as first-class requirements.</p>
 """
                 ),
                 "practical": (
-                    "Construa <code>license_gate.py</code> que: (1) percorre "
-                    "<code>uv.lock</code> ou <code>pyproject.toml</code> do projeto; "
-                    "(2) consulta a API do <a href=\"https://pypi.org\">PyPI JSON</a> "
-                    "para cada lib (<code>https://pypi.org/pypi/&lt;name&gt;/json</code>); "
-                    "(3) extrai a licença e bloqueia se estiver na lista negra "
-                    "(<code>GPL-*</code>, <code>AGPL-*</code>); (4) emite "
-                    "<code>::error::</code> no formato GitHub Actions e exit code 1 se "
-                    "houver violações; (5) tem flag <code>--allow-list path</code> "
-                    "para sobrescrever defaults."
+                    """<p><strong>Objetivo:</strong> construir um gate de CI que bloqueia merge por um critério que nenhuma ferramenta pronta cobre no seu contexto — e perceber que a parte difícil não é a lógica, é o comportamento correto quando ela falha.</p>
+<h4>Antes de começar</h4>
+<ul>
+<li>Python 3.11+, <code>pip install requests</code>, e um projeto com <code>uv.lock</code> ou <code>pyproject.toml</code> para analisar.</li>
+<li>Um repositório no GitHub onde você possa abrir um pull request de teste.</li>
+<li>Cerca de duas horas.</li>
+</ul>
+<h4>Passo a passo</h4>
+<ol>
+<li><strong>Extraia a lista de dependências do lockfile.</strong> Um <code>license_gate.py</code> que lê os nomes e versões, sem instalar nada.<br><em>O que observar:</em> repare na diferença entre dependência direta e transitiva. As transitivas costumam ser a maioria — e é justamente nelas que uma licença proibida entra sem ninguém decidir nada.</li>
+<li><strong>Consulte a licença na API JSON do PyPI.</strong> <code>https://pypi.org/pypi/NOME/json</code>, lendo <code>info.license</code> e os classifiers.<br><em>O que observar:</em> o campo vem inconsistente entre pacotes — às vezes "MIT", às vezes o texto inteiro da licença, às vezes vazio. Normalizar isso <em>é</em> o exercício. Um gate que trata "vazio" como aprovado é um gate que não protege nada.</li>
+<li><strong>Ponha timeout e trate a rede caindo.</strong> Rode o script com a rede desligada.<br><em>O que observar:</em> decida conscientemente o que acontece: falhar aberto (deixa passar) ou fechado (bloqueia). Não existe resposta universal, mas existe resposta <em>documentada</em> — e o pior cenário é o gate que passa silenciosamente porque a API não respondeu.</li>
+<li><strong>Emita no formato que o GitHub Actions entende.</strong> Use <code>::error file=...::mensagem</code> e saia com código 1 quando houver violação.<br><em>O que observar:</em> o erro aparece anotado no diff do pull request, não perdido em quinhentas linhas de log. É o ponto da seção 7: transformar falha silenciosa em alerta visível, onde a pessoa já está olhando.</li>
+<li><strong>Escreva a mensagem para quem vai ler às pressas.</strong> Inclua o pacote, a licença encontrada, por que ela é bloqueada e qual é a alternativa ou o caminho de exceção.<br><em>O que observar:</em> "License violation: GPL-3.0" trava a pessoa; "requests-gpl usa GPL-3.0, que nosso contrato proíbe; use X ou peça exceção em #canal" resolve. A diferença é o que faz um gate ser adotado em vez de contornado.</li>
+<li><strong>Acrescente uma saída de emergência explícita.</strong> Uma flag <code>--allow-list caminho.txt</code> com pacotes aprovados individualmente.<br><em>O que observar:</em> sem uma válvula documentada, a primeira urgência real vira <code>--no-verify</code> ou remoção do job. Vale mais uma exceção registrada e revisável do que um gate que as pessoas aprendem a desligar.</li>
+<li><strong>Rode contra um pull request de verdade.</strong> Abra um PR adicionando um pacote GPL e veja o gate bloquear.<br><em>O que observar:</em> teste também o caminho feliz. Um gate que nunca passou não é confiável — você precisa ver os dois resultados antes de ligá-lo para o time.</li>
+</ol>
+<h4>Você terminou quando</h4>
+<ul>
+<li>Um PR com dependência GPL é bloqueado com anotação no diff.</li>
+<li>Um PR limpo passa sem intervenção.</li>
+<li>Existe uma allow-list versionada, e a mensagem de erro diz como usá-la.</li>
+</ul>
+<h4>Se der errado</h4>
+<p>Se a licença vier vazia para vários pacotes, caia para os classifiers (<code>License :: OSI Approved :: ...</code>) antes de desistir. E se o <code>::error::</code> não aparece anotado, confira se você está escrevendo em <code>stdout</code> — o GitHub Actions só interpreta esses comandos ali.</p>
+<h4>Vá além</h4>
+<p>Adicione um contador Prometheus e publique via Pushgateway (seção 5) com o número de violações por execução. Um job que morre em segundos não consegue ser raspado por scrape normal — e entender por que o Pushgateway existe para esse caso, e por que ele é a exceção e não a regra, é a lição que fica.</p>"""
                 ),
                 "practical_en": (
-                    "Build <code>license_gate.py</code> that: (1) walks the project's "
-                    "<code>uv.lock</code> or <code>pyproject.toml</code>; (2) queries the <a "
-                    "href=\"https://pypi.org\">PyPI JSON</a> API for each lib "
-                    "(<code>https://pypi.org/pypi/&lt;name&gt;/json</code>); (3) extracts "
-                    "the license and blocks if it's on the denylist (<code>GPL-*</code>, "
-                    "<code>AGPL-*</code>); (4) emits <code>::error::</code> in GitHub "
-                    "Actions format and exit code 1 on violations; (5) has an "
-                    "<code>--allow-list path</code> flag to override defaults."
+                    """<p><strong>Goal:</strong> build a CI gate that blocks merges on a criterion no off-the-shelf tool covers in your context — and realize the hard part is not the logic, it is behaving correctly when the logic fails.</p>
+<h4>Before you start</h4>
+<ul>
+<li>Python 3.11+, <code>pip install requests</code>, and a project with a <code>uv.lock</code> or <code>pyproject.toml</code> to analyze.</li>
+<li>A GitHub repository where you can open a test pull request.</li>
+<li>About two hours.</li>
+</ul>
+<h4>Step by step</h4>
+<ol>
+<li><strong>Extract the dependency list from the lockfile.</strong> A <code>license_gate.py</code> that reads names and versions without installing anything.<br><em>What to look for:</em> notice the difference between direct and transitive dependencies. Transitive ones are usually the majority — and they are exactly where a forbidden license slips in without anyone deciding anything.</li>
+<li><strong>Look up the license in PyPI's JSON API.</strong> <code>https://pypi.org/pypi/NAME/json</code>, reading <code>info.license</code> and the classifiers.<br><em>What to look for:</em> the field is inconsistent across packages — sometimes "MIT", sometimes the entire license text, sometimes empty. Normalizing that <em>is</em> the exercise. A gate that treats "empty" as approved protects nothing.</li>
+<li><strong>Add a timeout and handle the network going down.</strong> Run the script with networking disabled.<br><em>What to look for:</em> decide consciously what happens: fail open (let it through) or fail closed (block). There is no universal answer, but there is a <em>documented</em> one — and the worst case is a gate that silently passes because the API did not answer.</li>
+<li><strong>Emit in the format GitHub Actions understands.</strong> Use <code>::error file=...::message</code> and exit with code 1 on violations.<br><em>What to look for:</em> the error shows up annotated on the pull request diff, not buried in five hundred lines of log. That is section 7's point: turn silent failure into visible alert, where the person is already looking.</li>
+<li><strong>Write the message for someone reading in a hurry.</strong> Include the package, the license found, why it is blocked, and the alternative or exception path.<br><em>What to look for:</em> "License violation: GPL-3.0" stalls the person; "requests-gpl uses GPL-3.0, which our contract forbids; use X or request an exception in #channel" resolves it. That difference is what makes a gate adopted instead of bypassed.</li>
+<li><strong>Add an explicit emergency exit.</strong> An <code>--allow-list path.txt</code> flag with individually approved packages.<br><em>What to look for:</em> without a documented valve, the first real emergency turns into <code>--no-verify</code> or deleting the job. A recorded, reviewable exception is worth more than a gate people learn to switch off.</li>
+<li><strong>Run it against a real pull request.</strong> Open a PR adding a GPL package and watch the gate block it.<br><em>What to look for:</em> test the happy path too. A gate that has never passed is not trustworthy — you need to see both outcomes before turning it on for the team.</li>
+</ol>
+<h4>You're done when</h4>
+<ul>
+<li>A PR with a GPL dependency is blocked with an annotation on the diff.</li>
+<li>A clean PR passes with no intervention.</li>
+<li>There is a versioned allow-list, and the error message explains how to use it.</li>
+</ul>
+<h4>If it goes wrong</h4>
+<p>If the license comes back empty for several packages, fall back to the classifiers (<code>License :: OSI Approved :: ...</code>) before giving up. And if <code>::error::</code> is not annotated, check that you are writing to <code>stdout</code> — GitHub Actions only interprets those commands there.</p>
+<h4>Go further</h4>
+<p>Add a Prometheus counter and publish it via Pushgateway (section 5) with the number of violations per run. A job that dies in seconds cannot be scraped normally — and understanding why Pushgateway exists for that case, and why it is the exception rather than the rule, is the lesson that stays.</p>"""
                 ),
             },
             "materials": [
