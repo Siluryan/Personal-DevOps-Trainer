@@ -46,6 +46,10 @@ PHASE6 = {
                 ),
                 "body": (
                 """<h3>1. Tipos primitivos e o modelo de objeto que explica tudo</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-objects.jpg" alt="Blocos de madeira, um deles com outro bloco encaixado dentro">
+<figcaption>Em Python tudo é objeto, inclusive o número e a função. Um objeto pode carregar outro.</figcaption>
+</figure>
 <p>Em Python, <strong>tudo é objeto</strong> — inteiros, strings, funções e
 classes têm igualmente atributos e métodos, e são todos alocados no heap e
 referenciados por nome. Essa uniformidade é o que torna Python tão
@@ -270,6 +274,10 @@ de arquivo até o processo cair.</li>
                 ),
                 "body_en": (
                 """<h3>1. Primitive types and the object model that explains everything</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-objects.jpg" alt="Wooden blocks, one of them holding another block inside">
+<figcaption>In Python everything is an object, including a number and a function. An object can hold another.</figcaption>
+</figure>
 <p>In Python, <strong>everything is an object</strong> — integers, strings,
 functions and classes all equally have attributes and methods, and are all
 allocated on the heap and referenced by name. This uniformity is what
@@ -723,6 +731,10 @@ descriptors until the process crashes.</li>
                 ),
                 "body": (
                 """<h3>1. Listas, tuplas, sets, dicts: a mesma escolha que decide performance</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-data.jpg" alt="Pilha de pratos, fila de xícaras, tigela de bolinhas e gavetas">
+<figcaption>Lista, fila, conjunto e dicionário são recipientes diferentes. A escolha muda o custo de achar e de guardar.</figcaption>
+</figure>
 <table>
 <thead><tr><th>Estrutura</th><th>Acesso</th><th>Mutável</th>
 <th>Caso típico</th></tr></thead>
@@ -983,6 +995,10 @@ coisa.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. Lists, tuples, sets, dicts: the same choice that decides performance</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-data.jpg" alt="A stack of plates, a line of cups, a bowl of marbles, and a set of drawers">
+<figcaption>List, queue, set, and dict are different containers. The choice changes the cost of finding and storing.</figcaption>
+</figure>
 <table>
 <thead><tr><th>Structure</th><th>Access</th><th>Mutable</th>
 <th>Typical case</th></tr></thead>
@@ -1488,6 +1504,10 @@ materialize the entire file at once before processing anything.</p>"""
                 ),
                 "body": (
                 """<h3>1. Classes: `__init__` inicializa, não constrói</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-class.jpg" alt="Casa de boneca já montada, só recebendo os móveis">
+<figcaption>A classe já construiu o objeto. O __init__ só mobília o que já existe.</figcaption>
+</figure>
 <pre><code>class Server:
     def __init__(self, name: str, ip: str, port: int = 22) -&gt; None:
         self.name = name
@@ -1735,6 +1755,10 @@ tipo, sem que uma mascare a outra.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. Classes: `__init__` initializes, it doesn't construct</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-class.jpg" alt="A dollhouse already built, only receiving its furniture">
+<figcaption>The class has already constructed the object. __init__ only furnishes what already exists.</figcaption>
+</figure>
 <pre><code>class Server:
     def __init__(self, name: str, ip: str, port: int = 22) -&gt; None:
         self.name = name
@@ -2242,6 +2266,10 @@ exceptions, without one masking the other.</p>
                 ),
                 "body": (
                 """<h3>1. `pathlib`: um objeto que sabe o que é caminho, não uma string qualquer</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-path.jpg" alt="Caminho de pedras até uma cabana, e um barbante embaraçado ao lado">
+<figcaption>pathlib é o caminho de pedras: um objeto que sabe que é rota. A string solta é o barbante.</figcaption>
+</figure>
 <pre><code>from pathlib import Path
 
 root   = Path("/var/log")
@@ -2464,6 +2492,10 @@ código 65 exigiria rodar um subprocesso de verdade a cada teste.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. `pathlib`: an object that knows what a path is, not just any string</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-path.jpg" alt="A path of stepping stones to a cabin, and a tangled string beside it">
+<figcaption>pathlib is the stepping stones: an object that knows it is a route. A loose string is just string.</figcaption>
+</figure>
 <pre><code>from pathlib import Path
 
 root   = Path("/var/log")
@@ -2926,6 +2958,10 @@ code 65 would require running a real subprocess on every test.</p>
                 ),
                 "body": (
                 """<h3>1. `requests`: por que timeout e `raise_for_status` não são opcionais</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-http.jpg" alt="Uma portinhola de cozinha: o pedido vai, o prato volta">
+<figcaption>HTTP é essa troca. Sem timeout, a portinhola pode ficar esperando um prato que não vem.</figcaption>
+</figure>
 <pre><code>import requests
 
 r = requests.get(
@@ -3151,6 +3187,10 @@ compara em tempo constante, independente de quantos caracteres coincidem.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. `requests`: why timeout and `raise_for_status` are not optional</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-http.jpg" alt="A kitchen pass: the order goes, the plate comes back">
+<figcaption>HTTP is that exchange. Without a timeout, the pass can wait forever for a plate that never comes.</figcaption>
+</figure>
 <pre><code>import requests
 
 r = requests.get(
@@ -3626,6 +3666,10 @@ compares in constant time, regardless of how many characters match.</p>
                 ),
                 "body": (
                 """<h3>1. `subprocess.run`: por que lista de argumentos é a defesa, não um detalhe de estilo</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-subprocess.jpg" alt="Bandeja com cada ferramenta no seu compartimento, e um fio embaraçado ao lado">
+<figcaption>A lista de argumentos separa cada peça. Uma string só é o fio: o shell pode reinterpretar.</figcaption>
+</figure>
 <pre><code>import subprocess
 
 result = subprocess.run(
@@ -3861,6 +3905,10 @@ execução.</li>
                 ),
                 "body_en": (
                 """<h3>1. `subprocess.run`: why an argument list is the defense, not a style detail</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-subprocess.jpg" alt="A tray with each tool in its own compartment, and a tangled cord beside it">
+<figcaption>An argument list keeps each piece separate. One string is the cord: the shell can reinterpret it.</figcaption>
+</figure>
 <pre><code>import subprocess
 
 result = subprocess.run(
@@ -4333,6 +4381,10 @@ seconds — especially anything that writes state or holds locks.</li>
                 ),
                 "body": (
                 """<h3>1. O GIL: um lock que explica por que "mais threads" às vezes não ajuda nada</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-gil.jpg" alt="Várias faixas chegando num portão com um único cadeado">
+<figcaption>O GIL é esse cadeado. Várias threads de Python chegam, mas só uma executa bytecode por vez.</figcaption>
+</figure>
 <p>O <strong>Global Interpreter Lock</strong> é um lock único, dentro do
 próprio interpretador CPython, que garante que apenas UMA thread execute
 bytecode Python por vez — mesmo numa máquina com 32 núcleos, só um núcleo
@@ -4586,6 +4638,10 @@ simples, pelo overhead de coordenação sem ganho real.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. The GIL: a lock that explains why "more threads" sometimes doesn't help at all</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-gil.jpg" alt="Several lanes arriving at a gate with a single padlock">
+<figcaption>The GIL is that padlock. Many Python threads arrive, but only one runs bytecode at a time.</figcaption>
+</figure>
 <p>The Global Interpreter Lock ensures only one thread executes Python bytecode
 at a time, even on a multi-core machine. For CPU-bound work in pure Python
 (heavy parsing, encryption in Python, numerical loops), threads don't
@@ -5013,6 +5069,10 @@ must share, use <code>asyncio.Lock</code>.</p>
                 ),
                 "body": (
                 """<h3>1. Por que pytest e não unittest</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-test.jpg" alt="Uma fileira de fusíveis, um deles queimado">
+<figcaption>O teste é o fusível. A suíte mostra qual queimou, em vez de descobrir em produção.</figcaption>
+</figure>
 <p><code>unittest</code> é stdlib e funciona, mas força um estilo verboso: você
 herda de <code>TestCase</code>, escreve <code>self.assertEqual(a, b)</code> em
 vez de <code>assert a == b</code>, e perde a introspecção de que Python já é
@@ -5281,6 +5341,10 @@ param de proteger de verdade.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. Why pytest and not unittest</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-test.jpg" alt="A row of fuses, one of them burned out">
+<figcaption>A test is the fuse. The suite shows which one blew, instead of finding out in production.</figcaption>
+</figure>
 <p>pytest cuts boilerplate: plain <code>assert</code> instead of
 <code>self.assertEqual</code>, composable fixtures instead of class hierarchies,
 and a plugin ecosystem (cov, asyncio, mock, xdist). unittest still works, but
@@ -5689,6 +5753,10 @@ e2e for "does the CLI exit 0 on a happy path in CI".</p>
                 ),
                 "body": (
                 """<h3>1. Ambientes virtuais: por que isolar é o que evita "funciona na minha máquina"</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-venv.jpg" alt="Três plantas iguais, cada uma no próprio vaso">
+<figcaption>O ambiente virtual é o vaso. Sem ele, as dependências de um projeto invadem o outro.</figcaption>
+</figure>
 <pre><code>python -m venv .venv
 source .venv/bin/activate         # Linux/Mac
 .venv\\Scripts\\activate            # Windows
@@ -5935,6 +6003,10 @@ dependência com segredo embutido para a internet.</p>
                 ),
                 "body_en": (
                 """<h3>1. Virtual environments: why isolation is what prevents "works on my machine"</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-venv.jpg" alt="Three identical plants, each in its own pot">
+<figcaption>A virtual environment is the pot. Without it, one project's dependencies invade the other.</figcaption>
+</figure>
 <pre><code>python -m venv .venv
 source .venv/bin/activate         # Linux/Mac
 .venv\\Scripts\\activate            # Windows
@@ -6360,6 +6432,10 @@ local checks. That baseline scales from a personal CLI to a team-shared library.
                 ),
                 "body": (
                 """<h3>1. AWS com `boto3`: identidade, paginação e credenciais que nunca ficam no código</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-boto.jpg" alt="Caderno fechado e uma chave pendurada longe dele">
+<figcaption>Credencial não mora no código. A chave fica fora do caderno, na identidade da máquina ou do cofre.</figcaption>
+</figure>
 <pre><code>import boto3
 
 s3   = boto3.client("s3")
@@ -6625,6 +6701,10 @@ uma execução isolada.</li>
                 ),
                 "body_en": (
                 """<h3>1. AWS with `boto3`: identity, pagination and credentials that never live in code</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-py-boto.jpg" alt="A closed notebook and a key hanging away from it">
+<figcaption>A credential does not live in the code. The key stays off the notebook, on the machine identity or in the vault.</figcaption>
+</figure>
 <pre><code>import boto3
 
 s3   = boto3.client("s3")

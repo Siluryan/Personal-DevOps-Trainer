@@ -43,7 +43,11 @@ PHASE3 = {
                     "workflows along the way."
                 ),
                 "body": (
-                    "<h3>1. Modelo mental: o que Git realmente armazena</h3>"
+                    """<h3>1. Modelo mental: o que Git realmente armazena</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-git.jpg" alt="Uma pilha de fotos do mesmo vaso, cada uma um pouco diferente">
+<figcaption>O Git guarda retratos do projeto, um em cima do outro. Não guarda a diferença solta.</figcaption>
+</figure>"""
                     "<p>A primeira coisa a entender: Git não armazena <em>diferenças</em> "
                     "(como SVN), ele armazena <em>snapshots</em>. Cada commit é um objeto "
                     "imutável que aponta para uma <em>tree</em> (estado de toda a árvore "
@@ -349,6 +353,10 @@ flowchart TD
                     "branch protection para tornar isso impossível, mesmo para admins.</p>"
                 ),
                 "body_en": """<h3>1. Mental model: what Git actually stores</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-git.jpg" alt="A stack of photos of the same plant, each one slightly different">
+<figcaption>Git stores snapshots of the project, one on top of the other. It does not store the loose difference.</figcaption>
+</figure>
 <p>The first thing to understand: Git does not store <em>diffs</em>
 (like SVN), it stores <em>snapshots</em>. Each commit is an immutable
 object that points to a <em>tree</em> (the state of the entire file
@@ -923,6 +931,10 @@ admins.</p>""",
                 ),
                 "body": (
                 """<h3>1. Por que IaC importa de verdade</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-terraform.jpg" alt="Maquete pronta e, ao lado, os blocos que a formaram">
+<figcaption>IaC descreve a casa pronta. A ferramenta ajusta os blocos até o mundo bater com o modelo.</figcaption>
+</figure>
 <p>Cinco ganhos concretos justificam trocar clique por código. O
 primeiro é <strong>reprodutibilidade</strong>: dev, staging e prod saem
 literalmente do mesmo código, não de um esforço manual para deixá-los
@@ -1306,6 +1318,10 @@ aleatório quando uma nova versão muda comportamento sem aviso.</li>
 </ul>"""
                 ),
                 "body_en": """<h3>1. Why IaC really matters</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-terraform.jpg" alt="A finished model and, beside it, the blocks that formed it">
+<figcaption>IaC describes the finished house. The tool moves the blocks until the world matches the model.</figcaption>
+</figure>
 <p>Five concrete gains justify swapping clicks for code. The first is
 <strong>reproducibility</strong>: dev, staging and prod come
 literally from the same code, not from a manual effort to make them
@@ -1968,8 +1984,8 @@ warning.</li>
                 "body": (
                 """<h3>1. Ansible vs alternativas</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/ansible-fleet.jpg" alt="Fileira de servidores iguais, vistos de frente">
-<figcaption>Ansible entra por SSH e deixa estas máquinas no mesmo estado. Nada de agente instalado em cada uma.</figcaption>
+<img src="/static/img/lessons/c-ansible.jpg" alt="Cinco lugares de mesa idênticos, alinhados">
+<figcaption>Ansible deixa um conjunto de máquinas neste estado: iguais, sem instalar um agente em cada uma.</figcaption>
 </figure>
 <table>
 <tr><th>Ferramenta</th><th>Modelo</th><th>Linguagem</th><th>Notas</th></tr>
@@ -2285,8 +2301,8 @@ esperado.</li>
                 ),
                 "body_en": """<h3>1. Ansible vs alternatives</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/ansible-fleet.jpg" alt="A row of identical servers, seen from the front">
-<figcaption>Ansible comes in over SSH and leaves these machines in the same state. No agent installed on each one.</figcaption>
+<img src="/static/img/lessons/c-ansible.jpg" alt="Five identical place settings, lined up">
+<figcaption>Ansible leaves a set of machines in this state: the same, without installing an agent on each one.</figcaption>
 </figure>
 <table>
 <tr><th>Tool</th><th>Model</th><th>Language</th><th>Notes</th></tr>
@@ -2857,6 +2873,10 @@ expected.</li>
                 ),
                 "body": (
                 """<h3>1. Tipos de segredos</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-secrets.jpg" alt="Porta de cofre fechada e um bilhete amassado no lixo">
+<figcaption>Segredo mora no cofre. Bilhete, repositório e variável commitada são o lixo da foto.</figcaption>
+</figure>
 <p>Nem todo segredo deve ser tratado do mesmo jeito, e a categoria certa
 determina a estratégia de proteção. Os <strong>estáticos</strong> —
 senha de banco, API key, token de serviço — são criados manualmente e
@@ -3094,6 +3114,10 @@ antes dele expirar sozinho — limitando drasticamente o blast radius do
 mesmo incidente.</p>"""
                 ),
                 "body_en": """<h3>1. Types of secrets</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-secrets.jpg" alt="A closed vault door and a crumpled note in the trash">
+<figcaption>A secret lives in the vault. A note, a repository, and a committed variable are the trash in the photo.</figcaption>
+</figure>
 <p>Not every secret should be treated the same way, and the right
 category drives the protection strategy. <strong>Static</strong>
 secrets — database passwords, API keys, service tokens — are created
@@ -3586,8 +3610,8 @@ the same incident.</p>""",
                 "body": (
                 """<h3>1. CI vs CD vs CD: três conceitos, duas siglas</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/ci-runners.jpg" alt="Rack baixo numa sala ao lado do escritório, com quatro servidores">
-<figcaption>O pipeline não é um conceito: é um processo rodando numa máquina como estas, a cada commit.</figcaption>
+<img src="/static/img/lessons/c-cicd.jpg" alt="Esteira curta: peças soltas, uma lupa, uma caixa lacrada">
+<figcaption>CI é a lupa em cada commit. CD é a caixa pronta para sair; alguém ainda pode segurar a esteira.</figcaption>
 </figure>
 <p><strong>CI (Continuous Integration)</strong> significa que a cada
 commit, o código é mergeado e validado imediatamente — build, lint,
@@ -3900,8 +3924,8 @@ reconciliação.</p>"""
                 ),
                 "body_en": """<h3>1. CI vs CD vs CD: three concepts, two acronyms</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/ci-runners.jpg" alt="A short rack in a side room, with four servers">
-<figcaption>The pipeline is not a concept: it is a process running on a machine like these, on every commit.</figcaption>
+<img src="/static/img/lessons/c-cicd.jpg" alt="A short conveyor: loose parts, a magnifying glass, a sealed box">
+<figcaption>CI is the magnifying glass on every commit. CD is the box ready to leave; someone may still hold the belt.</figcaption>
 </figure>
 <p><strong>CI (Continuous Integration)</strong> means that on every
 commit, code is merged and validated immediately — build, lint,
@@ -4471,6 +4495,10 @@ reconciliation.</p>
                 ),
                 "body": (
                 """<h3>1. O que linters fazem</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-lint.jpg" alt="Rolo adesivo tirando fiapos de um casaco">
+<figcaption>O linter tira o fiapo antes do código seguir: estilo, erro bobo, coisa que não precisa de um humano.</figcaption>
+</figure>
 <p>Um linter faz <strong>análise estática</strong>: lê o código sem
 executá-lo e procura padrões, em cinco categorias amplas. A primeira é
 <strong>estilo</strong> — indentação, naming, comprimento de linha, ordem
@@ -4685,6 +4713,10 @@ não só estilo.</li>
 </ul>"""
                 ),
                 "body_en": """<h3>1. What linters do</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-lint.jpg" alt="A lint roller lifting fluff off a coat">
+<figcaption>A linter lifts the fluff before the code moves on: style, silly mistakes, things that should not need a human.</figcaption>
+</figure>
 <p>A linter performs <strong>static analysis</strong>: it reads code without
 running it and looks for patterns, in five broad categories. The first is
 <strong>style</strong> — indentation, naming, line length, import
@@ -5124,6 +5156,10 @@ not just style.</li>
                 ),
                 "body": (
                 """<h3>1. Como SAST funciona internamente</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-sast.jpg" alt="Mala fechada ao lado de um raio-x que mostra um objeto estranho dentro">
+<figcaption>SAST olha o código parado, sem executar. O raio-x vê o que a mala ainda não mostrou em movimento.</figcaption>
+</figure>
 <p>Cinco etapas transformam código-fonte em achado de vulnerabilidade.
 Primeiro, <strong>parsing</strong> transforma o texto do código numa AST
 (Abstract Syntax Tree) — uma estrutura de árvore que representa a
@@ -5362,6 +5398,10 @@ aparece constantemente; regra desatualizada para de pegar o que hoje já
 </ul>"""
                 ),
                 "body_en": """<h3>1. How SAST works internally</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-sast.jpg" alt="A closed suitcase beside an x-ray that shows a foreign object inside">
+<figcaption>SAST looks at code standing still, without running it. The x-ray sees what the suitcase has not shown in motion yet.</figcaption>
+</figure>
 <p>Five stages turn source code into a vulnerability finding.
 First, <strong>parsing</strong> turns code text into an AST
 (Abstract Syntax Tree) — a tree that represents
@@ -5826,6 +5866,14 @@ known today.</li>
                 ),
                 "body": (
                 """<h3>1. SBOM (Software Bill of Materials)</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-sca.jpg" alt="Parts of a device laid out, one of them with a red dot">
+<figcaption>SCA looks at the parts you did not write. The red dot is the dependency with a known flaw.</figcaption>
+</figure>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-sca.jpg" alt="Peças de um aparelho alinhadas, uma delas com um ponto vermelho">
+<figcaption>SCA olha as peças que você não escreveu. O ponto vermelho é a dependência com falha conhecida.</figcaption>
+</figure>
 <p>Um SBOM é a lista de TODAS as dependências — diretas e transitivas —
 com versão e licença de cada uma. É o ingrediente básico sem o qual
 nenhuma análise de segurança de dependência funciona, porque não dá para
@@ -6504,6 +6552,10 @@ about which level each artifact actually reached.</p>""",
                 ),
                 "body": (
                 """<h3>1. Princípios de PR/MR de qualidade</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-review.jpg" alt="Duas xícaras uma de frente para a outra, com uma folha no meio">
+<figcaption>Code review é essa mesa: duas pessoas, a mesma mudança, antes dela seguir.</figcaption>
+</figure>
 <h4>1.1 Tamanho importa</h4>
 <p>Uma estatística repetidamente confirmada por Google, Microsoft e
 Meta: a qualidade do review cai dramaticamente acima de ~200 linhas de
@@ -6726,6 +6778,10 @@ longo tende a gerar mal-entendido que só piora por escrito.</li>
 </ol>"""
                 ),
                 "body_en": """<h3>1. Principles of quality PRs/MRs</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-review.jpg" alt="Two cups facing each other, one sheet of paper between them">
+<figcaption>Code review is that table: two people, the same change, before it moves on.</figcaption>
+</figure>
 <h4>1.1 Size matters</h4>
 <p>A statistic repeatedly confirmed by Google, Microsoft, and
 Meta: review quality drops dramatically above ~200 lines of
@@ -7169,6 +7225,10 @@ tends to create misunderstandings that only get worse in writing.</li>
                 ),
                 "body": (
                 """<h3>1. Tipos de registries</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-artifacts.jpg" alt="Prateleira de latas iguais, cada uma com uma etiqueta em branco">
+<figcaption>O registry guarda o artefato pronto, versionado, para o deploy pegar a lata certa.</figcaption>
+</figure>
 <h4>1.1 Container registries</h4>
 <p>Cada nuvem oferece seu registry nativo: <strong>AWS ECR</strong> com
 controle de acesso via IAM e scan de vulnerabilidade integrado,
@@ -7419,6 +7479,10 @@ independentes verifiquem o resultado sem precisar confiar cegamente
 numa única infraestrutura de build.</p>"""
                 ),
                 "body_en": """<h3>1. Registry types</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-artifacts.jpg" alt="A shelf of identical canisters, each with a blank tag">
+<figcaption>A registry stores the finished artifact, versioned, so deploy can pick the right canister.</figcaption>
+</figure>
 <h4>1.1 Container registries</h4>
 <p>Each cloud offers its native registry: <strong>AWS ECR</strong> with
 IAM access control and integrated vulnerability scanning,

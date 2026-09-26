@@ -42,8 +42,8 @@ PHASE1 = {
                 "body": (
                 """<h3>1. Filosofia: tudo é arquivo</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/linux-server.jpg" alt="Frente de um servidor em rack, com baias de disco e luzes de status">
-<figcaption>O Linux que você administra mora numa máquina assim. Disco, processo e rede aparecem para o sistema como arquivo.</figcaption>
+<img src="/static/img/lessons/c-linux.jpg" alt="Gaveta aberta com pasta, disco e cabo de rede misturados">
+<figcaption>No Linux, disco, processo e rede aparecem do mesmo jeito: como arquivo.</figcaption>
 </figure>
 <p>O lema clássico do Unix se aplica integralmente no Linux: tudo é
 representado como arquivo — disco (<code>/dev/sda</code>), socket de
@@ -284,8 +284,8 @@ algo comprometido antes mesmo de investigar mais a fundo.</p>"""
                 "body_en": (
                 """<h3>1. Philosophy: everything is a file</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/linux-server.jpg" alt="Front of a rack server, with drive bays and status lights">
-<figcaption>The Linux you administer lives on a machine like this. Disk, process, and network show up to the system as files.</figcaption>
+<img src="/static/img/lessons/c-linux.jpg" alt="An open drawer mixing a folder, a disk, and a network cable">
+<figcaption>On Linux, disk, process, and network show up the same way: as files.</figcaption>
 </figure>
 <p>Unix's classic motto applies fully to Linux: everything is
 represented as a file — disk (<code>/dev/sda</code>), network
@@ -771,8 +771,8 @@ dig further.</p>"""
                 "body": (
                 """<h3>1. As quatro camadas que importam (modelo TCP/IP)</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/redes-switch.jpg" alt="Switch de rede em rack, com cabos de patch coloridos nas portas">
-<figcaption>Quase todo pacote que o modelo descreve passa por um equipamento como este antes de chegar no servidor.</figcaption>
+<img src="/static/img/lessons/c-tcp.jpg" alt="Quatro caixas de vidro, uma dentro da outra">
+<figcaption>Cada caixa é uma camada. O pacote nasce na de dentro e atravessa as de fora.</figcaption>
 </figure><p>Esqueça as 7 camadas do OSI por enquanto. O modelo prático é o TCP/IP de quatro camadas:</p>
 <div class="mermaid">
 flowchart TB
@@ -847,8 +847,8 @@ iperf3 -c host                              # banda</code></pre><h3>7. Anatomia 
                 "body_en": (
                 """<h3>1. The four layers that matter (TCP/IP model)</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/redes-switch.jpg" alt="Rack network switch with colored patch cables in the ports">
-<figcaption>Almost every packet the model describes passes through a device like this before it reaches the server.</figcaption>
+<img src="/static/img/lessons/c-tcp.jpg" alt="Four glass boxes, one inside the other">
+<figcaption>Each box is a layer. The packet starts in the inner one and passes through the outer ones.</figcaption>
 </figure><p>Forget the 7 OSI layers for now. The practical model is the four-layer TCP/IP:</p>
 <div class="mermaid">
 flowchart TB
@@ -1153,6 +1153,10 @@ iperf3 -c host                              # banda</code></pre><h3>7. Anatomy o
                 ),
                 "body": (
                 """<h3>1. Cabeçalho seguro: o 'unsafe at any speed' do bash</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-bash.jpg" alt="Dominós caindo, parados por um bloco vermelho">
+<figcaption>O script segue em sequência. O cabeçalho seguro é esse bloco: sem ele, o erro não interrompe a queda.</figcaption>
+</figure>
 <p>Todo script sério começa com a mesma combinação de três configurações:</p>
 <div class="mermaid">
 flowchart TD
@@ -1394,6 +1398,10 @@ checar manualmente em cada script novo.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. Safe header: bash's 'unsafe at any speed'</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-bash.jpg" alt="Dominoes falling, stopped by a red block">
+<figcaption>The script runs in sequence. The safe header is that block: without it, an error does not stop the fall.</figcaption>
+</figure>
 <p>Every serious script starts with the same combination of three settings:</p>
 <div class="mermaid">
 flowchart TD
@@ -1878,7 +1886,11 @@ check manually in every new script.</p>"""
                     "toward an SSH CA in any serious environment."
                 ),
                 "body": (
-                """<h3>1. Modelo mental de criptografia assimétrica</h3><p>Cada lado tem um par de chaves matemáticamente ligadas:</p>
+                """<h3>1. Modelo mental de criptografia assimétrica</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-ssh.jpg" alt="Uma chave trancada numa caixa de vidro e cópias soltas do lado de fora">
+<figcaption>A privada não sai do dono. A pública pode ser copiada e entregue ao servidor.</figcaption>
+</figure><p>Cada lado tem um par de chaves matemáticamente ligadas:</p>
 <div class="mermaid">
 flowchart LR
     Priv["Chave privada"] -. "nunca sai" .-> Client["Cliente"]
@@ -1886,11 +1898,7 @@ flowchart LR
     Client -->|"assina desafio"| Server
     Server -->|"verifica assinatura"| OK["Acesso"]
 </div>
-<ul><li>A <strong>chave privada</strong> nunca sai do dono. É secreta.</li><li>A <strong>chave pública</strong> pode ser distribuída livremente.</li></ul><p>O que uma cripta, a outra decifra (e vice-versa). Em SSH:</p><ol><li>Cliente prova posse da privada assinando um desafio enviado pelo servidor.</li><li>Servidor verifica a assinatura com a pública (que está em <code>~/.ssh/authorized_keys</code> do usuário).</li><li>Após autenticação, ambos derivam chaves <strong>simétricas</strong> (AES, ChaCha20) para criptografar a sessão, assimétrico só é usado para estabelecer a sessão, não para o tráfego em si (seria lento demais).</li></ol><p>O servidor também tem seu par: a chave pública do servidor (host key) vai para o seu <code>~/.ssh/known_hosts</code> na primeira conexão. Se na próxima vez for diferente, o cliente <em>recusa</em> com <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, pode ser MITM ou rebuild legítimo do servidor.</p><h3>2. Gerando chaves modernas, Ed25519</h3>
-<figure class="lesson-figure">
-<img src="/static/img/lessons/ssh-laptop.jpg" alt="Notebook aberto e sem ninguém, com a tela apagada, sobre uma mesa">
-<figcaption>A chave privada mora neste disco. Sem passphrase, quem pega o notebook pega os servidores.</figcaption>
-</figure><p>Em 2025+ o padrão é <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: curva elíptica moderna; chave pública de ~68 bytes.</li><li><code>-a 100</code>: 100 rounds de KDF para a passphrase (mais lento para força bruta).</li><li><code>-C</code>: comentário (apenas marcador, usado para identificar a chave em <code>authorized_keys</code>).</li></ul><p>Sempre proteja com passphrase. Sem ela, qualquer um que tenha acesso ao seu disco tem acesso a todos os seus servidores.</p><p>RSA-2048 está sendo aposentado; se precisar de RSA por compatibilidade, use ≥ 3072 bits. ECDSA tem ressalvas (NIST curves), prefira Ed25519.</p><h3>3. ssh-agent: digitar passphrase uma vez por sessão</h3><pre><code>eval $(ssh-agent -s)
+<ul><li>A <strong>chave privada</strong> nunca sai do dono. É secreta.</li><li>A <strong>chave pública</strong> pode ser distribuída livremente.</li></ul><p>O que uma cripta, a outra decifra (e vice-versa). Em SSH:</p><ol><li>Cliente prova posse da privada assinando um desafio enviado pelo servidor.</li><li>Servidor verifica a assinatura com a pública (que está em <code>~/.ssh/authorized_keys</code> do usuário).</li><li>Após autenticação, ambos derivam chaves <strong>simétricas</strong> (AES, ChaCha20) para criptografar a sessão, assimétrico só é usado para estabelecer a sessão, não para o tráfego em si (seria lento demais).</li></ol><p>O servidor também tem seu par: a chave pública do servidor (host key) vai para o seu <code>~/.ssh/known_hosts</code> na primeira conexão. Se na próxima vez for diferente, o cliente <em>recusa</em> com <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, pode ser MITM ou rebuild legítimo do servidor.</p><h3>2. Gerando chaves modernas, Ed25519</h3><p>Em 2025+ o padrão é <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: curva elíptica moderna; chave pública de ~68 bytes.</li><li><code>-a 100</code>: 100 rounds de KDF para a passphrase (mais lento para força bruta).</li><li><code>-C</code>: comentário (apenas marcador, usado para identificar a chave em <code>authorized_keys</code>).</li></ul><p>Sempre proteja com passphrase. Sem ela, qualquer um que tenha acesso ao seu disco tem acesso a todos os seus servidores.</p><p>RSA-2048 está sendo aposentado; se precisar de RSA por compatibilidade, use ≥ 3072 bits. ECDSA tem ressalvas (NIST curves), prefira Ed25519.</p><h3>3. ssh-agent: digitar passphrase uma vez por sessão</h3><pre><code>eval $(ssh-agent -s)
 ssh-add -t 4h ~/.ssh/id_ed25519     # libera por 4 horas
 ssh-add -l                           # lista chaves carregadas
 ssh-add -D                           # remove todas (logout)</code></pre><p>O agent guarda a chave decifrada em memória e fala com o cliente SSH via socket Unix (<code>$SSH_AUTH_SOCK</code>). Em desktops modernos (macOS, GNOME), há agents nativos integrados.</p><p><strong>Cuidado com agent forwarding</strong> (<code>ssh -A host</code>): o servidor de destino pode usar suas chaves para se conectar a outros lugares enquanto a sessão estiver aberta. Se ele estiver comprometido, vira pivô. Use <code>ProxyJump</code> em vez de <code>-A</code> sempre que possível:</p><pre><code>ssh -J bastion.example.com app-01.internal</code></pre><h3>4. ~/.ssh/config, configuração que economiza horas</h3><pre><code># ~/.ssh/config
@@ -1967,7 +1975,11 @@ chown -R $USER:$USER ~/.ssh</code></pre><p>Se algo está mais aberto que isso, o
 <ul><li>Compartilhar chaves entre humanos ('chave do time').</li><li>Não usar passphrase 'porque é incômodo', agente resolve.</li><li>Aceitar host key cegamente em scripts (<code>StrictHostKeyChecking=no</code>) sem registrar via <code>ssh-keyscan</code> + verificação out-of-band.</li><li>Habilitar <code>PermitRootLogin yes</code> 'temporariamente' e esquecer.</li><li>Deixar <code>AllowAgentForwarding yes</code> default em servidor exposto.</li><li>Não rotacionar nunca, chave de 2017 ainda em <code>authorized_keys</code> de 2025.</li></ul>"""
                 ),
                 "body_en": (
-                """<h3>1. Mental model of asymmetric cryptography</h3><p>Each side has a pair of mathematically linked keys:</p>
+                """<h3>1. Mental model of asymmetric cryptography</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-ssh.jpg" alt="One key locked in a glass box, and copies lying outside">
+<figcaption>The private key never leaves its owner. The public key can be copied and given to the server.</figcaption>
+</figure><p>Each side has a pair of mathematically linked keys:</p>
 <div class="mermaid">
 flowchart LR
     Priv["Private key"] -. "never leaves" .-> Client["Client"]
@@ -1975,11 +1987,7 @@ flowchart LR
     Client -->|"signs challenge"| Server
     Server -->|"verifies signature"| OK["Access"]
 </div>
-<ul><li>The <strong>private key</strong> never leaves its owner. It's secret.</li><li>The <strong>public key</strong> can be freely distributed.</li></ul><p>What one encrypts, the other decrypts (and vice versa). In SSH:</p><ol><li>The client proves possession of the private key by signing a challenge sent by the server.</li><li>The server verifies the signature with the public key (which is in the user's <code>~/.ssh/authorized_keys</code>).</li><li>After authentication, both sides derive <strong>symmetric</strong> keys (AES, ChaCha20) to encrypt the session, asymmetric crypto is only used to establish the session, not for the traffic itself (it would be too slow).</li></ol><p>The server also has its own pair: the server's public key (host key) goes into your <code>~/.ssh/known_hosts</code> on first connection. If next time it's different, the client <em>refuses</em> with <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, it could be a MITM or a legitimate server rebuild.</p><h3>2. Generating modern keys, Ed25519</h3>
-<figure class="lesson-figure">
-<img src="/static/img/lessons/ssh-laptop.jpg" alt="An unattended laptop on a desk, screen off">
-<figcaption>The private key lives on this disk. Without a passphrase, whoever takes the laptop takes the servers.</figcaption>
-</figure><p>In 2025+ the standard is <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: modern elliptic curve; public key of ~68 bytes.</li><li><code>-a 100</code>: 100 rounds of KDF for the passphrase (slower against brute force).</li><li><code>-C</code>: comment (just a marker, used to identify the key in <code>authorized_keys</code>).</li></ul><p>Always protect it with a passphrase. Without one, anyone with access to your disk has access to all your servers.</p><p>RSA-2048 is being retired; if you need RSA for compatibility, use ≥ 3072 bits. ECDSA has caveats (NIST curves), prefer Ed25519.</p><h3>3. ssh-agent: type the passphrase once per session</h3><pre><code>eval $(ssh-agent -s)
+<ul><li>The <strong>private key</strong> never leaves its owner. It's secret.</li><li>The <strong>public key</strong> can be freely distributed.</li></ul><p>What one encrypts, the other decrypts (and vice versa). In SSH:</p><ol><li>The client proves possession of the private key by signing a challenge sent by the server.</li><li>The server verifies the signature with the public key (which is in the user's <code>~/.ssh/authorized_keys</code>).</li><li>After authentication, both sides derive <strong>symmetric</strong> keys (AES, ChaCha20) to encrypt the session, asymmetric crypto is only used to establish the session, not for the traffic itself (it would be too slow).</li></ol><p>The server also has its own pair: the server's public key (host key) goes into your <code>~/.ssh/known_hosts</code> on first connection. If next time it's different, the client <em>refuses</em> with <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, it could be a MITM or a legitimate server rebuild.</p><h3>2. Generating modern keys, Ed25519</h3><p>In 2025+ the standard is <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: modern elliptic curve; public key of ~68 bytes.</li><li><code>-a 100</code>: 100 rounds of KDF for the passphrase (slower against brute force).</li><li><code>-C</code>: comment (just a marker, used to identify the key in <code>authorized_keys</code>).</li></ul><p>Always protect it with a passphrase. Without one, anyone with access to your disk has access to all your servers.</p><p>RSA-2048 is being retired; if you need RSA for compatibility, use ≥ 3072 bits. ECDSA has caveats (NIST curves), prefer Ed25519.</p><h3>3. ssh-agent: type the passphrase once per session</h3><pre><code>eval $(ssh-agent -s)
 ssh-add -t 4h ~/.ssh/id_ed25519     # libera por 4 horas
 ssh-add -l                           # lista chaves carregadas
 ssh-add -D                           # remove todas (logout)</code></pre><p>The agent holds the decrypted key in memory and talks to the SSH client over a Unix socket (<code>$SSH_AUTH_SOCK</code>). On modern desktops (macOS, GNOME), there are integrated native agents.</p><p><strong>Be careful with agent forwarding</strong> (<code>ssh -A host</code>): the destination server can use your keys to connect elsewhere while the session is open. If it's compromised, it becomes a pivot. Use <code>ProxyJump</code> instead of <code>-A</code> whenever possible:</p><pre><code>ssh -J bastion.example.com app-01.internal</code></pre><h3>4. ~/.ssh/config, configuration that saves hours</h3><pre><code># ~/.ssh/config
@@ -2308,6 +2316,10 @@ chown -R $USER:$USER ~/.ssh</code></pre><p>If anything is more open than that, s
                 ),
                 "body": (
                 """<h3>1. Por que PoLP é fundamental</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-polp.jpg" alt="Uma chave só no chaveiro, e um molho enorme deixado de lado">
+<figcaption>Privilégio mínimo é carregar a chave da porta que você vai abrir, não o molho inteiro.</figcaption>
+</figure>
 <p>A forma mais útil de pensar em PoLP é como controle de
 <strong>blast radius</strong>: quanto se compromete no momento em que
 uma identidade específica vaza. Se uma aplicação web carrega credencial
@@ -2571,6 +2583,10 @@ resposta a incidente depois.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. Why PoLP is foundational</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-polp.jpg" alt="One key on a ring, a huge keyring set aside">
+<figcaption>Least privilege means carrying the key for the door you will open, not the whole ring.</figcaption>
+</figure>
 <p>The most useful way to think about PoLP is as
 <strong>blast radius</strong> control: how much is compromised the
 moment a specific identity leaks. If a web application carries an
@@ -3102,6 +3118,10 @@ incident response later.</p>
                 ),
                 "body": (
                 """<h3>1. O subsystem netfilter</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-firewall.jpg" alt="Uma peneira: areia passou, pedras ficaram">
+<figcaption>O netfilter faz isso com pacotes. O que não cabe na regra não atravessa.</figcaption>
+</figure>
 <p>O kernel Linux implementa um framework de filtro de pacotes chamado
 netfilter, com hook em cinco pontos distintos ao longo do caminho de
 um pacote pela pilha de rede. O <code>PRE-ROUTING</code> atua antes
@@ -3331,6 +3351,10 @@ que exatamente ela serve hoje?".</li>
                 ),
                 "body_en": (
                 """<h3>1. The netfilter subsystem</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-firewall.jpg" alt="A sieve: sand passed through, stones stayed">
+<figcaption>Netfilter does this to packets. What does not fit the rule does not get through.</figcaption>
+</figure>
 <p>The Linux kernel implements a packet-filtering framework called
 netfilter, with hooks at five distinct points along a packet's path
 through the network stack. <code>PRE-ROUTING</code> acts even before
@@ -3814,8 +3838,8 @@ it serve today?".</li>
                 "body": (
                 """<h3>1. Por que ainda existe TLS termination na borda</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/fiber-edge.jpg" alt="Painel de fibra óptica num rack, com conectores azuis e alguns cabos amarelos">
-<figcaption>A conexão pública chega por aqui. O TLS termina na borda, num proxy, e não dentro de cada aplicação.</figcaption>
+<img src="/static/img/lessons/c-tls.jpg" alt="Envelope lacrado de um lado da bandeja e carta aberta do outro">
+<figcaption>O TLS termina na borda. Lá dentro a aplicação recebe a carta já aberta.</figcaption>
 </figure>
 <p>Mesmo num ambiente com mTLS pleno dentro do mesh, o proxy de borda
 continua justificado por cinco razões concretas: certificado público
@@ -4105,8 +4129,8 @@ antes.</li>
                 "body_en": (
                 """<h3>1. Why TLS termination still exists at the edge</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/fiber-edge.jpg" alt="Fiber optic patch panel in a rack, blue connectors and a few yellow cables">
-<figcaption>The public connection arrives here. TLS ends at the edge, on a proxy, not inside every application.</figcaption>
+<img src="/static/img/lessons/c-tls.jpg" alt="A sealed envelope on one side of the tray, an opened letter on the other">
+<figcaption>TLS ends at the edge. Inside, the application receives the letter already opened.</figcaption>
 </figure>
 <p>Even in an environment with full mTLS inside the mesh, the edge
 proxy remains justified for five concrete reasons: a public certificate
@@ -4665,6 +4689,10 @@ before.</li>
                 ),
                 "body": (
                 """<h3>1. Modelo de confiança em APT</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-apt.jpg" alt="Dois pacotes, um com lacre íntegro e outro com lacre quebrado">
+<figcaption>A confiança do APT é o lacre. Sem a assinatura certa, o pacote não deveria ser instalado.</figcaption>
+</figure>
 <p>O processo de validação de pacote no APT segue quatro passos
 encadeados, cada um dependendo do anterior. O repositório publica um
 arquivo <code>Release</code> contendo o hash de cada
@@ -4901,6 +4929,10 @@ manualmente.</li>
                 ),
                 "body_en": (
                 """<h3>1. The APT trust model</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-apt.jpg" alt="Two parcels, one seal intact and one seal broken">
+<figcaption>APT's trust is the seal. Without the right signature, the package should not be installed.</figcaption>
+</figure>
 <p>Package validation in APT follows four chained steps, each depending
 on the previous one. The repository publishes a <code>Release</code>
 file containing the hash of each <code>Packages</code> file. That
@@ -5419,8 +5451,8 @@ cycle running without depending on someone remembering manually.</li>
                 "body": (
                 """<h3>1. Logs do SO via systemd-journald</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/kvm-console.jpg" alt="Console extraível de um rack, com teclado e tela">
-<figcaption>O journald é o log desta máquina. O journalctl lê o que este host já guardou.</figcaption>
+<img src="/static/img/lessons/c-journal.jpg" alt="Um diário aberto, com as páginas em ordem">
+<figcaption>O journald é o diário desta máquina. O journalctl só folheia o que ela já anotou.</figcaption>
 </figure><p>Distros modernas centralizam tudo no <code>journald</code>:</p>
 <div class="mermaid">
 flowchart LR
@@ -5504,8 +5536,8 @@ flowchart LR
                 "body_en": (
                 """<h3>1. OS logs via systemd-journald</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/kvm-console.jpg" alt="Pull-out rack console, with a keyboard and a screen">
-<figcaption>journald is this machine's log. journalctl reads what this host already stored.</figcaption>
+<img src="/static/img/lessons/c-journal.jpg" alt="An open journal, pages in order">
+<figcaption>journald is this machine's journal. journalctl only turns pages the machine already wrote.</figcaption>
 </figure><p>Modern distros centralize everything in <code>journald</code>:</p>
 <div class="mermaid">
 flowchart LR
@@ -5833,7 +5865,11 @@ flowchart LR
                     "organizational anti-patterns that kill security programs."
                 ),
                 "body": (
-                """<h3>1. O que é DevSecOps de verdade</h3><p>DevOps tirou paredes entre dev e ops. DevSecOps faz o mesmo com segurança. Em prática:</p>
+                """<h3>1. O que é DevSecOps de verdade</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-devsecops.jpg" alt="Uma bancada só, com chave inglesa, teclado e cadeado">
+<figcaption>DevSecOps é tirar a parede. Desenvolvimento, operação e segurança trabalham na mesma bancada.</figcaption>
+</figure><p>DevOps tirou paredes entre dev e ops. DevSecOps faz o mesmo com segurança. Em prática:</p>
 <div class="mermaid">
 flowchart LR
     Dev["Dev"] --> Sec["Sec embutido"]
@@ -5860,7 +5896,11 @@ flowchart LR
 <table><tr><td><strong>Time de seg como gate</strong></td><td>Aprovação manual de cada deploy. Vira gargalo, gera atrito, force times a contornar.</td></tr><tr><td><strong>Compras-lideradas</strong></td><td>Contratam ferramenta de US$ 200k/ano sem definir como vai ser usada. Shelfware caro.</td></tr><tr><td><strong>Métricas vaidade</strong></td><td>'Bloqueamos 1M de ataques!' sem dizer quais eram bots vs humanos.</td></tr><tr><td><strong>Empurrar débito</strong></td><td>'Resolve depois do release' indefinidamente. Juros chegam em incidente.</td></tr><tr><td><strong>Heroísmo</strong></td><td>Uma pessoa carrega tudo. Quando ela sai, programa cai.</td></tr><tr><td><strong>Compliance teatro</strong></td><td>Performar para auditor sem proteger nada de fato.</td></tr></table><h3>9. Caso real: a transformação da Microsoft</h3><p>Após anos de ataques (Slammer, Blaster, etc.), Bill Gates mandou em 2002 um email para toda a empresa: 'Trustworthy Computing'. Em pouco tempo:</p><ul><li>Treinamento obrigatório em SDL para 8000+ engenheiros.</li><li>Threat modeling obrigatório para qualquer feature relevante.</li><li>SDL (Security Development Lifecycle) virou parte do processo padrão.</li><li>Internalização de fuzzing, code analysis, pentest.</li></ul><p>Resultado: 5 anos depois, a Microsoft saiu de 'piada de segurança' para referência da indústria, e abriu o playbook para todo mundo. Isso é cultura.</p><h3>10. Resumo: o que sobrar quando processos falham</h3><p>Cultura é o que sobra quando processos falham. Quando o engenheiro vê uma vulnerabilidade no código do colega e abre PR consertando, cultura. Quando o PM aceita atrasar uma feature para fechar débito de segurança, cultura. Quando o CEO reage a incidente com 'o que precisamos para isso não acontecer de novo?' em vez de 'quem demitimos?', cultura.</p><p>Ferramenta ajuda. Processo organiza. Cultura sustenta.</p>"""
                 ),
                 "body_en": (
-                """<h3>1. What DevSecOps really is</h3><p>DevOps tore down walls between dev and ops. DevSecOps does the same with security. In practice:</p>
+                """<h3>1. What DevSecOps really is</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-devsecops.jpg" alt="One bench, with a wrench, a keyboard, and a padlock">
+<figcaption>DevSecOps removes the wall. Development, operations, and security work on the same bench.</figcaption>
+</figure><p>DevOps tore down walls between dev and ops. DevSecOps does the same with security. In practice:</p>
 <div class="mermaid">
 flowchart LR
     Dev["Dev"] --> Sec["Sec embedded"]

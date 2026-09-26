@@ -43,8 +43,8 @@ PHASE2 = {
                 "body": (
                 """<h3>1. Da máquina física à VM: hypervisor</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/cloud-blades.jpg" alt="Chassis de servidores blade, com lâminas encaixadas lado a lado">
-<figcaption>A máquina física continua existindo. O hypervisor fatia esse hardware em várias máquinas virtuais.</figcaption>
+<img src="/static/img/lessons/c-vm.jpg" alt="Maquete de um prédio cortado em vários apartamentos">
+<figcaption>O hypervisor fatia uma máquina física em várias máquinas virtuais. A nuvem aluga o apartamento pronto.</figcaption>
 </figure>
 <p>Antes de cloud existir, cada workload ocupava um servidor físico
 inteiro, e a utilização típica desses servidores girava em torno de
@@ -268,8 +268,8 @@ casos.</p>"""
                 "body_en": (
                 """<h3>1. From physical machine to VM: the hypervisor</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/cloud-blades.jpg" alt="Blade server chassis, with blades seated side by side">
-<figcaption>The physical machine is still there. The hypervisor slices that hardware into several virtual machines.</figcaption>
+<img src="/static/img/lessons/c-vm.jpg" alt="A model of one building cut into several apartments">
+<figcaption>The hypervisor slices one physical machine into several virtual machines. The cloud rents you the finished apartment.</figcaption>
 </figure>
 <p>Before cloud existed, each workload occupied an entire physical
 server, and typical utilization of those servers hovered around
@@ -759,6 +759,10 @@ cases.</p>"""
                 ),
                 "body": (
                 """<h3>1. A linha móvel: quanto mais alto o serviço, mais o provedor cobre</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-shared.jpg" alt="Quarto dividido: concreto do dono de um lado, móveis do inquilino do outro">
+<figcaption>Quanto mais alto o serviço, mais parede o provedor cobre. O que é seu continua sendo a mobília.</figcaption>
+</figure>
 <p>A divisão de responsabilidade muda de acordo com o nível de
 abstração escolhido:</p>
 <div class="mermaid">
@@ -971,6 +975,10 @@ RDS?</li>
                 ),
                 "body_en": (
                 """<h3>1. The moving line: the higher the service, the more the provider covers</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-shared.jpg" alt="A room split between the owner's bare concrete and the tenant's furniture">
+<figcaption>The higher the service, the more wall the provider covers. What is yours is still the furniture.</figcaption>
+</figure>
 <p>The division of responsibility changes depending on the level of
 abstraction chosen:</p>
 <div class="mermaid">
@@ -1438,6 +1446,10 @@ RDS instance?</li>
                 ),
                 "body": (
                 """<h3>1. Identidades: humanas vs máquina</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-iam.jpg" alt="Dois crachás em branco, um com silhueta de pessoa e outro com engrenagem">
+<figcaption>Identidade humana e identidade de máquina são crachás diferentes. Nenhuma das duas deveria usar a senha da outra.</figcaption>
+</figure>
 <p>Duas categorias de identidade exigem tratamento estruturalmente
 diferente. As <strong>humanas</strong> — dev, ops, financeiro, vendas —
 acessam console e CLI, e devem ser federadas via SSO (IAM Identity
@@ -1716,6 +1728,10 @@ mais uma credencial comum na rede interna.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. Identities: human vs machine</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-iam.jpg" alt="Two blank badges, one with a person silhouette and one with a gear">
+<figcaption>A human identity and a machine identity are different badges. Neither should use the other's password.</figcaption>
+</figure>
 <p>Two identity categories require structurally different treatment.
 <strong>Human</strong> identities — dev, ops, finance, sales — access
 the console and CLI, and should be federated via SSO (IAM Identity
@@ -2259,6 +2275,10 @@ as just another ordinary credential on the internal network.</p>"""
                 ),
                 "body": (
                 """<h3>1. Anatomia de uma VPC</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-vpc.jpg" alt="Maquete de um pátio murado com um único portão para a rua">
+<figcaption>A VPC é esse pátio: rede sua, isolada, com um portão controlado para fora.</figcaption>
+</figure>
 <p>Uma VPC é uma rede privada virtual com um CIDR principal (por
 exemplo <code>10.0.0.0/16</code>, oferecendo 65 mil IPs), podendo
 receber até cinco CIDRs secundários adicionais quando o principal fica
@@ -2467,6 +2487,10 @@ fatura sem que ninguém perceba a tempo.</p>
                 ),
                 "body_en": (
                 """<h3>1. Anatomy of a VPC</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-vpc.jpg" alt="A model of a walled courtyard with a single gate to the street">
+<figcaption>A VPC is that courtyard: your network, isolated, with one controlled gate to the outside.</figcaption>
+</figure>
 <p>A VPC is a virtual private network with a primary CIDR (for
 example <code>10.0.0.0/16</code>, offering 65 thousand IPs), able to
 receive up to five additional secondary CIDRs when the primary one
@@ -2939,6 +2963,10 @@ notices in time.</p>
                 ),
                 "body": (
                 """<h3>1. Security Group (SG): stateful, por interface</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-sg.jpg" alt="Porta com olho mágico, aberta para dentro e fechada para o corredor">
+<figcaption>O security group lembra quem já entrou. A volta do tráfego permitido passa; o corredor continua fechado.</figcaption>
+</figure>
 <p>Um Security Group é um conjunto de regra Allow associado a uma
 interface de rede específica (ENI), com cinco características que
 diferenciam completamente sua operação de um firewall tradicional.
@@ -3135,6 +3163,10 @@ flowchart TD
                 ),
                 "body_en": (
                 """<h3>1. Security Group (SG): stateful, per interface</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-sg.jpg" alt="A door with a peephole, open inward and shut to the hall">
+<figcaption>A security group remembers who already came in. Return traffic for an allowed flow passes; the hall stays shut.</figcaption>
+</figure>
 <p>A Security Group is a set of Allow rules attached to a specific
 network interface (ENI), with five characteristics that completely
 distinguish its operation from a traditional firewall. It is
@@ -3594,8 +3626,8 @@ flowchart TD
                 "body": (
                 """<h3>1. Modelo de dados: object storage não é filesystem</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/s3-disks.jpg" alt="Gaveta de discos hot-swap num rack, com dezenas de baias">
-<figcaption>Por baixo, é disco. Para a aplicação, object storage não é essa gaveta nem um filesystem: é um balde de objetos com chave.</figcaption>
+<img src="/static/img/lessons/c-s3.jpg" alt="Prateleira de caixas lacradas, iguais, com etiquetas em branco">
+<figcaption>Object storage é esta prateleira de objetos, não uma árvore de pastas.</figcaption>
 </figure>
 <p>S3 quebra a intuição de quem espera um sistema de arquivo
 tradicional. Não existem diretórios de verdade, apenas prefixos —
@@ -3871,8 +3903,8 @@ melhor o mesmo problema.</li>
                 "body_en": (
                 """<h3>1. Data model: object storage is not a filesystem</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/s3-disks.jpg" alt="Hot-swap disk shelf in a rack, dozens of drive bays">
-<figcaption>Underneath, it is disks. To the application, object storage is not this shelf or a filesystem: it is a bucket of objects addressed by key.</figcaption>
+<img src="/static/img/lessons/c-s3.jpg" alt="A shelf of identical sealed boxes with blank tags">
+<figcaption>Object storage is this shelf of objects, not a tree of folders.</figcaption>
 </figure>
 <p>S3 breaks the intuition of anyone expecting a traditional
 filesystem. There are no real directories, only prefixes —
@@ -4415,8 +4447,8 @@ solves the same problem better.</li>
                 "body": (
                 """<h3>1. Modelo de ameaça: do que cripto protege</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/crypto-drives.jpg" alt="Discos rígidos soltos numa caixa plástica sobre um carrinho">
-<figcaption>Criptografia em repouso protege este disco se alguém levar o hardware, o snapshot ou o backup.</figcaption>
+<img src="/static/img/lessons/c-crypto.jpg" alt="Um cofre fechado ao lado de um envelope lacrado">
+<figcaption>O cofre é o dado em repouso. O envelope é o dado em trânsito. Em uso, dentro da memória, nenhum dos dois protege.</figcaption>
 </figure>
 <p>Antes de qualquer detalhe técnico, vale separar exatamente o que
 está sendo protegido em cada cenário. <strong>Em repouso</strong>
@@ -4670,8 +4702,8 @@ rouba o disco rouba a chave junto.</li>
                 "body_en": (
                 """<h3>1. Threat model: what encryption protects against</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/crypto-drives.jpg" alt="Loose hard drives in a plastic bin on a cart">
-<figcaption>Encryption at rest protects this disk if someone walks off with the hardware, the snapshot, or the backup.</figcaption>
+<img src="/static/img/lessons/c-crypto.jpg" alt="A closed safe beside a sealed envelope">
+<figcaption>The safe is data at rest. The envelope is data in transit. In use, inside memory, neither one protects it.</figcaption>
 </figure>
 <p>Before any technical detail, it's worth separating exactly what is
 being protected in each scenario. <strong>At rest</strong> means
@@ -5173,7 +5205,11 @@ steals the disk steals the key along with it.</li>
                     "and into 'engineering reliability' mode."
                 ),
                 "body": (
-                    "<h3>1. Os 4 sinais de ouro (Google SRE)</h3>"
+                    """<h3>1. Os 4 sinais de ouro (Google SRE)</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-gauges.jpg" alt="Quatro medidores analógicos sem números">
+<figcaption>Os quatro sinais de ouro: latência, tráfego, erros e saturação. Quatro ponteiros, não um painel infinito.</figcaption>
+</figure>"""
                     "<p>De todas as métricas que você pode coletar, 4 dizem se um serviço "
                     "está bem ou mal:</p>"
                     """
@@ -5369,7 +5405,11 @@ flowchart LR
 """
                 ),
                 "body_en": (
-                    "<h3>1. The 4 golden signals (Google SRE)</h3>"
+                    """<h3>1. The 4 golden signals (Google SRE)</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-gauges.jpg" alt="Four analog gauges with no numbers">
+<figcaption>The four golden signals: latency, traffic, errors, and saturation. Four needles, not an infinite dashboard.</figcaption>
+</figure>"""
                     "<p>Of all the metrics you could collect, 4 tell you whether a service "
                     "is healthy or not:</p>"
                     """
@@ -5819,8 +5859,8 @@ flowchart LR
                 "body": (
                 """<h3>1. RPO e RTO, as duas métricas-base</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/backup-tapes.jpg" alt="Biblioteca de fitas magnéticas num datacenter, com cartuchos nas prateleiras">
-<figcaption>O backup antigo ainda é fita. RPO e RTO medem quanto dado e quanto tempo você aceita perder até essa cópia voltar.</figcaption>
+<img src="/static/img/lessons/c-backup.jpg" alt="Duas xícaras iguais, uma lascada, e uma ampulheta no meio">
+<figcaption>RPO é o pedaço que falta. RTO é a areia da ampulheta até a cópia voltar.</figcaption>
 </figure>
 <p>O <strong>RPO</strong> (Recovery Point Objective) responde "quanto
 dado é aceitável perder": se o RPO é de 1 hora, o backup ou a
@@ -6034,8 +6074,8 @@ distribuído a cópia.</li>
                 "body_en": (
                 """<h3>1. RPO and RTO, the two base metrics</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/backup-tapes.jpg" alt="Magnetic tape library in a datacenter, cartridges on the shelves">
-<figcaption>The old backup is still tape. RPO and RTO measure how much data and how much time you accept losing until that copy comes back.</figcaption>
+<img src="/static/img/lessons/c-backup.jpg" alt="Two matching cups, one chipped, and an hourglass between them">
+<figcaption>RPO is the missing piece. RTO is the sand in the hourglass until the copy comes back.</figcaption>
 </figure>
 <p>The <strong>RPO</strong> (Recovery Point Objective) answers "how
 much data is acceptable to lose": if the RPO is 1 hour, the backup or
@@ -6499,8 +6539,8 @@ distributed the copy.</li>
                 "body": (
                 """<h3>1. Por que FinOps existe</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/finops-pdu.jpg" alt="Régua de energia de um rack, com cabos grossos e luzes de status">
-<figcaption>Cada tomada acesa é máquina consumindo. No on-prem isso passava por comitê; na nuvem o clique é rápido, e a conta continua real.</figcaption>
+<img src="/static/img/lessons/c-finops.jpg" alt="Medidor de energia ao lado de moedas">
+<figcaption>Na nuvem o clique é rápido. O medidor continua girando.</figcaption>
 </figure>
 <p>Em ambiente on-prem, comprar hardware era uma decisão de comitê:
 seis meses de discussão, capex aprovado em orçamento, contrato
@@ -6774,8 +6814,8 @@ basta se ele não influencia decisão real de nenhum time.</li>
                 "body_en": (
                 """<h3>1. Why FinOps exists</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/finops-pdu.jpg" alt="Rack power strip with thick cables and status lights">
-<figcaption>Every live outlet is a machine drawing power. On-prem that decision went through a committee; in the cloud the click is fast, and the bill is still real.</figcaption>
+<img src="/static/img/lessons/c-finops.jpg" alt="An electricity meter beside a pile of coins">
+<figcaption>In the cloud the click is fast. The meter keeps spinning.</figcaption>
 </figure>
 <p>In an on-prem environment, buying hardware was a committee
 decision: six months of discussion, capex approved in a budget,

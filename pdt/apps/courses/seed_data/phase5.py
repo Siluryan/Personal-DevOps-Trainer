@@ -34,6 +34,10 @@ PHASE5 = {
                 ),
                 "body": (
                 """<h3>1. O modelo mental que muda tudo: você não manda, você declara</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-k8s.jpg" alt="Um termostato na parede e um radiador embaixo">
+<figcaption>Você declara a temperatura. O cluster converge até o radiador bater com o que foi pedido.</figcaption>
+</figure>
 <p>Kubernetes não é uma sequência de scripts que você executa em ordem —
 é um <strong>sistema de controle baseado em estado desejado</strong>.
 Você descreve o que quer ("3 réplicas de um Deployment com a imagem
@@ -70,10 +74,6 @@ pontuais executados uma vez — a diferença central entre operar
 Kubernetes e operar um script tradicional de shell.</p>
 
 <h3>2. Arquitetura: cérebro e músculo, e por que gerenciado ganhou na maioria dos casos</h3>
-<figure class="lesson-figure">
-<img src="/static/img/lessons/k8s-racks.jpg" alt="Corredor frio de um datacenter, com fileiras de racks cheios de servidores">
-<figcaption>Cada rack é um conjunto de máquinas. O cluster é a sala inteira trabalhando como um sistema só.</figcaption>
-</figure>
 <p>Um cluster tem dois grupos de nós com papéis completamente
 diferentes. O <strong>control plane</strong> é o cérebro:
 <code>kube-apiserver</code> é a ÚNICA porta de entrada — toda interação
@@ -102,10 +102,6 @@ não é trivial, e o ganho de fazer isso manualmente raramente compensa o
 risco.</p>
 
 <h3>3. Os primitivos que valem dominar antes de qualquer coisa mais avançada</h3>
-<figure class="lesson-figure">
-<img src="/static/img/lessons/k8s-node.jpg" alt="Servidor em rack, parcialmente extraído sobre trilhos, com a tampa aberta">
-<figcaption>O pod roda numa máquina como esta. O agendador escolhe o nó; o kubelet é quem de fato sobe o container.</figcaption>
-</figure>
 <p>Um <strong>Pod</strong> é a menor unidade que pode ser implantada —
 um ou mais containers compartilhando a mesma rede (mesmo IP, mesmas
 portas) e os mesmos volumes; na prática, 99% dos pods têm um único
@@ -254,10 +250,6 @@ mais forte ainda, o digest da imagem (<code>@sha256:...</code>).</p>
 
 
 <h3>6. Service: por que "falar com o IP do pod" nunca funciona de verdade</h3>
-<figure class="lesson-figure">
-<img src="/static/img/lessons/k8s-cables.jpg" alt="Traseira de um rack, com dezenas de cabos de rede organizados em patch panels">
-<figcaption>Cabo e porta pertencem a uma máquina. O pod some e o IP vai junto; o Service fica no lugar, como o nome da aplicação.</figcaption>
-</figure>
 <p>Pods são efetivamente descartáveis — criados e destruídos com
 frequência, e o IP de cada um muda a cada recriação. A pergunta que
 Service resolve é "como eu falo consistentemente com 'a aplicação web',
@@ -548,6 +540,10 @@ custo.</p>
                 ),
                 "body_en": (
                 """<h3>1. The mental model that changes everything: you don't command, you declare</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-k8s.jpg" alt="A thermostat on the wall and a radiator below it">
+<figcaption>You declare the temperature. The cluster converges until the radiator matches what was asked.</figcaption>
+</figure>
 <p>Kubernetes is not a sequence of scripts you run in order —
 it's a <strong>control system based on desired state</strong>.
 You describe what you want ("3 replicas of a Deployment with the
@@ -583,10 +579,6 @@ commands executed once — the central difference between operating
 Kubernetes and operating a traditional shell script.</p>
 
 <h3>2. Architecture: brain and muscle, and why managed won in most cases</h3>
-<figure class="lesson-figure">
-<img src="/static/img/lessons/k8s-racks.jpg" alt="Cold aisle in a datacenter, rows of racks packed with servers">
-<figcaption>Each rack is a set of machines. The cluster is the whole room working as one system.</figcaption>
-</figure>
 <p>A cluster has two groups of nodes with completely
 different roles. The <strong>control plane</strong> is the brain:
 <code>kube-apiserver</code> is the ONLY entry point — every interaction
@@ -615,10 +607,6 @@ is nontrivial, and the gain from doing it manually rarely offsets the
 risk.</p>
 
 <h3>3. The primitives worth mastering before anything more advanced</h3>
-<figure class="lesson-figure">
-<img src="/static/img/lessons/k8s-node.jpg" alt="Rack server pulled out on rails, cover open">
-<figcaption>A pod runs on a machine like this. The scheduler picks the node; the kubelet is what actually starts the container.</figcaption>
-</figure>
 <p>A <strong>Pod</strong> is the smallest deployable unit —
 one or more containers sharing the same network (same IP, same
 ports) and the same volumes; in practice, 99% of pods have a single
@@ -767,10 +755,6 @@ stronger still, the image digest (<code>@sha256:...</code>).</p>
 
 
 <h3>6. Service: why "talking to the pod's IP" never really works</h3>
-<figure class="lesson-figure">
-<img src="/static/img/lessons/k8s-cables.jpg" alt="Rear of a rack, dozens of network cables dressed into patch panels">
-<figcaption>A cable and a port belong to one machine. The pod disappears and its IP goes with it; the Service stays put, as the name of the application.</figcaption>
-</figure>
 <p>Pods are effectively disposable — created and destroyed
 frequently, and each one's IP changes on every recreation. The question that
 Service solves is "how do I consistently talk to 'the web application',
@@ -1238,6 +1222,10 @@ own cost.</p>
                 ),
                 "body": (
                 """<h3>1. O modelo de ameaça: contra o quê hardening realmente defende</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-hardening.jpg" alt="Um baú fechado com várias fechaduras diferentes">
+<figcaption>Hardening empilha fechaduras. Cada uma trava um salto: do container para o nó, do nó para o cluster.</figcaption>
+</figure>
 <p>Aplicar um checklist de hardening sem entender o que ele previne
 produz uma falsa sensação de segurança — a lista certa só faz sentido
 quando você sabe qual dos cinco cenários abaixo ela fecha. O
@@ -1642,6 +1630,10 @@ todo o resto, sendo estático, não alcança.</li>
                 ),
                 "body_en": (
                 """<h3>1. The threat model: what hardening actually defends against</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-hardening.jpg" alt="A chest closed with several different locks">
+<figcaption>Hardening stacks locks. Each one stops a jump: from the container to the node, from the node to the cluster.</figcaption>
+</figure>
 <p>Applying a hardening checklist without understanding what it prevents
 produces a false sense of security — the right list only makes sense
 when you know which of the five scenarios below it closes off. The
@@ -2219,6 +2211,10 @@ everything else, being static, can't reach.</li>
                 ),
                 "body": (
                 """<h3>1. NetworkPolicy é só um objeto — quem de fato aplica é o CNI</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-netpol.jpg" alt="Casa de boneca com as portas internas quase todas fechadas">
+<figcaption>Sem NetworkPolicy, as portas entre os cômodos ficam abertas. A política é a porta que você escolhe deixar encostada.</figcaption>
+</figure>
 <p>Um detalhe que confunde muita gente na primeira vez: NetworkPolicy é
 um objeto Kubernetes comum, aceito pelo API server e gravado no etcd
 como qualquer outro recurso — mas o API server NUNCA aplica a regra em
@@ -2547,6 +2543,10 @@ declaram.</p>
                 ),
                 "body_en": (
                 """<h3>1. NetworkPolicy is just an object — what actually enforces it is the CNI</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-netpol.jpg" alt="A dollhouse with almost every interior door closed">
+<figcaption>Without a NetworkPolicy, the doors between rooms stay open. The policy is the door you choose to leave ajar.</figcaption>
+</figure>
 <p>A detail that confuses many people the first time: NetworkPolicy is
 a normal Kubernetes object, accepted by the API server and stored in etcd
 like any other resource — but the API server NEVER applies the rule
@@ -3046,6 +3046,10 @@ declare.</p>
                 ),
                 "body": (
                 """<h3>1. O fluxo dentro do API server: onde admission entra na cadeia</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-admission.jpg" alt="Corda de veludo na frente de uma porta, com um ingresso em branco">
+<figcaption>O admission controller é a corda. O objeto só entra no API server se passar por essa checagem.</figcaption>
+</figure>
 <p>Um <code>kubectl apply</code> não grava direto no etcd — passa por uma
 cadeia de checagens em ordem específica, e entender essa ordem explica por
 que admission controllers existem como categoria separada de RBAC.
@@ -3362,6 +3366,10 @@ organização, construídas sobre a base já validada.</li>
                 ),
                 "body_en": (
                 """<h3>1. The flow inside the API server: where admission enters the chain</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-admission.jpg" alt="A velvet rope in front of a door, with a blank ticket">
+<figcaption>The admission controller is the rope. An object only enters the API server if it passes that check.</figcaption>
+</figure>
 <p>A <code>kubectl apply</code> does not write straight to etcd — it goes through a
 chain of checks in a specific order, and understanding that order explains why
 admission controllers exist as a category separate from RBAC.
@@ -3851,6 +3859,10 @@ built on the already validated baseline.</li>
                 ),
                 "body": (
                 """<h3>1. Por que o modelo de perímetro quebrou, com três incidentes que provam o ponto</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-zerotrust.jpg" alt="Corredor em que cada porta tem a própria fechadura">
+<figcaption>O perímetro único quebrou. Zero trust é trancar cada porta do caminho, não só a da rua.</figcaption>
+</figure>
 <p>O modelo tradicional de TI corporativa opera em três passos simples:
 o funcionário entra na VPN, passa a estar "dentro da rede corporativa", e
 a partir daí acessa file servers, bancos de dados e sistemas internos
@@ -4079,6 +4091,10 @@ programa sustentável.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. Why the perimeter model broke, with three incidents that prove the point</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-zerotrust.jpg" alt="A hallway where every door has its own lock">
+<figcaption>The single perimeter broke. Zero trust locks every door along the way, not only the one on the street.</figcaption>
+</figure>
 <p>The traditional corporate IT model operates in three simple steps:
 the employee joins the VPN, is then "inside the corporate network", and
 from there freely accesses file servers, databases, and internal systems.
@@ -4481,6 +4497,10 @@ program sustainable.</p>
                 ),
                 "body": (
                 """<h3>1. eBPF: a tecnologia que tornou observar o kernel viável sem recompilá-lo</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-ebpf.jpg" alt="Mecanismo de relógio funcionando, com uma janela de vidro na caixa">
+<figcaption>eBPF é essa janela: observar o kernel em execução sem desligar a máquina para recompilar.</figcaption>
+</figure>
 <p>Antes do eBPF, monitorar o comportamento real de processos exigia
 módulos de kernel (LKMs) — pesados, capazes de derrubar o sistema
 inteiro com um bug — ou <code>ptrace</code>, uma técnica frágil e com
@@ -4713,6 +4733,10 @@ necessário.</li>
                 ),
                 "body_en": (
                 """<h3>1. eBPF: the technology that made observing the kernel viable without recompiling it</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-ebpf.jpg" alt="A running clockwork mechanism with a glass window in the case">
+<figcaption>eBPF is that window: watching the kernel while it runs, without shutting the machine down to recompile.</figcaption>
+</figure>
 <p>Before eBPF, monitoring real process behavior required
 kernel modules (LKMs) — heavy, capable of taking down the entire system
 with one bug — or <code>ptrace</code>, a fragile technique with
@@ -5117,8 +5141,8 @@ necessary.</li>
                 "body": (
                 """<h3>1. Os três pilares: por que nenhum sozinho basta para investigar um incidente</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/obs-screens.jpg" alt="Três monitores lado a lado numa sala escura">
-<figcaption>Métrica, log e trace são três evidências. Uma tela só deixa o incidente pela metade.</figcaption>
+<img src="/static/img/lessons/c-observe.jpg" alt="Um medidor, um diário e um novelo de barbante marcando um caminho">
+<figcaption>Métrica é o ponteiro. Log é o diário. Trace é o barbante de uma requisição só. Nenhum dos três conta a história inteira.</figcaption>
 </figure>
 <p><strong>Métricas</strong> são séries temporais de números agregados —
 "requisições/segundo", "erro 500/segundo", "CPU%" — baratas de armazenar
@@ -5459,8 +5483,8 @@ plataforma específica.</p>
                 "body_en": (
                 """<h3>1. The three pillars: why none alone is enough to investigate an incident</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/obs-screens.jpg" alt="Three monitors side by side in a dark room">
-<figcaption>Metrics, logs, and traces are three kinds of evidence. One screen leaves the incident half-finished.</figcaption>
+<img src="/static/img/lessons/c-observe.jpg" alt="A gauge, a journal, and a ball of string marking a path">
+<figcaption>A metric is the needle. A log is the journal. A trace is the string of one request. None of the three tells the whole story.</figcaption>
 </figure>
 <p><strong>Metrics</strong> are time series of aggregated numbers — "requests/second", "500 errors/second", "CPU%" — cheap to store and statistically powerful, but with necessarily low cardinality: they say WHAT is happening in aggregate, without detail of any specific request. <strong>Logs</strong> are discrete textual events ("login failed for user@x"), with far more detail than a metric can carry, but with proportionally higher storage cost and free-text search, not numeric aggregation. <strong>Traces</strong> are the span tree that represents the real PATH of a request across several services — the only of the three sources that answers "where did this specific call go, and where was time spent". Each pillar answers a different question; in an architecture with dozens of microservices, investigating an incident using only one of the three is like trying to reconstruct a crime seeing only the photo, only the audio, or only the video — the three TOGETHER, correlated (section 8), is what enables fast reasoning during a real incident.</p>
 <div class="mermaid">
@@ -5801,6 +5825,10 @@ service:
                 ),
                 "body": (
                 """<h3>1. Os cinco princípios que separam experimento de vandalismo</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-chaos.jpg" alt="Uma chama pequena numa bandeja de laboratório, com extintor ao lado">
+<figcaption>Chaos engineering é este experimento: fogo controlado, com o extintor na mesa, não um incêndio no prédio.</figcaption>
+</figure>
 <p>Chaos engineering não é "quebrar coisas para ver o que acontece" — é
 um método científico aplicado a sistemas em produção, com cinco passos
 que, pulados, transformam o experimento em teatro sem valor real:</p>
@@ -6069,6 +6097,10 @@ sobre a mesa.</li>
                 ),
                 "body_en": (
                 """<h3>1. The five principles that separate experiment from vandalism</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-chaos.jpg" alt="A small flame in a laboratory tray, with an extinguisher beside it">
+<figcaption>Chaos engineering is this experiment: a controlled fire, extinguisher on the table, not a fire in the building.</figcaption>
+</figure>
 <p>Chaos engineering is not "break things to see what happens" — it is a scientific method applied to production systems, with five steps that, when skipped, turn the experiment into theater with no real value:</p>
 <div class="mermaid">
 flowchart LR
@@ -6359,8 +6391,8 @@ flowchart LR
                 "body": (
                 """<h3>1. NIST SP 800-61: por que o framework é um ciclo, não uma lista</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/incident-noc.jpg" alt="Sala de operações vista por trás de dois operadores, com monitores de monitoramento">
-<figcaption>Incidente é gente olhando tela em tempo real. O ciclo do NIST organiza essa sala.</figcaption>
+<img src="/static/img/lessons/c-incident.jpg" alt="Kit de emergência aberto, disposto em círculo">
+<figcaption>Resposta a incidente é um ciclo: detectar, conter, erradicar, recuperar. Não uma lista que se marca e esquece.</figcaption>
 </figure>
 <p>O NIST estrutura resposta a incidente em quatro fases, e o detalhe
 que muita gente perde é que a última fase ALIMENTA a primeira, fechando
@@ -6664,8 +6696,8 @@ anterior) com prática de resposta real.</li>
                 "body_en": (
                 """<h3>1. NIST SP 800-61: why the framework is a cycle, not a list</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/incident-noc.jpg" alt="Operations room seen from behind two operators, monitoring screens in front of them">
-<figcaption>An incident is people watching screens in real time. The NIST cycle organizes that room.</figcaption>
+<img src="/static/img/lessons/c-incident.jpg" alt="An open emergency kit laid out in a circle">
+<figcaption>Incident response is a cycle: detect, contain, eradicate, recover. Not a list you tick and forget.</figcaption>
 </figure>
 <p>NIST structures incident response in four phases, and the detail many people miss is that the last phase FEEDS the first, closing a continuous-improvement cycle, not a linear checklist that ends at "resolved". <strong>Preparation</strong> is everything done BEFORE the incident happens — written runbooks, practiced drills, tools already configured, updated contacts, emergency ("break-glass") access ready to use. It is systematically the most underestimated phase, because it produces no visible short-term result — and precisely for that reason it is what most separates a team that responds in 10 minutes from one that takes 10 hours for the same incident. <strong>Detection & Analysis</strong> covers from the alert arriving through triage: distinguishing false positive from real incident, determining scope and severity. <strong>Containment, Eradication & Recovery</strong> is the action phase — limit the problem's advance, remove what caused it (a malicious artifact, a wrong configuration), restore the service. <strong>Post-Incident Activity</strong> — the blameless postmortem (section 7), resulting action items, runbook update — is what closes the cycle, feeding lessons learned back into Preparation. A team that skips that last phase repeats the same incidents indefinitely, because it never converts experience into prevention.</p>
 <div class="mermaid">
@@ -6944,6 +6976,10 @@ Action item: revisar todos templates de Deployment para liveness mais leve.</cod
                 ),
                 "body": (
                 """<h3>1. Frameworks: por que existem tantos, e qual se aplica a você</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-compliance.jpg" alt="Vários lacres de cera, um deles em foco">
+<figcaption>Existem muitos frameworks. O trabalho é escolher o lacre que se aplica a você e cobrar ele o tempo todo.</figcaption>
+</figure>
 <p>Cada framework de compliance nasceu para resolver um problema
 específico, e a maioria das empresas precisa de mais de um simultaneamente.
 A <strong>LGPD</strong> (Lei Geral de Proteção de Dados, Brasil, 2018)
@@ -7273,6 +7309,10 @@ tempo de operação real.</li>
                 ),
                 "body_en": (
                 """<h3>1. Frameworks: why there are so many, and which applies to you</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-compliance.jpg" alt="Several wax seals, one of them in focus">
+<figcaption>There are many frameworks. The work is choosing the seal that applies to you and enforcing it all the time.</figcaption>
+</figure>
 <p>Each compliance framework was born to solve a specific problem, and most companies need more than one at once. <strong>LGPD</strong> (General Data Protection Law, Brazil, 2018) regulates how personal data is processed — principles, legal bases, data-subject rights, controller/processor obligations — with fines that reach R$50 million per violation or 2% of revenue, enough to make non-compliance a real financial risk, not only reputational. <strong>GDPR</strong> is the European equivalent, with even larger fines (4% of global revenue or €20M) and applies to any company that processes EU citizens' data, even without a seat there. <strong>ISO 27001</strong> certifies an entire Information Security Management System (93 controls in Annex A), renewed by an accredited auditor annually — it is about a security PROCESS, not a specific law. <strong>SOC 2</strong> is the de facto standard for B2B SaaS in the US, with two levels: Type I evaluates control DESIGN at a point in time; Type II evaluates whether they actually WORKED over 6+ months — the second is what real enterprise customers demand, because it proves real operation, not intention on paper. <strong>PCI DSS</strong> applies to whoever touches card data, even when processing via Stripe — control scope shrinks, but does not disappear. <strong>HIPAA</strong> covers health data in the US, <strong>NIST CSF</strong> organizes security practices into five functions (Identify/Protect/Detect/Respond/Recover) voluntarily, and <strong>FedRAMP</strong> is the standard for selling to the US government cloud.</p>
 <div class="mermaid">
 flowchart TD

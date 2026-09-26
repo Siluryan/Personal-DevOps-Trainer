@@ -46,8 +46,8 @@ PHASE4 = {
                 "body": (
                 """<h3>1. Um container, fisicamente: processos Linux comuns, isolados por primitivas do kernel</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/docker-cpu.jpg" alt="Interior de um servidor aberto, com dissipador de cobre sobre o processador e pentes de memória">
-<figcaption>O container é um processo neste processador. Não há uma segunda máquina dentro da caixa.</figcaption>
+<img src="/static/img/lessons/c-docker.jpg" alt="Marmita aberta, com a refeição completa, sobre uma mesa de madeira">
+<figcaption>O container leva tudo o que o processo precisa. A mesa é o kernel do host: não há outra máquina dentro da marmita.</figcaption>
 </figure>
 <p>Um container NÃO é uma VM leve, apesar da comparação comum — é um ou
 mais processos Linux completamente normais, isolados dos demais processos
@@ -423,8 +423,8 @@ que existem.</li>
                 "body_en": (
                 """<h3>1. A container, physically: ordinary Linux processes isolated by kernel primitives</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/docker-cpu.jpg" alt="Inside an open server, copper heatsink over the processor and memory modules">
-<figcaption>A container is a process on this processor. There is no second machine inside the box.</figcaption>
+<img src="/static/img/lessons/c-docker.jpg" alt="An open bento box with a complete meal, on a wooden table">
+<figcaption>A container carries everything the process needs. The table is the host kernel: there is no other machine inside the box.</figcaption>
 </figure>
 <p>A container is NOT a lightweight VM, despite the common comparison — it
 is one or more completely normal Linux processes, isolated from the rest
@@ -982,6 +982,10 @@ that exist.</li>
                 ),
                 "body": (
                 """<h3>1. Minimalismo radical: cada byte extra é superfície de ataque potencial</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-minimal.jpg" alt="Uma caixa com três itens e outra transbordando de coisas extras">
+<figcaption>Cada byte a mais na imagem é superfície. A caixa enxuta é o que a aula pede.</figcaption>
+</figure>
 <p>Toda biblioteca incluída numa imagem é um bug em potencial; todo
 binário extra é um exploit em potencial. Reduzir o que está presente na
 imagem NÃO é otimização de espaço em disco — é uma medida de segurança
@@ -1290,6 +1294,10 @@ de ataque de tudo que ainda está tecnicamente disponível para deploy.</li>
                 ),
                 "body_en": (
                 """<h3>1. Radical minimalism: every extra byte is potential attack surface</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-minimal.jpg" alt="A box with three items and another overflowing with extras">
+<figcaption>Every extra byte in the image is attack surface. The lean box is what the lesson asks for.</figcaption>
+</figure>
 <p>Every library included in an image is a potential bug; every extra
 binary is a potential exploit. Reducing what's present in the image is
 NOT disk-space optimization — it's a direct security measure. A standard
@@ -1765,6 +1773,10 @@ everything still technically available for deployment.</li>
                 "intro_en": "A registry is the 'library' for your images. The choice affects security (RBAC, scan, signing), cost (egress, storage), performance (latency, rate limits) and governance (audit, compliance). Public Docker Hub is tempting for open-source projects, but often wrong for companies. This lesson covers options, modern authentication (OIDC vs PAT), tags and immutability, retention, pull-through cache, continuous scanning, and GitOps with webhooks.",
                 "body": (
                 """<h3>1. As opções principais, e o que cada uma resolve melhor</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-registry.jpg" alt="Parede de nichos com latas iguais guardadas">
+<figcaption>O registry é o catálogo de onde o cluster e o Compose puxam a imagem.</figcaption>
+</figure>
 <table>
 <tr><th>Registry</th><th>Modelo</th><th>Notas</th></tr>
 <tr><td>Docker Hub</td><td>SaaS público</td><td>Free com limites; bom para imagens base públicas. Em prod privado, pago.</td></tr>
@@ -2028,6 +2040,10 @@ raio de impacto do outro, sem segmentação nenhuma entre eles.</li>
                 ),
                 "body_en": (
                 """<h3>1. The main options, and what each one solves best</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-registry.jpg" alt="A wall of cubbies storing identical canisters">
+<figcaption>The registry is the catalog the cluster and Compose pull the image from.</figcaption>
+</figure>
 <table>
 <tr><th>Registry</th><th>Modelo</th><th>Notas</th></tr>
 <tr><td>Docker Hub</td><td>SaaS público</td><td>Free com limites; bom para imagens base públicas. Em prod privado, pago.</td></tr>
@@ -2463,6 +2479,10 @@ blast radius of the other, with no segmentation between them.</li>
                 "intro_en": "Kubernetes is incredibly powerful — and incredibly complex. For many applications (an app + a database + a cache), K8s is expensive overengineering. Before jumping straight to it, it's worth mastering Docker Compose (local dev + simple single-host prod), Docker Swarm (Docker-native multi-host, simpler than K8s) and Nomad (HashiCorp's generalist orchestrator). This lesson compares those options, shows when each one makes sense, and paints the picture of when to migrate to K8s.",
                 "body": (
                 """<h3>1. Docker Compose: um único YAML declara toda a aplicação multi-container</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-compose.jpg" alt="Um pódio e cadeiras vazias, cada uma com um instrumento">
+<figcaption>O Compose é a partitura: um arquivo declara os containers, e eles sobem juntos.</figcaption>
+</figure>
 <p>Compose descreve serviços, redes e volumes num arquivo declarativo —
 <code>docker compose up</code> sobe tudo na ordem certa,
 <code>docker compose down</code> desmonta. A versão atual é um plugin do
@@ -2805,6 +2825,10 @@ de condicionais dentro de um único YAML.</li>
                 ),
                 "body_en": (
                 """<h3>1. Docker Compose: a single YAML declares the whole multi-container application</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-compose.jpg" alt="A podium and empty chairs, each holding an instrument">
+<figcaption>Compose is the score: one file declares the containers, and they come up together.</figcaption>
+</figure>
 <p>Compose describes services, networks, and volumes in a declarative file —
 <code>docker compose up</code> brings everything up in the right order,
 <code>docker compose down</code> tears it down. The current version is a
@@ -3328,6 +3352,10 @@ of conditionals inside a single YAML.</li>
                 ),
                 "body": (
                 """<h3>1. O que é SBOM, e por que Log4Shell mudou a conversa sobre isso</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-sbom.jpg" alt="Um aparelho desmontado, cada peça visível na mesa">
+<figcaption>O SBOM é esta mesa: a lista do que entrou no software, para achar a peça ruim sem abrir no escuro.</figcaption>
+</figure>
 <p>SBOM (Software Bill of Materials) é a lista detalhada de TODOS os
 componentes que compõem um artefato — nome e versão de cada dependência
 (direta e transitiva), hash de conteúdo para verificação de integridade,
@@ -3636,6 +3664,10 @@ em vez de um formato que só a sua própria plataforma entende.</li>
                 ),
                 "body_en": (
                 """<h3>1. What an SBOM is, and why Log4Shell changed the conversation about it</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-sbom.jpg" alt="A device taken apart, every part visible on the table">
+<figcaption>An SBOM is this table: the list of what went into the software, so you can find the bad part without opening it in the dark.</figcaption>
+</figure>
 <p>SBOM (Software Bill of Materials) is the detailed list of ALL
 components that make up an artifact — name and version of every
 dependency (direct and transitive), content hash for integrity
@@ -4115,6 +4147,10 @@ instead of a format only your own platform understands.</li>
                 "intro_en": "A modern company has &gt;50 tools: GitHub, K8s, Terraform, Datadog, Sentry, PagerDuty, Vault, Jenkins/GH Actions, AWS, and more. Does a developer need to understand all of them to deliver value? No — that's the job of an Internal Developer Platform (IDP). An IDP packages infra as an internal product: the developer fills out a form, the platform provisions; the developer opens a PR, the platform validates with guardrails; the developer opens a dashboard, the platform shows correlated logs/metrics/traces. Companies that do this well (Spotify, Netflix, American Airlines) cut time-to-first-deploy of a new service from months to hours. This lesson covers the why, the components (Backstage, Crossplane, Humanitec), Team Topologies as an organizational model, and the most common pitfalls.",
                 "body": (
                 """<h3>1. Por que uma IDP existe: cada time reinventando a roda, multiplicado por dezenas</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-idp.jpg" alt="Painel de ferramentas no lugar, e uma pilha bagunçada no chão">
+<figcaption>A IDP é o painel. Sem ela, cada time monta a própria pilha no chão.</figcaption>
+</figure>
 <p>Numa organização que cresce, cada time novo acaba decidindo
 individualmente como montar seu próprio pipeline, como configurar log e
 métrica, qual padrão de service mesh seguir, como provisionar banco ou
@@ -4398,6 +4434,10 @@ sucesso.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. Why an IDP exists: every team reinventing the wheel, multiplied by dozens</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-idp.jpg" alt="A tool wall in its slots, and a messy pile on the floor">
+<figcaption>An IDP is the wall. Without it, every team builds its own pile on the floor.</figcaption>
+</figure>
 <p>In a growing organization, each new team ends up deciding
 individually how to build its own pipeline, how to configure logs and
 metrics, which service-mesh pattern to follow, how to provision a
@@ -4852,6 +4892,10 @@ is the pattern that consistently works in documented success cases.</p>"""
                 ),
                 "body": (
                 """<h3>1. Política como código: a mesma regra, aplicada em cinco pontos diferentes do ciclo</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-policy.jpg" alt="Um carimbo fechando uma corrente na frente de uma porta">
+<figcaption>Política como código é a mesma regra, aplicada na porta, antes do que não deve passar.</figcaption>
+</figure>
 <p>Regra de negócio, segurança ou compliance escrita numa linguagem
 VERSIONADA (Rego, YAML) muda de natureza: passa a ser revisável em PR
 como qualquer código, testável com testes unitários, e — o ganho central
@@ -5180,6 +5224,10 @@ exatamente para esse cenário.</li>
                 ),
                 "body_en": (
                 """<h3>1. Policy as code: the same rule, applied at five different points in the cycle</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-policy.jpg" alt="A stamp closing a chain across a doorway">
+<figcaption>Policy as code is the same rule, applied at the door, before what should not pass gets through.</figcaption>
+</figure>
 <p>A business, security, or compliance rule written in a VERSIONED
 language (Rego, YAML) changes nature: it becomes reviewable in a PR
 like any code, testable with unit tests, and — the central gain —
@@ -5678,6 +5726,10 @@ exactly for that scenario.</li>
                 "intro_en": 'SAST analyzes code without running it. DAST does the opposite: it attacks the running app, simulating a real attacker. It catches things SAST would never see — missing headers, open redirects, misconfigured CORS, insecure server defaults, dynamic flows. This lesson covers the philosophy (white-box vs black-box vs gray-box), tools (OWASP ZAP, Burp, Nuclei), CI integration, OWASP Top 10 categories, and the crucial difference between automated DAST and human pentesting.',
                 "body": (
                 """<h3>1. Quatro abordagens de teste, e por que nenhuma sozinha basta</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-dast.jpg" alt="Loja acesa vista da calçada, com uma lanterna na porta">
+<figcaption>DAST testa o que já está rodando, por fora, como quem está na calçada.</figcaption>
+</figure>
 <table>
 <tr><th>Abordagem</th><th>Acesso</th><th>Foco</th><th>Limitação</th></tr>
 <tr><td>SAST (white-box)</td><td>Código</td><td>Lógica, sinks</td><td>Não vê runtime</td></tr>
@@ -5960,6 +6012,10 @@ enxerga uma fatia diferente do problema (seção 1).</li>
                 ),
                 "body_en": (
                 """<h3>1. Four testing approaches, and why none alone is enough</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-dast.jpg" alt="A lit shop seen from the sidewalk, a flashlight on the door">
+<figcaption>DAST tests what is already running, from the outside, like someone standing on the sidewalk.</figcaption>
+</figure>
 <table>
 <tr><th>Abordagem</th><th>Acesso</th><th>Foco</th><th>Limitação</th></tr>
 <tr><td>SAST (white-box)</td><td>Código</td><td>Lógica, sinks</td><td>Não vê runtime</td></tr>
@@ -6390,6 +6446,10 @@ sees a different slice of the problem (section 1).</li>
                 ),
                 "body": (
                 """<h3>1. Autenticação: provar quem está chamando, sem reinventar criptografia</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-api.jpg" alt="Uma parede fechada com uma única portinhola e uma bandeja passando">
+<figcaption>A API é a portinhola. Autenticar é saber quem está do outro lado antes de entregar a bandeja.</figcaption>
+</figure>
 <p>OAuth 2.0 é um framework de AUTORIZAÇÃO — um token bearer carregando
 escopos específicos do que o portador pode fazer — enquanto o OIDC
 adiciona uma camada de IDENTIDADE por cima, na forma de um
@@ -6780,6 +6840,10 @@ configuração incorreta ainda consegue contornar.</li>
                 ),
                 "body_en": (
                 """<h3>1. Authentication: proving who is calling, without reinventing cryptography</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-api.jpg" alt="A closed wall with a single hatch and a tray passing through">
+<figcaption>The API is the hatch. Authentication is knowing who is on the other side before you hand over the tray.</figcaption>
+</figure>
 <p>OAuth 2.0 is an AUTHORIZATION framework — a bearer token carrying
 specific scopes of what the bearer can do — while OIDC adds an IDENTITY
 layer on top, in the form of a signed JWT <code>id_token</code>,
@@ -7264,6 +7328,10 @@ configuration can still work around.</li>
                 "intro_en": "Investigating an incident across 20 servers via manual SSH is medieval punishment. In microservices, with 50+ ephemeral pods, it's impossible. Centralized logs are the basic prerequisite of modern operations. This lesson covers stacks (ELK, EFK, Grafana Loki, OpenSearch, SaaS), structured JSON logs, collection (Fluent Bit, Vector, Promtail), retention and cost, PII sanitization, and how logs relate to metrics and traces in the three pillars of observability.",
                 "body": (
                 """<h3>1. Pilhas comuns: cada uma resolve o mesmo problema com um trade-off diferente</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-centrallogs.jpg" alt="Vários filetes de água caindo na mesma bacia">
+<figcaption>Log centralizado é esta bacia. Cada serviço manda o seu filete; a investigação bebe de um lugar só.</figcaption>
+</figure>
 <table>
 <tr><th>Stack</th><th>Componentes</th><th>Notas</th></tr>
 <tr><td>ELK</td><td>Elasticsearch + Logstash + Kibana</td><td>Maduro, poderoso. Caro em escala (RAM-hungry).</td></tr>
@@ -7552,6 +7620,10 @@ de API Security.</li>
                 ),
                 "body_en": (
                 """<h3>1. Common stacks: each solves the same problem with a different trade-off</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/c-centrallogs.jpg" alt="Several thin streams of water falling into the same basin">
+<figcaption>Centralized logging is this basin. Each service sends its stream; the investigation drinks from one place.</figcaption>
+</figure>
 <table>
 <tr><th>Stack</th><th>Componentes</th><th>Notas</th></tr>
 <tr><td>ELK</td><td>Elasticsearch + Logstash + Kibana</td><td>Maduro, poderoso. Caro em escala (RAM-hungry).</td></tr>

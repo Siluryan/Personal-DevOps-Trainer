@@ -1,1 +1,1 @@
-# Figuras estáticas opcionais por aula (JPG/PNG/SVG). Foto quando o assunto é equipamento ou sala; Mermaid/lesson-viz quando o assunto é fluxo.
+# Uma foto de conceito por aula (JPG), logo após o primeiro h3, em PT e EN. Mermaid/lesson-viz continua para fluxo.
