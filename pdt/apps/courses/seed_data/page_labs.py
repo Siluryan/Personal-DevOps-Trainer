@@ -805,6 +805,19 @@ def _dangerous_inline(page_html: str) -> str | None:
     return best[1] if best else None
 
 
+def _strip_exercise_comment(line: str) -> str:
+    """Tira o comentário no fim da linha de código.
+
+    `# etapa padrão`, `# sem risco`, `# sem impacto` diziam quais linhas
+    descartar. O aluno resolvia sem ler o código. Linha que é só comentário
+    (shebang, o próprio anti-pattern) fica.
+    """
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#") or " #" not in stripped:
+        return stripped
+    return stripped.split(" #", 1)[0].rstrip()
+
+
 def _flaw_lines(page_html: str, bad: str) -> tuple[list[str], int]:
     """Monta o trecho do exercício em volta da linha perigosa.
 
@@ -816,13 +829,13 @@ def _flaw_lines(page_html: str, bad: str) -> tuple[list[str], int]:
     que pertence. O molde genérico só entra quando a página não tem código
     aproveitável.
     """
-    bad = bad.strip()
+    bad = _strip_exercise_comment(bad)
     bad_needles = [needle for needle, _weight in _DANGER_NEEDLES if _needle_in(bad, needle)]
     candidates: list[str] = []
     for block in _CODE_BLOCK_RE.findall(page_html):
         for raw in html_lib.unescape(_TAG_RE.sub("", block)).splitlines():
             line = raw.rstrip()
-            stripped = line.strip()
+            stripped = _strip_exercise_comment(line)
             if not stripped or stripped.startswith("#") or len(line) > 78:
                 continue
             if stripped == bad or bad in stripped:
@@ -858,6 +871,7 @@ def _synthesize_find_flaw(page_html: str, headings: list[str], page: int) -> dic
     bad = _dangerous_inline(page_html)
     if not bad:
         return None
+    bad = _strip_exercise_comment(bad)
     title, title_en = _short_title(headings, page, "Ache a falha", "Find the flaw")
     tema = _trim_heading(headings[0] if headings else f"página {page}")
     lines, flaw_index = _flaw_lines(page_html, bad)

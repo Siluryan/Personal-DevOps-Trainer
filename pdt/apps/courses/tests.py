@@ -391,6 +391,37 @@ class TestLabDataIntegrity:
                         f"{lab['title']} {key}: {alt} não é o mesmo comando"
                     )
 
+    def test_find_flaw_nao_rotula_linha_como_inofensiva(self):
+        pistas = (
+            "inicialização de rotina",
+            "routine initialization",
+            "fora do escopo",
+            "sem risco",
+            "sem impacto",
+            "etapa padrão",
+            "standard process step",
+            "linha comum",
+            "common configuration",
+            "trecho de suporte",
+            "support snippet",
+            "no risk",
+            "helper code",
+            "happy-path",
+            "sdk oficial",
+            "official aws sdk",
+        )
+        for lab in LABS:
+            if lab["kind"] != "find_flaw":
+                continue
+            for key in ("spec", "spec_en"):
+                for line in (lab.get(key) or {}).get("lines") or []:
+                    if line.strip().startswith("#"):
+                        continue
+                    assert " #" not in line, f"{lab['title']}: {line}"
+                    low = line.lower()
+                    for pista in pistas:
+                        assert pista not in low, f"{lab['title']}: {line}"
+
     def test_spec_find_flaw_indice_dentro_do_range(self):
         for lab in LABS:
             if lab["kind"] != "find_flaw":
@@ -490,6 +521,9 @@ class TestLabDataIntegrity:
                 gabarito = spec["lines"][spec["flaw_line_index"]]
                 assert "\n" not in gabarito, lab["title"]
                 assert len(gabarito) <= 78, lab["title"]
+                for line in spec["lines"]:
+                    if not line.strip().startswith("#"):
+                        assert " #" not in line, f"{lab['title']}: {line}"
             if lab["kind"] == "blanks":
                 for key, blank in spec["blanks"].items():
                     assert f"___{key}___" in spec["template"]
