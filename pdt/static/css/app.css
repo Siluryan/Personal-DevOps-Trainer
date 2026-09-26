@@ -212,9 +212,10 @@ html { scroll-behavior: smooth; }
 .lesson-body .lesson-figure img {
   display: block;
   width: 100%;
-  height: auto;
+  height: 320px;
   max-height: 420px;
-  object-fit: contain;
+  object-fit: cover;
+  object-position: center;
   background: #04091c;
 }
 .lesson-body .lesson-figure figcaption {

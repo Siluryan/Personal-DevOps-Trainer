@@ -42,6 +42,10 @@ PHASE2 = {
                 ),
                 "body": (
                 """<h3>1. Da máquina física à VM: hypervisor</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/cloud-blades.jpg" alt="Chassis de servidores blade, com lâminas encaixadas lado a lado">
+<figcaption>A máquina física continua existindo. O hypervisor fatia esse hardware em várias máquinas virtuais.</figcaption>
+</figure>
 <p>Antes de cloud existir, cada workload ocupava um servidor físico
 inteiro, e a utilização típica desses servidores girava em torno de
 apenas 10-15% da capacidade real — a maior parte do hardware ficava
@@ -263,6 +267,10 @@ casos.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. From physical machine to VM: the hypervisor</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/cloud-blades.jpg" alt="Blade server chassis, with blades seated side by side">
+<figcaption>The physical machine is still there. The hypervisor slices that hardware into several virtual machines.</figcaption>
+</figure>
 <p>Before cloud existed, each workload occupied an entire physical
 server, and typical utilization of those servers hovered around
 only 10-15% of real capacity — most of the hardware sat
@@ -3585,6 +3593,10 @@ flowchart TD
                 ),
                 "body": (
                 """<h3>1. Modelo de dados: object storage não é filesystem</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/s3-disks.jpg" alt="Gaveta de discos hot-swap num rack, com dezenas de baias">
+<figcaption>Por baixo, é disco. Para a aplicação, object storage não é essa gaveta nem um filesystem: é um balde de objetos com chave.</figcaption>
+</figure>
 <p>S3 quebra a intuição de quem espera um sistema de arquivo
 tradicional. Não existem diretórios de verdade, apenas prefixos —
 <code>fotos/2025/janeiro/foo.jpg</code> é uma chave única, uma string
@@ -3858,6 +3870,10 @@ melhor o mesmo problema.</li>
                 ),
                 "body_en": (
                 """<h3>1. Data model: object storage is not a filesystem</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/s3-disks.jpg" alt="Hot-swap disk shelf in a rack, dozens of drive bays">
+<figcaption>Underneath, it is disks. To the application, object storage is not this shelf or a filesystem: it is a bucket of objects addressed by key.</figcaption>
+</figure>
 <p>S3 breaks the intuition of anyone expecting a traditional
 filesystem. There are no real directories, only prefixes —
 <code>fotos/2025/janeiro/foo.jpg</code> is a single key, one whole
@@ -4398,6 +4414,10 @@ solves the same problem better.</li>
                 ),
                 "body": (
                 """<h3>1. Modelo de ameaça: do que cripto protege</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/crypto-drives.jpg" alt="Discos rígidos soltos numa caixa plástica sobre um carrinho">
+<figcaption>Criptografia em repouso protege este disco se alguém levar o hardware, o snapshot ou o backup.</figcaption>
+</figure>
 <p>Antes de qualquer detalhe técnico, vale separar exatamente o que
 está sendo protegido em cada cenário. <strong>Em repouso</strong>
 significa proteger contra alguém que ganha acesso direto ao disco, ao
@@ -4649,6 +4669,10 @@ rouba o disco rouba a chave junto.</li>
                 ),
                 "body_en": (
                 """<h3>1. Threat model: what encryption protects against</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/crypto-drives.jpg" alt="Loose hard drives in a plastic bin on a cart">
+<figcaption>Encryption at rest protects this disk if someone walks off with the hardware, the snapshot, or the backup.</figcaption>
+</figure>
 <p>Before any technical detail, it's worth separating exactly what is
 being protected in each scenario. <strong>At rest</strong> means
 protecting against someone who gains direct access to the disk, the
@@ -5794,6 +5818,10 @@ flowchart LR
                 ),
                 "body": (
                 """<h3>1. RPO e RTO, as duas métricas-base</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/backup-tapes.jpg" alt="Biblioteca de fitas magnéticas num datacenter, com cartuchos nas prateleiras">
+<figcaption>O backup antigo ainda é fita. RPO e RTO medem quanto dado e quanto tempo você aceita perder até essa cópia voltar.</figcaption>
+</figure>
 <p>O <strong>RPO</strong> (Recovery Point Objective) responde "quanto
 dado é aceitável perder": se o RPO é de 1 hora, o backup ou a
 replicação precisam garantir que o dado esteja, no máximo, uma hora
@@ -6005,6 +6033,10 @@ distribuído a cópia.</li>
                 ),
                 "body_en": (
                 """<h3>1. RPO and RTO, the two base metrics</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/backup-tapes.jpg" alt="Magnetic tape library in a datacenter, cartridges on the shelves">
+<figcaption>The old backup is still tape. RPO and RTO measure how much data and how much time you accept losing until that copy comes back.</figcaption>
+</figure>
 <p>The <strong>RPO</strong> (Recovery Point Objective) answers "how
 much data is acceptable to lose": if the RPO is 1 hour, the backup or
 replication must guarantee the data is, at most, one hour behind the
@@ -6466,6 +6498,10 @@ distributed the copy.</li>
                 ),
                 "body": (
                 """<h3>1. Por que FinOps existe</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/finops-pdu.jpg" alt="Régua de energia de um rack, com cabos grossos e luzes de status">
+<figcaption>Cada tomada acesa é máquina consumindo. No on-prem isso passava por comitê; na nuvem o clique é rápido, e a conta continua real.</figcaption>
+</figure>
 <p>Em ambiente on-prem, comprar hardware era uma decisão de comitê:
 seis meses de discussão, capex aprovado em orçamento, contrato
 assinado — cada decisão de custo passava por um filtro pesado antes de
@@ -6737,6 +6773,10 @@ basta se ele não influencia decisão real de nenhum time.</li>
                 ),
                 "body_en": (
                 """<h3>1. Why FinOps exists</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/finops-pdu.jpg" alt="Rack power strip with thick cables and status lights">
+<figcaption>Every live outlet is a machine drawing power. On-prem that decision went through a committee; in the cloud the click is fast, and the bill is still real.</figcaption>
+</figure>
 <p>In an on-prem environment, buying hardware was a committee
 decision: six months of discussion, capex approved in a budget,
 contract signed — every cost decision went through a heavy filter

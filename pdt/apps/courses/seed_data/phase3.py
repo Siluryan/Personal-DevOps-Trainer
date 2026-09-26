@@ -1967,6 +1967,10 @@ warning.</li>
                 ),
                 "body": (
                 """<h3>1. Ansible vs alternativas</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/ansible-fleet.jpg" alt="Fileira de servidores iguais, vistos de frente">
+<figcaption>Ansible entra por SSH e deixa estas máquinas no mesmo estado. Nada de agente instalado em cada uma.</figcaption>
+</figure>
 <table>
 <tr><th>Ferramenta</th><th>Modelo</th><th>Linguagem</th><th>Notas</th></tr>
 <tr><td>Ansible</td><td>Agentless (SSH/WinRM)</td><td>YAML</td><td>Padrão de fato hoje. Curva suave.</td></tr>
@@ -2280,6 +2284,10 @@ esperado.</li>
 </ul>"""
                 ),
                 "body_en": """<h3>1. Ansible vs alternatives</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/ansible-fleet.jpg" alt="A row of identical servers, seen from the front">
+<figcaption>Ansible comes in over SSH and leaves these machines in the same state. No agent installed on each one.</figcaption>
+</figure>
 <table>
 <tr><th>Tool</th><th>Model</th><th>Language</th><th>Notes</th></tr>
 <tr><td>Ansible</td><td>Agentless (SSH/WinRM)</td><td>YAML</td><td>De facto standard today. Gentle learning curve.</td></tr>
@@ -3577,6 +3585,10 @@ the same incident.</p>""",
                 ),
                 "body": (
                 """<h3>1. CI vs CD vs CD: três conceitos, duas siglas</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/ci-runners.jpg" alt="Rack baixo numa sala ao lado do escritório, com quatro servidores">
+<figcaption>O pipeline não é um conceito: é um processo rodando numa máquina como estas, a cada commit.</figcaption>
+</figure>
 <p><strong>CI (Continuous Integration)</strong> significa que a cada
 commit, o código é mergeado e validado imediatamente — build, lint,
 teste unitário, SAST, SCA — com o objetivo de encontrar problema em
@@ -3887,6 +3899,10 @@ Git é automaticamente revertida pelo <code>selfHeal</code> na próxima
 reconciliação.</p>"""
                 ),
                 "body_en": """<h3>1. CI vs CD vs CD: three concepts, two acronyms</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/ci-runners.jpg" alt="A short rack in a side room, with four servers">
+<figcaption>The pipeline is not a concept: it is a process running on a machine like these, on every commit.</figcaption>
+</figure>
 <p><strong>CI (Continuous Integration)</strong> means that on every
 commit, code is merged and validated immediately — build, lint,
 unit tests, SAST, SCA — with the goal of finding problems in

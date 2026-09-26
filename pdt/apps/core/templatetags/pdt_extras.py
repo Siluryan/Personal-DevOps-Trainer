@@ -154,9 +154,32 @@ def _lesson_html(value: str) -> str:
     return stripped if stripped.startswith("<") else linebreaks(stripped)
 
 
+_LESSON_STATIC_SRC = re.compile(r'(?<=src=")/static/([^"]+)')
+
+
+def _lesson_static_urls(html: str) -> str:
+    """Troca `/static/...` pelo nome com hash do Manifest storage.
+
+    A aula guarda o caminho estável. No deploy o arquivo coletado ganha
+    hash no nome; sem essa troca o nginx (cache imutável de 30 dias)
+    serviria a foto antiga para sempre.
+    """
+    if "/static/" not in html:
+        return html
+    from django.contrib.staticfiles.storage import staticfiles_storage
+
+    def repl(match: re.Match[str]) -> str:
+        try:
+            return staticfiles_storage.url(match.group(1))
+        except (ValueError, OSError):
+            return match.group(0)
+
+    return _LESSON_STATIC_SRC.sub(repl, html)
+
+
 def _prepare_lesson_html(value: str) -> str:
     """HTML pronto para exibir: `_lesson_html` + termos de glossário marcados."""
-    return annotate_glossary_terms(_lesson_html(value), get_glossary_terms())
+    return _lesson_static_urls(annotate_glossary_terms(_lesson_html(value), get_glossary_terms()))
 
 
 @register.filter(is_safe=True)
@@ -184,7 +207,10 @@ def paginate_lesson_body(value: str, reference: str = "") -> list:
     não muda nada.
     """
     pages = paginate_html_sections_like(_lesson_html(value), _lesson_html(reference))
-    return [mark_safe(page) for page in annotate_glossary_parts(pages, get_glossary_terms())]
+    return [
+        mark_safe(_lesson_static_urls(page))
+        for page in annotate_glossary_parts(pages, get_glossary_terms())
+    ]
 
 
 @register.simple_tag

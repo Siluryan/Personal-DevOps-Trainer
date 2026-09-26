@@ -70,6 +70,10 @@ pontuais executados uma vez — a diferença central entre operar
 Kubernetes e operar um script tradicional de shell.</p>
 
 <h3>2. Arquitetura: cérebro e músculo, e por que gerenciado ganhou na maioria dos casos</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/k8s-racks.jpg" alt="Corredor frio de um datacenter, com fileiras de racks cheios de servidores">
+<figcaption>Cada rack é um conjunto de máquinas. O cluster é a sala inteira trabalhando como um sistema só.</figcaption>
+</figure>
 <p>Um cluster tem dois grupos de nós com papéis completamente
 diferentes. O <strong>control plane</strong> é o cérebro:
 <code>kube-apiserver</code> é a ÚNICA porta de entrada — toda interação
@@ -98,6 +102,10 @@ não é trivial, e o ganho de fazer isso manualmente raramente compensa o
 risco.</p>
 
 <h3>3. Os primitivos que valem dominar antes de qualquer coisa mais avançada</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/k8s-node.jpg" alt="Servidor em rack, parcialmente extraído sobre trilhos, com a tampa aberta">
+<figcaption>O pod roda numa máquina como esta. O agendador escolhe o nó; o kubelet é quem de fato sobe o container.</figcaption>
+</figure>
 <p>Um <strong>Pod</strong> é a menor unidade que pode ser implantada —
 um ou mais containers compartilhando a mesma rede (mesmo IP, mesmas
 portas) e os mesmos volumes; na prática, 99% dos pods têm um único
@@ -246,6 +254,10 @@ mais forte ainda, o digest da imagem (<code>@sha256:...</code>).</p>
 
 
 <h3>6. Service: por que "falar com o IP do pod" nunca funciona de verdade</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/k8s-cables.jpg" alt="Traseira de um rack, com dezenas de cabos de rede organizados em patch panels">
+<figcaption>Cabo e porta pertencem a uma máquina. O pod some e o IP vai junto; o Service fica no lugar, como o nome da aplicação.</figcaption>
+</figure>
 <p>Pods são efetivamente descartáveis — criados e destruídos com
 frequência, e o IP de cada um muda a cada recriação. A pergunta que
 Service resolve é "como eu falo consistentemente com 'a aplicação web',
@@ -571,6 +583,10 @@ commands executed once — the central difference between operating
 Kubernetes and operating a traditional shell script.</p>
 
 <h3>2. Architecture: brain and muscle, and why managed won in most cases</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/k8s-racks.jpg" alt="Cold aisle in a datacenter, rows of racks packed with servers">
+<figcaption>Each rack is a set of machines. The cluster is the whole room working as one system.</figcaption>
+</figure>
 <p>A cluster has two groups of nodes with completely
 different roles. The <strong>control plane</strong> is the brain:
 <code>kube-apiserver</code> is the ONLY entry point — every interaction
@@ -599,6 +615,10 @@ is nontrivial, and the gain from doing it manually rarely offsets the
 risk.</p>
 
 <h3>3. The primitives worth mastering before anything more advanced</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/k8s-node.jpg" alt="Rack server pulled out on rails, cover open">
+<figcaption>A pod runs on a machine like this. The scheduler picks the node; the kubelet is what actually starts the container.</figcaption>
+</figure>
 <p>A <strong>Pod</strong> is the smallest deployable unit —
 one or more containers sharing the same network (same IP, same
 ports) and the same volumes; in practice, 99% of pods have a single
@@ -747,6 +767,10 @@ stronger still, the image digest (<code>@sha256:...</code>).</p>
 
 
 <h3>6. Service: why "talking to the pod's IP" never really works</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/k8s-cables.jpg" alt="Rear of a rack, dozens of network cables dressed into patch panels">
+<figcaption>A cable and a port belong to one machine. The pod disappears and its IP goes with it; the Service stays put, as the name of the application.</figcaption>
+</figure>
 <p>Pods are effectively disposable — created and destroyed
 frequently, and each one's IP changes on every recreation. The question that
 Service solves is "how do I consistently talk to 'the web application',
@@ -5092,6 +5116,10 @@ necessary.</li>
                 ),
                 "body": (
                 """<h3>1. Os três pilares: por que nenhum sozinho basta para investigar um incidente</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/obs-screens.jpg" alt="Três monitores lado a lado numa sala escura">
+<figcaption>Métrica, log e trace são três evidências. Uma tela só deixa o incidente pela metade.</figcaption>
+</figure>
 <p><strong>Métricas</strong> são séries temporais de números agregados —
 "requisições/segundo", "erro 500/segundo", "CPU%" — baratas de armazenar
 e estatisticamente poderosas, mas com cardinalidade baixa por
@@ -5430,6 +5458,10 @@ plataforma específica.</p>
                 ),
                 "body_en": (
                 """<h3>1. The three pillars: why none alone is enough to investigate an incident</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/obs-screens.jpg" alt="Three monitors side by side in a dark room">
+<figcaption>Metrics, logs, and traces are three kinds of evidence. One screen leaves the incident half-finished.</figcaption>
+</figure>
 <p><strong>Metrics</strong> are time series of aggregated numbers — "requests/second", "500 errors/second", "CPU%" — cheap to store and statistically powerful, but with necessarily low cardinality: they say WHAT is happening in aggregate, without detail of any specific request. <strong>Logs</strong> are discrete textual events ("login failed for user@x"), with far more detail than a metric can carry, but with proportionally higher storage cost and free-text search, not numeric aggregation. <strong>Traces</strong> are the span tree that represents the real PATH of a request across several services — the only of the three sources that answers "where did this specific call go, and where was time spent". Each pillar answers a different question; in an architecture with dozens of microservices, investigating an incident using only one of the three is like trying to reconstruct a crime seeing only the photo, only the audio, or only the video — the three TOGETHER, correlated (section 8), is what enables fast reasoning during a real incident.</p>
 <div class="mermaid">
 flowchart LR
@@ -6326,6 +6358,10 @@ flowchart LR
                 ),
                 "body": (
                 """<h3>1. NIST SP 800-61: por que o framework é um ciclo, não uma lista</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/incident-noc.jpg" alt="Sala de operações vista por trás de dois operadores, com monitores de monitoramento">
+<figcaption>Incidente é gente olhando tela em tempo real. O ciclo do NIST organiza essa sala.</figcaption>
+</figure>
 <p>O NIST estrutura resposta a incidente em quatro fases, e o detalhe
 que muita gente perde é que a última fase ALIMENTA a primeira, fechando
 um ciclo de melhoria contínua, não um checklist linear que termina no
@@ -6627,6 +6663,10 @@ anterior) com prática de resposta real.</li>
                 ),
                 "body_en": (
                 """<h3>1. NIST SP 800-61: why the framework is a cycle, not a list</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/incident-noc.jpg" alt="Operations room seen from behind two operators, monitoring screens in front of them">
+<figcaption>An incident is people watching screens in real time. The NIST cycle organizes that room.</figcaption>
+</figure>
 <p>NIST structures incident response in four phases, and the detail many people miss is that the last phase FEEDS the first, closing a continuous-improvement cycle, not a linear checklist that ends at "resolved". <strong>Preparation</strong> is everything done BEFORE the incident happens — written runbooks, practiced drills, tools already configured, updated contacts, emergency ("break-glass") access ready to use. It is systematically the most underestimated phase, because it produces no visible short-term result — and precisely for that reason it is what most separates a team that responds in 10 minutes from one that takes 10 hours for the same incident. <strong>Detection & Analysis</strong> covers from the alert arriving through triage: distinguishing false positive from real incident, determining scope and severity. <strong>Containment, Eradication & Recovery</strong> is the action phase — limit the problem's advance, remove what caused it (a malicious artifact, a wrong configuration), restore the service. <strong>Post-Incident Activity</strong> — the blameless postmortem (section 7), resulting action items, runbook update — is what closes the cycle, feeding lessons learned back into Preparation. A team that skips that last phase repeats the same incidents indefinitely, because it never converts experience into prevention.</p>
 <div class="mermaid">
 flowchart LR

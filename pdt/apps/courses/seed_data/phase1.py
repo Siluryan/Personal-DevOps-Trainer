@@ -41,6 +41,10 @@ PHASE1 = {
                 ),
                 "body": (
                 """<h3>1. Filosofia: tudo é arquivo</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/linux-server.jpg" alt="Frente de um servidor em rack, com baias de disco e luzes de status">
+<figcaption>O Linux que você administra mora numa máquina assim. Disco, processo e rede aparecem para o sistema como arquivo.</figcaption>
+</figure>
 <p>O lema clássico do Unix se aplica integralmente no Linux: tudo é
 representado como arquivo — disco (<code>/dev/sda</code>), socket de
 rede (<code>/proc/net/tcp</code>), processo rodando
@@ -279,6 +283,10 @@ algo comprometido antes mesmo de investigar mais a fundo.</p>"""
                 ),
                 "body_en": (
                 """<h3>1. Philosophy: everything is a file</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/linux-server.jpg" alt="Front of a rack server, with drive bays and status lights">
+<figcaption>The Linux you administer lives on a machine like this. Disk, process, and network show up to the system as files.</figcaption>
+</figure>
 <p>Unix's classic motto applies fully to Linux: everything is
 represented as a file — disk (<code>/dev/sda</code>), network
 socket (<code>/proc/net/tcp</code>), a running process
@@ -761,7 +769,11 @@ dig further.</p>"""
                     "mistakes I've seen people make."
                 ),
                 "body": (
-                """<h3>1. As quatro camadas que importam (modelo TCP/IP)</h3><p>Esqueça as 7 camadas do OSI por enquanto. O modelo prático é o TCP/IP de quatro camadas:</p>
+                """<h3>1. As quatro camadas que importam (modelo TCP/IP)</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/redes-switch.jpg" alt="Switch de rede em rack, com cabos de patch coloridos nas portas">
+<figcaption>Quase todo pacote que o modelo descreve passa por um equipamento como este antes de chegar no servidor.</figcaption>
+</figure><p>Esqueça as 7 camadas do OSI por enquanto. O modelo prático é o TCP/IP de quatro camadas:</p>
 <div class="mermaid">
 flowchart TB
     App["Aplicação: HTTP DNS SSH"] --> Trans["Transporte: TCP / UDP"]
@@ -833,7 +845,11 @@ iperf3 -c host                              # banda</code></pre><h3>7. Anatomia 
 <ul><li><strong>Portas abertas demais</strong>: cada porta em <code>0.0.0.0</code> é superfície de ataque. Default-deny no firewall.</li><li><strong>DNS sem DNSSEC + cache poisoning</strong>: caso clássico Kaminsky 2008.</li><li><strong>TLS mal configurado</strong>: TLS 1.0/1.1, cipher suites fracas, certificado curinga vazado. Use SSL Labs e Mozilla SSL Generator.</li><li><strong>BGP hijacking</strong>: prefixo seu sequestrado por outro AS. Solução: RPKI, MANRS.</li><li><strong>SSRF</strong>: app fala com URL controlada pelo usuário sem validar, bate em <code>169.254.169.254</code> (metadata) e exfiltra credencial IAM. <em>Veja Capital One 2019</em>.</li></ul><h3>10. Caso real: Cloudflare 2020, o BGP outage</h3><p>Em julho de 2020, Cloudflare ficou fora 27 minutos porque um update de config de roteamento BGP retirou anúncios para um conjunto de prefixos. Sites que dependiam de Cloudflare ficaram inalcançáveis. Lição: roteamento é frágil; tenha plano B (multi-CDN ou DNS com health-check direto a origem).</p>"""
                 ),
                 "body_en": (
-                """<h3>1. The four layers that matter (TCP/IP model)</h3><p>Forget the 7 OSI layers for now. The practical model is the four-layer TCP/IP:</p>
+                """<h3>1. The four layers that matter (TCP/IP model)</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/redes-switch.jpg" alt="Rack network switch with colored patch cables in the ports">
+<figcaption>Almost every packet the model describes passes through a device like this before it reaches the server.</figcaption>
+</figure><p>Forget the 7 OSI layers for now. The practical model is the four-layer TCP/IP:</p>
 <div class="mermaid">
 flowchart TB
     App["Application: HTTP DNS SSH"] --> Trans["Transport: TCP / UDP"]
@@ -1870,7 +1886,11 @@ flowchart LR
     Client -->|"assina desafio"| Server
     Server -->|"verifica assinatura"| OK["Acesso"]
 </div>
-<ul><li>A <strong>chave privada</strong> nunca sai do dono. É secreta.</li><li>A <strong>chave pública</strong> pode ser distribuída livremente.</li></ul><p>O que uma cripta, a outra decifra (e vice-versa). Em SSH:</p><ol><li>Cliente prova posse da privada assinando um desafio enviado pelo servidor.</li><li>Servidor verifica a assinatura com a pública (que está em <code>~/.ssh/authorized_keys</code> do usuário).</li><li>Após autenticação, ambos derivam chaves <strong>simétricas</strong> (AES, ChaCha20) para criptografar a sessão, assimétrico só é usado para estabelecer a sessão, não para o tráfego em si (seria lento demais).</li></ol><p>O servidor também tem seu par: a chave pública do servidor (host key) vai para o seu <code>~/.ssh/known_hosts</code> na primeira conexão. Se na próxima vez for diferente, o cliente <em>recusa</em> com <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, pode ser MITM ou rebuild legítimo do servidor.</p><h3>2. Gerando chaves modernas, Ed25519</h3><p>Em 2025+ o padrão é <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: curva elíptica moderna; chave pública de ~68 bytes.</li><li><code>-a 100</code>: 100 rounds de KDF para a passphrase (mais lento para força bruta).</li><li><code>-C</code>: comentário (apenas marcador, usado para identificar a chave em <code>authorized_keys</code>).</li></ul><p>Sempre proteja com passphrase. Sem ela, qualquer um que tenha acesso ao seu disco tem acesso a todos os seus servidores.</p><p>RSA-2048 está sendo aposentado; se precisar de RSA por compatibilidade, use ≥ 3072 bits. ECDSA tem ressalvas (NIST curves), prefira Ed25519.</p><h3>3. ssh-agent: digitar passphrase uma vez por sessão</h3><pre><code>eval $(ssh-agent -s)
+<ul><li>A <strong>chave privada</strong> nunca sai do dono. É secreta.</li><li>A <strong>chave pública</strong> pode ser distribuída livremente.</li></ul><p>O que uma cripta, a outra decifra (e vice-versa). Em SSH:</p><ol><li>Cliente prova posse da privada assinando um desafio enviado pelo servidor.</li><li>Servidor verifica a assinatura com a pública (que está em <code>~/.ssh/authorized_keys</code> do usuário).</li><li>Após autenticação, ambos derivam chaves <strong>simétricas</strong> (AES, ChaCha20) para criptografar a sessão, assimétrico só é usado para estabelecer a sessão, não para o tráfego em si (seria lento demais).</li></ol><p>O servidor também tem seu par: a chave pública do servidor (host key) vai para o seu <code>~/.ssh/known_hosts</code> na primeira conexão. Se na próxima vez for diferente, o cliente <em>recusa</em> com <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, pode ser MITM ou rebuild legítimo do servidor.</p><h3>2. Gerando chaves modernas, Ed25519</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/ssh-laptop.jpg" alt="Notebook aberto e sem ninguém, com a tela apagada, sobre uma mesa">
+<figcaption>A chave privada mora neste disco. Sem passphrase, quem pega o notebook pega os servidores.</figcaption>
+</figure><p>Em 2025+ o padrão é <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: curva elíptica moderna; chave pública de ~68 bytes.</li><li><code>-a 100</code>: 100 rounds de KDF para a passphrase (mais lento para força bruta).</li><li><code>-C</code>: comentário (apenas marcador, usado para identificar a chave em <code>authorized_keys</code>).</li></ul><p>Sempre proteja com passphrase. Sem ela, qualquer um que tenha acesso ao seu disco tem acesso a todos os seus servidores.</p><p>RSA-2048 está sendo aposentado; se precisar de RSA por compatibilidade, use ≥ 3072 bits. ECDSA tem ressalvas (NIST curves), prefira Ed25519.</p><h3>3. ssh-agent: digitar passphrase uma vez por sessão</h3><pre><code>eval $(ssh-agent -s)
 ssh-add -t 4h ~/.ssh/id_ed25519     # libera por 4 horas
 ssh-add -l                           # lista chaves carregadas
 ssh-add -D                           # remove todas (logout)</code></pre><p>O agent guarda a chave decifrada em memória e fala com o cliente SSH via socket Unix (<code>$SSH_AUTH_SOCK</code>). Em desktops modernos (macOS, GNOME), há agents nativos integrados.</p><p><strong>Cuidado com agent forwarding</strong> (<code>ssh -A host</code>): o servidor de destino pode usar suas chaves para se conectar a outros lugares enquanto a sessão estiver aberta. Se ele estiver comprometido, vira pivô. Use <code>ProxyJump</code> em vez de <code>-A</code> sempre que possível:</p><pre><code>ssh -J bastion.example.com app-01.internal</code></pre><h3>4. ~/.ssh/config, configuração que economiza horas</h3><pre><code># ~/.ssh/config
@@ -1955,7 +1975,11 @@ flowchart LR
     Client -->|"signs challenge"| Server
     Server -->|"verifies signature"| OK["Access"]
 </div>
-<ul><li>The <strong>private key</strong> never leaves its owner. It's secret.</li><li>The <strong>public key</strong> can be freely distributed.</li></ul><p>What one encrypts, the other decrypts (and vice versa). In SSH:</p><ol><li>The client proves possession of the private key by signing a challenge sent by the server.</li><li>The server verifies the signature with the public key (which is in the user's <code>~/.ssh/authorized_keys</code>).</li><li>After authentication, both sides derive <strong>symmetric</strong> keys (AES, ChaCha20) to encrypt the session, asymmetric crypto is only used to establish the session, not for the traffic itself (it would be too slow).</li></ol><p>The server also has its own pair: the server's public key (host key) goes into your <code>~/.ssh/known_hosts</code> on first connection. If next time it's different, the client <em>refuses</em> with <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, it could be a MITM or a legitimate server rebuild.</p><h3>2. Generating modern keys, Ed25519</h3><p>In 2025+ the standard is <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: modern elliptic curve; public key of ~68 bytes.</li><li><code>-a 100</code>: 100 rounds of KDF for the passphrase (slower against brute force).</li><li><code>-C</code>: comment (just a marker, used to identify the key in <code>authorized_keys</code>).</li></ul><p>Always protect it with a passphrase. Without one, anyone with access to your disk has access to all your servers.</p><p>RSA-2048 is being retired; if you need RSA for compatibility, use ≥ 3072 bits. ECDSA has caveats (NIST curves), prefer Ed25519.</p><h3>3. ssh-agent: type the passphrase once per session</h3><pre><code>eval $(ssh-agent -s)
+<ul><li>The <strong>private key</strong> never leaves its owner. It's secret.</li><li>The <strong>public key</strong> can be freely distributed.</li></ul><p>What one encrypts, the other decrypts (and vice versa). In SSH:</p><ol><li>The client proves possession of the private key by signing a challenge sent by the server.</li><li>The server verifies the signature with the public key (which is in the user's <code>~/.ssh/authorized_keys</code>).</li><li>After authentication, both sides derive <strong>symmetric</strong> keys (AES, ChaCha20) to encrypt the session, asymmetric crypto is only used to establish the session, not for the traffic itself (it would be too slow).</li></ol><p>The server also has its own pair: the server's public key (host key) goes into your <code>~/.ssh/known_hosts</code> on first connection. If next time it's different, the client <em>refuses</em> with <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, it could be a MITM or a legitimate server rebuild.</p><h3>2. Generating modern keys, Ed25519</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/ssh-laptop.jpg" alt="An unattended laptop on a desk, screen off">
+<figcaption>The private key lives on this disk. Without a passphrase, whoever takes the laptop takes the servers.</figcaption>
+</figure><p>In 2025+ the standard is <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: modern elliptic curve; public key of ~68 bytes.</li><li><code>-a 100</code>: 100 rounds of KDF for the passphrase (slower against brute force).</li><li><code>-C</code>: comment (just a marker, used to identify the key in <code>authorized_keys</code>).</li></ul><p>Always protect it with a passphrase. Without one, anyone with access to your disk has access to all your servers.</p><p>RSA-2048 is being retired; if you need RSA for compatibility, use ≥ 3072 bits. ECDSA has caveats (NIST curves), prefer Ed25519.</p><h3>3. ssh-agent: type the passphrase once per session</h3><pre><code>eval $(ssh-agent -s)
 ssh-add -t 4h ~/.ssh/id_ed25519     # libera por 4 horas
 ssh-add -l                           # lista chaves carregadas
 ssh-add -D                           # remove todas (logout)</code></pre><p>The agent holds the decrypted key in memory and talks to the SSH client over a Unix socket (<code>$SSH_AUTH_SOCK</code>). On modern desktops (macOS, GNOME), there are integrated native agents.</p><p><strong>Be careful with agent forwarding</strong> (<code>ssh -A host</code>): the destination server can use your keys to connect elsewhere while the session is open. If it's compromised, it becomes a pivot. Use <code>ProxyJump</code> instead of <code>-A</code> whenever possible:</p><pre><code>ssh -J bastion.example.com app-01.internal</code></pre><h3>4. ~/.ssh/config, configuration that saves hours</h3><pre><code># ~/.ssh/config
@@ -3789,6 +3813,10 @@ it serve today?".</li>
                 ),
                 "body": (
                 """<h3>1. Por que ainda existe TLS termination na borda</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/fiber-edge.jpg" alt="Painel de fibra óptica num rack, com conectores azuis e alguns cabos amarelos">
+<figcaption>A conexão pública chega por aqui. O TLS termina na borda, num proxy, e não dentro de cada aplicação.</figcaption>
+</figure>
 <p>Mesmo num ambiente com mTLS pleno dentro do mesh, o proxy de borda
 continua justificado por cinco razões concretas: certificado público
 (Let's Encrypt) gerenciado num único lugar central, em vez de espalhado
@@ -4076,6 +4104,10 @@ antes.</li>
                 ),
                 "body_en": (
                 """<h3>1. Why TLS termination still exists at the edge</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/fiber-edge.jpg" alt="Fiber optic patch panel in a rack, blue connectors and a few yellow cables">
+<figcaption>The public connection arrives here. TLS ends at the edge, on a proxy, not inside every application.</figcaption>
+</figure>
 <p>Even in an environment with full mTLS inside the mesh, the edge
 proxy remains justified for five concrete reasons: a public certificate
 (Let's Encrypt) managed in a single central place, instead of spread
@@ -5385,7 +5417,11 @@ cycle running without depending on someone remembering manually.</li>
                     "observability."
                 ),
                 "body": (
-                """<h3>1. Logs do SO via systemd-journald</h3><p>Distros modernas centralizam tudo no <code>journald</code>:</p>
+                """<h3>1. Logs do SO via systemd-journald</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/kvm-console.jpg" alt="Console extraível de um rack, com teclado e tela">
+<figcaption>O journald é o log desta máquina. O journalctl lê o que este host já guardou.</figcaption>
+</figure><p>Distros modernas centralizam tudo no <code>journald</code>:</p>
 <div class="mermaid">
 flowchart LR
     Svc["Serviço systemd"] --> J["journald"]
@@ -5466,7 +5502,11 @@ flowchart LR
 <p>Os três pilares da observabilidade:</p><table><tr><th>Sinal</th><th>Cardinalidade</th><th>Custo</th><th>Uso típico</th></tr><tr><td>Métricas</td><td>baixa</td><td>baixo</td><td>'Quantas requests por segundo? Latência p99?'</td></tr><tr><td>Logs</td><td>alta</td><td>médio-alto</td><td>'O que aconteceu naquela requisição específica?'</td></tr><tr><td>Traces</td><td>muito alta</td><td>alto</td><td>'Por onde passou e quanto demorou cada salto?'</td></tr></table><p>OpenTelemetry padroniza coleta dos três; armazenamento ainda é separado (Prometheus para métricas, Loki para logs, Tempo para traces).</p><h3>10. Caso real: o log que custou US$ 1B</h3><p>Em 2017, a Equifax foi violada (147M de americanos). Investigação mostrou que o atacante esteve dentro da rede por 76 dias. Os logs tinham os indícios, incluindo tráfego enorme saindo para um IP estrangeiro, mas o sistema de monitoramento estava configurado para ignorar uma certa categoria, e o time não revisava os logs manualmente. Resultado: US$ 1.4B em multas, settlement e perdas. Lição: log sem alerta+revisão é só armazenamento caro.</p>"""
                 ),
                 "body_en": (
-                """<h3>1. OS logs via systemd-journald</h3><p>Modern distros centralize everything in <code>journald</code>:</p>
+                """<h3>1. OS logs via systemd-journald</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/kvm-console.jpg" alt="Pull-out rack console, with a keyboard and a screen">
+<figcaption>journald is this machine's log. journalctl reads what this host already stored.</figcaption>
+</figure><p>Modern distros centralize everything in <code>journald</code>:</p>
 <div class="mermaid">
 flowchart LR
     Svc["systemd service"] --> J["journald"]

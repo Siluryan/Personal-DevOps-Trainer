@@ -45,6 +45,10 @@ PHASE4 = {
                 ),
                 "body": (
                 """<h3>1. Um container, fisicamente: processos Linux comuns, isolados por primitivas do kernel</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/docker-cpu.jpg" alt="Interior de um servidor aberto, com dissipador de cobre sobre o processador e pentes de memória">
+<figcaption>O container é um processo neste processador. Não há uma segunda máquina dentro da caixa.</figcaption>
+</figure>
 <p>Um container NÃO é uma VM leve, apesar da comparação comum — é um ou
 mais processos Linux completamente normais, isolados dos demais processos
 do sistema por primitivas específicas do próprio kernel, sem nenhuma
@@ -418,6 +422,10 @@ que existem.</li>
                 ),
                 "body_en": (
                 """<h3>1. A container, physically: ordinary Linux processes isolated by kernel primitives</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/docker-cpu.jpg" alt="Inside an open server, copper heatsink over the processor and memory modules">
+<figcaption>A container is a process on this processor. There is no second machine inside the box.</figcaption>
+</figure>
 <p>A container is NOT a lightweight VM, despite the common comparison — it
 is one or more completely normal Linux processes, isolated from the rest
 of the system's processes by specific kernel-level primitives, with no
