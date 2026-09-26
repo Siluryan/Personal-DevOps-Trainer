@@ -23,6 +23,7 @@ import shlex
 from typing import Any
 
 from apps.core.pagination import paginate_html_sections, paginate_html_sections_like
+from apps.courses.command_equiv import commands_equivalent
 
 from . import PHASES
 from .labs import LABS
@@ -486,15 +487,22 @@ def _distractors_for(tokens: list[str], n: int = 3) -> list[str]:
 
 
 def _flag_swap(tokens: list[str]) -> list[list[str]]:
+    """Uma ordem alternativa, só se for o mesmo comando.
+
+    O corte antigo movia o primeiro token de flag para o fim e separava
+    a flag do valor (`journalctl err -S today -p`). Isso marcava uma
+    linha inválida como certa e rejeitava a troca válida das flags.
+    """
+    candidates: list[list[str]] = []
     if len(tokens) >= 3 and tokens[-1].startswith(("+", "-")):
         swapped = [tokens[0], tokens[-1], *tokens[1:-1]]
         if swapped != tokens:
-            return [swapped]
+            candidates.append(swapped)
     if len(tokens) >= 3 and tokens[1].startswith(("+", "-")):
         swapped = [tokens[0], *tokens[2:], tokens[1]]
         if swapped != tokens:
-            return [swapped]
-    return []
+            candidates.append(swapped)
+    return [alt for alt in candidates if commands_equivalent(tokens, alt)]
 
 
 # "Seis anti-padrões", "Cinco formas", "As quatro armadilhas": nomeiam a
@@ -710,35 +718,91 @@ def _is_anti_page(page_html: str, headings: list[str]) -> bool:
     return any(h in blob for h in _ANTI_HINTS)
 
 
-def _dangerous_inline(page_html: str) -> str | None:
-    danger = (
-        "777",
-        "permitrootlogin yes",
-        "stricthostkeychecking=no",
-        "eval ",
-        "rm -rf",
-        "curl | sh",
-        "curl|sh",
-        "privileged: true",
-        "hostnetwork: true",
-        "0.0.0.0/0",
-        "latest",
-        "password=",
-        "aws_secret",
-    )
+# (agulha, peso). Peso alto = a linha é o anti-pattern, não um efeito
+# colateral de um exemplo correto. `rm -rf` em cleanup de apt/trap e
+# `1777` (sticky de /tmp) ficam de fora em `_needle_in`.
+_DANGER_NEEDLES: tuple[tuple[str, int], ...] = (
+    ("permitrootlogin yes", 50),
+    ("stricthostkeychecking=no", 50),
+    ("privileged: true", 48),
+    ("hostnetwork: true", 48),
+    ("curl | sh", 40),
+    ("curl|sh", 40),
+    ("777", 40),
+    ("eval ", 28),
+    ("0.0.0.0/0", 24),
+    ("password=", 18),
+    ("aws_secret", 18),
+    ("rm -rf", 12),
+    ("latest", 8),
+)
+
+
+def _needle_in(line: str, needle: str) -> bool:
+    low = line.lower()
+    if needle == "777":
+        # `1777` é o sticky bit de /tmp, configuração correta.
+        return re.search(r"(?<![0-9])777(?![0-9])", low) is not None
+    if needle == "latest":
+        # `ubuntu-latest` é o runner do GitHub, `/latest/` é o path do IMDS
+        # e `!*:latest` é a policy que proíbe a tag. Nenhum desses é a falha.
+        if "ubuntu-latest" in low or "/latest/" in low or "!*" in low or "disallow" in low:
+            return False
+        # "não :latest" é a frase que manda evitar a tag, não a tag em si.
+        if re.search(r"n[aã]o\s+:?latest", low):
+            return False
+        return ":latest" in low or low.strip() == "latest"
+    if needle == "rm -rf" and ("apt/lists" in low or low.strip().startswith("trap")):
+        # Limpar o cache do apt e o trap de cleanup são o padrão certo.
+        return False
+    return needle in low
+
+
+def _iter_code_lines(page_html: str):
+    """Uma linha física por vez. O `<code>` de um `<pre>` inteiro não entra."""
+    seen: set[str] = set()
+    for block in _CODE_BLOCK_RE.findall(page_html):
+        text = html_lib.unescape(_TAG_RE.sub("", block))
+        for raw in text.splitlines():
+            line = raw.strip()
+            if line and line not in seen:
+                seen.add(line)
+                yield line
     for raw in _INLINE_CODE_RE.findall(page_html):
         text = html_lib.unescape(raw).strip()
-        low = text.lower()
-        for d in danger:
-            if d not in low:
-                continue
-            # "777" precisa ser o modo inteiro: `1777` é o sticky bit de
-            # /tmp, configuração correta, e virava "anti-pattern" por
-            # casar como substring.
-            if d == "777" and not re.search(r"(?<![0-9])777(?![0-9])", low):
-                continue
-            return text[:80]
-    return None
+        if not text or "\n" in text or len(text) > 78 or text in seen:
+            continue
+        seen.add(text)
+        yield text
+
+
+def _dangerous_inline(page_html: str) -> str | None:
+    """A linha (uma só) que o exercício deve marcar como falha.
+
+    Antes, o primeiro `<code>` que citasse a agulha — em geral o bloco
+    `<pre>` inteiro, cortado em 80 caracteres — virava a "linha" certa.
+    O aluno tocava na linha perigosa de verdade e o gabarito pintava de
+    verde um trecho multilinha que nem era uma linha.
+    """
+    best: tuple[tuple[int, int], str] | None = None
+    for line in _iter_code_lines(page_html):
+        if "\n" in line or len(line) > 78:
+            continue
+        score = 0
+        for needle, weight in _DANGER_NEEDLES:
+            if _needle_in(line, needle):
+                score = max(score, weight)
+        if not score:
+            continue
+        low = line.lower()
+        if low.startswith("#") or low.startswith("$"):
+            score -= 12
+        if score <= 0:
+            continue
+        rank = (score, -len(line))
+        if best is None or rank > best[0]:
+            best = (rank, line)
+    return best[1] if best else None
 
 
 def _flaw_lines(page_html: str, bad: str) -> tuple[list[str], int]:
@@ -752,6 +816,8 @@ def _flaw_lines(page_html: str, bad: str) -> tuple[list[str], int]:
     que pertence. O molde genérico só entra quando a página não tem código
     aproveitável.
     """
+    bad = bad.strip()
+    bad_needles = [needle for needle, _weight in _DANGER_NEEDLES if _needle_in(bad, needle)]
     candidates: list[str] = []
     for block in _CODE_BLOCK_RE.findall(page_html):
         for raw in html_lib.unescape(_TAG_RE.sub("", block)).splitlines():
@@ -759,7 +825,11 @@ def _flaw_lines(page_html: str, bad: str) -> tuple[list[str], int]:
             stripped = line.strip()
             if not stripped or stripped.startswith("#") or len(line) > 78:
                 continue
-            if stripped == bad.strip() or bad.strip() in stripped:
+            if stripped == bad or bad in stripped:
+                continue
+            # Uma segunda linha com a mesma agulha seria outra resposta
+            # certa. O gabarito só pinta uma, e a outra ficava vermelha.
+            if any(_needle_in(stripped, needle) for needle in bad_needles):
                 continue
             # Blocos de código da aula costumam trazer legendas anotadas
             # ("└ user 7 = r+w+x", "→ saída esperada") e a própria saída do

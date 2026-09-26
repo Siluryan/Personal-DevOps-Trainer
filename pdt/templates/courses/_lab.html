@@ -19,7 +19,7 @@
   <template x-if="kind === 'terminal'">
     <div>
       <p class="lab-scenario-text" x-text="spec.scenario"></p>
-      <div class="lab-command-line">
+      <div class="lab-command-line" :class="checked ? (correct ? 'lab-correct' : 'lab-wrong') : ''">
         <template x-if="!chosen.length">
           <span class="lab-placeholder">{% trans "toque nos blocos abaixo para montar o comando…" %}</span>
         </template>
@@ -78,7 +78,7 @@
       <p class="lab-scenario-text" x-text="spec.scenario"></p>
       <div class="lab-order-list">
         <template x-for="(step, i) in chosen" :key="'c'+i">
-          <div class="lab-order-item">
+          <div class="lab-order-item" :class="checked ? (correct ? 'lab-correct' : 'lab-wrong') : ''">
             <span class="lab-order-num" x-text="i + 1"></span>
             <span x-text="step"></span>
           </div>
@@ -113,7 +113,11 @@
           <div class="lab-choice-chips">
             <template x-for="opt in spec.blanks[key].options" :key="opt">
               <button type="button" class="lab-token"
-                      :style="answers[key] === opt ? 'border-color:var(--pdt-accent);background:rgba(14,165,233,.15)' : ''"
+                      :class="{
+                        'lab-token-picked': answers[key] === opt && !checked,
+                        'lab-token-correct': checked && opt === spec.blanks[key].correct,
+                        'lab-token-wrong': checked && answers[key] === opt && opt !== spec.blanks[key].correct
+                      }"
                       @click="selectBlank(key, opt)" x-text="opt"></button>
             </template>
           </div>

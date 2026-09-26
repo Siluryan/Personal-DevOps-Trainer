@@ -348,6 +348,49 @@ class TestLabDataIntegrity:
                     )
                     assert alt != canon, f"{lab['title']} {key}: accepted duplica o gabarito"
 
+    def test_ordens_de_flag_equivalentes_passam_e_as_invalidas_nao(self):
+        from apps.courses.command_equiv import commands_equivalent
+
+        iguais = [
+            (["dig", "+short", "exemplo.com"], ["dig", "exemplo.com", "+short"]),
+            (["journalctl", "-p", "err", "-S", "today"], ["journalctl", "-S", "today", "-p", "err"]),
+            (["syft", "imagem:tag", "-o", "cyclonedx-json"], ["syft", "-o", "cyclonedx-json", "imagem:tag"]),
+            (["kubectl", "get", "pods", "-n", "default"], ["kubectl", "-n", "default", "get", "pods"]),
+            (["kubectl", "get", "pods", "-n", "default"], ["kubectl", "get", "-n", "default", "pods"]),
+            (["docker", "run", "-d", "--name", "web", "nginx"], ["docker", "run", "--name", "web", "-d", "nginx"]),
+            (["find", "/", "-perm", "-4000", "-type", "f"], ["find", "/", "-type", "f", "-perm", "-4000"]),
+            (["trivy", "image", "--severity", "CRITICAL", "--exit-code", "1", "myapp:dev"],
+             ["trivy", "image", "--exit-code", "1", "--severity", "CRITICAL", "myapp:dev"]),
+        ]
+        diferentes = [
+            (["sudo", "sshd", "-t"], ["sudo", "-t", "sshd"]),
+            (["git", "rm", "--cached"], ["git", "--cached", "rm"]),
+            (["pre-commit", "run", "--all-files"], ["pre-commit", "--all-files", "run"]),
+            (["git", "checkout", "-b", "feature"], ["git", "checkout", "feature", "-b"]),
+            (["ssh-keygen", "-t", "ed25519"], ["ssh-keygen", "ed25519", "-t"]),
+            (["setfacl", "-m", "u:visitante:r--", "config.yml"], ["setfacl", "-m", "config.yml", "u:visitante:r--"]),
+            (["docker", "run", "-d", "--name", "web", "nginx"], ["docker", "run", "-d", "nginx", "--name", "web"]),
+            (["ps", "-eo", "pid,uid,user,cmd", "|", "head"], ["ps", "pid,uid,user,cmd", "|", "head", "-eo"]),
+            (["journalctl", "-p", "err", "-S", "today"], ["journalctl", "err", "-S", "today", "-p"]),
+        ]
+        for left, right in iguais:
+            assert commands_equivalent(left, right), (left, right)
+        for left, right in diferentes:
+            assert not commands_equivalent(left, right), (left, right)
+
+    def test_accepted_commands_autorais_sao_o_mesmo_comando(self):
+        from apps.courses.command_equiv import commands_equivalent
+
+        for lab in LABS:
+            if lab["kind"] != "terminal":
+                continue
+            for key in ("spec", "spec_en"):
+                spec = lab.get(key) or {}
+                for alt in spec.get("accepted_commands") or []:
+                    assert commands_equivalent(spec["correct_command"], alt), (
+                        f"{lab['title']} {key}: {alt} não é o mesmo comando"
+                    )
+
     def test_spec_find_flaw_indice_dentro_do_range(self):
         for lab in LABS:
             if lab["kind"] != "find_flaw":
@@ -444,6 +487,9 @@ class TestLabDataIntegrity:
                 assert sorted(spec["steps_shuffled"]) == sorted(spec["correct_order"])
             if lab["kind"] == "find_flaw":
                 assert 0 <= spec["flaw_line_index"] < len(spec["lines"])
+                gabarito = spec["lines"][spec["flaw_line_index"]]
+                assert "\n" not in gabarito, lab["title"]
+                assert len(gabarito) <= 78, lab["title"]
             if lab["kind"] == "blanks":
                 for key, blank in spec["blanks"].items():
                     assert f"___{key}___" in spec["template"]

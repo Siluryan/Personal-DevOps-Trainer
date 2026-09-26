@@ -8,7 +8,64 @@
  * que roda a plataforma não comporta sandbox por aluno, e digitar comando
  * de terminal no celular é inviável — então o lab valida RACIOCÍNIO, não
  * sintaxe de shell. Ver docstring de apps.courses.models.Lab.
+ *
+ * commandsEquivalent espelha apps/courses/command_equiv.py: mesma ordem
+ * de posicionais e as mesmas flags. Em dig/journalctl/kubectl/syft a
+ * flag pode mudar de lugar; em docker/git/sudo/pre-commit ela tem de
+ * ficar no mesmo vão, senão o comando muda de sentido.
  */
+var LAB_VALUED_FLAGS = {
+  "-eo": 1, "-perm": 1, "-type": 1, "-name": 1, "-m": 1, "-p": 1, "-S": 1,
+  "-n": 1, "-o": 1, "-t": 1, "-b": 1, "-u": 1, "-f": 1, "-c": 1,
+  "--severity": 1, "--exit-code": 1, "--name": 1, "--network": 1,
+  "--shell": 1, "--home-dir": 1, "--namespace": 1, "--publish-url": 1,
+};
+var LAB_STICKY_BINS = { docker: 1, git: 1, sudo: 1, "pre-commit": 1 };
+
+function labIsFlag(token) {
+  return (token.charAt(0) === "-" || token.charAt(0) === "+") && token !== "-" && token !== "--";
+}
+
+function labScan(tokens) {
+  var pos = [];
+  var gaps = [[]];
+  for (var i = 0; i < tokens.length; i++) {
+    var tok = tokens[i];
+    if (labIsFlag(tok)) {
+      if (LAB_VALUED_FLAGS[tok] && i + 1 < tokens.length) {
+        gaps[gaps.length - 1].push(tok + "\0" + tokens[i + 1]);
+        i++;
+        continue;
+      }
+      gaps[gaps.length - 1].push(tok);
+      continue;
+    }
+    pos.push(tok);
+    gaps.push([]);
+  }
+  return { pos: pos, gaps: gaps };
+}
+
+function commandsEquivalent(left, right) {
+  if (!left || !right || !left.length || !right.length) return false;
+  if (left[0] !== right[0]) return false;
+  var a = labScan(left.slice(1));
+  var b = labScan(right.slice(1));
+  if (a.pos.join("\0") !== b.pos.join("\0")) return false;
+  if (LAB_STICKY_BINS[left[0]]) {
+    if (a.gaps.length !== b.gaps.length) return false;
+    for (var i = 0; i < a.gaps.length; i++) {
+      if (a.gaps[i].slice().sort().join("\0") !== b.gaps[i].slice().sort().join("\0")) return false;
+    }
+    return true;
+  }
+  var fa = [];
+  var fb = [];
+  a.gaps.forEach(function (gap) { fa = fa.concat(gap); });
+  b.gaps.forEach(function (gap) { fb = fb.concat(gap); });
+  return fa.sort().join("\0") === fb.sort().join("\0");
+}
+
 function labState(labId, kind, spec, alreadyDone, completeUrl) {
   const csrfToken =
     document.querySelector('meta[name="csrf-token"]')?.content || "";
@@ -63,10 +120,12 @@ function labState(labId, kind, spec, alreadyDone, completeUrl) {
       },
       check() {
         this.checked = true;
+        // Só conta ordem que é o mesmo comando que o gabarito. Uma
+        // accepted_commands inválida (flag separada do valor) não passa.
         var answers = [spec.correct_command].concat(spec.accepted_commands || []);
-        var got = this.chosen.join(" ");
+        var got = this.chosen;
         this.correct = answers.some(function (cmd) {
-          return cmd.join(" ") === got;
+          return commandsEquivalent(spec.correct_command, cmd) && commandsEquivalent(cmd, got);
         });
         if (this.correct) this.markComplete();
       },
