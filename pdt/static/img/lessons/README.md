@@ -1,1 +1,1 @@
-# Uma foto de conceito por aula (JPG), logo após o primeiro h3, em PT e EN. Mermaid/lesson-viz continua para fluxo.
+# GIFs de arquitetura por aula (d-*.gif), em PT e EN. O fluxo animado mostra o caminho do conceito. Mermaid continua para o detalhe.

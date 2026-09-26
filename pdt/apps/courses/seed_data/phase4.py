@@ -46,8 +46,8 @@ PHASE4 = {
                 "body": (
                 """<h3>1. Um container, fisicamente: processos Linux comuns, isolados por primitivas do kernel</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-docker.jpg" alt="Marmita aberta, com a refeição completa, sobre uma mesa de madeira">
-<figcaption>O container leva tudo o que o processo precisa. A mesa é o kernel do host: não há outra máquina dentro da marmita.</figcaption>
+<img src="/static/img/lessons/d-docker.gif" alt="Container por dentro">
+<figcaption>Não há segunda máquina. Há um processo no kernel do host, isolado e limitado.</figcaption>
 </figure>
 <p>Um container NÃO é uma VM leve, apesar da comparação comum — é um ou
 mais processos Linux completamente normais, isolados dos demais processos
@@ -116,6 +116,10 @@ o torna a única referência verdadeiramente confiável para reproduzir
 exatamente a mesma imagem depois.</p>
 
 <h3>3. Dockerfile produtivo: por que a ORDEM das instruções decide a velocidade do build</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-docker-cache.gif" alt="Cache do build">
+<figcaption>A ordem vira camadas. Mudar um arquivo copiado no topo refaz tudo que vem depois.</figcaption>
+</figure>
 <p>Cada instrução do Dockerfile vira uma camada CACHEADA — e o Docker só
 reconstrói uma camada (e todas as que vêm depois dela) se algo relevante
 mudou. Isso torna a ordem das instruções uma decisão de desempenho, não
@@ -423,8 +427,8 @@ que existem.</li>
                 "body_en": (
                 """<h3>1. A container, physically: ordinary Linux processes isolated by kernel primitives</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-docker.jpg" alt="An open bento box with a complete meal, on a wooden table">
-<figcaption>A container carries everything the process needs. The table is the host kernel: there is no other machine inside the box.</figcaption>
+<img src="/static/img/lessons/d-docker-en.gif" alt="Container inside">
+<figcaption>There is no second machine. There is a process on the host kernel, isolated and limited.</figcaption>
 </figure>
 <p>A container is NOT a lightweight VM, despite the common comparison — it
 is one or more completely normal Linux processes, isolated from the rest
@@ -490,6 +494,10 @@ unlike the tag, it never changes content, which makes it the only truly
 reliable reference to reproduce exactly the same image later.</p>
 
 <h3>3. A production Dockerfile: why instruction ORDER decides build speed</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-docker-cache-en.gif" alt="Build cache">
+<figcaption>Order becomes layers. Changing a file copied at the top rebuilds everything after it.</figcaption>
+</figure>
 <p>Every Dockerfile instruction becomes a CACHED layer — and Docker only
 rebuilds a layer (and everything after it) if something relevant
 changed. That makes instruction order a performance decision, not just a
@@ -983,8 +991,8 @@ that exist.</li>
                 "body": (
                 """<h3>1. Minimalismo radical: cada byte extra é superfície de ataque potencial</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-minimal.jpg" alt="Uma caixa com três itens e outra transbordando de coisas extras">
-<figcaption>Cada byte a mais na imagem é superfície. A caixa enxuta é o que a aula pede.</figcaption>
+<img src="/static/img/lessons/d-minimal.gif" alt="Imagem mínima">
+<figcaption>Cada pacote a mais é superfície. A imagem leva o app, não uma distro inteira.</figcaption>
 </figure>
 <p>Toda biblioteca incluída numa imagem é um bug em potencial; todo
 binário extra é um exploit em potencial. Reduzir o que está presente na
@@ -1064,6 +1072,10 @@ silenciosa a cada build:</p>
 }</code></pre>
 
 <h3>3. Usuário não-root e capabilities reduzidas: o mínimo aceitável, não um extra</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-nonroot.gif" alt="Não-root">
+<figcaption>O processo da imagem não é root. O que falta de capability não pode ser abusado.</figcaption>
+</figure>
 <p>Uma imagem Docker roda como root por padrão — se um atacante
 explorar a aplicação, ele herda esse root DENTRO do namespace do
 container, e em configurações sem mapeamento de user namespace, esse
@@ -1295,8 +1307,8 @@ de ataque de tudo que ainda está tecnicamente disponível para deploy.</li>
                 "body_en": (
                 """<h3>1. Radical minimalism: every extra byte is potential attack surface</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-minimal.jpg" alt="A box with three items and another overflowing with extras">
-<figcaption>Every extra byte in the image is attack surface. The lean box is what the lesson asks for.</figcaption>
+<img src="/static/img/lessons/d-minimal-en.gif" alt="Minimal image">
+<figcaption>Every extra package is attack surface. The image carries the app, not a whole distro.</figcaption>
 </figure>
 <p>Every library included in an image is a potential bug; every extra
 binary is a potential exploit. Reducing what's present in the image is
@@ -1373,6 +1385,10 @@ change on every build:</p>
 }</code></pre>
 
 <h3>3. Non-root user and reduced capabilities: the acceptable minimum, not an extra</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-nonroot-en.gif" alt="Non-root">
+<figcaption>The image process is not root. The capability it lacks cannot be abused.</figcaption>
+</figure>
 <p>A Docker image runs as root by default — if an attacker exploits the
 application, they inherit that root INSIDE the container's namespace,
 and in configurations without user namespace mapping, that root is
@@ -1774,8 +1790,8 @@ everything still technically available for deployment.</li>
                 "body": (
                 """<h3>1. As opções principais, e o que cada uma resolve melhor</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-registry.jpg" alt="Parede de nichos com latas iguais guardadas">
-<figcaption>O registry é o catálogo de onde o cluster e o Compose puxam a imagem.</figcaption>
+<img src="/static/img/lessons/d-registry.gif" alt="Onde a imagem mora">
+<figcaption>O cluster não guarda a imagem no git. Ele puxa do registry na hora de subir.</figcaption>
 </figure>
 <table>
 <tr><th>Registry</th><th>Modelo</th><th>Notas</th></tr>
@@ -1858,6 +1874,10 @@ Operator resolve isso automaticamente, sincronizando e rotacionando sem
 intervenção manual.</p>
 
 <h3>3. Tags e imutabilidade: por que "a mesma tag" não significa "o mesmo conteúdo"</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-digest.gif" alt="Tag não é versão">
+<figcaption>A mesma tag pode apontar para outro conteúdo amanhã. Produção prende o digest.</figcaption>
+</figure>
 <p>Uma imagem publicada com várias tags simultâneas serve propósitos
 diferentes — nem toda tag tem a mesma garantia de estabilidade:</p>
 <pre><code># Bom, múltiplas tags úteis para mesma imagem
@@ -2041,8 +2061,8 @@ raio de impacto do outro, sem segmentação nenhuma entre eles.</li>
                 "body_en": (
                 """<h3>1. The main options, and what each one solves best</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-registry.jpg" alt="A wall of cubbies storing identical canisters">
-<figcaption>The registry is the catalog the cluster and Compose pull the image from.</figcaption>
+<img src="/static/img/lessons/d-registry-en.gif" alt="Where the image lives">
+<figcaption>The cluster does not store the image in git. It pulls from the registry when it starts.</figcaption>
 </figure>
 <table>
 <tr><th>Registry</th><th>Modelo</th><th>Notas</th></tr>
@@ -2125,6 +2145,10 @@ Operator solves this automatically, syncing and rotating without
 manual intervention.</p>
 
 <h3>3. Tags and immutability: why "the same tag" does not mean "the same content"</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-digest-en.gif" alt="A tag is not a version">
+<figcaption>The same tag can point at different content tomorrow. Production pins the digest.</figcaption>
+</figure>
 <p>An image published with several tags at once serves different
 purposes — not every tag has the same stability guarantee:</p>
 <pre><code># Bom, múltiplas tags úteis para mesma imagem
@@ -2480,8 +2504,8 @@ blast radius of the other, with no segmentation between them.</li>
                 "body": (
                 """<h3>1. Docker Compose: um único YAML declara toda a aplicação multi-container</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-compose.jpg" alt="Um pódio e cadeiras vazias, cada uma com um instrumento">
-<figcaption>O Compose é a partitura: um arquivo declara os containers, e eles sobem juntos.</figcaption>
+<img src="/static/img/lessons/d-compose.gif" alt="Um Compose">
+<figcaption>Um arquivo declara os containers. O Compose sobe o conjunto, não uma peça solta.</figcaption>
 </figure>
 <p>Compose descreve serviços, redes e volumes num arquivo declarativo —
 <code>docker compose up</code> sobe tudo na ordem certa,
@@ -2610,6 +2634,10 @@ serviço de conveniência de dev acidentalmente vá junto para o ambiente
 real.</p>
 
 <h3>3. Variáveis e segredos: `.env` funciona, mas tem limite claro</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-compose-env.gif" alt="Segredo no Compose">
+<figcaption>O .env serve na máquina de quem desenvolve. Segredo de verdade não fica nesse arquivo.</figcaption>
+</figure>
 <pre><code># .env (gitignored!)
 DB_PASSWORD=supersecret
 VERSION=v1.4.2
@@ -2826,8 +2854,8 @@ de condicionais dentro de um único YAML.</li>
                 "body_en": (
                 """<h3>1. Docker Compose: a single YAML declares the whole multi-container application</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-compose.jpg" alt="A podium and empty chairs, each holding an instrument">
-<figcaption>Compose is the score: one file declares the containers, and they come up together.</figcaption>
+<img src="/static/img/lessons/d-compose-en.gif" alt="One Compose">
+<figcaption>One file declares the containers. Compose brings up the set, not a loose piece.</figcaption>
 </figure>
 <p>Compose describes services, networks, and volumes in a declarative file —
 <code>docker compose up</code> brings everything up in the right order,
@@ -2955,6 +2983,10 @@ matching flag, avoiding a convenience-only dev service accidentally
 shipping to the real environment.</p>
 
 <h3>3. Variables and secrets: `.env` works, but has a clear limit</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-compose-env-en.gif" alt="Secret in Compose">
+<figcaption>The .env file serves on the developer's machine. A real secret does not stay in that file.</figcaption>
+</figure>
 <pre><code># .env (gitignored!)
 DB_PASSWORD=supersecret
 VERSION=v1.4.2
@@ -3353,8 +3385,8 @@ of conditionals inside a single YAML.</li>
                 "body": (
                 """<h3>1. O que é SBOM, e por que Log4Shell mudou a conversa sobre isso</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-sbom.jpg" alt="Um aparelho desmontado, cada peça visível na mesa">
-<figcaption>O SBOM é esta mesa: a lista do que entrou no software, para achar a peça ruim sem abrir no escuro.</figcaption>
+<img src="/static/img/lessons/d-sbom.gif" alt="SBOM">
+<figcaption>Sem a lista, achar se o Log4j está aí é abrir no escuro. O SBOM é a lista.</figcaption>
 </figure>
 <p>SBOM (Software Bill of Materials) é a lista detalhada de TODOS os
 componentes que compõem um artefato — nome e versão de cada dependência
@@ -3432,6 +3464,10 @@ identificador padronizado e sem ambiguidade, diferente de "django versão
 de formas ligeiramente distintas.</p>
 
 <h3>3. Geração: sempre automatizada, nunca manual</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-sbom-ci.gif" alt="Geração automática">
+<figcaption>Lista feita à mão mente no commit seguinte. Quem gera é o pipeline, toda vez.</figcaption>
+</figure>
 <p>Um SBOM criado à mão está desatualizado no momento em que a primeira
 dependência muda — a única prática viável é gerar automaticamente a
 cada build. <strong>Syft</strong> (Anchore) é o "canivete suíço" desse
@@ -3665,8 +3701,8 @@ em vez de um formato que só a sua própria plataforma entende.</li>
                 "body_en": (
                 """<h3>1. What an SBOM is, and why Log4Shell changed the conversation about it</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-sbom.jpg" alt="A device taken apart, every part visible on the table">
-<figcaption>An SBOM is this table: the list of what went into the software, so you can find the bad part without opening it in the dark.</figcaption>
+<img src="/static/img/lessons/d-sbom-en.gif" alt="SBOM">
+<figcaption>Without the list, finding whether Log4j is in there is opening it in the dark. The SBOM is the list.</figcaption>
 </figure>
 <p>SBOM (Software Bill of Materials) is the detailed list of ALL
 components that make up an artifact — name and version of every
@@ -3743,6 +3779,10 @@ version 5.1.4" in free text, which different tools could interpret in
 slightly different ways.</p>
 
 <h3>3. Generation: always automated, never manual</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-sbom-ci-en.gif" alt="Automatic generation">
+<figcaption>A hand-written list lies on the next commit. The pipeline generates it, every time.</figcaption>
+</figure>
 <p>A hand-built SBOM is stale the moment the first dependency changes —
 the only viable practice is to generate automatically on every build.
 <strong>Syft</strong> (Anchore) is the "Swiss army knife" of this
@@ -4148,8 +4188,8 @@ instead of a format only your own platform understands.</li>
                 "body": (
                 """<h3>1. Por que uma IDP existe: cada time reinventando a roda, multiplicado por dezenas</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-idp.jpg" alt="Painel de ferramentas no lugar, e uma pilha bagunçada no chão">
-<figcaption>A IDP é o painel. Sem ela, cada time monta a própria pilha no chão.</figcaption>
+<img src="/static/img/lessons/d-idp.gif" alt="Por que a IDP existe">
+<figcaption>Sem portal, cada time monta o próprio caminho. A IDP é o caminho único.</figcaption>
 </figure>
 <p>Numa organização que cresce, cada time novo acaba decidindo
 individualmente como montar seu próprio pipeline, como configurar log e
@@ -4199,6 +4239,10 @@ self-service de infraestrutura e observabilidade automática conforme o
 programa amadurece e ganha confiança dos times.</p>
 
 <h3>3. Backstage: o portal que virou referência do setor</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-backstage.gif" alt="Backstage">
+<figcaption>O template carrega o padrão. O time não copia um YAML velho de outro repositório.</figcaption>
+</figure>
 <p>Backstage é open-source, criado pelo Spotify em 2020 e hoje hospedado
 pela CNCF, com plugins cobrindo praticamente toda ferramenta comum de
 engenharia — Kubernetes, GitHub, GitLab, Datadog, Sentry, PagerDuty,
@@ -4435,8 +4479,8 @@ sucesso.</p>"""
                 "body_en": (
                 """<h3>1. Why an IDP exists: every team reinventing the wheel, multiplied by dozens</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-idp.jpg" alt="A tool wall in its slots, and a messy pile on the floor">
-<figcaption>An IDP is the wall. Without it, every team builds its own pile on the floor.</figcaption>
+<img src="/static/img/lessons/d-idp-en.gif" alt="Why an IDP exists">
+<figcaption>Without a portal, every team builds its own path. The IDP is the single path.</figcaption>
 </figure>
 <p>In a growing organization, each new team ends up deciding
 individually how to build its own pipeline, how to configure logs and
@@ -4484,6 +4528,10 @@ one — most successful platform programs start with a portal and templates
 observability as the program matures and earns team trust.</p>
 
 <h3>3. Backstage: the portal that became the industry reference</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-backstage-en.gif" alt="Backstage">
+<figcaption>The template carries the standard. The team does not copy an old YAML from another repository.</figcaption>
+</figure>
 <p>Backstage is open-source, created by Spotify in 2020 and now hosted
 by the CNCF, with plugins covering practically every common engineering
 tool — Kubernetes, GitHub, GitLab, Datadog, Sentry, PagerDuty,
@@ -4893,8 +4941,8 @@ is the pattern that consistently works in documented success cases.</p>"""
                 "body": (
                 """<h3>1. Política como código: a mesma regra, aplicada em cinco pontos diferentes do ciclo</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-policy.jpg" alt="Um carimbo fechando uma corrente na frente de uma porta">
-<figcaption>Política como código é a mesma regra, aplicada na porta, antes do que não deve passar.</figcaption>
+<img src="/static/img/lessons/d-policy.gif" alt="A mesma regra">
+<figcaption>Uma regra, quatro portas. O que o PR barra não precisa ser redescoberto no cluster.</figcaption>
 </figure>
 <p>Regra de negócio, segurança ou compliance escrita numa linguagem
 VERSIONADA (Rego, YAML) muda de natureza: passa a ser revisável em PR
@@ -4964,6 +5012,10 @@ também o que exige uma virada de chave mental de quem vem de linguagem
 imperativa tradicional.</p>
 
 <h3>3. Conftest: a mesma engine OPA, aplicada fora do Kubernetes</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-conftest.gif" alt="Conftest">
+<figcaption>A mesma engine do OPA roda no CI, em cima do arquivo, antes de existir um cluster.</figcaption>
+</figure>
 <p>Conftest roda OPA contra QUALQUER arquivo de configuração estruturado
 — plano do Terraform, manifesto Kubernetes, Dockerfile, JSON, YAML,
 INI — sem exigir um cluster ou admission controller no meio:</p>
@@ -5225,8 +5277,8 @@ exatamente para esse cenário.</li>
                 "body_en": (
                 """<h3>1. Policy as code: the same rule, applied at five different points in the cycle</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-policy.jpg" alt="A stamp closing a chain across a doorway">
-<figcaption>Policy as code is the same rule, applied at the door, before what should not pass gets through.</figcaption>
+<img src="/static/img/lessons/d-policy-en.gif" alt="The same rule">
+<figcaption>One rule, four doors. What the PR blocks does not have to be rediscovered on the cluster.</figcaption>
 </figure>
 <p>A business, security, or compliance rule written in a VERSIONED
 language (Rego, YAML) changes nature: it becomes reviewable in a PR
@@ -5295,6 +5347,10 @@ powerful for complex policies, but also what requires a mental shift for
 anyone coming from a traditional imperative language.</p>
 
 <h3>3. Conftest: the same OPA engine, applied outside Kubernetes</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-conftest-en.gif" alt="Conftest">
+<figcaption>The same OPA engine runs in CI, on the file, before a cluster exists.</figcaption>
+</figure>
 <p>Conftest runs OPA against ANY structured configuration file —
 Terraform plan, Kubernetes manifest, Dockerfile, JSON, YAML,
 INI — without requiring a cluster or admission controller in between:</p>
@@ -5727,8 +5783,8 @@ exactly for that scenario.</li>
                 "body": (
                 """<h3>1. Quatro abordagens de teste, e por que nenhuma sozinha basta</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-dast.jpg" alt="Loja acesa vista da calçada, com uma lanterna na porta">
-<figcaption>DAST testa o que já está rodando, por fora, como quem está na calçada.</figcaption>
+<img src="/static/img/lessons/d-dast.gif" alt="Quatro testes">
+<figcaption>DAST é a caixa do meio-fim: o app já está de pé e o teste vem de fora.</figcaption>
 </figure>
 <table>
 <tr><th>Abordagem</th><th>Acesso</th><th>Foco</th><th>Limitação</th></tr>
@@ -5805,6 +5861,10 @@ contexto de autenticação explícito:</p>
 &lt;/context&gt;</code></pre>
 
 <h3>3. Burp Suite: o padrão que pentester profissional usa todo dia</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-burp.gif" alt="Burp no fluxo">
+<figcaption>O proxy vê e altera o pedido antes da aplicação. É o teste de fora, pedido a pedido.</figcaption>
+</figure>
 <p>Comercial (na versão Pro), Burp Suite combina um proxy interativo com
 um scanner automatizado, e é o padrão de fato entre pentesters
 profissionais. O <strong>Proxy</strong> intercepta cada requisição saindo
@@ -6013,8 +6073,8 @@ enxerga uma fatia diferente do problema (seção 1).</li>
                 "body_en": (
                 """<h3>1. Four testing approaches, and why none alone is enough</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-dast.jpg" alt="A lit shop seen from the sidewalk, a flashlight on the door">
-<figcaption>DAST tests what is already running, from the outside, like someone standing on the sidewalk.</figcaption>
+<img src="/static/img/lessons/d-dast-en.gif" alt="Four tests">
+<figcaption>DAST is the later box: the app is already up and the test comes from outside.</figcaption>
 </figure>
 <table>
 <tr><th>Abordagem</th><th>Acesso</th><th>Foco</th><th>Limitação</th></tr>
@@ -6081,6 +6141,10 @@ explicit authentication context:</p>
 &lt;/context&gt;</code></pre>
 
 <h3>3. Burp Suite: the standard professional pentesters use every day</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-burp-en.gif" alt="Burp in the flow">
+<figcaption>The proxy sees and changes the request before the application. It is the outside test, request by request.</figcaption>
+</figure>
 <p>Commercial (in the Pro version), Burp Suite combines an interactive
 proxy with an automated scanner, and is the de facto standard among
 professional pentesters. The <strong>Proxy</strong> intercepts every
@@ -6447,8 +6511,8 @@ sees a different slice of the problem (section 1).</li>
                 "body": (
                 """<h3>1. Autenticação: provar quem está chamando, sem reinventar criptografia</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-api.jpg" alt="Uma parede fechada com uma única portinhola e uma bandeja passando">
-<figcaption>A API é a portinhola. Autenticar é saber quem está do outro lado antes de entregar a bandeja.</figcaption>
+<img src="/static/img/lessons/d-api-auth.gif" alt="Quem chama">
+<figcaption>Autenticar é provar quem chama. O handler não inventa criptografia; ele recebe o principal.</figcaption>
 </figure>
 <p>OAuth 2.0 é um framework de AUTORIZAÇÃO — um token bearer carregando
 escopos específicos do que o portador pode fazer — enquanto o OIDC
@@ -6569,6 +6633,10 @@ allow {
 }</code></pre>
 
 <h3>3. Validação de schema: deixar o framework rejeitar o que nunca deveria chegar ao seu código</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-api-schema.gif" alt="Schema na porta">
+<figcaption>O que não cabe no schema não chega na regra de negócio.</figcaption>
+</figure>
 <p>Definir a API formalmente via OpenAPI 3.x ou schema GraphQL, e deixar
 o framework validar automaticamente contra essa definição, elimina uma
 classe inteira de bug de validação manual esquecida:</p>
@@ -6841,8 +6909,8 @@ configuração incorreta ainda consegue contornar.</li>
                 "body_en": (
                 """<h3>1. Authentication: proving who is calling, without reinventing cryptography</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-api.jpg" alt="A closed wall with a single hatch and a tray passing through">
-<figcaption>The API is the hatch. Authentication is knowing who is on the other side before you hand over the tray.</figcaption>
+<img src="/static/img/lessons/d-api-auth-en.gif" alt="Who is calling">
+<figcaption>Authentication proves who is calling. The handler does not invent cryptography; it receives the principal.</figcaption>
 </figure>
 <p>OAuth 2.0 is an AUTHORIZATION framework — a bearer token carrying
 specific scopes of what the bearer can do — while OIDC adds an IDENTITY
@@ -6924,6 +6992,10 @@ allow {
 }</code></pre>
 
 <h3>3. Schema validation: let the framework reject what should never reach your code</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-api-schema-en.gif" alt="Schema at the door">
+<figcaption>What does not fit the schema never reaches the business rule.</figcaption>
+</figure>
 <p>Defining the API formally via OpenAPI 3.x or a GraphQL schema, and
 letting the framework validate automatically against that definition,
 eliminates an entire class of forgotten manual validation bugs:</p>
@@ -7329,8 +7401,8 @@ configuration can still work around.</li>
                 "body": (
                 """<h3>1. Pilhas comuns: cada uma resolve o mesmo problema com um trade-off diferente</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-centrallogs.jpg" alt="Vários filetes de água caindo na mesma bacia">
-<figcaption>Log centralizado é esta bacia. Cada serviço manda o seu filete; a investigação bebe de um lugar só.</figcaption>
+<img src="/static/img/lessons/d-logs.gif" alt="Da app ao backend">
+<figcaption>Cada pilha troca o agente e o backend. O caminho é o mesmo: sair da app e parar num lugar só.</figcaption>
 </figure>
 <table>
 <tr><th>Stack</th><th>Componentes</th><th>Notas</th></tr>
@@ -7405,6 +7477,10 @@ log.info('order_placed', user_id=user.id_hash, order_id=order.id, amount=99.50)
 # {"event":"order_placed","timestamp":"...","level":"info",...}</code></pre>
 
 <h3>3. Coleta: da aplicação ao backend, passando por um agente dedicado</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-logs-agent.gif" alt="Coleta">
+<figcaption>A app não fala com o índice. O agente e a fila seguram o volume.</figcaption>
+</figure>
 <p>Seguindo o princípio 12-factor (aula de Docker Fundamentals), a
 aplicação escreve em stdout, e é responsabilidade de um COLETOR separado
 (rodando como DaemonSet em Kubernetes, ou agente no host) ler esse
@@ -7621,8 +7697,8 @@ de API Security.</li>
                 "body_en": (
                 """<h3>1. Common stacks: each solves the same problem with a different trade-off</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-centrallogs.jpg" alt="Several thin streams of water falling into the same basin">
-<figcaption>Centralized logging is this basin. Each service sends its stream; the investigation drinks from one place.</figcaption>
+<img src="/static/img/lessons/d-logs-en.gif" alt="From app to backend">
+<figcaption>Each stack swaps the agent and the backend. The path is the same: leave the app and stop in one place.</figcaption>
 </figure>
 <table>
 <tr><th>Stack</th><th>Componentes</th><th>Notas</th></tr>
@@ -7685,6 +7761,10 @@ log.info('order_placed', user_id=user.id_hash, order_id=order.id, amount=99.50)
 # {"event":"order_placed","timestamp":"...","level":"info",...}</code></pre>
 
 <h3>3. Collection: from the application to the backend, through a dedicated agent</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-logs-agent-en.gif" alt="Collection">
+<figcaption>The app does not talk to the index. The agent and the queue hold the volume.</figcaption>
+</figure>
 <p>Following the 12-factor principle (Docker Fundamentals lesson), the
 application writes to stdout, and it is the responsibility of a separate
 COLLECTOR (running as a DaemonSet in Kubernetes, or an agent on the host)

@@ -42,8 +42,8 @@ PHASE1 = {
                 "body": (
                 """<h3>1. Filosofia: tudo é arquivo</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-linux.jpg" alt="Gaveta aberta com pasta, disco e cabo de rede misturados">
-<figcaption>No Linux, disco, processo e rede aparecem do mesmo jeito: como arquivo.</figcaption>
+<img src="/static/img/lessons/d-linux-files.gif" alt="Tudo é arquivo">
+<figcaption>O processo não abre um disco ou a rede. Ele abre um arquivo, e o kernel traduz.</figcaption>
 </figure>
 <p>O lema clássico do Unix se aplica integralmente no Linux: tudo é
 representado como arquivo — disco (<code>/dev/sda</code>), socket de
@@ -95,6 +95,10 @@ esperado; vazar <code>/etc/shadow</code> para outro usuário já é
 incidente de segurança propriamente dito.</p>
 
 <h3>3. Permissões clássicas: o modelo rwx</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-linux-rwx.gif" alt="Permissão rwx">
+<figcaption>Cada arquivo carrega três trincas. O acesso efetivo é a trinca que descreve você.</figcaption>
+</figure>
 <p>Todo arquivo carrega dono, grupo, e três classes de permissão
 (user, group, other), cada uma com três bits (<code>r</code>=4,
 <code>w</code>=2, <code>x</code>=1) representáveis em octal:</p>
@@ -284,8 +288,8 @@ algo comprometido antes mesmo de investigar mais a fundo.</p>"""
                 "body_en": (
                 """<h3>1. Philosophy: everything is a file</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-linux.jpg" alt="An open drawer mixing a folder, a disk, and a network cable">
-<figcaption>On Linux, disk, process, and network show up the same way: as files.</figcaption>
+<img src="/static/img/lessons/d-linux-files-en.gif" alt="Everything is a file">
+<figcaption>The process does not open a disk or the network. It opens a file, and the kernel translates.</figcaption>
 </figure>
 <p>Unix's classic motto applies fully to Linux: everything is
 represented as a file — disk (<code>/dev/sda</code>), network
@@ -337,6 +341,10 @@ and expected; leaking <code>/etc/shadow</code> to another user is
 already a security incident in its own right.</p>
 
 <h3>3. Classic permissions: the rwx model</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-linux-rwx-en.gif" alt="rwx permission">
+<figcaption>Every file carries three triples. The access you get is the triple that describes you.</figcaption>
+</figure>
 <p>Every file carries an owner, a group, and three permission
 classes (user, group, other), each with three bits (<code>r</code>=4,
 <code>w</code>=2, <code>x</code>=1) representable in octal:</p>
@@ -771,8 +779,8 @@ dig further.</p>"""
                 "body": (
                 """<h3>1. As quatro camadas que importam (modelo TCP/IP)</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-tcp.jpg" alt="Quatro caixas de vidro, uma dentro da outra">
-<figcaption>Cada caixa é uma camada. O pacote nasce na de dentro e atravessa as de fora.</figcaption>
+<img src="/static/img/lessons/d-tcp-layers.gif" alt="Quatro camadas">
+<figcaption>O pacote desce a pilha na origem e sobe na chegada. Cada camada só fala com a vizinha.</figcaption>
 </figure><p>Esqueça as 7 camadas do OSI por enquanto. O modelo prático é o TCP/IP de quatro camadas:</p>
 <div class="mermaid">
 flowchart TB
@@ -785,7 +793,11 @@ flowchart TB
 192.168.0.0/16   # 65k endereços (privada, RFC 1918)
 169.254.0.0/16   # link-local (auto-configurado)
 127.0.0.0/8      # loopback
-0.0.0.0/0        # 'qualquer' (rota default, bind em todas as interfaces)</code></pre><p>O número após a barra é a <em>máscara</em> de rede em bits. <code>/24</code> = 256 endereços; <code>/16</code> = 65 536; <code>/8</code> = 16 milhões. Em cada bloco, dois endereços não são utilizáveis (rede e broadcast), então <code>/24</code> dá 254 hosts.</p><h3>3. TCP vs UDP, quando usar cada um</h3><p>TCP estabelece conexão com <strong>three-way handshake</strong> (SYN → SYN-ACK → ACK), depois transmite dados garantindo:</p><ul><li>Ordem (numera segmentos);</li><li>Entrega (retransmite o que perde);</li><li>Controle de fluxo (ajusta a janela de envio à capacidade do receptor);</li><li>Controle de congestão (ajusta-se à rede, Reno, Cubic, BBR).</li></ul><p>Tudo isso tem custo: handshake cobra um RTT antes do primeiro byte útil e o head-of-line blocking faz uma perda travar todo o stream. Por isso <strong>HTTP/3</strong> abandonou TCP e foi para QUIC sobre UDP.</p><p>UDP é stateless: só envia o datagrama. Sem retransmissão, sem ordem. Use quando latência &gt; confiabilidade: DNS, voz/vídeo em tempo real, QUIC, WireGuard, jogos online.</p><h3>4. Portas: quem fala com quem</h3><p>Portas são números de 16 bits que multiplexam serviços em um mesmo IP:</p><ul><li><strong>0-1023</strong>, <em>well-known</em>. Bind precisa de root (ou <code>CAP_NET_BIND_SERVICE</code>). HTTP=80, HTTPS=443, SSH=22, DNS=53, SMTP=25.</li><li><strong>1024-49151</strong>, registradas. PostgreSQL=5432, MySQL=3306, Redis=6379, MongoDB=27017.</li><li><strong>49152-65535</strong>, efêmeras. O kernel tira daqui a porta de origem de cada conexão de saída.</li></ul><p>A exaustão de portas efêmeras é uma das causas mais sub-diagnosticadas de outage: load balancer fechando conexão por timeout enquanto a <code>net.ipv4.ip_local_port_range</code> está em default.</p><h3>5. DNS, o telefone da internet (e o melhor lugar pra causar outage)</h3><p>DNS resolve nomes em IPs com cache em vários níveis: resolver da app, stub do SO (<code>/etc/nsswitch</code> + <code>systemd-resolved</code>), resolver do ISP/cloud, autoritativos. Tipos de registro essenciais:</p>
+0.0.0.0/0        # 'qualquer' (rota default, bind em todas as interfaces)</code></pre><p>O número após a barra é a <em>máscara</em> de rede em bits. <code>/24</code> = 256 endereços; <code>/16</code> = 65 536; <code>/8</code> = 16 milhões. Em cada bloco, dois endereços não são utilizáveis (rede e broadcast), então <code>/24</code> dá 254 hosts.</p><h3>3. TCP vs UDP, quando usar cada um</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-tcp-handshake.gif" alt="Aperto de mão TCP">
+<figcaption>TCP confirma os dois lados antes de entregar byte. UDP não faz esse ciclo.</figcaption>
+</figure><p>TCP estabelece conexão com <strong>three-way handshake</strong> (SYN → SYN-ACK → ACK), depois transmite dados garantindo:</p><ul><li>Ordem (numera segmentos);</li><li>Entrega (retransmite o que perde);</li><li>Controle de fluxo (ajusta a janela de envio à capacidade do receptor);</li><li>Controle de congestão (ajusta-se à rede, Reno, Cubic, BBR).</li></ul><p>Tudo isso tem custo: handshake cobra um RTT antes do primeiro byte útil e o head-of-line blocking faz uma perda travar todo o stream. Por isso <strong>HTTP/3</strong> abandonou TCP e foi para QUIC sobre UDP.</p><p>UDP é stateless: só envia o datagrama. Sem retransmissão, sem ordem. Use quando latência &gt; confiabilidade: DNS, voz/vídeo em tempo real, QUIC, WireGuard, jogos online.</p><h3>4. Portas: quem fala com quem</h3><p>Portas são números de 16 bits que multiplexam serviços em um mesmo IP:</p><ul><li><strong>0-1023</strong>, <em>well-known</em>. Bind precisa de root (ou <code>CAP_NET_BIND_SERVICE</code>). HTTP=80, HTTPS=443, SSH=22, DNS=53, SMTP=25.</li><li><strong>1024-49151</strong>, registradas. PostgreSQL=5432, MySQL=3306, Redis=6379, MongoDB=27017.</li><li><strong>49152-65535</strong>, efêmeras. O kernel tira daqui a porta de origem de cada conexão de saída.</li></ul><p>A exaustão de portas efêmeras é uma das causas mais sub-diagnosticadas de outage: load balancer fechando conexão por timeout enquanto a <code>net.ipv4.ip_local_port_range</code> está em default.</p><h3>5. DNS, o telefone da internet (e o melhor lugar pra causar outage)</h3><p>DNS resolve nomes em IPs com cache em vários níveis: resolver da app, stub do SO (<code>/etc/nsswitch</code> + <code>systemd-resolved</code>), resolver do ISP/cloud, autoritativos. Tipos de registro essenciais:</p>
 <div class="mermaid">
 sequenceDiagram
     participant C as Cliente
@@ -847,8 +859,8 @@ iperf3 -c host                              # banda</code></pre><h3>7. Anatomia 
                 "body_en": (
                 """<h3>1. The four layers that matter (TCP/IP model)</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-tcp.jpg" alt="Four glass boxes, one inside the other">
-<figcaption>Each box is a layer. The packet starts in the inner one and passes through the outer ones.</figcaption>
+<img src="/static/img/lessons/d-tcp-layers-en.gif" alt="Four layers">
+<figcaption>The packet goes down the stack at the source and up at the destination. Each layer only talks to its neighbor.</figcaption>
 </figure><p>Forget the 7 OSI layers for now. The practical model is the four-layer TCP/IP:</p>
 <div class="mermaid">
 flowchart TB
@@ -861,7 +873,11 @@ flowchart TB
 192.168.0.0/16   # 65k endereços (privada, RFC 1918)
 169.254.0.0/16   # link-local (auto-configurado)
 127.0.0.0/8      # loopback
-0.0.0.0/0        # 'qualquer' (rota default, bind em todas as interfaces)</code></pre><p>The number after the slash is the network <em>mask</em> in bits. <code>/24</code> = 256 addresses; <code>/16</code> = 65,536; <code>/8</code> = 16 million. In each block, two addresses aren't usable (network and broadcast), so <code>/24</code> gives you 254 hosts.</p><h3>3. TCP vs UDP, when to use each</h3><p>TCP establishes a connection with a <strong>three-way handshake</strong> (SYN → SYN-ACK → ACK), then transmits data guaranteeing:</p><ul><li>Order (numbers segments);</li><li>Delivery (retransmits what's lost);</li><li>Flow control (adjusts the send window to the receiver's capacity);</li><li>Congestion control (adapts to the network, Reno, Cubic, BBR).</li></ul><p>All of this has a cost: the handshake charges one RTT before the first useful byte, and head-of-line blocking makes a single loss stall the whole stream. That's why <strong>HTTP/3</strong> abandoned TCP and moved to QUIC over UDP.</p><p>UDP is stateless: it just sends the datagram. No retransmission, no order. Use it when latency &gt; reliability: DNS, real-time voice/video, QUIC, WireGuard, online games.</p><h3>4. Ports: who talks to whom</h3><p>Ports are 16-bit numbers that multiplex services on the same IP:</p><ul><li><strong>0-1023</strong>, <em>well-known</em>. Binding requires root (or <code>CAP_NET_BIND_SERVICE</code>). HTTP=80, HTTPS=443, SSH=22, DNS=53, SMTP=25.</li><li><strong>1024-49151</strong>, registered. PostgreSQL=5432, MySQL=3306, Redis=6379, MongoDB=27017.</li><li><strong>49152-65535</strong>, ephemeral. The kernel picks the source port for each outgoing connection from here.</li></ul><p>Ephemeral port exhaustion is one of the most under-diagnosed causes of outages: the load balancer closing connections on timeout while <code>net.ipv4.ip_local_port_range</code> is left at default.</p><h3>5. DNS, the internet's phone book (and the best place to cause an outage)</h3><p>DNS resolves names into IPs with caching at several levels: the app's resolver, the OS stub (<code>/etc/nsswitch</code> + <code>systemd-resolved</code>), the ISP/cloud resolver, the authoritatives. Essential record types:</p>
+0.0.0.0/0        # 'qualquer' (rota default, bind em todas as interfaces)</code></pre><p>The number after the slash is the network <em>mask</em> in bits. <code>/24</code> = 256 addresses; <code>/16</code> = 65,536; <code>/8</code> = 16 million. In each block, two addresses aren't usable (network and broadcast), so <code>/24</code> gives you 254 hosts.</p><h3>3. TCP vs UDP, when to use each</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-tcp-handshake-en.gif" alt="TCP handshake">
+<figcaption>TCP confirms both sides before delivering a byte. UDP does not run this cycle.</figcaption>
+</figure><p>TCP establishes a connection with a <strong>three-way handshake</strong> (SYN → SYN-ACK → ACK), then transmits data guaranteeing:</p><ul><li>Order (numbers segments);</li><li>Delivery (retransmits what's lost);</li><li>Flow control (adjusts the send window to the receiver's capacity);</li><li>Congestion control (adapts to the network, Reno, Cubic, BBR).</li></ul><p>All of this has a cost: the handshake charges one RTT before the first useful byte, and head-of-line blocking makes a single loss stall the whole stream. That's why <strong>HTTP/3</strong> abandoned TCP and moved to QUIC over UDP.</p><p>UDP is stateless: it just sends the datagram. No retransmission, no order. Use it when latency &gt; reliability: DNS, real-time voice/video, QUIC, WireGuard, online games.</p><h3>4. Ports: who talks to whom</h3><p>Ports are 16-bit numbers that multiplex services on the same IP:</p><ul><li><strong>0-1023</strong>, <em>well-known</em>. Binding requires root (or <code>CAP_NET_BIND_SERVICE</code>). HTTP=80, HTTPS=443, SSH=22, DNS=53, SMTP=25.</li><li><strong>1024-49151</strong>, registered. PostgreSQL=5432, MySQL=3306, Redis=6379, MongoDB=27017.</li><li><strong>49152-65535</strong>, ephemeral. The kernel picks the source port for each outgoing connection from here.</li></ul><p>Ephemeral port exhaustion is one of the most under-diagnosed causes of outages: the load balancer closing connections on timeout while <code>net.ipv4.ip_local_port_range</code> is left at default.</p><h3>5. DNS, the internet's phone book (and the best place to cause an outage)</h3><p>DNS resolves names into IPs with caching at several levels: the app's resolver, the OS stub (<code>/etc/nsswitch</code> + <code>systemd-resolved</code>), the ISP/cloud resolver, the authoritatives. Essential record types:</p>
 <div class="mermaid">
 sequenceDiagram
     participant C as Client
@@ -1154,8 +1170,8 @@ iperf3 -c host                              # banda</code></pre><h3>7. Anatomy o
                 "body": (
                 """<h3>1. Cabeçalho seguro: o 'unsafe at any speed' do bash</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-bash.jpg" alt="Dominós caindo, parados por um bloco vermelho">
-<figcaption>O script segue em sequência. O cabeçalho seguro é esse bloco: sem ele, o erro não interrompe a queda.</figcaption>
+<img src="/static/img/lessons/d-bash-header.gif" alt="Cabeçalho seguro">
+<figcaption>Sem o cabeçalho, o erro vira passo seguinte. Com ele, a falha interrompe o script.</figcaption>
 </figure>
 <p>Todo script sério começa com a mesma combinação de três configurações:</p>
 <div class="mermaid">
@@ -1210,6 +1226,10 @@ no raro caso em que word-splitting é exatamente o comportamento
 desejado.</p>
 
 <h3>3. Estruturas de controle modernas</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-bash-flow.gif" alt="Controle de fluxo">
+<figcaption>O script deixa de ser uma lista cega: cada estrutura decide se o próximo comando roda.</figcaption>
+</figure>
 <p><code>[[ ... ]]</code> deveria ser preferido a <code>[ ... ]</code>
 sempre que possível — suporta regex nativamente, operadores compostos, e
 não carrega as armadilhas clássicas de <code>[ ]</code> com string
@@ -1399,8 +1419,8 @@ checar manualmente em cada script novo.</p>"""
                 "body_en": (
                 """<h3>1. Safe header: bash's 'unsafe at any speed'</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-bash.jpg" alt="Dominoes falling, stopped by a red block">
-<figcaption>The script runs in sequence. The safe header is that block: without it, an error does not stop the fall.</figcaption>
+<img src="/static/img/lessons/d-bash-header-en.gif" alt="Safe header">
+<figcaption>Without the header, an error becomes the next step. With it, the failure stops the script.</figcaption>
 </figure>
 <p>Every serious script starts with the same combination of three settings:</p>
 <div class="mermaid">
@@ -1455,6 +1475,10 @@ expansion, except in the rare case where word-splitting is exactly
 the desired behavior.</p>
 
 <h3>3. Modern control structures</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-bash-flow-en.gif" alt="Control flow">
+<figcaption>The script stops being a blind list: each structure decides whether the next command runs.</figcaption>
+</figure>
 <p><code>[[ ... ]]</code> should be preferred over <code>[ ... ]</code>
 whenever possible — it natively supports regex, compound operators,
 and doesn't carry the classic pitfalls of <code>[ ]</code> with an
@@ -1888,8 +1912,8 @@ check manually in every new script.</p>"""
                 "body": (
                 """<h3>1. Modelo mental de criptografia assimétrica</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-ssh.jpg" alt="Uma chave trancada numa caixa de vidro e cópias soltas do lado de fora">
-<figcaption>A privada não sai do dono. A pública pode ser copiada e entregue ao servidor.</figcaption>
+<img src="/static/img/lessons/d-ssh-flow.gif" alt="SSH com chave">
+<figcaption>A privada assina e não sai da máquina. A pública no servidor só confere. O tráfego depois é simétrico.</figcaption>
 </figure><p>Cada lado tem um par de chaves matemáticamente ligadas:</p>
 <div class="mermaid">
 flowchart LR
@@ -1898,7 +1922,11 @@ flowchart LR
     Client -->|"assina desafio"| Server
     Server -->|"verifica assinatura"| OK["Acesso"]
 </div>
-<ul><li>A <strong>chave privada</strong> nunca sai do dono. É secreta.</li><li>A <strong>chave pública</strong> pode ser distribuída livremente.</li></ul><p>O que uma cripta, a outra decifra (e vice-versa). Em SSH:</p><ol><li>Cliente prova posse da privada assinando um desafio enviado pelo servidor.</li><li>Servidor verifica a assinatura com a pública (que está em <code>~/.ssh/authorized_keys</code> do usuário).</li><li>Após autenticação, ambos derivam chaves <strong>simétricas</strong> (AES, ChaCha20) para criptografar a sessão, assimétrico só é usado para estabelecer a sessão, não para o tráfego em si (seria lento demais).</li></ol><p>O servidor também tem seu par: a chave pública do servidor (host key) vai para o seu <code>~/.ssh/known_hosts</code> na primeira conexão. Se na próxima vez for diferente, o cliente <em>recusa</em> com <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, pode ser MITM ou rebuild legítimo do servidor.</p><h3>2. Gerando chaves modernas, Ed25519</h3><p>Em 2025+ o padrão é <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: curva elíptica moderna; chave pública de ~68 bytes.</li><li><code>-a 100</code>: 100 rounds de KDF para a passphrase (mais lento para força bruta).</li><li><code>-C</code>: comentário (apenas marcador, usado para identificar a chave em <code>authorized_keys</code>).</li></ul><p>Sempre proteja com passphrase. Sem ela, qualquer um que tenha acesso ao seu disco tem acesso a todos os seus servidores.</p><p>RSA-2048 está sendo aposentado; se precisar de RSA por compatibilidade, use ≥ 3072 bits. ECDSA tem ressalvas (NIST curves), prefira Ed25519.</p><h3>3. ssh-agent: digitar passphrase uma vez por sessão</h3><pre><code>eval $(ssh-agent -s)
+<ul><li>A <strong>chave privada</strong> nunca sai do dono. É secreta.</li><li>A <strong>chave pública</strong> pode ser distribuída livremente.</li></ul><p>O que uma cripta, a outra decifra (e vice-versa). Em SSH:</p><ol><li>Cliente prova posse da privada assinando um desafio enviado pelo servidor.</li><li>Servidor verifica a assinatura com a pública (que está em <code>~/.ssh/authorized_keys</code> do usuário).</li><li>Após autenticação, ambos derivam chaves <strong>simétricas</strong> (AES, ChaCha20) para criptografar a sessão, assimétrico só é usado para estabelecer a sessão, não para o tráfego em si (seria lento demais).</li></ol><p>O servidor também tem seu par: a chave pública do servidor (host key) vai para o seu <code>~/.ssh/known_hosts</code> na primeira conexão. Se na próxima vez for diferente, o cliente <em>recusa</em> com <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, pode ser MITM ou rebuild legítimo do servidor.</p><h3>2. Gerando chaves modernas, Ed25519</h3><p>Em 2025+ o padrão é <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: curva elíptica moderna; chave pública de ~68 bytes.</li><li><code>-a 100</code>: 100 rounds de KDF para a passphrase (mais lento para força bruta).</li><li><code>-C</code>: comentário (apenas marcador, usado para identificar a chave em <code>authorized_keys</code>).</li></ul><p>Sempre proteja com passphrase. Sem ela, qualquer um que tenha acesso ao seu disco tem acesso a todos os seus servidores.</p><p>RSA-2048 está sendo aposentado; se precisar de RSA por compatibilidade, use ≥ 3072 bits. ECDSA tem ressalvas (NIST curves), prefira Ed25519.</p><h3>3. ssh-agent: digitar passphrase uma vez por sessão</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-ssh-agent.gif" alt="ssh-agent">
+<figcaption>A passphrase abre a chave uma vez. O agent segura a chave aberta pelo tempo que você mandou.</figcaption>
+</figure><pre><code>eval $(ssh-agent -s)
 ssh-add -t 4h ~/.ssh/id_ed25519     # libera por 4 horas
 ssh-add -l                           # lista chaves carregadas
 ssh-add -D                           # remove todas (logout)</code></pre><p>O agent guarda a chave decifrada em memória e fala com o cliente SSH via socket Unix (<code>$SSH_AUTH_SOCK</code>). Em desktops modernos (macOS, GNOME), há agents nativos integrados.</p><p><strong>Cuidado com agent forwarding</strong> (<code>ssh -A host</code>): o servidor de destino pode usar suas chaves para se conectar a outros lugares enquanto a sessão estiver aberta. Se ele estiver comprometido, vira pivô. Use <code>ProxyJump</code> em vez de <code>-A</code> sempre que possível:</p><pre><code>ssh -J bastion.example.com app-01.internal</code></pre><h3>4. ~/.ssh/config, configuração que economiza horas</h3><pre><code># ~/.ssh/config
@@ -1977,8 +2005,8 @@ chown -R $USER:$USER ~/.ssh</code></pre><p>Se algo está mais aberto que isso, o
                 "body_en": (
                 """<h3>1. Mental model of asymmetric cryptography</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-ssh.jpg" alt="One key locked in a glass box, and copies lying outside">
-<figcaption>The private key never leaves its owner. The public key can be copied and given to the server.</figcaption>
+<img src="/static/img/lessons/d-ssh-flow-en.gif" alt="SSH with a key">
+<figcaption>The private key signs and never leaves the machine. The public key on the server only verifies. Traffic after that is symmetric.</figcaption>
 </figure><p>Each side has a pair of mathematically linked keys:</p>
 <div class="mermaid">
 flowchart LR
@@ -1987,7 +2015,11 @@ flowchart LR
     Client -->|"signs challenge"| Server
     Server -->|"verifies signature"| OK["Access"]
 </div>
-<ul><li>The <strong>private key</strong> never leaves its owner. It's secret.</li><li>The <strong>public key</strong> can be freely distributed.</li></ul><p>What one encrypts, the other decrypts (and vice versa). In SSH:</p><ol><li>The client proves possession of the private key by signing a challenge sent by the server.</li><li>The server verifies the signature with the public key (which is in the user's <code>~/.ssh/authorized_keys</code>).</li><li>After authentication, both sides derive <strong>symmetric</strong> keys (AES, ChaCha20) to encrypt the session, asymmetric crypto is only used to establish the session, not for the traffic itself (it would be too slow).</li></ol><p>The server also has its own pair: the server's public key (host key) goes into your <code>~/.ssh/known_hosts</code> on first connection. If next time it's different, the client <em>refuses</em> with <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, it could be a MITM or a legitimate server rebuild.</p><h3>2. Generating modern keys, Ed25519</h3><p>In 2025+ the standard is <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: modern elliptic curve; public key of ~68 bytes.</li><li><code>-a 100</code>: 100 rounds of KDF for the passphrase (slower against brute force).</li><li><code>-C</code>: comment (just a marker, used to identify the key in <code>authorized_keys</code>).</li></ul><p>Always protect it with a passphrase. Without one, anyone with access to your disk has access to all your servers.</p><p>RSA-2048 is being retired; if you need RSA for compatibility, use ≥ 3072 bits. ECDSA has caveats (NIST curves), prefer Ed25519.</p><h3>3. ssh-agent: type the passphrase once per session</h3><pre><code>eval $(ssh-agent -s)
+<ul><li>The <strong>private key</strong> never leaves its owner. It's secret.</li><li>The <strong>public key</strong> can be freely distributed.</li></ul><p>What one encrypts, the other decrypts (and vice versa). In SSH:</p><ol><li>The client proves possession of the private key by signing a challenge sent by the server.</li><li>The server verifies the signature with the public key (which is in the user's <code>~/.ssh/authorized_keys</code>).</li><li>After authentication, both sides derive <strong>symmetric</strong> keys (AES, ChaCha20) to encrypt the session, asymmetric crypto is only used to establish the session, not for the traffic itself (it would be too slow).</li></ol><p>The server also has its own pair: the server's public key (host key) goes into your <code>~/.ssh/known_hosts</code> on first connection. If next time it's different, the client <em>refuses</em> with <code>WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED</code>, it could be a MITM or a legitimate server rebuild.</p><h3>2. Generating modern keys, Ed25519</h3><p>In 2025+ the standard is <strong>Ed25519</strong>:</p><pre><code>ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C 'meu@email.com'</code></pre><ul><li><code>-t ed25519</code>: modern elliptic curve; public key of ~68 bytes.</li><li><code>-a 100</code>: 100 rounds of KDF for the passphrase (slower against brute force).</li><li><code>-C</code>: comment (just a marker, used to identify the key in <code>authorized_keys</code>).</li></ul><p>Always protect it with a passphrase. Without one, anyone with access to your disk has access to all your servers.</p><p>RSA-2048 is being retired; if you need RSA for compatibility, use ≥ 3072 bits. ECDSA has caveats (NIST curves), prefer Ed25519.</p><h3>3. ssh-agent: type the passphrase once per session</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-ssh-agent-en.gif" alt="ssh-agent">
+<figcaption>The passphrase unlocks the key once. The agent holds the unlocked key for as long as you asked.</figcaption>
+</figure><pre><code>eval $(ssh-agent -s)
 ssh-add -t 4h ~/.ssh/id_ed25519     # libera por 4 horas
 ssh-add -l                           # lista chaves carregadas
 ssh-add -D                           # remove todas (logout)</code></pre><p>The agent holds the decrypted key in memory and talks to the SSH client over a Unix socket (<code>$SSH_AUTH_SOCK</code>). On modern desktops (macOS, GNOME), there are integrated native agents.</p><p><strong>Be careful with agent forwarding</strong> (<code>ssh -A host</code>): the destination server can use your keys to connect elsewhere while the session is open. If it's compromised, it becomes a pivot. Use <code>ProxyJump</code> instead of <code>-A</code> whenever possible:</p><pre><code>ssh -J bastion.example.com app-01.internal</code></pre><h3>4. ~/.ssh/config, configuration that saves hours</h3><pre><code># ~/.ssh/config
@@ -2317,8 +2349,8 @@ chown -R $USER:$USER ~/.ssh</code></pre><p>If anything is more open than that, s
                 "body": (
                 """<h3>1. Por que PoLP é fundamental</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-polp.jpg" alt="Uma chave só no chaveiro, e um molho enorme deixado de lado">
-<figcaption>Privilégio mínimo é carregar a chave da porta que você vai abrir, não o molho inteiro.</figcaption>
+<img src="/static/img/lessons/d-polp.gif" alt="Privilégio mínimo">
+<figcaption>O caminho certo tem uma permissão no meio, não um atalho de administrador até o recurso.</figcaption>
 </figure>
 <p>A forma mais útil de pensar em PoLP é como controle de
 <strong>blast radius</strong>: quanto se compromete no momento em que
@@ -2361,6 +2393,10 @@ usuário individualmente, sem afetar os demais serviços da mesma
 máquina.</p>
 
 <h3>3. systemd hardening: a camada que muita gente ignora</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-polp-systemd.gif" alt="Hardening do serviço">
+<figcaption>O serviço já nasce sem o que não usa. Cada diretiva fecha um lado: usuário, disco, rede.</figcaption>
+</figure>
 <p>Em <code>/etc/systemd/system/app.service</code>:</p>
 <pre><code>[Service]
 ExecStart=/opt/app/bin/server
@@ -2584,8 +2620,8 @@ resposta a incidente depois.</p>"""
                 "body_en": (
                 """<h3>1. Why PoLP is foundational</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-polp.jpg" alt="One key on a ring, a huge keyring set aside">
-<figcaption>Least privilege means carrying the key for the door you will open, not the whole ring.</figcaption>
+<img src="/static/img/lessons/d-polp-en.gif" alt="Least privilege">
+<figcaption>The right path has one permission in the middle, not an administrator shortcut to the resource.</figcaption>
 </figure>
 <p>The most useful way to think about PoLP is as
 <strong>blast radius</strong> control: how much is compromised the
@@ -2628,6 +2664,10 @@ resource limits (ulimit, cgroup) can be applied per user individually,
 without affecting the other services on the same machine.</p>
 
 <h3>3. systemd hardening: the layer many people ignore</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-polp-systemd-en.gif" alt="Service hardening">
+<figcaption>The service starts without what it does not use. Each directive closes one side: user, disk, network.</figcaption>
+</figure>
 <p>In <code>/etc/systemd/system/app.service</code>:</p>
 <pre><code>[Service]
 ExecStart=/opt/app/bin/server
@@ -3119,8 +3159,8 @@ incident response later.</p>
                 "body": (
                 """<h3>1. O subsystem netfilter</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-firewall.jpg" alt="Uma peneira: areia passou, pedras ficaram">
-<figcaption>O netfilter faz isso com pacotes. O que não cabe na regra não atravessa.</figcaption>
+<img src="/static/img/lessons/d-netfilter.gif" alt="Caminho do pacote">
+<figcaption>O firewall do Linux é este caminho dentro do kernel. A regra não casa, o pacote não segue.</figcaption>
 </figure>
 <p>O kernel Linux implementa um framework de filtro de pacotes chamado
 netfilter, com hook em cinco pontos distintos ao longo do caminho de
@@ -3167,6 +3207,10 @@ precisar entender hook nem chain. E o <strong>firewalld</strong>
 de "zonas" em vez de regra explícita direta.</p>
 
 <h3>3. UFW na prática</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-ufw.gif" alt="UFW">
+<figcaption>UFW só escreve regras no netfilter. Primeiro fecha, depois abre o que o serviço precisa.</figcaption>
+</figure>
 <pre><code># Estado / status
 ufw status verbose
 ufw status numbered
@@ -3352,8 +3396,8 @@ que exatamente ela serve hoje?".</li>
                 "body_en": (
                 """<h3>1. The netfilter subsystem</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-firewall.jpg" alt="A sieve: sand passed through, stones stayed">
-<figcaption>Netfilter does this to packets. What does not fit the rule does not get through.</figcaption>
+<img src="/static/img/lessons/d-netfilter-en.gif" alt="Packet path">
+<figcaption>The Linux firewall is this path inside the kernel. If the rule does not match, the packet does not continue.</figcaption>
 </figure>
 <p>The Linux kernel implements a packet-filtering framework called
 netfilter, with hooks at five distinct points along a packet's path
@@ -3399,6 +3443,10 @@ works without needing to understand hooks or chains. And
 model, organized around "zones" instead of direct explicit rules.</p>
 
 <h3>3. UFW in practice</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-ufw-en.gif" alt="UFW">
+<figcaption>UFW only writes rules into netfilter. First it closes, then it opens what the service needs.</figcaption>
+</figure>
 <pre><code># Estado / status
 ufw status verbose
 ufw status numbered
@@ -3838,8 +3886,8 @@ it serve today?".</li>
                 "body": (
                 """<h3>1. Por que ainda existe TLS termination na borda</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-tls.jpg" alt="Envelope lacrado de um lado da bandeja e carta aberta do outro">
-<figcaption>O TLS termina na borda. Lá dentro a aplicação recebe a carta já aberta.</figcaption>
+<img src="/static/img/lessons/d-tls-edge.gif" alt="TLS na borda">
+<figcaption>O certificado e o HTTP/2 ficam no proxy. A aplicação recebe o pedido já aberto.</figcaption>
 </figure>
 <p>Mesmo num ambiente com mTLS pleno dentro do mesh, o proxy de borda
 continua justificado por cinco razões concretas: certificado público
@@ -3932,6 +3980,10 @@ server {
 }</code></pre>
 
 <h3>3. Headers de segurança detalhados</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-headers.gif" alt="Headers de segurança">
+<figcaption>O header sai na borda, em toda resposta. A aplicação não precisa lembrar de um por um.</figcaption>
+</figure>
 <table>
 <tr><td><code>Strict-Transport-Security</code></td>
 <td>Browser vai usar HTTPS por X segundos sem nem tentar HTTP.</td></tr>
@@ -4129,8 +4181,8 @@ antes.</li>
                 "body_en": (
                 """<h3>1. Why TLS termination still exists at the edge</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-tls.jpg" alt="A sealed envelope on one side of the tray, an opened letter on the other">
-<figcaption>TLS ends at the edge. Inside, the application receives the letter already opened.</figcaption>
+<img src="/static/img/lessons/d-tls-edge-en.gif" alt="TLS at the edge">
+<figcaption>The certificate and HTTP/2 stay on the proxy. The application receives the request already opened.</figcaption>
 </figure>
 <p>Even in an environment with full mTLS inside the mesh, the edge
 proxy remains justified for five concrete reasons: a public certificate
@@ -4223,6 +4275,10 @@ server {
 }</code></pre>
 
 <h3>3. Security headers in detail</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-headers-en.gif" alt="Security headers">
+<figcaption>The header leaves at the edge, on every response. The application does not have to remember each one.</figcaption>
+</figure>
 <table>
 <tr><td><code>Strict-Transport-Security</code></td>
 <td>The browser will use HTTPS for X seconds without even trying HTTP.</td></tr>
@@ -4690,8 +4746,8 @@ before.</li>
                 "body": (
                 """<h3>1. Modelo de confiança em APT</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-apt.jpg" alt="Dois pacotes, um com lacre íntegro e outro com lacre quebrado">
-<figcaption>A confiança do APT é o lacre. Sem a assinatura certa, o pacote não deveria ser instalado.</figcaption>
+<img src="/static/img/lessons/d-apt.gif" alt="Confiança do APT">
+<figcaption>O pacote só instala se a assinatura do índice bater com a chave em que o sistema confia.</figcaption>
 </figure>
 <p>O processo de validação de pacote no APT segue quatro passos
 encadeados, cada um dependendo do anterior. O repositório publica um
@@ -4750,6 +4806,10 @@ sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/dock
 # /etc/yum.repos.d/docker-ce.repo precisa ter gpgcheck=1</code></pre>
 
 <h3>3. Pinning de versões em produção</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-pin.gif" alt="Pin de versão">
+<figcaption>O pin segura a versão que você testou. O upgrade deixa de ser uma roleta.</figcaption>
+</figure>
 <p>Rodar <code>apt upgrade</code> num pipeline de produção sem testar
 antes é uma aposta arriscada — o Nginx pode atualizar sozinho e a
 configuração que funcionava até ontem quebrar sem aviso. Três
@@ -4930,8 +4990,8 @@ manualmente.</li>
                 "body_en": (
                 """<h3>1. The APT trust model</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-apt.jpg" alt="Two parcels, one seal intact and one seal broken">
-<figcaption>APT's trust is the seal. Without the right signature, the package should not be installed.</figcaption>
+<img src="/static/img/lessons/d-apt-en.gif" alt="APT trust">
+<figcaption>The package installs only if the index signature matches the key the system trusts.</figcaption>
 </figure>
 <p>Package validation in APT follows four chained steps, each depending
 on the previous one. The repository publishes a <code>Release</code>
@@ -4990,6 +5050,10 @@ sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/dock
 # /etc/yum.repos.d/docker-ce.repo precisa ter gpgcheck=1</code></pre>
 
 <h3>3. Version pinning in production</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-pin-en.gif" alt="Version pin">
+<figcaption>The pin holds the version you tested. Upgrade stops being a gamble.</figcaption>
+</figure>
 <p>Running <code>apt upgrade</code> in a production pipeline without
 testing first is a risky bet — Nginx can update itself and a
 configuration that worked until yesterday can break without warning.
@@ -5451,8 +5515,8 @@ cycle running without depending on someone remembering manually.</li>
                 "body": (
                 """<h3>1. Logs do SO via systemd-journald</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-journal.jpg" alt="Um diário aberto, com as páginas em ordem">
-<figcaption>O journald é o diário desta máquina. O journalctl só folheia o que ela já anotou.</figcaption>
+<img src="/static/img/lessons/d-journal.gif" alt="journald">
+<figcaption>O serviço escreve no journal. O journalctl só consulta o que esta máquina já guardou.</figcaption>
 </figure><p>Distros modernas centralizam tudo no <code>journald</code>:</p>
 <div class="mermaid">
 flowchart LR
@@ -5495,7 +5559,11 @@ structlog.contextvars.bind_contextvars(
 log.info('user.login', method='password', mfa=True)
 # {"event":"user.login","method":"password","mfa":true,
 #  "request_id":"req-123","user_id":42,"level":"info",
-#  "timestamp":"2026-04-25T16:23:11.452123Z"}</code></pre><p>Equivalentes: <code>pino</code> (Node), <code>zap</code> (Go), <code>logback-json</code> (Java), <code>slog</code> (Go 1.21+).</p><h3>3. Correlation/trace ID, colando logs entre serviços</h3><p>Microservices têm um problema: o log de uma request fica espalhado em 5 serviços diferentes. Solução: propague um <strong>trace ID</strong> em todo request (header HTTP <code>traceparent</code>, padrão W3C). Cada serviço inclui esse ID em todo log que emite.</p><p>OpenTelemetry SDK faz isso transparentemente:</p><pre><code>from opentelemetry import trace
+#  "timestamp":"2026-04-25T16:23:11.452123Z"}</code></pre><p>Equivalentes: <code>pino</code> (Node), <code>zap</code> (Go), <code>logback-json</code> (Java), <code>slog</code> (Go 1.21+).</p><h3>3. Correlation/trace ID, colando logs entre serviços</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-trace-id.gif" alt="Um pedido, vários logs">
+<figcaption>O identificador cola as linhas. Sem ele, cada serviço conta uma história separada.</figcaption>
+</figure><p>Microservices têm um problema: o log de uma request fica espalhado em 5 serviços diferentes. Solução: propague um <strong>trace ID</strong> em todo request (header HTTP <code>traceparent</code>, padrão W3C). Cada serviço inclui esse ID em todo log que emite.</p><p>OpenTelemetry SDK faz isso transparentemente:</p><pre><code>from opentelemetry import trace
 from opentelemetry.instrumentation.django import DjangoInstrumentor
 DjangoInstrumentor().instrument()
 
@@ -5536,8 +5604,8 @@ flowchart LR
                 "body_en": (
                 """<h3>1. OS logs via systemd-journald</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-journal.jpg" alt="An open journal, pages in order">
-<figcaption>journald is this machine's journal. journalctl only turns pages the machine already wrote.</figcaption>
+<img src="/static/img/lessons/d-journal-en.gif" alt="journald">
+<figcaption>The service writes to the journal. journalctl only queries what this machine already stored.</figcaption>
 </figure><p>Modern distros centralize everything in <code>journald</code>:</p>
 <div class="mermaid">
 flowchart LR
@@ -5580,7 +5648,11 @@ structlog.contextvars.bind_contextvars(
 log.info('user.login', method='password', mfa=True)
 # {"event":"user.login","method":"password","mfa":true,
 #  "request_id":"req-123","user_id":42,"level":"info",
-#  "timestamp":"2026-04-25T16:23:11.452123Z"}</code></pre><p>Equivalents: <code>pino</code> (Node), <code>zap</code> (Go), <code>logback-json</code> (Java), <code>slog</code> (Go 1.21+).</p><h3>3. Correlation/trace ID, gluing logs across services</h3><p>Microservices have a problem: the log for one request is scattered across 5 different services. Solution: propagate a <strong>trace ID</strong> on every request (HTTP header <code>traceparent</code>, W3C standard). Each service includes that ID in every log it emits.</p><p>The OpenTelemetry SDK does this transparently:</p><pre><code>from opentelemetry import trace
+#  "timestamp":"2026-04-25T16:23:11.452123Z"}</code></pre><p>Equivalents: <code>pino</code> (Node), <code>zap</code> (Go), <code>logback-json</code> (Java), <code>slog</code> (Go 1.21+).</p><h3>3. Correlation/trace ID, gluing logs across services</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-trace-id-en.gif" alt="One request, many logs">
+<figcaption>The identifier glues the lines together. Without it, each service tells a separate story.</figcaption>
+</figure><p>Microservices have a problem: the log for one request is scattered across 5 different services. Solution: propagate a <strong>trace ID</strong> on every request (HTTP header <code>traceparent</code>, W3C standard). Each service includes that ID in every log it emits.</p><p>The OpenTelemetry SDK does this transparently:</p><pre><code>from opentelemetry import trace
 from opentelemetry.instrumentation.django import DjangoInstrumentor
 DjangoInstrumentor().instrument()
 
@@ -5867,8 +5939,8 @@ flowchart LR
                 "body": (
                 """<h3>1. O que é DevSecOps de verdade</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-devsecops.jpg" alt="Uma bancada só, com chave inglesa, teclado e cadeado">
-<figcaption>DevSecOps é tirar a parede. Desenvolvimento, operação e segurança trabalham na mesma bancada.</figcaption>
+<img src="/static/img/lessons/d-devsecops.gif" alt="Um fluxo só">
+<figcaption>Não são três filas. O mesmo mudança passa por quem escreve, quem ameaça e quem opera.</figcaption>
 </figure><p>DevOps tirou paredes entre dev e ops. DevSecOps faz o mesmo com segurança. Em prática:</p>
 <div class="mermaid">
 flowchart LR
@@ -5876,7 +5948,11 @@ flowchart LR
     Ops["Ops"] --> Sec
     Sec --> Share["Responsabilidade compartilhada"]
 </div>
-<ul><li>Segurança é responsabilidade <em>de todos</em>, não 'do time de segurança'.</li><li>Controles automatizados &gt; gate humano em pull request.</li><li>Feedback rápido (segundos no editor, minutos no PR) &gt; relatório de auditoria 6 meses depois.</li><li>Erros são oportunidade de aprendizado, não cassação.</li></ul><p>O time de segurança vira <em>enabler</em>: ferramentas, treinamento, padrões. As decisões ficam com quem está mais perto do código.</p><h3>2. Shift-left que funciona vs shift-left teatro</h3><p>Shift-left é trazer segurança para fases iniciais. Mas existe versão boa e versão ruim:</p><table><tr><th>Funciona</th><th>É teatro</th></tr><tr><td>Linter no editor</td><td>Relatório PDF mensal</td></tr><tr><td>SAST no PR (3-min)</td><td>Pentest anual no fim do release</td></tr><tr><td>Threat model em design review</td><td>Reunião de aprovação 3h antes do deploy</td></tr><tr><td>SBOM gerado em todo build</td><td>Planilha que ninguém atualiza</td></tr><tr><td>Runbook executável (PIR)</td><td>Wiki que ninguém abre</td></tr></table><p>Critério: <em>o engenheiro recebe feedback enquanto ainda está trabalhando no problema</em>.</p><h3>3. Threat modeling, STRIDE em 1 página</h3><p>STRIDE são as 6 categorias de ameaça:</p><ul><li><strong>S</strong>poofing, alguém finge ser outro.</li><li><strong>T</strong>ampering, alguém altera dados em trânsito ou repouso.</li><li><strong>R</strong>epudiation, alguém nega ter feito algo, sem rastro.</li><li><strong>I</strong>nformation Disclosure, vazamento.</li><li><strong>D</strong>enial of Service, sistema cai sob carga ou ataque.</li><li><strong>E</strong>levation of Privilege, usuário comum vira admin.</li></ul><p>Em design review de feature relevante, escreva uma página respondendo:</p><ol><li><strong>O que estamos construindo?</strong> (1 parágrafo + diagrama)</li><li><strong>Quais são os ativos?</strong> (dados, contas, etc.)</li><li><strong>Quem são os atores?</strong> (legítimos e hostis)</li><li><strong>Para cada componente, 1 ameaça por categoria STRIDE</strong></li><li><strong>Mitigação para cada ameaça</strong> (e o que aceitamos como risco residual)</li></ol><p>Mudar arquitetura pré-código é barato. Pós-deploy é caro e político.</p><h3>4. Postmortems blameless</h3>
+<ul><li>Segurança é responsabilidade <em>de todos</em>, não 'do time de segurança'.</li><li>Controles automatizados &gt; gate humano em pull request.</li><li>Feedback rápido (segundos no editor, minutos no PR) &gt; relatório de auditoria 6 meses depois.</li><li>Erros são oportunidade de aprendizado, não cassação.</li></ul><p>O time de segurança vira <em>enabler</em>: ferramentas, treinamento, padrões. As decisões ficam com quem está mais perto do código.</p><h3>2. Shift-left que funciona vs shift-left teatro</h3><p>Shift-left é trazer segurança para fases iniciais. Mas existe versão boa e versão ruim:</p><table><tr><th>Funciona</th><th>É teatro</th></tr><tr><td>Linter no editor</td><td>Relatório PDF mensal</td></tr><tr><td>SAST no PR (3-min)</td><td>Pentest anual no fim do release</td></tr><tr><td>Threat model em design review</td><td>Reunião de aprovação 3h antes do deploy</td></tr><tr><td>SBOM gerado em todo build</td><td>Planilha que ninguém atualiza</td></tr><tr><td>Runbook executável (PIR)</td><td>Wiki que ninguém abre</td></tr></table><p>Critério: <em>o engenheiro recebe feedback enquanto ainda está trabalhando no problema</em>.</p><h3>3. Threat modeling, STRIDE em 1 página</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-stride.gif" alt="STRIDE">
+<figcaption>STRIDE é uma lista curta para não esquecer classe de ameaça. Cada caixa é uma pergunta.</figcaption>
+</figure><p>STRIDE são as 6 categorias de ameaça:</p><ul><li><strong>S</strong>poofing, alguém finge ser outro.</li><li><strong>T</strong>ampering, alguém altera dados em trânsito ou repouso.</li><li><strong>R</strong>epudiation, alguém nega ter feito algo, sem rastro.</li><li><strong>I</strong>nformation Disclosure, vazamento.</li><li><strong>D</strong>enial of Service, sistema cai sob carga ou ataque.</li><li><strong>E</strong>levation of Privilege, usuário comum vira admin.</li></ul><p>Em design review de feature relevante, escreva uma página respondendo:</p><ol><li><strong>O que estamos construindo?</strong> (1 parágrafo + diagrama)</li><li><strong>Quais são os ativos?</strong> (dados, contas, etc.)</li><li><strong>Quem são os atores?</strong> (legítimos e hostis)</li><li><strong>Para cada componente, 1 ameaça por categoria STRIDE</strong></li><li><strong>Mitigação para cada ameaça</strong> (e o que aceitamos como risco residual)</li></ol><p>Mudar arquitetura pré-código é barato. Pós-deploy é caro e político.</p><h3>4. Postmortems blameless</h3>
 <figure class="lesson-figure">
   <div class="lesson-viz lesson-viz--steps">
     <div class="lesson-viz-step"><span>1</span><p>Timeline factual sem caça às bruxas.</p></div>
@@ -5898,8 +5974,8 @@ flowchart LR
                 "body_en": (
                 """<h3>1. What DevSecOps really is</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-devsecops.jpg" alt="One bench, with a wrench, a keyboard, and a padlock">
-<figcaption>DevSecOps removes the wall. Development, operations, and security work on the same bench.</figcaption>
+<img src="/static/img/lessons/d-devsecops-en.gif" alt="One flow">
+<figcaption>These are not three queues. The same change passes through who writes, who threats, and who operates.</figcaption>
 </figure><p>DevOps tore down walls between dev and ops. DevSecOps does the same with security. In practice:</p>
 <div class="mermaid">
 flowchart LR
@@ -5907,7 +5983,11 @@ flowchart LR
     Ops["Ops"] --> Sec
     Sec --> Share["Shared responsibility"]
 </div>
-<ul><li>Security is <em>everyone's</em> responsibility, not 'the security team's'.</li><li>Automated controls &gt; a human gate on every pull request.</li><li>Fast feedback (seconds in the editor, minutes on the PR) &gt; an audit report 6 months later.</li><li>Mistakes are learning opportunities, not firings.</li></ul><p>The security team becomes an <em>enabler</em>: tools, training, standards. Decisions stay with whoever is closest to the code.</p><h3>2. Shift-left that works vs shift-left theater</h3><p>Shift-left means bringing security into earlier phases. But there is a good version and a bad version:</p><table><tr><th>Works</th><th>Is theater</th></tr><tr><td>Linter in the editor</td><td>Monthly PDF report</td></tr><tr><td>SAST on the PR (3-min)</td><td>Annual pentest at the end of the release</td></tr><tr><td>Threat model in design review</td><td>3-hour approval meeting before deploy</td></tr><tr><td>SBOM generated on every build</td><td>Spreadsheet nobody updates</td></tr><tr><td>Executable runbook (PIR)</td><td>Wiki nobody opens</td></tr></table><p>Criterion: <em>the engineer gets feedback while still working on the problem</em>.</p><h3>3. Threat modeling, STRIDE on 1 page</h3><p>STRIDE is the 6 threat categories:</p><ul><li><strong>S</strong>poofing — someone pretends to be someone else.</li><li><strong>T</strong>ampering — someone alters data in transit or at rest.</li><li><strong>R</strong>epudiation — someone denies having done something, with no trail.</li><li><strong>I</strong>nformation Disclosure — a leak.</li><li><strong>D</strong>enial of Service — the system falls under load or attack.</li><li><strong>E</strong>levation of Privilege — a normal user becomes admin.</li></ul><p>In a design review for a relevant feature, write one page answering:</p><ol><li><strong>What are we building?</strong> (1 paragraph + diagram)</li><li><strong>What are the assets?</strong> (data, accounts, etc.)</li><li><strong>Who are the actors?</strong> (legitimate and hostile)</li><li><strong>For each component, 1 threat per STRIDE category</strong></li><li><strong>Mitigation for each threat</strong> (and what we accept as residual risk)</li></ol><p>Changing architecture pre-code is cheap. Post-deploy is expensive and political.</p><h3>4. Blameless postmortems</h3>
+<ul><li>Security is <em>everyone's</em> responsibility, not 'the security team's'.</li><li>Automated controls &gt; a human gate on every pull request.</li><li>Fast feedback (seconds in the editor, minutes on the PR) &gt; an audit report 6 months later.</li><li>Mistakes are learning opportunities, not firings.</li></ul><p>The security team becomes an <em>enabler</em>: tools, training, standards. Decisions stay with whoever is closest to the code.</p><h3>2. Shift-left that works vs shift-left theater</h3><p>Shift-left means bringing security into earlier phases. But there is a good version and a bad version:</p><table><tr><th>Works</th><th>Is theater</th></tr><tr><td>Linter in the editor</td><td>Monthly PDF report</td></tr><tr><td>SAST on the PR (3-min)</td><td>Annual pentest at the end of the release</td></tr><tr><td>Threat model in design review</td><td>3-hour approval meeting before deploy</td></tr><tr><td>SBOM generated on every build</td><td>Spreadsheet nobody updates</td></tr><tr><td>Executable runbook (PIR)</td><td>Wiki nobody opens</td></tr></table><p>Criterion: <em>the engineer gets feedback while still working on the problem</em>.</p><h3>3. Threat modeling, STRIDE on 1 page</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-stride-en.gif" alt="STRIDE">
+<figcaption>STRIDE is a short list so you do not forget a threat class. Each box is a question.</figcaption>
+</figure><p>STRIDE is the 6 threat categories:</p><ul><li><strong>S</strong>poofing — someone pretends to be someone else.</li><li><strong>T</strong>ampering — someone alters data in transit or at rest.</li><li><strong>R</strong>epudiation — someone denies having done something, with no trail.</li><li><strong>I</strong>nformation Disclosure — a leak.</li><li><strong>D</strong>enial of Service — the system falls under load or attack.</li><li><strong>E</strong>levation of Privilege — a normal user becomes admin.</li></ul><p>In a design review for a relevant feature, write one page answering:</p><ol><li><strong>What are we building?</strong> (1 paragraph + diagram)</li><li><strong>What are the assets?</strong> (data, accounts, etc.)</li><li><strong>Who are the actors?</strong> (legitimate and hostile)</li><li><strong>For each component, 1 threat per STRIDE category</strong></li><li><strong>Mitigation for each threat</strong> (and what we accept as residual risk)</li></ol><p>Changing architecture pre-code is cheap. Post-deploy is expensive and political.</p><h3>4. Blameless postmortems</h3>
 <figure class="lesson-figure">
   <div class="lesson-viz lesson-viz--steps">
     <div class="lesson-viz-step"><span>1</span><p>Factual timeline with no witch hunt.</p></div>

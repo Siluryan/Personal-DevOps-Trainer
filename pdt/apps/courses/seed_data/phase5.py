@@ -35,8 +35,8 @@ PHASE5 = {
                 "body": (
                 """<h3>1. O modelo mental que muda tudo: você não manda, você declara</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-k8s.jpg" alt="Um termostato na parede e um radiador embaixo">
-<figcaption>Você declara a temperatura. O cluster converge até o radiador bater com o que foi pedido.</figcaption>
+<img src="/static/img/lessons/d-k8s-loop.gif" alt="Você declara">
+<figcaption>Você não manda um comando solto. Declara a spec, e o controller repete o ciclo até o mundo bater.</figcaption>
 </figure>
 <p>Kubernetes não é uma sequência de scripts que você executa em ordem —
 é um <strong>sistema de controle baseado em estado desejado</strong>.
@@ -74,6 +74,10 @@ pontuais executados uma vez — a diferença central entre operar
 Kubernetes e operar um script tradicional de shell.</p>
 
 <h3>2. Arquitetura: cérebro e músculo, e por que gerenciado ganhou na maioria dos casos</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-k8s-cluster.gif" alt="Componentes do cluster">
+<figcaption>O API Server é a única porta. etcd, scheduler e controllers ficam no control plane; kubelet sobe o pod no worker.</figcaption>
+</figure>
 <p>Um cluster tem dois grupos de nós com papéis completamente
 diferentes. O <strong>control plane</strong> é o cérebro:
 <code>kube-apiserver</code> é a ÚNICA porta de entrada — toda interação
@@ -102,6 +106,10 @@ não é trivial, e o ganho de fazer isso manualmente raramente compensa o
 risco.</p>
 
 <h3>3. Os primitivos que valem dominar antes de qualquer coisa mais avançada</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-k8s-primitives.gif" alt="Primitivos">
+<figcaption>O Deployment não roda o processo. Ele garante ReplicaSets, que garantem Pods, que carregam containers.</figcaption>
+</figure>
 <p>Um <strong>Pod</strong> é a menor unidade que pode ser implantada —
 um ou mais containers compartilhando a mesma rede (mesmo IP, mesmas
 portas) e os mesmos volumes; na prática, 99% dos pods têm um único
@@ -194,6 +202,10 @@ representa o mínimo aceitável de configuração de segurança, não um
 extra opcional.</p>
 
 <h3>5. Deployment: rolling update, e como evitar perder o cluster inteiro numa zona</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-k8s-roll.gif" alt="Rolling update">
+<figcaption>Não troca tudo de uma vez. Sobe um novo, espera ficar pronto, tira um velho.</figcaption>
+</figure>
 <pre><code>apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -250,6 +262,10 @@ mais forte ainda, o digest da imagem (<code>@sha256:...</code>).</p>
 
 
 <h3>6. Service: por que "falar com o IP do pod" nunca funciona de verdade</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-k8s-svc.gif" alt="Service">
+<figcaption>O cliente fala com o IP estável do Service. O pod morre, o IP do pod muda, o ClusterIP fica.</figcaption>
+</figure>
 <p>Pods são efetivamente descartáveis — criados e destruídos com
 frequência, e o IP de cada um muda a cada recriação. A pergunta que
 Service resolve é "como eu falo consistentemente com 'a aplicação web',
@@ -283,6 +299,10 @@ IP virtual intermediário — necessário para StatefulSets, onde cada pod
 tem identidade própria que precisa ser endereçável individualmente.</p>
 
 <h3>7. Ingress: um único ponto de entrada para muitos serviços HTTP</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-k8s-ing.gif" alt="Ingress">
+<figcaption>Uma porta pública, várias rotas. O Ingress escolhe o Service pelo host ou pelo path.</figcaption>
+</figure>
 <p>Um LoadBalancer dedicado por Service fica caro rapidamente conforme o
 número de serviços cresce. Ingress resolve isso com um único ponto de
 entrada, roteando por host e caminho para os serviços internos
@@ -541,8 +561,8 @@ custo.</p>
                 "body_en": (
                 """<h3>1. The mental model that changes everything: you don't command, you declare</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-k8s.jpg" alt="A thermostat on the wall and a radiator below it">
-<figcaption>You declare the temperature. The cluster converges until the radiator matches what was asked.</figcaption>
+<img src="/static/img/lessons/d-k8s-loop-en.gif" alt="You declare">
+<figcaption>You do not send a one-off command. You declare the spec, and the controller repeats the cycle until the world matches.</figcaption>
 </figure>
 <p>Kubernetes is not a sequence of scripts you run in order —
 it's a <strong>control system based on desired state</strong>.
@@ -579,6 +599,10 @@ commands executed once — the central difference between operating
 Kubernetes and operating a traditional shell script.</p>
 
 <h3>2. Architecture: brain and muscle, and why managed won in most cases</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-k8s-cluster-en.gif" alt="Cluster components">
+<figcaption>The API Server is the only door. etcd, the scheduler, and the controllers stay on the control plane; the kubelet starts the pod on the worker.</figcaption>
+</figure>
 <p>A cluster has two groups of nodes with completely
 different roles. The <strong>control plane</strong> is the brain:
 <code>kube-apiserver</code> is the ONLY entry point — every interaction
@@ -607,6 +631,10 @@ is nontrivial, and the gain from doing it manually rarely offsets the
 risk.</p>
 
 <h3>3. The primitives worth mastering before anything more advanced</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-k8s-primitives-en.gif" alt="Primitives">
+<figcaption>The Deployment does not run the process. It ensures ReplicaSets, which ensure Pods, which carry containers.</figcaption>
+</figure>
 <p>A <strong>Pod</strong> is the smallest deployable unit —
 one or more containers sharing the same network (same IP, same
 ports) and the same volumes; in practice, 99% of pods have a single
@@ -699,6 +727,10 @@ represents the minimum acceptable security configuration, not an
 optional extra.</p>
 
 <h3>5. Deployment: rolling update, and how to avoid losing the entire cluster in one zone</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-k8s-roll-en.gif" alt="Rolling update">
+<figcaption>It does not swap everything at once. It starts a new one, waits until it is ready, and removes an old one.</figcaption>
+</figure>
 <pre><code>apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -755,6 +787,10 @@ stronger still, the image digest (<code>@sha256:...</code>).</p>
 
 
 <h3>6. Service: why "talking to the pod's IP" never really works</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-k8s-svc-en.gif" alt="Service">
+<figcaption>The client talks to the Service's stable IP. The pod dies, the pod IP changes, the ClusterIP stays.</figcaption>
+</figure>
 <p>Pods are effectively disposable — created and destroyed
 frequently, and each one's IP changes on every recreation. The question that
 Service solves is "how do I consistently talk to 'the web application',
@@ -788,6 +824,10 @@ an intermediate virtual IP — necessary for StatefulSets, where each pod
 has its own identity that needs to be individually addressable.</p>
 
 <h3>7. Ingress: a single entry point for many HTTP services</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-k8s-ing-en.gif" alt="Ingress">
+<figcaption>One public port, many routes. The Ingress picks the Service by host or by path.</figcaption>
+</figure>
 <p>A dedicated LoadBalancer per Service gets expensive quickly as the
 number of services grows. Ingress solves this with a single entry
 point, routing by host and path to the correct internal
@@ -1223,8 +1263,8 @@ own cost.</p>
                 "body": (
                 """<h3>1. O modelo de ameaça: contra o quê hardening realmente defende</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-hardening.jpg" alt="Um baú fechado com várias fechaduras diferentes">
-<figcaption>Hardening empilha fechaduras. Cada uma trava um salto: do container para o nó, do nó para o cluster.</figcaption>
+<img src="/static/img/lessons/d-harden-path.gif" alt="O salto do atacante">
+<figcaption>Cada controle trava um salto. Hardening sem esse caminho vira checklist solta.</figcaption>
 </figure>
 <p>Aplicar um checklist de hardening sem entender o que ele previne
 produz uma falsa sensação de segurança — a lista certa só faz sentido
@@ -1308,6 +1348,10 @@ administra RBAC precisa ser um conjunto de pessoas distinto de quem
 apenas usa o cluster no dia a dia.</p>
 
 <h3>3. Pod Security Standards: o substituto do PSP, em três níveis</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-pss.gif" alt="Pod Security">
+<figcaption>O namespace escolhe o nível. Restricted recusa o pod que pede privilégio a mais.</figcaption>
+</figure>
 <p>Depois da remoção do PodSecurityPolicy (PSP), o Kubernetes passou a
 usar Pod Security Standards (PSS), aplicado por LABEL de namespace, com
 três níveis de rigor progressivo. <strong>privileged</strong> não impõe
@@ -1631,8 +1675,8 @@ todo o resto, sendo estático, não alcança.</li>
                 "body_en": (
                 """<h3>1. The threat model: what hardening actually defends against</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-hardening.jpg" alt="A chest closed with several different locks">
-<figcaption>Hardening stacks locks. Each one stops a jump: from the container to the node, from the node to the cluster.</figcaption>
+<img src="/static/img/lessons/d-harden-path-en.gif" alt="The attacker's jump">
+<figcaption>Each control stops one jump. Hardening without this path becomes a loose checklist.</figcaption>
 </figure>
 <p>Applying a hardening checklist without understanding what it prevents
 produces a false sense of security — the right list only makes sense
@@ -1716,6 +1760,10 @@ whoever administers RBAC needs to be a distinct set of people from those who
 just use the cluster day to day.</p>
 
 <h3>3. Pod Security Standards: the PSP replacement, in three levels</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-pss-en.gif" alt="Pod Security">
+<figcaption>The namespace chooses the level. Restricted refuses the pod that asks for extra privilege.</figcaption>
+</figure>
 <p>After PodSecurityPolicy (PSP) was removed, Kubernetes started
 using Pod Security Standards (PSS), applied via namespace LABEL, with
 three progressive levels of strictness. <strong>privileged</strong> imposes
@@ -2212,8 +2260,8 @@ everything else, being static, can't reach.</li>
                 "body": (
                 """<h3>1. NetworkPolicy é só um objeto — quem de fato aplica é o CNI</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-netpol.jpg" alt="Casa de boneca com as portas internas quase todas fechadas">
-<figcaption>Sem NetworkPolicy, as portas entre os cômodos ficam abertas. A política é a porta que você escolhe deixar encostada.</figcaption>
+<img src="/static/img/lessons/d-netpol.gif" alt="Quem aplica">
+<figcaption>O YAML sozinho não filtra pacote. Quem filtra é o CNI, se ele implementar a policy.</figcaption>
 </figure>
 <p>Um detalhe que confunde muita gente na primeira vez: NetworkPolicy é
 um objeto Kubernetes comum, aceito pelo API server e gravado no etcd
@@ -2286,6 +2334,10 @@ controle na camada 7 (caminho HTTP específico, método), é preciso Cilium
 Network Policies (seção 7) ou um service mesh completo.</p>
 
 <h3>3. Default-deny por namespace: o ponto de partida de qualquer segmentação séria</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-netpol-deny.gif" alt="Default deny">
+<figcaption>Primeiro nega tudo. Depois abre só DNS e o fluxo da aplicação.</figcaption>
+</figure>
 <pre><code>apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -2544,8 +2596,8 @@ declaram.</p>
                 "body_en": (
                 """<h3>1. NetworkPolicy is just an object — what actually enforces it is the CNI</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-netpol.jpg" alt="A dollhouse with almost every interior door closed">
-<figcaption>Without a NetworkPolicy, the doors between rooms stay open. The policy is the door you choose to leave ajar.</figcaption>
+<img src="/static/img/lessons/d-netpol-en.gif" alt="Who enforces">
+<figcaption>The YAML alone does not filter packets. The CNI does, if it implements the policy.</figcaption>
 </figure>
 <p>A detail that confuses many people the first time: NetworkPolicy is
 a normal Kubernetes object, accepted by the API server and stored in etcd
@@ -2618,6 +2670,10 @@ control at layer 7 (specific HTTP path, method), you need Cilium
 Network Policies (section 7) or a full service mesh.</p>
 
 <h3>3. Default-deny per namespace: the starting point of any serious segmentation</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-netpol-deny-en.gif" alt="Default deny">
+<figcaption>First deny everything. Then open only DNS and the application flow.</figcaption>
+</figure>
 <pre><code>apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -3047,8 +3103,8 @@ declare.</p>
                 "body": (
                 """<h3>1. O fluxo dentro do API server: onde admission entra na cadeia</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-admission.jpg" alt="Corda de veludo na frente de uma porta, com um ingresso em branco">
-<figcaption>O admission controller é a corda. O objeto só entra no API server se passar por essa checagem.</figcaption>
+<img src="/static/img/lessons/d-admission.gif" alt="Onde o admission entra">
+<figcaption>Auth diz quem é. Admission diz se esse objeto pode existir. Só então o etcd grava.</figcaption>
 </figure>
 <p>Um <code>kubectl apply</code> não grava direto no etcd — passa por uma
 cadeia de checagens em ordem específica, e entender essa ordem explica por
@@ -3097,6 +3153,10 @@ nativo do próprio Kubernetes, sem precisar rodar nenhum webhook externo
 adicional respondendo em tempo real a cada chamada de API.</p>
 
 <h3>3. As engines mais usadas, e o trade-off entre facilidade e poder</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-admission-engines.gif" alt="Engines">
+<figcaption>As três sentam no mesmo ponto da cadeia. Muda a linguagem da regra, não o lugar.</figcaption>
+</figure>
 <p><strong>Kyverno</strong> (CNCF Incubating) escreve políticas em YAML
 puro, usando a mesma sintaxe que qualquer manifesto Kubernetes — a curva
 de aprendizado é a menor entre as opções, e a engine suporta validar,
@@ -3367,8 +3427,8 @@ organização, construídas sobre a base já validada.</li>
                 "body_en": (
                 """<h3>1. The flow inside the API server: where admission enters the chain</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-admission.jpg" alt="A velvet rope in front of a door, with a blank ticket">
-<figcaption>The admission controller is the rope. An object only enters the API server if it passes that check.</figcaption>
+<img src="/static/img/lessons/d-admission-en.gif" alt="Where admission sits">
+<figcaption>Auth says who it is. Admission says whether that object may exist. Only then etcd stores it.</figcaption>
 </figure>
 <p>A <code>kubectl apply</code> does not write straight to etcd — it goes through a
 chain of checks in a specific order, and understanding that order explains why
@@ -3417,6 +3477,10 @@ operationally lighter, because it removes the dependency on an
 additional service answering in real time on every API call.</p>
 
 <h3>3. The most used engines, and the trade-off between ease and power</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-admission-engines-en.gif" alt="Engines">
+<figcaption>All three sit at the same point in the chain. The rule language changes, not the place.</figcaption>
+</figure>
 <p><strong>Kyverno</strong> (CNCF Incubating) writes policies in pure YAML,
 using the same syntax as any Kubernetes manifest — the learning
 curve is the shallowest among the options, and the engine supports validate,
@@ -3860,8 +3924,8 @@ built on the already validated baseline.</li>
                 "body": (
                 """<h3>1. Por que o modelo de perímetro quebrou, com três incidentes que provam o ponto</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-zerotrust.jpg" alt="Corredor em que cada porta tem a própria fechadura">
-<figcaption>O perímetro único quebrou. Zero trust é trancar cada porta do caminho, não só a da rua.</figcaption>
+<img src="/static/img/lessons/d-zerotrust.gif" alt="O perímetro quebrou">
+<figcaption>Estar dentro da rede não autoriza. Cada pedido prova identidade de novo.</figcaption>
 </figure>
 <p>O modelo tradicional de TI corporativa opera em três passos simples:
 o funcionário entra na VPN, passa a estar "dentro da rede corporativa", e
@@ -3919,6 +3983,10 @@ correlação centralizados — é o que permite sequer DEFINIR o que é
 comportamento normal, pré-requisito para detectar qualquer anomalia.</p>
 
 <h3>3. A definição do NIST, e a palavra que muda tudo: "por requisição"</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-zerotrust-req.gif" alt="Por requisição">
+<figcaption>A definição do NIST cabe neste ciclo: nada é confiável só porque o pedido anterior foi.</figcaption>
+</figure>
 <p>O NIST SP 800-207 define Zero Trust como "uma coleção de conceitos
 projetados para minimizar incerteza ao tomar decisões de acesso precisas
 e de menor privilégio possível, POR REQUISIÇÃO, em sistemas e serviços
@@ -4092,8 +4160,8 @@ programa sustentável.</p>"""
                 "body_en": (
                 """<h3>1. Why the perimeter model broke, with three incidents that prove the point</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-zerotrust.jpg" alt="A hallway where every door has its own lock">
-<figcaption>The single perimeter broke. Zero trust locks every door along the way, not only the one on the street.</figcaption>
+<img src="/static/img/lessons/d-zerotrust-en.gif" alt="The perimeter broke">
+<figcaption>Being inside the network does not authorize. Each request proves identity again.</figcaption>
 </figure>
 <p>The traditional corporate IT model operates in three simple steps:
 the employee joins the VPN, is then "inside the corporate network", and
@@ -4151,6 +4219,10 @@ correlation — is what even lets you DEFINE what
 normal behavior is, a prerequisite for detecting any anomaly.</p>
 
 <h3>3. The NIST definition, and the word that changes everything: "per request"</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-zerotrust-req-en.gif" alt="Per request">
+<figcaption>The NIST definition fits this cycle: nothing is trusted just because the previous request was.</figcaption>
+</figure>
 <p>NIST SP 800-207 defines Zero Trust as "a collection of concepts
 designed to minimize uncertainty in enforcing accurate, least privilege
 per-request access decisions in information systems and services
@@ -4498,8 +4570,8 @@ program sustainable.</p>
                 "body": (
                 """<h3>1. eBPF: a tecnologia que tornou observar o kernel viável sem recompilá-lo</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-ebpf.jpg" alt="Mecanismo de relógio funcionando, com uma janela de vidro na caixa">
-<figcaption>eBPF é essa janela: observar o kernel em execução sem desligar a máquina para recompilar.</figcaption>
+<img src="/static/img/lessons/d-ebpf.gif" alt="eBPF">
+<figcaption>O programa observa o kernel enquanto ele roda. Não é módulo que exige reboot.</figcaption>
 </figure>
 <p>Antes do eBPF, monitorar o comportamento real de processos exigia
 módulos de kernel (LKMs) — pesados, capazes de derrubar o sistema
@@ -4560,6 +4632,10 @@ legítima de debug também — o equilíbrio entre sensibilidade e ruído é o
 trabalho contínuo de operar Falco de verdade (seção 6).</p>
 
 <h3>3. Tetragon: quando alertar não basta e a resposta precisa ser instantânea</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-tetragon.gif" alt="Tetragon">
+<figcaption>Alertar chega tarde. A policy no kernel pode encerrar o processo no mesmo evento.</figcaption>
+</figure>
 <p>Tetragon (do projeto Cilium) compartilha a base eBPF com Falco, mas
 tem um diferencial estrutural: consegue agir DIRETAMENTE no kernel — matar
 um processo ou bloquear um syscall imediatamente, não só gerar um
@@ -4734,8 +4810,8 @@ necessário.</li>
                 "body_en": (
                 """<h3>1. eBPF: the technology that made observing the kernel viable without recompiling it</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-ebpf.jpg" alt="A running clockwork mechanism with a glass window in the case">
-<figcaption>eBPF is that window: watching the kernel while it runs, without shutting the machine down to recompile.</figcaption>
+<img src="/static/img/lessons/d-ebpf-en.gif" alt="eBPF">
+<figcaption>The program watches the kernel while it runs. It is not a module that requires a reboot.</figcaption>
 </figure>
 <p>Before eBPF, monitoring real process behavior required
 kernel modules (LKMs) — heavy, capable of taking down the entire system
@@ -4796,6 +4872,10 @@ debug tool — the balance between sensitivity and noise is the
 continuous work of operating Falco for real (section 6).</p>
 
 <h3>3. Tetragon: when alerting is not enough and the response must be instant</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-tetragon-en.gif" alt="Tetragon">
+<figcaption>Alerting arrives late. The policy in the kernel can end the process on the same event.</figcaption>
+</figure>
 <p>Tetragon (from the Cilium project) shares the eBPF base with Falco, but
 has a structural difference: it can act DIRECTLY in the kernel — kill
 a process or block a syscall immediately, not only generate an
@@ -5141,8 +5221,8 @@ necessary.</li>
                 "body": (
                 """<h3>1. Os três pilares: por que nenhum sozinho basta para investigar um incidente</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-observe.jpg" alt="Um medidor, um diário e um novelo de barbante marcando um caminho">
-<figcaption>Métrica é o ponteiro. Log é o diário. Trace é o barbante de uma requisição só. Nenhum dos três conta a história inteira.</figcaption>
+<img src="/static/img/lessons/d-pillars.gif" alt="Três pilares">
+<figcaption>Um pilar diz o quê, outro diz o detalhe, o terceiro diz por onde passou. Sozinho, cada um mente por omissão.</figcaption>
 </figure>
 <p><strong>Métricas</strong> são séries temporais de números agregados —
 "requisições/segundo", "erro 500/segundo", "CPU%" — baratas de armazenar
@@ -5204,6 +5284,10 @@ a árvore inteira depois — sem ele, cada serviço só saberia da própria
 parte, sem noção de que fazem parte da mesma requisição original.</p>
 
 <h3>3. OpenTelemetry: um padrão para não reescrever instrumentação a cada troca de backend</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-otel.gif" alt="OpenTelemetry">
+<figcaption>A app fala OTLP. Trocar Jaeger por Tempo é config do collector, não rewrite do código.</figcaption>
+</figure>
 <p>OpenTelemetry (OTel, projeto CNCF) resolve um problema real: antes
 dele, instrumentar código para um backend específico de tracing
 significava reescrever essa instrumentação inteira se a empresa
@@ -5483,8 +5567,8 @@ plataforma específica.</p>
                 "body_en": (
                 """<h3>1. The three pillars: why none alone is enough to investigate an incident</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-observe.jpg" alt="A gauge, a journal, and a ball of string marking a path">
-<figcaption>A metric is the needle. A log is the journal. A trace is the string of one request. None of the three tells the whole story.</figcaption>
+<img src="/static/img/lessons/d-pillars-en.gif" alt="Three pillars">
+<figcaption>One pillar says what, another says the detail, the third says the path. Alone, each lies by omission.</figcaption>
 </figure>
 <p><strong>Metrics</strong> are time series of aggregated numbers — "requests/second", "500 errors/second", "CPU%" — cheap to store and statistically powerful, but with necessarily low cardinality: they say WHAT is happening in aggregate, without detail of any specific request. <strong>Logs</strong> are discrete textual events ("login failed for user@x"), with far more detail than a metric can carry, but with proportionally higher storage cost and free-text search, not numeric aggregation. <strong>Traces</strong> are the span tree that represents the real PATH of a request across several services — the only of the three sources that answers "where did this specific call go, and where was time spent". Each pillar answers a different question; in an architecture with dozens of microservices, investigating an incident using only one of the three is like trying to reconstruct a crime seeing only the photo, only the audio, or only the video — the three TOGETHER, correlated (section 8), is what enables fast reasoning during a real incident.</p>
 <div class="mermaid">
@@ -5516,6 +5600,10 @@ tracestate: rojo=00f067aa0ba902b7</code></pre>
 <p>It is that header propagated from service to service that lets you reconstruct the entire tree afterwards — without it, each service would only know its own part, with no notion that they belong to the same original request.</p>
 
 <h3>3. OpenTelemetry: a standard so you do not rewrite instrumentation on every backend swap</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-otel-en.gif" alt="OpenTelemetry">
+<figcaption>The app speaks OTLP. Switching Jaeger for Tempo is collector config, not a code rewrite.</figcaption>
+</figure>
 <p>OpenTelemetry (OTel, CNCF project) solves a real problem: before it, instrumenting code for a specific tracing backend meant rewriting that entire instrumentation if the company decided to switch vendors. The SDK, available in each language, instruments the code; auto-instrumentation covers common libraries (HTTP, database, RPC) WITHOUT requiring manual code changes; OTLP is the binary protocol (gRPC or HTTP) that carries data between the application and the collector; and the Collector is an agent that receives data in multiple formats (OTLP, Jaeger, Zipkin, Prometheus), processes it, and exports to ANY chosen backend — switching from Jaeger to Tempo, for example, becomes a collector config change, not a rewrite of instrumentation in every service:</p>
 <pre><code># Python
 $ pip install opentelemetry-distro opentelemetry-exporter-otlp
@@ -5826,8 +5914,8 @@ service:
                 "body": (
                 """<h3>1. Os cinco princípios que separam experimento de vandalismo</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-chaos.jpg" alt="Uma chama pequena numa bandeja de laboratório, com extintor ao lado">
-<figcaption>Chaos engineering é este experimento: fogo controlado, com o extintor na mesa, não um incêndio no prédio.</figcaption>
+<img src="/static/img/lessons/d-chaos.gif" alt="Experimento, não vandalismo">
+<figcaption>Tem hipótese, tamanho limitado e um jeito de parar. Sem isso é incidente, não experimento.</figcaption>
 </figure>
 <p>Chaos engineering não é "quebrar coisas para ver o que acontece" — é
 um método científico aplicado a sistemas em produção, com cinco passos
@@ -5876,6 +5964,10 @@ baixa não diz nada sobre se o usuário está recebendo respostas corretas
 que ninguém logou o erro — não que ele não aconteceu.</p>
 
 <h3>3. Três categorias de experimento, três tipos de fraqueza</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-chaos-kinds.gif" alt="O que se prova">
+<figcaption>Três perguntas diferentes. Um teste de queda não prova que o alerta existe.</figcaption>
+</figure>
 <p>Experimentos de <strong>resiliência</strong> testam a infraestrutura
 contra falhas de infraestrutura: matar pods, injetar latência de rede,
 derrubar DNS, simular perda de uma zona de disponibilidade inteira,
@@ -6098,8 +6190,8 @@ sobre a mesa.</li>
                 "body_en": (
                 """<h3>1. The five principles that separate experiment from vandalism</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-chaos.jpg" alt="A small flame in a laboratory tray, with an extinguisher beside it">
-<figcaption>Chaos engineering is this experiment: a controlled fire, extinguisher on the table, not a fire in the building.</figcaption>
+<img src="/static/img/lessons/d-chaos-en.gif" alt="Experiment, not vandalism">
+<figcaption>It has a hypothesis, a limited size, and a way to stop. Without that it is an incident, not an experiment.</figcaption>
 </figure>
 <p>Chaos engineering is not "break things to see what happens" — it is a scientific method applied to production systems, with five steps that, when skipped, turn the experiment into theater with no real value:</p>
 <div class="mermaid">
@@ -6122,6 +6214,10 @@ flowchart LR
 <p>A steady-state metric needs to reflect what the USER feels, not what is easy to measure internally. "p99 latency under 500ms on the /checkout route" and "success rate above 99.5%" are good because they connect directly to a real experience — if the experiment degrades either, you know something that matters broke. "Low CPU" and "logs without error" are bad metrics for this purpose: low CPU says nothing about whether the user is getting correct responses (a hung system also has low CPU), and "error-free" logs only prove nobody logged the error — not that it did not happen.</p>
 
 <h3>3. Three experiment categories, three types of weakness</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-chaos-kinds-en.gif" alt="What you prove">
+<figcaption>Three different questions. A failure test does not prove the alert exists.</figcaption>
+</figure>
 <p><strong>Resilience</strong> experiments test infrastructure against infrastructure failures: kill pods, inject network latency, take down DNS, simulate loss of an entire availability zone, fail the primary database, cool the cache. <strong>Security</strong> experiments test DEFENSIVE CONTROLS against simulated attacks: deliberate credential leak, data exfiltration attempt, simulated pod compromise, container escape attempt. <strong>Operational</strong> experiments test the TEAM, not the system: take down the primary paging channel (does the secondary work?), take the on-call person offline (does the next on the roster respond?), force someone to act without the runbook at hand (does improvisation hold?). The three categories answer different questions — a mature chaos engineering program covers all three, not only the easiest to automate.</p>
 
 <h3>4. The tool ecosystem, by usage category</h3>
@@ -6391,8 +6487,8 @@ flowchart LR
                 "body": (
                 """<h3>1. NIST SP 800-61: por que o framework é um ciclo, não uma lista</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-incident.jpg" alt="Kit de emergência aberto, disposto em círculo">
-<figcaption>Resposta a incidente é um ciclo: detectar, conter, erradicar, recuperar. Não uma lista que se marca e esquece.</figcaption>
+<img src="/static/img/lessons/d-nist.gif" alt="Ciclo, não lista">
+<figcaption>Acabar a lista não acaba o incidente. O ciclo volta na detecção seguinte.</figcaption>
 </figure>
 <p>O NIST estrutura resposta a incidente em quatro fases, e o detalhe
 que muita gente perde é que a última fase ALIMENTA a primeira, fechando
@@ -6449,6 +6545,10 @@ coordena a investigação, uma responsabilidade distinta o suficiente da
 resposta operacional geral para merecer papel próprio.</p>
 
 <h3>3. Severidade: por que precisa estar definida antes das 3 da manhã</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-sev.gif" alt="Severidade antes">
+<figcaption>A definição existe antes das três da manhã. Na hora, só se consulta.</figcaption>
+</figure>
 <p>Critérios de severidade servem a um propósito específico: eliminar a
 decisão arbitrária no momento de maior estresse, quando o julgamento
 humano está mais comprometido. <strong>SEV1</strong> — indisponibilidade
@@ -6696,8 +6796,8 @@ anterior) com prática de resposta real.</li>
                 "body_en": (
                 """<h3>1. NIST SP 800-61: why the framework is a cycle, not a list</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-incident.jpg" alt="An open emergency kit laid out in a circle">
-<figcaption>Incident response is a cycle: detect, contain, eradicate, recover. Not a list you tick and forget.</figcaption>
+<img src="/static/img/lessons/d-nist-en.gif" alt="A cycle, not a list">
+<figcaption>Finishing the list does not finish the incident. The cycle returns at the next detection.</figcaption>
 </figure>
 <p>NIST structures incident response in four phases, and the detail many people miss is that the last phase FEEDS the first, closing a continuous-improvement cycle, not a linear checklist that ends at "resolved". <strong>Preparation</strong> is everything done BEFORE the incident happens — written runbooks, practiced drills, tools already configured, updated contacts, emergency ("break-glass") access ready to use. It is systematically the most underestimated phase, because it produces no visible short-term result — and precisely for that reason it is what most separates a team that responds in 10 minutes from one that takes 10 hours for the same incident. <strong>Detection & Analysis</strong> covers from the alert arriving through triage: distinguishing false positive from real incident, determining scope and severity. <strong>Containment, Eradication & Recovery</strong> is the action phase — limit the problem's advance, remove what caused it (a malicious artifact, a wrong configuration), restore the service. <strong>Post-Incident Activity</strong> — the blameless postmortem (section 7), resulting action items, runbook update — is what closes the cycle, feeding lessons learned back into Preparation. A team that skips that last phase repeats the same incidents indefinitely, because it never converts experience into prevention.</p>
 <div class="mermaid">
@@ -6715,6 +6815,10 @@ flowchart LR
 <p>In small incidents, one person can accumulate several roles without a problem. In large incidents, separating roles stops being organization and becomes necessity: the person who DECIDES cannot simultaneously have "hands on keyboard" executing actions, because split attention between coordinating and executing is exactly where errors happen under pressure. The <strong>Incident Commander (IC)</strong> decides, coordinates, approves risky actions, and keeps the overall timeline view — deliberately WITHOUT touching any system, to keep the head free for decision. The <strong>Operations/Tech Lead</strong> is who actually executes the technical actions approved by the IC. The <strong>Communications</strong> function handles internal stakeholders, customers, and if needed the press, keeping the status page updated — without that dedicated function, the IC ends up answering stakeholder questions in the middle of a critical technical decision. The <strong>Scribe</strong> records the timeline in real time (a Slack thread, a shared document) — without that contemporaneous record, the postmortem depends on memory reconstructed AFTER the fact, systematically less accurate. In security incidents, a dedicated <strong>Security Lead</strong> preserves forensic evidence and coordinates the investigation, a responsibility distinct enough from general operational response to deserve its own role.</p>
 
 <h3>3. Severity: why it must be defined before 3am</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-sev-en.gif" alt="Severity beforehand">
+<figcaption>The definition exists before 3 a.m. At the time, you only look it up.</figcaption>
+</figure>
 <p>Severity criteria serve a specific purpose: eliminate arbitrary decision at the moment of highest stress, when human judgment is most compromised. <strong>SEV1</strong> — total unavailability or severe data exposure, such as production down or a confirmed breach — pages 24/7 and immediate communication, without depending on someone deciding "is this serious enough?" in the heat of the moment. <strong>SEV2</strong> covers significant degradation (an entire region down, latency 5x normal) with expected response within an hour. <strong>SEV3</strong> is an isolated bug or partial problem, treatable in normal business hours. <strong>SEV4</strong> is cosmetic, low priority. Having those thresholds documented and agreed BEFORE the incident is what avoids the situation where two different people classify the same symptom completely differently — one "call everyone now" versus one "see tomorrow" — only because there was no explicit criterion to consult.</p>
 
 <h3>4. Communication: a dedicated channel, not someone's personal Slack</h3>
@@ -6977,8 +7081,8 @@ Action item: revisar todos templates de Deployment para liveness mais leve.</cod
                 "body": (
                 """<h3>1. Frameworks: por que existem tantos, e qual se aplica a você</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-compliance.jpg" alt="Vários lacres de cera, um deles em foco">
-<figcaption>Existem muitos frameworks. O trabalho é escolher o lacre que se aplica a você e cobrar ele o tempo todo.</figcaption>
+<img src="/static/img/lessons/d-frameworks.gif" alt="Qual framework">
+<figcaption>Framework não é troféu. É o conjunto de controles que o seu caso exige.</figcaption>
 </figure>
 <p>Cada framework de compliance nasceu para resolver um problema
 específico, e a maioria das empresas precisa de mais de um simultaneamente.
@@ -7042,6 +7146,10 @@ adotou — é o princípio que torna toda a auditoria e evidência do resto
 desta aula obrigatória, não opcional.</p>
 
 <h3>3. Bases legais: por que todo tratamento precisa de uma, documentada</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-legal.gif" alt="Base legal">
+<figcaption>Tratar dado pessoal sem a base escrita é o controle que falta, mesmo com o resto verde.</figcaption>
+</figure>
 <p>O artigo 7º da LGPD lista dez bases legais possíveis — consentimento,
 cumprimento de obrigação legal, execução de contrato, legítimo interesse
 (entre outras) — e a regra prática que decorre disso é simples de
@@ -7310,8 +7418,8 @@ tempo de operação real.</li>
                 "body_en": (
                 """<h3>1. Frameworks: why there are so many, and which applies to you</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-compliance.jpg" alt="Several wax seals, one of them in focus">
-<figcaption>There are many frameworks. The work is choosing the seal that applies to you and enforcing it all the time.</figcaption>
+<img src="/static/img/lessons/d-frameworks-en.gif" alt="Which framework">
+<figcaption>A framework is not a trophy. It is the set of controls your case requires.</figcaption>
 </figure>
 <p>Each compliance framework was born to solve a specific problem, and most companies need more than one at once. <strong>LGPD</strong> (General Data Protection Law, Brazil, 2018) regulates how personal data is processed — principles, legal bases, data-subject rights, controller/processor obligations — with fines that reach R$50 million per violation or 2% of revenue, enough to make non-compliance a real financial risk, not only reputational. <strong>GDPR</strong> is the European equivalent, with even larger fines (4% of global revenue or €20M) and applies to any company that processes EU citizens' data, even without a seat there. <strong>ISO 27001</strong> certifies an entire Information Security Management System (93 controls in Annex A), renewed by an accredited auditor annually — it is about a security PROCESS, not a specific law. <strong>SOC 2</strong> is the de facto standard for B2B SaaS in the US, with two levels: Type I evaluates control DESIGN at a point in time; Type II evaluates whether they actually WORKED over 6+ months — the second is what real enterprise customers demand, because it proves real operation, not intention on paper. <strong>PCI DSS</strong> applies to whoever touches card data, even when processing via Stripe — control scope shrinks, but does not disappear. <strong>HIPAA</strong> covers health data in the US, <strong>NIST CSF</strong> organizes security practices into five functions (Identify/Protect/Detect/Respond/Recover) voluntarily, and <strong>FedRAMP</strong> is the standard for selling to the US government cloud.</p>
 <div class="mermaid">
@@ -7332,6 +7440,10 @@ flowchart TD
 <p>Each LGPD principle exists to block a specific behavior the law considers abusive. <strong>Purpose</strong> requires that processing have a legitimate, specific, and explicit purpose — "to improve our services" is too vague to serve as a real legal basis, because it does not delimit what will actually be done with the data. <strong>Adequacy</strong> requires that processing be compatible with that declared purpose — collecting a tax ID "to send a newsletter" would not be adequate. <strong>Necessity</strong> prohibits collecting more than the indispensable minimum: if a name solves it, asking for a tax ID is excess. <strong>Free access</strong> guarantees the data subject free consultation of their own data. <strong>Quality</strong> requires accurate and up-to-date data. <strong>Transparency</strong> requires that information about processing be accessible, not hidden in fine print. <strong>Security</strong> and <strong>prevention</strong> require concrete technical and administrative measures — not intention, but real control. <strong>Non-discrimination</strong> prohibits using data for discriminatory ends (denying credit by zip code, for example). And <strong>accountability</strong> requires that the company be able to DEMONSTRATE it adopted those measures, not only claim it did — it is the principle that makes all the audit and evidence in the rest of this lesson mandatory, not optional.</p>
 
 <h3>3. Legal bases: why every processing needs one, documented</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-legal-en.gif" alt="Legal basis">
+<figcaption>Processing personal data without the written basis is the missing control, even if the rest is green.</figcaption>
+</figure>
 <p>Article 7 of LGPD lists ten possible legal bases — consent, compliance with legal obligation, contract performance, legitimate interest (among others) — and the practical rule that follows is simple to state and laborious to fulfill: EVERY personal-data processing needs to map to one of those bases, documented in a processing inventory. Without that mapping, a company cannot answer a regulator's most basic question — "why do you have this data?" — with a specific legal basis, only with generic justifications that do not survive a real audit.</p>
 
 <h3>4. LGPD roles, and why confusing them is an expensive mistake</h3>

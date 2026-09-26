@@ -43,8 +43,8 @@ PHASE2 = {
                 "body": (
                 """<h3>1. Da máquina física à VM: hypervisor</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-vm.jpg" alt="Maquete de um prédio cortado em vários apartamentos">
-<figcaption>O hypervisor fatia uma máquina física em várias máquinas virtuais. A nuvem aluga o apartamento pronto.</figcaption>
+<img src="/static/img/lessons/d-vm.gif" alt="Do hardware à VM">
+<figcaption>A máquina física continua uma. O hypervisor entrega várias máquinas virtuais em cima dela.</figcaption>
 </figure>
 <p>Antes de cloud existir, cada workload ocupava um servidor físico
 inteiro, e a utilização típica desses servidores girava em torno de
@@ -101,6 +101,10 @@ Kata Containers) rodam um kernel mínimo dentro do próprio KVM,
 inicializando em centenas de milissegundos.</p>
 
 <h3>3. O que cloud adiciona sobre virtualização</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-cloud-api.gif" alt="O que a nuvem acrescenta">
+<figcaption>Nuvem não é a VM. É a API que cria a VM, cobra e aplica identidade sem abrir chamado.</figcaption>
+</figure>
 <p>Virtualização sozinha já existia décadas antes da cloud pública —
 o que a cloud acrescenta é uma camada inteira de automação por cima.
 API em tudo significa provisionar VM, rede, storage ou banco via uma
@@ -268,8 +272,8 @@ casos.</p>"""
                 "body_en": (
                 """<h3>1. From physical machine to VM: the hypervisor</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-vm.jpg" alt="A model of one building cut into several apartments">
-<figcaption>The hypervisor slices one physical machine into several virtual machines. The cloud rents you the finished apartment.</figcaption>
+<img src="/static/img/lessons/d-vm-en.gif" alt="From hardware to VM">
+<figcaption>The physical machine is still one. The hypervisor delivers several virtual machines on top of it.</figcaption>
 </figure>
 <p>Before cloud existed, each workload occupied an entire physical
 server, and typical utilization of those servers hovered around
@@ -326,6 +330,10 @@ Kata Containers) run a minimal kernel inside KVM itself,
 booting in hundreds of milliseconds.</p>
 
 <h3>3. What cloud adds on top of virtualization</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-cloud-api-en.gif" alt="What the cloud adds">
+<figcaption>Cloud is not the VM. It is the API that creates the VM, bills it, and applies identity without a ticket.</figcaption>
+</figure>
 <p>Virtualization alone existed decades before public cloud —
 what cloud adds is an entire layer of automation on top.
 APIs everywhere means provisioning a VM, network, storage, or database via a
@@ -760,8 +768,8 @@ cases.</p>"""
                 "body": (
                 """<h3>1. A linha móvel: quanto mais alto o serviço, mais o provedor cobre</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-shared.jpg" alt="Quarto dividido: concreto do dono de um lado, móveis do inquilino do outro">
-<figcaption>Quanto mais alto o serviço, mais parede o provedor cobre. O que é seu continua sendo a mobília.</figcaption>
+<img src="/static/img/lessons/d-shared.gif" alt="Quem opera o quê">
+<figcaption>A linha sobe com o serviço. O que resta para você é o que o provedor não assumiu.</figcaption>
 </figure>
 <p>A divisão de responsabilidade muda de acordo com o nível de
 abstração escolhido:</p>
@@ -802,6 +810,10 @@ responsabilidade inteira para o outro lado e esperar que a
 documentação seja lida.</p>
 
 <h3>3. Caso a caso: o que muda por serviço</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-shared-data.gif" alt="O mesmo dado, donos diferentes">
+<figcaption>Mesmo num SaaS, identidade, cifra e cópia do dado continuam pergunta sua.</figcaption>
+</figure>
 <p>Mesmo dentro do mesmo provedor, a divisão exata varia bastante
 conforme o serviço específico:</p>
 <table>
@@ -976,8 +988,8 @@ RDS?</li>
                 "body_en": (
                 """<h3>1. The moving line: the higher the service, the more the provider covers</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-shared.jpg" alt="A room split between the owner's bare concrete and the tenant's furniture">
-<figcaption>The higher the service, the more wall the provider covers. What is yours is still the furniture.</figcaption>
+<img src="/static/img/lessons/d-shared-en.gif" alt="Who operates what">
+<figcaption>The line moves up with the service. What remains for you is what the provider did not take.</figcaption>
 </figure>
 <p>The division of responsibility changes depending on the level of
 abstraction chosen:</p>
@@ -1018,6 +1030,10 @@ entire responsibility to the other side and hoping the
 documentation gets read.</p>
 
 <h3>3. Case by case: what changes per service</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-shared-data-en.gif" alt="Same data, different owners">
+<figcaption>Even on SaaS, identity, encryption, and the copy of the data are still your question.</figcaption>
+</figure>
 <p>Even within the same provider, the exact split varies a lot
 depending on the specific service:</p>
 <table>
@@ -1447,8 +1463,8 @@ RDS instance?</li>
                 "body": (
                 """<h3>1. Identidades: humanas vs máquina</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-iam.jpg" alt="Dois crachás em branco, um com silhueta de pessoa e outro com engrenagem">
-<figcaption>Identidade humana e identidade de máquina são crachás diferentes. Nenhuma das duas deveria usar a senha da outra.</figcaption>
+<img src="/static/img/lessons/d-iam.gif" alt="Humano e máquina">
+<figcaption>Os dois chegam no mesmo recurso, por policies. A máquina não usa a senha da pessoa.</figcaption>
 </figure>
 <p>Duas categorias de identidade exigem tratamento estruturalmente
 diferente. As <strong>humanas</strong> — dev, ops, financeiro, vendas —
@@ -1511,6 +1527,10 @@ adiciona contexto opcional que restringe quando a regra se aplica de
 fato.</p>
 
 <h3>3. Avaliação: como o IAM decide</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-iam-eval.gif" alt="A decisão">
+<figcaption>O IAM não adivinha. Junta identidade e policy e devolve allow ou deny.</figcaption>
+</figure>
 <p>O algoritmo de avaliação segue uma ordem específica que muda
 completamente o resultado se mal entendida. Por padrão, TUDO é negado —
 o modelo é opt-in, não opt-out. Uma SCP (a nível de Organizations)
@@ -1729,8 +1749,8 @@ mais uma credencial comum na rede interna.</p>"""
                 "body_en": (
                 """<h3>1. Identities: human vs machine</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-iam.jpg" alt="Two blank badges, one with a person silhouette and one with a gear">
-<figcaption>A human identity and a machine identity are different badges. Neither should use the other's password.</figcaption>
+<img src="/static/img/lessons/d-iam-en.gif" alt="Human and machine">
+<figcaption>Both reach the same resource, through policies. The machine does not use the person's password.</figcaption>
 </figure>
 <p>Two identity categories require structurally different treatment.
 <strong>Human</strong> identities — dev, ops, finance, sales — access
@@ -1792,6 +1812,10 @@ specifies exactly which ARNs the rule affects; and <code>Condition</code>
 adds optional context that restricts when the rule actually applies.</p>
 
 <h3>3. Evaluation: how IAM decides</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-iam-eval-en.gif" alt="The decision">
+<figcaption>IAM does not guess. It joins identity and policy and returns allow or deny.</figcaption>
+</figure>
 <p>The evaluation algorithm follows a specific order that completely
 changes the outcome if misunderstood. By default, EVERYTHING is
 denied — the model is opt-in, not opt-out. An SCP (at the Organizations
@@ -2276,8 +2300,8 @@ as just another ordinary credential on the internal network.</p>"""
                 "body": (
                 """<h3>1. Anatomia de uma VPC</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-vpc.jpg" alt="Maquete de um pátio murado com um único portão para a rua">
-<figcaption>A VPC é esse pátio: rede sua, isolada, com um portão controlado para fora.</figcaption>
+<img src="/static/img/lessons/d-vpc.gif" alt="Anatomia da VPC">
+<figcaption>A VPC é o terreno. Subnet, rota e o portão de saída dizem se o pacote fica dentro ou sai.</figcaption>
 </figure>
 <p>Uma VPC é uma rede privada virtual com um CIDR principal (por
 exemplo <code>10.0.0.0/16</code>, oferecendo 65 mil IPs), podendo
@@ -2327,6 +2351,10 @@ Cada VPC: /16 dentro do bloco apropriado
 Cada subnet: /22 ou /24 dentro da VPC</code></pre>
 
 <h3>3. Subnets pública e privada</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-subnets.gif" alt="Pública e privada">
+<figcaption>Pública conversa com a internet. Privada sai por NAT e não recebe conexão nova de fora.</figcaption>
+</figure>
 <p>A diferença entre os três tipos de subnet é PURAMENTE de
 roteamento, não de configuração especial na própria subnet. Uma subnet
 <strong>pública</strong> tem rota <code>0.0.0.0/0 → IGW</code> na sua
@@ -2488,8 +2516,8 @@ fatura sem que ninguém perceba a tempo.</p>
                 "body_en": (
                 """<h3>1. Anatomy of a VPC</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-vpc.jpg" alt="A model of a walled courtyard with a single gate to the street">
-<figcaption>A VPC is that courtyard: your network, isolated, with one controlled gate to the outside.</figcaption>
+<img src="/static/img/lessons/d-vpc-en.gif" alt="VPC anatomy">
+<figcaption>The VPC is the grounds. Subnet, route, and the exit gate say whether the packet stays in or leaves.</figcaption>
 </figure>
 <p>A VPC is a virtual private network with a primary CIDR (for
 example <code>10.0.0.0/16</code>, offering 65 thousand IPs), able to
@@ -2540,6 +2568,10 @@ Cada VPC: /16 dentro do bloco apropriado
 Cada subnet: /22 ou /24 dentro da VPC</code></pre>
 
 <h3>3. Public and private subnets</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-subnets-en.gif" alt="Public and private">
+<figcaption>Public talks to the internet. Private leaves through NAT and does not accept a new connection from outside.</figcaption>
+</figure>
 <p>The difference between the three subnet types is PURELY about
 routing, not any special configuration on the subnet itself. A
 <strong>public</strong> subnet has the route <code>0.0.0.0/0 → IGW</code>
@@ -2964,8 +2996,8 @@ notices in time.</p>
                 "body": (
                 """<h3>1. Security Group (SG): stateful, por interface</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-sg.jpg" alt="Porta com olho mágico, aberta para dentro e fechada para o corredor">
-<figcaption>O security group lembra quem já entrou. A volta do tráfego permitido passa; o corredor continua fechado.</figcaption>
+<img src="/static/img/lessons/d-sg.gif" alt="Security group">
+<figcaption>O SG lembra quem entrou. A resposta desse fluxo volta; o resto da rede continua fechado.</figcaption>
 </figure>
 <p>Um Security Group é um conjunto de regra Allow associado a uma
 interface de rede específica (ENI), com cinco características que
@@ -3008,6 +3040,10 @@ profundidade — mas não substitui o controle granular por instância, que
 é exatamente o papel do Security Group.</p>
 
 <h3>3. Encadeando SGs por referência (chain de SGs)</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-sg-chain.gif" alt="Cadeia de SGs">
+<figcaption>Cada grupo cita o anterior. O banco não abre para a internet, só para o SG da aplicação.</figcaption>
+</figure>
 <p>Em vez de liberar porta por IP fixo, o padrão mais robusto é liberar
 por SG-ID — referenciando outro Security Group diretamente como
 origem, não um endereço:</p>
@@ -3164,8 +3200,8 @@ flowchart TD
                 "body_en": (
                 """<h3>1. Security Group (SG): stateful, per interface</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-sg.jpg" alt="A door with a peephole, open inward and shut to the hall">
-<figcaption>A security group remembers who already came in. Return traffic for an allowed flow passes; the hall stays shut.</figcaption>
+<img src="/static/img/lessons/d-sg-en.gif" alt="Security group">
+<figcaption>The SG remembers who came in. That flow's reply returns; the rest of the network stays closed.</figcaption>
 </figure>
 <p>A Security Group is a set of Allow rules attached to a specific
 network interface (ENI), with five characteristics that completely
@@ -3207,6 +3243,10 @@ an extra layer of defense in depth — but it does not replace granular
 per-instance control, which is exactly the Security Group's role.</p>
 
 <h3>3. Chaining SGs by reference (SG chain)</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-sg-chain-en.gif" alt="SG chain">
+<figcaption>Each group cites the previous one. The database does not open to the internet, only to the app SG.</figcaption>
+</figure>
 <p>Instead of opening a port by fixed IP, the more robust pattern is
 to open it by SG-ID — referencing another Security Group directly as
 the source, not an address:</p>
@@ -3626,8 +3666,8 @@ flowchart TD
                 "body": (
                 """<h3>1. Modelo de dados: object storage não é filesystem</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-s3.jpg" alt="Prateleira de caixas lacradas, iguais, com etiquetas em branco">
-<figcaption>Object storage é esta prateleira de objetos, não uma árvore de pastas.</figcaption>
+<img src="/static/img/lessons/d-s3.gif" alt="Objeto, não arquivo">
+<figcaption>Não há pasta nem rename parcial. Há um balde, uma chave e o objeto inteiro.</figcaption>
 </figure>
 <p>S3 quebra a intuição de quem espera um sistema de arquivo
 tradicional. Não existem diretórios de verdade, apenas prefixos —
@@ -3672,6 +3712,10 @@ liberar bucket público apenas quando o bucket for explicitamente
 destinado a CDN ou site estático (seção 8).</p>
 
 <h3>3. Padrões de policy de bucket</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-s3-policy.gif" alt="Quem pode ler">
+<figcaption>O objeto não é público por existir. As três camadas precisam concordar em deixar ler.</figcaption>
+</figure>
 <pre><code># Forçar HTTPS em todo o bucket
 {
   "Version": "2012-10-17",
@@ -3903,8 +3947,8 @@ melhor o mesmo problema.</li>
                 "body_en": (
                 """<h3>1. Data model: object storage is not a filesystem</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-s3.jpg" alt="A shelf of identical sealed boxes with blank tags">
-<figcaption>Object storage is this shelf of objects, not a tree of folders.</figcaption>
+<img src="/static/img/lessons/d-s3-en.gif" alt="Object, not a file">
+<figcaption>There is no folder and no partial rename. There is a bucket, a key, and the whole object.</figcaption>
 </figure>
 <p>S3 breaks the intuition of anyone expecting a traditional
 filesystem. There are no real directories, only prefixes —
@@ -3947,6 +3991,10 @@ Access at the ACCOUNT level by default, and only allow a public bucket
 when it's explicitly meant for a CDN or static site (section 8).</p>
 
 <h3>3. Bucket policy patterns</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-s3-policy-en.gif" alt="Who can read">
+<figcaption>The object is not public just because it exists. The three layers have to agree to allow a read.</figcaption>
+</figure>
 <pre><code># Forçar HTTPS em todo o bucket
 {
   "Version": "2012-10-17",
@@ -4447,8 +4495,8 @@ solves the same problem better.</li>
                 "body": (
                 """<h3>1. Modelo de ameaça: do que cripto protege</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-crypto.jpg" alt="Um cofre fechado ao lado de um envelope lacrado">
-<figcaption>O cofre é o dado em repouso. O envelope é o dado em trânsito. Em uso, dentro da memória, nenhum dos dois protege.</figcaption>
+<img src="/static/img/lessons/d-crypto.gif" alt="Onde a cifra atua">
+<figcaption>Cofre e TLS não protegem o dado enquanto ele está aberto na memória.</figcaption>
 </figure>
 <p>Antes de qualquer detalhe técnico, vale separar exatamente o que
 está sendo protegido em cada cenário. <strong>Em repouso</strong>
@@ -4498,6 +4546,10 @@ simétrica onde importa e a segurança da assimétrica onde é
 necessária.</p>
 
 <h3>3. Algoritmos modernos vs depreciados</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-crypto-algos.gif" alt="O que ainda serve">
+<figcaption>Algoritmo velho no meio do caminho anula o cofre novo.</figcaption>
+</figure>
 <table>
 <tr><th>Categoria</th><th>Use</th><th>Evite</th></tr>
 <tr><td>Cifra simétrica</td><td>AES-256-GCM, ChaCha20-Poly1305</td>
@@ -4702,8 +4754,8 @@ rouba o disco rouba a chave junto.</li>
                 "body_en": (
                 """<h3>1. Threat model: what encryption protects against</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-crypto.jpg" alt="A closed safe beside a sealed envelope">
-<figcaption>The safe is data at rest. The envelope is data in transit. In use, inside memory, neither one protects it.</figcaption>
+<img src="/static/img/lessons/d-crypto-en.gif" alt="Where encryption acts">
+<figcaption>The safe and TLS do not protect the data while it is open in memory.</figcaption>
 </figure>
 <p>Before any technical detail, it's worth separating exactly what is
 being protected in each scenario. <strong>At rest</strong> means
@@ -4753,6 +4805,10 @@ traffic, taking advantage of symmetric speed where it matters and
 asymmetric security where it's needed.</p>
 
 <h3>3. Modern vs deprecated algorithms</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-crypto-algos-en.gif" alt="What still holds">
+<figcaption>An old algorithm in the middle cancels the new safe.</figcaption>
+</figure>
 <table>
 <tr><th>Category</th><th>Use</th><th>Avoid</th></tr>
 <tr><td>Symmetric cipher</td><td>AES-256-GCM, ChaCha20-Poly1305</td>
@@ -5207,8 +5263,8 @@ steals the disk steals the key along with it.</li>
                 "body": (
                     """<h3>1. Os 4 sinais de ouro (Google SRE)</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-gauges.jpg" alt="Quatro medidores analógicos sem números">
-<figcaption>Os quatro sinais de ouro: latência, tráfego, erros e saturação. Quatro ponteiros, não um painel infinito.</figcaption>
+<img src="/static/img/lessons/d-golden.gif" alt="Quatro sinais">
+<figcaption>Quatro ponteiros dizem se o serviço está bem. O resto do painel é detalhe.</figcaption>
 </figure>"""
                     "<p>De todas as métricas que você pode coletar, 4 dizem se um serviço "
                     "está bem ou mal:</p>"
@@ -5255,6 +5311,14 @@ flowchart TD
                     "antes de violar contrato.</p>"
 
                     "<h3>3. Error budget e burn rate</h3>"
+                    """
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-burn.gif" alt="Error budget">
+<figcaption>O alerta dispara pela velocidade com que o budget acaba, não por um pico isolado.</figcaption>
+</figure>
+"""
+                    """
+"""
                     "<p>Error budget = (1 − SLO) por período. Se SLO é 99,9% mensal:</p>"
                     "<ul>"
                     "<li>Budget = 0,1% × 30d × 24h × 60min ≈ 43,2 minutos de erro/mês.</li>"
@@ -5407,8 +5471,8 @@ flowchart LR
                 "body_en": (
                     """<h3>1. The 4 golden signals (Google SRE)</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-gauges.jpg" alt="Four analog gauges with no numbers">
-<figcaption>The four golden signals: latency, traffic, errors, and saturation. Four needles, not an infinite dashboard.</figcaption>
+<img src="/static/img/lessons/d-golden-en.gif" alt="Four signals">
+<figcaption>Four needles say whether the service is fine. The rest of the dashboard is detail.</figcaption>
 </figure>"""
                     "<p>Of all the metrics you could collect, 4 tell you whether a service "
                     "is healthy or not:</p>"
@@ -5455,6 +5519,14 @@ flowchart TD
                     "before breaching the contract.</p>"
 
                     "<h3>3. Error budget and burn rate</h3>"
+                    """
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-burn-en.gif" alt="Error budget">
+<figcaption>The alert fires from how fast the budget runs out, not from an isolated spike.</figcaption>
+</figure>
+"""
+                    """
+"""
                     "<p>Error budget = (1 − SLO) per period. If the SLO is 99.9% monthly:</p>"
                     "<ul>"
                     "<li>Budget = 0.1% × 30d × 24h × 60min ≈ 43.2 minutes of error/month.</li>"
@@ -5859,8 +5931,8 @@ flowchart LR
                 "body": (
                 """<h3>1. RPO e RTO, as duas métricas-base</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-backup.jpg" alt="Duas xícaras iguais, uma lascada, e uma ampulheta no meio">
-<figcaption>RPO é o pedaço que falta. RTO é a areia da ampulheta até a cópia voltar.</figcaption>
+<img src="/static/img/lessons/d-rpo.gif" alt="RPO e RTO">
+<figcaption>RPO é o pedaço de tempo sem cópia. RTO é o tempo até essa cópia voltar a atender.</figcaption>
 </figure>
 <p>O <strong>RPO</strong> (Recovery Point Objective) responde "quanto
 dado é aceitável perder": se o RPO é de 1 hora, o backup ou a
@@ -5908,6 +5980,10 @@ o prazo de retenção terminar, sobrevive a esse tipo de ataque
 especificamente.</p>
 
 <h3>3. Estratégias de DR, quanto custo, quanto tempo</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-dr.gif" alt="Estratégia de DR">
+<figcaption>Quanto menor o RTO, mais a cópia precisa estar acordada. O preço sobe junto.</figcaption>
+</figure>
 <table>
 <tr><th>Estratégia</th><th>RTO típico</th><th>Custo</th><th>Quando usar</th></tr>
 <tr><td>Backup &amp; restore</td><td>horas</td><td>baixo</td>
@@ -6074,8 +6150,8 @@ distribuído a cópia.</li>
                 "body_en": (
                 """<h3>1. RPO and RTO, the two base metrics</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-backup.jpg" alt="Two matching cups, one chipped, and an hourglass between them">
-<figcaption>RPO is the missing piece. RTO is the sand in the hourglass until the copy comes back.</figcaption>
+<img src="/static/img/lessons/d-rpo-en.gif" alt="RPO and RTO">
+<figcaption>RPO is the stretch of time with no copy. RTO is the time until that copy serves again.</figcaption>
 </figure>
 <p>The <strong>RPO</strong> (Recovery Point Objective) answers "how
 much data is acceptable to lose": if the RPO is 1 hour, the backup or
@@ -6122,6 +6198,10 @@ not even root, until the retention period ends, survives that specific
 type of attack.</p>
 
 <h3>3. DR strategies, how much cost, how much time</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-dr-en.gif" alt="DR strategy">
+<figcaption>The smaller the RTO, the more awake the copy must be. The price rises with it.</figcaption>
+</figure>
 <table>
 <tr><th>Strategy</th><th>Typical RTO</th><th>Cost</th><th>When to use</th></tr>
 <tr><td>Backup &amp; restore</td><td>hours</td><td>low</td>
@@ -6539,8 +6619,8 @@ distributed the copy.</li>
                 "body": (
                 """<h3>1. Por que FinOps existe</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-finops.jpg" alt="Medidor de energia ao lado de moedas">
-<figcaption>Na nuvem o clique é rápido. O medidor continua girando.</figcaption>
+<img src="/static/img/lessons/d-finops.gif" alt="Do clique à fatura">
+<figcaption>Sem tag, a fatura é um número só. Com tag, dá para decidir o que fica ligado.</figcaption>
 </figure>
 <p>Em ambiente on-prem, comprar hardware era uma decisão de comitê:
 seis meses de discussão, capex aprovado em orçamento, contrato
@@ -6594,6 +6674,10 @@ torna essas tags filtráveis dentro do Cost Explorer, fechando o ciclo
 entre "marcar o recurso" e "conseguir ver o custo por tag" de verdade.</p>
 
 <h3>3. Modelos de cobrança em AWS (e equivalentes)</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-pricing.gif" alt="Como se paga">
+<figcaption>O desconto troca flexibilidade. Spot só cabe em carga que pode parar.</figcaption>
+</figure>
 <table>
 <tr><th>Modelo</th><th>Desconto</th><th>Compromisso</th><th>Quando</th></tr>
 <tr><td>On-demand</td><td>0%</td><td>nenhum</td>
@@ -6814,8 +6898,8 @@ basta se ele não influencia decisão real de nenhum time.</li>
                 "body_en": (
                 """<h3>1. Why FinOps exists</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-finops.jpg" alt="An electricity meter beside a pile of coins">
-<figcaption>In the cloud the click is fast. The meter keeps spinning.</figcaption>
+<img src="/static/img/lessons/d-finops-en.gif" alt="From click to bill">
+<figcaption>Without a tag, the bill is one number. With a tag, you can decide what stays on.</figcaption>
 </figure>
 <p>In an on-prem environment, buying hardware was a committee
 decision: six months of discussion, capex approved in a budget,
@@ -6870,6 +6954,10 @@ the loop between "tagging the resource" and actually "being able to
 see the cost by tag".</p>
 
 <h3>3. Billing models in AWS (and equivalents)</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-pricing-en.gif" alt="How you pay">
+<figcaption>The discount trades flexibility. Spot only fits a workload that can stop.</figcaption>
+</figure>
 <table>
 <tr><th>Model</th><th>Discount</th><th>Commitment</th><th>When</th></tr>
 <tr><td>On-demand</td><td>0%</td><td>none</td>

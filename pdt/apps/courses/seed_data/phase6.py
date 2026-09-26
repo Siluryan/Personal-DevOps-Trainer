@@ -47,8 +47,8 @@ PHASE6 = {
                 "body": (
                 """<h3>1. Tipos primitivos e o modelo de objeto que explica tudo</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-objects.jpg" alt="Blocos de madeira, um deles com outro bloco encaixado dentro">
-<figcaption>Em Python tudo é objeto, inclusive o número e a função. Um objeto pode carregar outro.</figcaption>
+<img src="/static/img/lessons/d-py-objects.gif" alt="Tudo é objeto">
+<figcaption>Não há tipo 'primitivo' escondido. Número, texto, função e módulo são objetos.</figcaption>
 </figure>
 <p>Em Python, <strong>tudo é objeto</strong> — inteiros, strings, funções e
 classes têm igualmente atributos e métodos, e são todos alocados no heap e
@@ -114,6 +114,10 @@ mais confusos para quem começa (a função parece "não enxergar" a
 variável externa, quando na verdade criou uma sombra local dela).</p>
 
 <h3>3. `for` itera sobre iteráveis, não sobre posições</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-for.gif" alt="for">
+<figcaption>O for pede o próximo item. Ele não conta índice, a menos que você peça enumerate.</figcaption>
+</figure>
 <pre><code>servers = ["web1", "web2", "db1"]
 ports   = [80, 80, 5432]
 
@@ -275,8 +279,8 @@ de arquivo até o processo cair.</li>
                 "body_en": (
                 """<h3>1. Primitive types and the object model that explains everything</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-objects.jpg" alt="Wooden blocks, one of them holding another block inside">
-<figcaption>In Python everything is an object, including a number and a function. An object can hold another.</figcaption>
+<img src="/static/img/lessons/d-py-objects-en.gif" alt="Everything is an object">
+<figcaption>There is no hidden 'primitive' type. Number, text, function, and module are objects.</figcaption>
 </figure>
 <p>In Python, <strong>everything is an object</strong> — integers, strings,
 functions and classes all equally have attributes and methods, and are all
@@ -343,6 +347,10 @@ beginners (the function seems to "not see" the outer variable, when it
 actually created a local shadow of it).</p>
 
 <h3>3. `for` iterates over iterables, not over positions</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-for-en.gif" alt="for">
+<figcaption>for asks for the next item. It does not count an index unless you ask for enumerate.</figcaption>
+</figure>
 <pre><code>servers = ["web1", "web2", "db1"]
 ports   = [80, 80, 5432]
 
@@ -732,8 +740,8 @@ descriptors until the process crashes.</li>
                 "body": (
                 """<h3>1. Listas, tuplas, sets, dicts: a mesma escolha que decide performance</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-data.jpg" alt="Pilha de pratos, fila de xícaras, tigela de bolinhas e gavetas">
-<figcaption>Lista, fila, conjunto e dicionário são recipientes diferentes. A escolha muda o custo de achar e de guardar.</figcaption>
+<img src="/static/img/lessons/d-py-data.gif" alt="Qual recipiente">
+<figcaption>A escolha muda o custo de buscar. Lista percorre; set e dict apontam.</figcaption>
 </figure>
 <table>
 <thead><tr><th>Estrutura</th><th>Acesso</th><th>Mutável</th>
@@ -796,6 +804,10 @@ lista que ela produz, e usá-la só pelo efeito colateral descartando o
 resultado confunde quem lê o motivo dela existir.</p>
 
 <h3>3. Generators: por que "não carrega tudo em memória" é literal</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-gen.gif" alt="Generator">
+<figcaption>O generator não monta a lista. Entrega um item e espera o próximo pedido.</figcaption>
+</figure>
 <pre><code>def parse_log(path: str):
     with open(path) as f:
         for line in f:
@@ -996,8 +1008,8 @@ coisa.</p>"""
                 "body_en": (
                 """<h3>1. Lists, tuples, sets, dicts: the same choice that decides performance</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-data.jpg" alt="A stack of plates, a line of cups, a bowl of marbles, and a set of drawers">
-<figcaption>List, queue, set, and dict are different containers. The choice changes the cost of finding and storing.</figcaption>
+<img src="/static/img/lessons/d-py-data-en.gif" alt="Which container">
+<figcaption>The choice changes the cost of lookup. A list scans; a set and a dict point.</figcaption>
 </figure>
 <table>
 <thead><tr><th>Structure</th><th>Access</th><th>Mutable</th>
@@ -1060,6 +1072,10 @@ the list it produces, and using it only for the side effect while
 discarding the result confuses whoever reads it about why it exists.</p>
 
 <h3>3. Generators: why "doesn't load everything into memory" is literal</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-gen-en.gif" alt="Generator">
+<figcaption>The generator does not build the list. It hands over one item and waits for the next request.</figcaption>
+</figure>
 <pre><code>def parse_log(path: str):
     with open(path) as f:
         for line in f:
@@ -1505,8 +1521,8 @@ materialize the entire file at once before processing anything.</p>"""
                 "body": (
                 """<h3>1. Classes: `__init__` inicializa, não constrói</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-class.jpg" alt="Casa de boneca já montada, só recebendo os móveis">
-<figcaption>A classe já construiu o objeto. O __init__ só mobília o que já existe.</figcaption>
+<img src="/static/img/lessons/d-py-init.gif" alt="__new__ e __init__">
+<figcaption>Quando __init__ roda, o objeto já foi criado. Ele só preenche o que já existe.</figcaption>
 </figure>
 <pre><code>class Server:
     def __init__(self, name: str, ip: str, port: int = 22) -&gt; None:
@@ -1562,6 +1578,10 @@ compartilhada porque é exatamente isso. A correção é declarar
 lista nova por instância.</p>
 
 <h3>3. Herança e `super()`: reaproveitar comportamento sem reescrevê-lo</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-super.gif" alt="super()">
+<figcaption>super() chama o próximo da cadeia. A filha não copia o método do pai.</figcaption>
+</figure>
 <pre><code>class HTTPError(Exception):
     pass
 
@@ -1756,8 +1776,8 @@ tipo, sem que uma mascare a outra.</p>"""
                 "body_en": (
                 """<h3>1. Classes: `__init__` initializes, it doesn't construct</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-class.jpg" alt="A dollhouse already built, only receiving its furniture">
-<figcaption>The class has already constructed the object. __init__ only furnishes what already exists.</figcaption>
+<img src="/static/img/lessons/d-py-init-en.gif" alt="__new__ and __init__">
+<figcaption>When __init__ runs, the object has already been created. It only fills what already exists.</figcaption>
 </figure>
 <pre><code>class Server:
     def __init__(self, name: str, ip: str, port: int = 22) -&gt; None:
@@ -1813,6 +1833,10 @@ bug because that's exactly what it is. The fix is to declare
 new list per instance.</p>
 
 <h3>3. Inheritance and `super()`: reuse behavior without rewriting it</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-super-en.gif" alt="super()">
+<figcaption>super() calls the next in the chain. The child does not copy the parent's method.</figcaption>
+</figure>
 <pre><code>class HTTPError(Exception):
     pass
 
@@ -2267,8 +2291,8 @@ exceptions, without one masking the other.</p>
                 "body": (
                 """<h3>1. `pathlib`: um objeto que sabe o que é caminho, não uma string qualquer</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-path.jpg" alt="Caminho de pedras até uma cabana, e um barbante embaraçado ao lado">
-<figcaption>pathlib é o caminho de pedras: um objeto que sabe que é rota. A string solta é o barbante.</figcaption>
+<img src="/static/img/lessons/d-py-path.gif" alt="pathlib">
+<figcaption>Path junta e normaliza caminho. A string não sabe a diferença entre pasta e texto.</figcaption>
 </figure>
 <pre><code>from pathlib import Path
 
@@ -2331,6 +2355,10 @@ quebra o split ingênuo de um jeito que só aparece quando alguém digita um
 valor com vírgula, meses depois do código estar em produção.</p>
 
 <h3>3. Configuração: por que YAML tem um modo "seguro" e o outro não deveria existir</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-yaml.gif" alt="YAML seguro">
+<figcaption>safe_load só devolve dados. O load antigo pode construir objeto e rodar código.</figcaption>
+</figure>
 <pre><code># JSON, stdlib, sem dependência
 import json
 cfg = json.loads(Path("cfg.json").read_text())
@@ -2493,8 +2521,8 @@ código 65 exigiria rodar um subprocesso de verdade a cada teste.</p>"""
                 "body_en": (
                 """<h3>1. `pathlib`: an object that knows what a path is, not just any string</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-path.jpg" alt="A path of stepping stones to a cabin, and a tangled string beside it">
-<figcaption>pathlib is the stepping stones: an object that knows it is a route. A loose string is just string.</figcaption>
+<img src="/static/img/lessons/d-py-path-en.gif" alt="pathlib">
+<figcaption>Path joins and normalizes a path. A string does not know the difference between a folder and text.</figcaption>
 </figure>
 <pre><code>from pathlib import Path
 
@@ -2557,6 +2585,10 @@ breaks the naive split in a way that only shows up when someone types a
 value with a comma, months after the code is in production.</p>
 
 <h3>3. Configuration: why YAML has a "safe" mode and the other shouldn't exist</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-yaml-en.gif" alt="Safe YAML">
+<figcaption>safe_load only returns data. The old load can build an object and run code.</figcaption>
+</figure>
 <pre><code># JSON, stdlib, sem dependência
 import json
 cfg = json.loads(Path("cfg.json").read_text())
@@ -2959,8 +2991,8 @@ code 65 would require running a real subprocess on every test.</p>
                 "body": (
                 """<h3>1. `requests`: por que timeout e `raise_for_status` não são opcionais</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-http.jpg" alt="Uma portinhola de cozinha: o pedido vai, o prato volta">
-<figcaption>HTTP é essa troca. Sem timeout, a portinhola pode ficar esperando um prato que não vem.</figcaption>
+<img src="/static/img/lessons/d-py-http.gif" alt="requests">
+<figcaption>Sem timeout a chamada pode pendurar. Sem raise_for_status, o 500 parece sucesso.</figcaption>
 </figure>
 <pre><code>import requests
 
@@ -3019,6 +3051,10 @@ host. Em um script que faz 100 chamadas à mesma API, a diferença entre
 sessão e chamadas soltas costuma ser a diferença entre segundos e minutos.</p>
 
 <h3>3. Retry com backoff: só para falhas que valem repetir</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-retry.gif" alt="Retry">
+<figcaption>Só repete falha transitória. Erro de lógica repetido só multiplica o estrago.</figcaption>
+</figure>
 <div class="mermaid">
 flowchart LR
     Client["Cliente"] -- "request" --> API["API"]
@@ -3188,8 +3224,8 @@ compara em tempo constante, independente de quantos caracteres coincidem.</p>"""
                 "body_en": (
                 """<h3>1. `requests`: why timeout and `raise_for_status` are not optional</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-http.jpg" alt="A kitchen pass: the order goes, the plate comes back">
-<figcaption>HTTP is that exchange. Without a timeout, the pass can wait forever for a plate that never comes.</figcaption>
+<img src="/static/img/lessons/d-py-http-en.gif" alt="requests">
+<figcaption>Without a timeout the call can hang. Without raise_for_status, a 500 looks like success.</figcaption>
 </figure>
 <pre><code>import requests
 
@@ -3249,6 +3285,10 @@ API, the difference between session and one-off calls is often the difference be
 seconds and minutes.</p>
 
 <h3>3. Retry with backoff: only for failures worth repeating</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-retry-en.gif" alt="Retry">
+<figcaption>Only retry a transient failure. A repeated logic error only multiplies the damage.</figcaption>
+</figure>
 <div class="mermaid">
 flowchart LR
     Client["Client"] -- "request" --> API["API"]
@@ -3667,8 +3707,8 @@ compares in constant time, regardless of how many characters match.</p>
                 "body": (
                 """<h3>1. `subprocess.run`: por que lista de argumentos é a defesa, não um detalhe de estilo</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-subprocess.jpg" alt="Bandeja com cada ferramenta no seu compartimento, e um fio embaraçado ao lado">
-<figcaption>A lista de argumentos separa cada peça. Uma string só é o fio: o shell pode reinterpretar.</figcaption>
+<img src="/static/img/lessons/d-py-subprocess.gif" alt="subprocess">
+<figcaption>Cada argumento é um item da lista. Uma string única passa pelo shell e pode ser reescrita.</figcaption>
 </figure>
 <pre><code>import subprocess
 
@@ -3736,6 +3776,10 @@ ferramenta de CI que mostra logs "ao vivo" em vez de só o resultado
 final.</p>
 
 <h3>3. Variáveis de ambiente do subprocesso: herdar por padrão, sobrescrever com cuidado</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-env.gif" alt="Ambiente do processo">
+<figcaption>O filho herda o ambiente. Passe só a chave que precisa mudar, não um ambiente vazio sem querer.</figcaption>
+</figure>
 <pre><code>env = os.environ.copy()       # NUNCA passe os.environ direto e mute
 env["KUBECONFIG"] = "/etc/k8s/prod.kubeconfig"
 env["AWS_PROFILE"] = "prod"
@@ -3906,8 +3950,8 @@ execução.</li>
                 "body_en": (
                 """<h3>1. `subprocess.run`: why an argument list is the defense, not a style detail</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-subprocess.jpg" alt="A tray with each tool in its own compartment, and a tangled cord beside it">
-<figcaption>An argument list keeps each piece separate. One string is the cord: the shell can reinterpret it.</figcaption>
+<img src="/static/img/lessons/d-py-subprocess-en.gif" alt="subprocess">
+<figcaption>Each argument is one list item. A single string goes through the shell and can be rewritten.</figcaption>
 </figure>
 <pre><code>import subprocess
 
@@ -3975,6 +4019,10 @@ CI tool that shows "live" logs instead of only the final
 result.</p>
 
 <h3>3. Subprocess environment variables: inherit by default, override carefully</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-env-en.gif" alt="Process environment">
+<figcaption>The child inherits the environment. Pass only the key that must change, not an empty environment by accident.</figcaption>
+</figure>
 <pre><code>env = os.environ.copy()       # NUNCA passe os.environ direto e mute
 env["KUBECONFIG"] = "/etc/k8s/prod.kubeconfig"
 env["AWS_PROFILE"] = "prod"
@@ -4382,8 +4430,8 @@ seconds — especially anything that writes state or holds locks.</li>
                 "body": (
                 """<h3>1. O GIL: um lock que explica por que "mais threads" às vezes não ajuda nada</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-gil.jpg" alt="Várias faixas chegando num portão com um único cadeado">
-<figcaption>O GIL é esse cadeado. Várias threads de Python chegam, mas só uma executa bytecode por vez.</figcaption>
+<img src="/static/img/lessons/d-py-gil.gif" alt="O GIL">
+<figcaption>Várias threads esperam. O cadeado deixa uma só executar bytecode Python por vez.</figcaption>
 </figure>
 <p>O <strong>Global Interpreter Lock</strong> é um lock único, dentro do
 próprio interpretador CPython, que garante que apenas UMA thread execute
@@ -4445,6 +4493,10 @@ soma — porque enquanto uma thread espera resposta de rede (GIL liberado),
 outra já está fazendo sua própria chamada.</p>
 
 <h3>3. `asyncio`: uma thread só, alternando em pontos explícitos de espera</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-async.gif" alt="asyncio">
+<figcaption>Uma thread só. Enquanto uma task espera a rede, outra usa o processador.</figcaption>
+</figure>
 <p>Em vez de várias threads do sistema operacional, <code>asyncio</code>
 roda tudo numa única thread que alterna entre tarefas exatamente nos
 pontos marcados com <code>await</code> — um modelo cooperativo em vez de
@@ -4639,8 +4691,8 @@ simples, pelo overhead de coordenação sem ganho real.</p>"""
                 "body_en": (
                 """<h3>1. The GIL: a lock that explains why "more threads" sometimes doesn't help at all</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-gil.jpg" alt="Several lanes arriving at a gate with a single padlock">
-<figcaption>The GIL is that padlock. Many Python threads arrive, but only one runs bytecode at a time.</figcaption>
+<img src="/static/img/lessons/d-py-gil-en.gif" alt="The GIL">
+<figcaption>Several threads wait. The lock lets only one execute Python bytecode at a time.</figcaption>
 </figure>
 <p>The Global Interpreter Lock ensures only one thread executes Python bytecode
 at a time, even on a multi-core machine. For CPU-bound work in pure Python
@@ -4682,6 +4734,10 @@ is often the simplest correct answer — no event loop, no async migration of
 every library you touch.</p>
 
 <h3>3. `asyncio`: a single thread, switching at explicit wait points</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-async-en.gif" alt="asyncio">
+<figcaption>One thread only. While one task waits on the network, another uses the processor.</figcaption>
+</figure>
 <pre><code>import asyncio, httpx
 
 async def fetch(client: httpx.AsyncClient, url: str) -&gt; int:
@@ -5070,8 +5126,8 @@ must share, use <code>asyncio.Lock</code>.</p>
                 "body": (
                 """<h3>1. Por que pytest e não unittest</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-test.jpg" alt="Uma fileira de fusíveis, um deles queimado">
-<figcaption>O teste é o fusível. A suíte mostra qual queimou, em vez de descobrir em produção.</figcaption>
+<img src="/static/img/lessons/d-py-pytest.gif" alt="pytest">
+<figcaption>O teste é função e assert. A falha mostra os dois lados, sem self.assertEqual.</figcaption>
 </figure>
 <p><code>unittest</code> é stdlib e funciona, mas força um estilo verboso: você
 herda de <code>TestCase</code>, escreve <code>self.assertEqual(a, b)</code> em
@@ -5132,6 +5188,10 @@ manual de fixture entre arquivos de teste é sinal de que ela deveria estar
 ali.</p>
 
 <h3>3. Fixtures: injeção de dependência, não decoração</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-fixture.gif" alt="Fixture">
+<figcaption>A fixture injeta a dependência e desfaz depois. O teste não monta o mundo na mão.</figcaption>
+</figure>
 <p>Uma fixture não é açúcar sintático para "código que roda antes do teste":
 é um grafo de dependências resolvido por nome. Quando uma função de teste
 declara um parâmetro <code>tmp_config</code>, o pytest procura uma fixture
@@ -5342,8 +5402,8 @@ param de proteger de verdade.</p>"""
                 "body_en": (
                 """<h3>1. Why pytest and not unittest</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-test.jpg" alt="A row of fuses, one of them burned out">
-<figcaption>A test is the fuse. The suite shows which one blew, instead of finding out in production.</figcaption>
+<img src="/static/img/lessons/d-py-pytest-en.gif" alt="pytest">
+<figcaption>The test is a function and assert. The failure shows both sides, without self.assertEqual.</figcaption>
 </figure>
 <p>pytest cuts boilerplate: plain <code>assert</code> instead of
 <code>self.assertEqual</code>, composable fixtures instead of class hierarchies,
@@ -5386,6 +5446,10 @@ down afterward. Scope (<code>function</code>, <code>module</code>, <code>session
 controls how often setup runs. Shared fixtures live in <code>conftest.py</code>.</p>
 
 <h3>3. Fixtures: dependency injection, not decoration</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-fixture-en.gif" alt="Fixture">
+<figcaption>The fixture injects the dependency and undoes it after. The test does not build the world by hand.</figcaption>
+</figure>
 <pre><code>import pytest, tempfile
 from pathlib import Path
 
@@ -5754,8 +5818,8 @@ e2e for "does the CLI exit 0 on a happy path in CI".</p>
                 "body": (
                 """<h3>1. Ambientes virtuais: por que isolar é o que evita "funciona na minha máquina"</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-venv.jpg" alt="Três plantas iguais, cada uma no próprio vaso">
-<figcaption>O ambiente virtual é o vaso. Sem ele, as dependências de um projeto invadem o outro.</figcaption>
+<img src="/static/img/lessons/d-py-venv.gif" alt="Ambiente virtual">
+<figcaption>Cada projeto tem o próprio vaso de dependências. O do sistema fica de fora.</figcaption>
 </figure>
 <pre><code>python -m venv .venv
 source .venv/bin/activate         # Linux/Mac
@@ -5807,6 +5871,10 @@ hoje pode trazer uma versão mais nova de uma dependência transitiva do que
 trouxe há um mês, e um bug "que ninguém mexeu" aparece do nada.</p>
 
 <h3>3. `pyproject.toml`: um arquivo central em vez de três desencontrados</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-pyproject.gif" alt="pyproject.toml">
+<figcaption>Um arquivo declara build, dependência e ferramenta. Três arquivos soltos divergem.</figcaption>
+</figure>
 <pre><code>[project]
 name = "deploy-tool"
 version = "0.3.0"
@@ -6004,8 +6072,8 @@ dependência com segredo embutido para a internet.</p>
                 "body_en": (
                 """<h3>1. Virtual environments: why isolation is what prevents "works on my machine"</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-venv.jpg" alt="Three identical plants, each in its own pot">
-<figcaption>A virtual environment is the pot. Without it, one project's dependencies invade the other.</figcaption>
+<img src="/static/img/lessons/d-py-venv-en.gif" alt="Virtual environment">
+<figcaption>Each project has its own dependency pot. The system one stays out.</figcaption>
 </figure>
 <pre><code>python -m venv .venv
 source .venv/bin/activate         # Linux/Mac
@@ -6040,6 +6108,10 @@ and tool config (ruff, mypy, pytest). Prefer it over a scatter of
 <code>setup.py</code>, <code>setup.cfg</code>, and ad-hoc ini files.</p>
 
 <h3>3. `pyproject.toml`: one central file instead of three mismatched ones</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-pyproject-en.gif" alt="pyproject.toml">
+<figcaption>One file declares build, dependency, and tooling. Three loose files drift apart.</figcaption>
+</figure>
 <pre><code>[project]
 name = "deploy-tool"
 version = "0.3.0"
@@ -6433,8 +6505,8 @@ local checks. That baseline scales from a personal CLI to a team-shared library.
                 "body": (
                 """<h3>1. AWS com `boto3`: identidade, paginação e credenciais que nunca ficam no código</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-boto.jpg" alt="Caderno fechado e uma chave pendurada longe dele">
-<figcaption>Credencial não mora no código. A chave fica fora do caderno, na identidade da máquina ou do cofre.</figcaption>
+<img src="/static/img/lessons/d-py-boto.gif" alt="boto3 sem chave no código">
+<figcaption>A credencial fica na role da máquina ou do cofre. O fonte não carrega access key.</figcaption>
 </figure>
 <pre><code>import boto3
 
@@ -6523,6 +6595,10 @@ interpreta como "configuração mudou" e dispara um rollout normal,
 substituindo os pods gradualmente.</p>
 
 <h3>3. Watch: reagir a eventos em vez de perguntar em loop</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-watch.gif" alt="Watch, não poll cego">
+<figcaption>O watch entrega a mudança. Perguntar em loop gasta cota e chega atrasado.</figcaption>
+</figure>
 <pre><code>from kubernetes import watch
 
 w = watch.Watch()
@@ -6702,8 +6778,8 @@ uma execução isolada.</li>
                 "body_en": (
                 """<h3>1. AWS with `boto3`: identity, pagination and credentials that never live in code</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-py-boto.jpg" alt="A closed notebook and a key hanging away from it">
-<figcaption>A credential does not live in the code. The key stays off the notebook, on the machine identity or in the vault.</figcaption>
+<img src="/static/img/lessons/d-py-boto-en.gif" alt="boto3 with no key in code">
+<figcaption>The credential stays on the machine role or in the vault. The source carries no access key.</figcaption>
 </figure>
 <pre><code>import boto3
 
@@ -6769,6 +6845,10 @@ That reacts faster and wastes less quota. Always handle disconnects/reconnects
 in long-running controllers.</p>
 
 <h3>3. Watch: react to events instead of asking in a loop</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-py-watch-en.gif" alt="Watch, not blind poll">
+<figcaption>The watch delivers the change. Asking in a loop spends quota and arrives late.</figcaption>
+</figure>
 <pre><code>from kubernetes import watch
 
 w = watch.Watch()

@@ -45,8 +45,8 @@ PHASE3 = {
                 "body": (
                     """<h3>1. Modelo mental: o que Git realmente armazena</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-git.jpg" alt="Uma pilha de fotos do mesmo vaso, cada uma um pouco diferente">
-<figcaption>O Git guarda retratos do projeto, um em cima do outro. Não guarda a diferença solta.</figcaption>
+<img src="/static/img/lessons/d-git.gif" alt="O que o Git guarda">
+<figcaption>Cada commit é um retrato inteiro, endereçado pelo hash. Não é um delta solto.</figcaption>
 </figure>"""
                     "<p>A primeira coisa a entender: Git não armazena <em>diferenças</em> "
                     "(como SVN), ele armazena <em>snapshots</em>. Cada commit é um objeto "
@@ -135,6 +135,14 @@ flowchart TD
                     "que recebe backports de fixes selecionados.</p>"
 
                     "<h3>3. Política de proteção de branches em produção</h3>"
+                    """
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-git-pr.gif" alt="Branch protegida">
+<figcaption>A main não recebe push direto. O commit entra por PR, review e CI.</figcaption>
+</figure>
+"""
+                    """
+"""
                     "<p>Em <code>main</code> (ou equivalente), configure no GitHub/GitLab:</p>"
                     "<ul>"
                     "<li><strong>Pull Request obrigatório</strong> (sem push direto).</li>"
@@ -354,8 +362,8 @@ flowchart TD
                 ),
                 "body_en": """<h3>1. Mental model: what Git actually stores</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-git.jpg" alt="A stack of photos of the same plant, each one slightly different">
-<figcaption>Git stores snapshots of the project, one on top of the other. It does not store the loose difference.</figcaption>
+<img src="/static/img/lessons/d-git-en.gif" alt="What Git stores">
+<figcaption>Each commit is a whole snapshot, addressed by the hash. It is not a loose delta.</figcaption>
 </figure>
 <p>The first thing to understand: Git does not store <em>diffs</em>
 (like SVN), it stores <em>snapshots</em>. Each commit is an immutable
@@ -443,6 +451,10 @@ keeps a separate branch (<code>release-1.28</code>) that receives
 backports of selected fixes.</p>
 
 <h3>3. Branch protection policy in production</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-git-pr-en.gif" alt="Protected branch">
+<figcaption>Main does not take a direct push. The commit enters through PR, review, and CI.</figcaption>
+</figure>
 <p>On <code>main</code> (or equivalent), configure in GitHub/GitLab:</p>
 <ul>
 <li><strong>Required Pull Request</strong> (no direct push).</li>
@@ -932,8 +944,8 @@ admins.</p>""",
                 "body": (
                 """<h3>1. Por que IaC importa de verdade</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-terraform.jpg" alt="Maquete pronta e, ao lado, os blocos que a formaram">
-<figcaption>IaC descreve a casa pronta. A ferramenta ajusta os blocos até o mundo bater com o modelo.</figcaption>
+<img src="/static/img/lessons/d-terraform.gif" alt="Código vira infra">
+<figcaption>O plan mostra a diferença antes. O state é a memória do que já existe.</figcaption>
 </figure>
 <p>Cinco ganhos concretos justificam trocar clique por código. O
 primeiro é <strong>reprodutibilidade</strong>: dev, staging e prod saem
@@ -1037,6 +1049,10 @@ módulo consumir via remote_state. E <strong>locals</strong> são
 variáveis derivadas, calculadas dentro do próprio módulo.</p>
 
 <h3>3. Workflow básico: init → plan → apply</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-tf-loop.gif" alt="init, plan, apply">
+<figcaption>Apply sem plan revisado é mudança no escuro. O ciclo volta no próximo commit.</figcaption>
+</figure>
 <pre><code>$ terraform init      # baixa providers, configura backend
 $ terraform validate  # checa sintaxe
 $ terraform fmt -recursive  # formata
@@ -1319,8 +1335,8 @@ aleatório quando uma nova versão muda comportamento sem aviso.</li>
                 ),
                 "body_en": """<h3>1. Why IaC really matters</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-terraform.jpg" alt="A finished model and, beside it, the blocks that formed it">
-<figcaption>IaC describes the finished house. The tool moves the blocks until the world matches the model.</figcaption>
+<img src="/static/img/lessons/d-terraform-en.gif" alt="Code becomes infra">
+<figcaption>The plan shows the difference first. State is the memory of what already exists.</figcaption>
 </figure>
 <p>Five concrete gains justify swapping clicks for code. The first is
 <strong>reproducibility</strong>: dev, staging and prod come
@@ -1426,6 +1442,10 @@ after apply, for another module to consume via remote_state. And
 module itself.</p>
 
 <h3>3. Basic workflow: init → plan → apply</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-tf-loop-en.gif" alt="init, plan, apply">
+<figcaption>Apply without a reviewed plan is a change in the dark. The cycle returns on the next commit.</figcaption>
+</figure>
 <pre><code>$ terraform init      # baixa providers, configura backend
 $ terraform validate  # checa sintaxe
 $ terraform fmt -recursive  # formata
@@ -1984,8 +2004,8 @@ warning.</li>
                 "body": (
                 """<h3>1. Ansible vs alternativas</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-ansible.jpg" alt="Cinco lugares de mesa idênticos, alinhados">
-<figcaption>Ansible deixa um conjunto de máquinas neste estado: iguais, sem instalar um agente em cada uma.</figcaption>
+<img src="/static/img/lessons/d-ansible.gif" alt="Sem agente">
+<figcaption>Não há agente instalado. O control node entra por SSH e aplica o estado.</figcaption>
 </figure>
 <table>
 <tr><th>Ferramenta</th><th>Modelo</th><th>Linguagem</th><th>Notas</th></tr>
@@ -2121,6 +2141,10 @@ playbooks diferentes:</p>
         nginx_port: 8080</code></pre>
 
 <h3>3. Idempotência: o coração do Ansible</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-ansible-idem.gif" alt="Idempotência">
+<figcaption>Rodar de novo não empilha efeito. Se o host já está no estado, a task não mexe.</figcaption>
+</figure>
 <div class="mermaid">
 flowchart LR
     Run1["Playbook 1ª vez"] --> Desired["Estado desejado"]
@@ -2301,8 +2325,8 @@ esperado.</li>
                 ),
                 "body_en": """<h3>1. Ansible vs alternatives</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-ansible.jpg" alt="Five identical place settings, lined up">
-<figcaption>Ansible leaves a set of machines in this state: the same, without installing an agent on each one.</figcaption>
+<img src="/static/img/lessons/d-ansible-en.gif" alt="No agent">
+<figcaption>There is no agent installed. The control node comes in over SSH and applies the state.</figcaption>
 </figure>
 <table>
 <tr><th>Tool</th><th>Model</th><th>Language</th><th>Notes</th></tr>
@@ -2441,6 +2465,10 @@ different playbooks:</p>
         nginx_port: 8080</code></pre>
 
 <h3>3. Idempotency: the heart of Ansible</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-ansible-idem-en.gif" alt="Idempotency">
+<figcaption>Running again does not stack an effect. If the host is already in the state, the task does not touch it.</figcaption>
+</figure>
 <div class="mermaid">
 flowchart LR
     Run1["Playbook 1st run"] --> Desired["Desired state"]
@@ -2874,8 +2902,8 @@ expected.</li>
                 "body": (
                 """<h3>1. Tipos de segredos</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-secrets.jpg" alt="Porta de cofre fechada e um bilhete amassado no lixo">
-<figcaption>Segredo mora no cofre. Bilhete, repositório e variável commitada são o lixo da foto.</figcaption>
+<img src="/static/img/lessons/d-secret-types.gif" alt="Tipos de segredo">
+<figcaption>Não é tudo 'a senha'. Cada tipo tem dono, rotação e lugar diferentes.</figcaption>
 </figure>
 <p>Nem todo segredo deve ser tratado do mesmo jeito, e a categoria certa
 determina a estratégia de proteção. Os <strong>estáticos</strong> —
@@ -2926,6 +2954,10 @@ levar o segredo para fora do controle da empresa sem que ninguém
 perceba.</p>
 
 <h3>3. Cofres modernos</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-vault.gif" alt="Caminho do segredo">
+<figcaption>O segredo nasce no cofre e morre na memória do processo. O repositório fica de fora.</figcaption>
+</figure>
 <table>
 <tr><th>Cofre</th><th>Pontos fortes</th></tr>
 <tr><td>HashiCorp Vault</td><td>Multi-cloud, dynamic secrets, transit, PKI, OIDC. Self-hosted ou Cloud.</td></tr>
@@ -3115,8 +3147,8 @@ mesmo incidente.</p>"""
                 ),
                 "body_en": """<h3>1. Types of secrets</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-secrets.jpg" alt="A closed vault door and a crumpled note in the trash">
-<figcaption>A secret lives in the vault. A note, a repository, and a committed variable are the trash in the photo.</figcaption>
+<img src="/static/img/lessons/d-secret-types-en.gif" alt="Secret types">
+<figcaption>It is not all 'the password'. Each type has a different owner, rotation, and place.</figcaption>
 </figure>
 <p>Not every secret should be treated the same way, and the right
 category drives the protection strategy. <strong>Static</strong>
@@ -3165,6 +3197,10 @@ extension with <strong>cloud sync</strong> enabled can carry the secret
 outside company control without anyone noticing.</p>
 
 <h3>3. Modern vaults</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-vault-en.gif" alt="Secret path">
+<figcaption>The secret is born in the vault and dies in the process memory. The repository stays out.</figcaption>
+</figure>
 <table>
 <tr><th>Vault</th><th>Strengths</th></tr>
 <tr><td>HashiCorp Vault</td><td>Multi-cloud, dynamic secrets, transit, PKI, OIDC. Self-hosted or Cloud.</td></tr>
@@ -3610,8 +3646,8 @@ the same incident.</p>""",
                 "body": (
                 """<h3>1. CI vs CD vs CD: três conceitos, duas siglas</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-cicd.jpg" alt="Esteira curta: peças soltas, uma lupa, uma caixa lacrada">
-<figcaption>CI é a lupa em cada commit. CD é a caixa pronta para sair; alguém ainda pode segurar a esteira.</figcaption>
+<img src="/static/img/lessons/d-cicd.gif" alt="CI e CD">
+<figcaption>CI prova o commit. CD leva o artefato. Entrega contínua ainda pode esperar um humano.</figcaption>
 </figure>
 <p><strong>CI (Continuous Integration)</strong> significa que a cada
 commit, o código é mergeado e validado imediatamente — build, lint,
@@ -3646,6 +3682,10 @@ segundos, unit test em menos de 5 minutos, integration test em menos de
 ignorar ou pular, na prática anulando todo o propósito de tê-lo.</p>
 
 <h3>3. GitHub Actions: pipeline completo de exemplo</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-actions.gif" alt="Pipeline">
+<figcaption>O YAML do Actions é esse caminho. Cada caixa é um job que só roda se a anterior passou.</figcaption>
+</figure>
 <pre><code>name: ci-cd
 on:
   push: { branches: [main] }
@@ -3924,8 +3964,8 @@ reconciliação.</p>"""
                 ),
                 "body_en": """<h3>1. CI vs CD vs CD: three concepts, two acronyms</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-cicd.jpg" alt="A short conveyor: loose parts, a magnifying glass, a sealed box">
-<figcaption>CI is the magnifying glass on every commit. CD is the box ready to leave; someone may still hold the belt.</figcaption>
+<img src="/static/img/lessons/d-cicd-en.gif" alt="CI and CD">
+<figcaption>CI proves the commit. CD carries the artifact. Continuous delivery can still wait for a human.</figcaption>
 </figure>
 <p><strong>CI (Continuous Integration)</strong> means that on every
 commit, code is merged and validated immediately — build, lint,
@@ -3960,6 +4000,10 @@ seconds, unit tests under 5 minutes, integration tests under
 ignore or skip, effectively nullifying the whole point of having it.</p>
 
 <h3>3. GitHub Actions: complete sample pipeline</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-actions-en.gif" alt="Pipeline">
+<figcaption>The Actions YAML is this path. Each box is a job that runs only if the previous one passed.</figcaption>
+</figure>
 <pre><code>name: ci-cd
 on:
   push: { branches: [main] }
@@ -4496,8 +4540,8 @@ reconciliation.</p>
                 "body": (
                 """<h3>1. O que linters fazem</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-lint.jpg" alt="Rolo adesivo tirando fiapos de um casaco">
-<figcaption>O linter tira o fiapo antes do código seguir: estilo, erro bobo, coisa que não precisa de um humano.</figcaption>
+<img src="/static/img/lessons/d-lint.gif" alt="O que o linter faz">
+<figcaption>O linter tira o fiapo mecânico. O review humano fica com o que a regra não alcança.</figcaption>
 </figure>
 <p>Um linter faz <strong>análise estática</strong>: lê o código sem
 executá-lo e procura padrões, em cinco categorias amplas. A primeira é
@@ -4580,6 +4624,10 @@ Markdown, <code>jq</code> combinado com schema para JSON, e
 <code>sqlfluff</code> para SQL.</p>
 
 <h3>3. Linters de IaC</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-lint-iac.gif" alt="Linter de infra">
+<figcaption>Infra também tem fiapo: formato, validate e policy rodam antes do apply.</figcaption>
+</figure>
 <h4>3.1 Dockerfile</h4>
 <p><strong>hadolint</strong> pega anti-pattern específico de Docker —
 coisas que só fazem sentido dentro do contexto de construção de
@@ -4714,8 +4762,8 @@ não só estilo.</li>
                 ),
                 "body_en": """<h3>1. What linters do</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-lint.jpg" alt="A lint roller lifting fluff off a coat">
-<figcaption>A linter lifts the fluff before the code moves on: style, silly mistakes, things that should not need a human.</figcaption>
+<img src="/static/img/lessons/d-lint-en.gif" alt="What a linter does">
+<figcaption>The linter lifts the mechanical fluff. Human review keeps what the rule cannot reach.</figcaption>
 </figure>
 <p>A linter performs <strong>static analysis</strong>: it reads code without
 running it and looks for patterns, in five broad categories. The first is
@@ -4798,6 +4846,10 @@ Markdown, <code>jq</code> plus schemas for JSON, and
 <code>sqlfluff</code> for SQL.</p>
 
 <h3>3. IaC linters</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-lint-iac-en.gif" alt="Infra linter">
+<figcaption>Infra has fluff too: format, validate, and policy run before apply.</figcaption>
+</figure>
 <h4>3.1 Dockerfile</h4>
 <p><strong>hadolint</strong> catches Docker-specific anti-patterns —
 things that only make sense in the context of building an
@@ -5157,8 +5209,8 @@ not just style.</li>
                 "body": (
                 """<h3>1. Como SAST funciona internamente</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-sast.jpg" alt="Mala fechada ao lado de um raio-x que mostra um objeto estranho dentro">
-<figcaption>SAST olha o código parado, sem executar. O raio-x vê o que a mala ainda não mostrou em movimento.</figcaption>
+<img src="/static/img/lessons/d-sast.gif" alt="SAST por dentro">
+<figcaption>O SAST lê o código parado. A regra casa com a árvore, não com o programa em execução.</figcaption>
 </figure>
 <p>Cinco etapas transformam código-fonte em achado de vulnerabilidade.
 Primeiro, <strong>parsing</strong> transforma o texto do código numa AST
@@ -5213,6 +5265,10 @@ inclua a variável <code>cpf</code> bloqueia o merge", um padrão que
 nenhuma ferramenta genérica conheceria de antemão.</p>
 
 <h3>3. Ferramentas open source</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-sast-ci.gif" alt="Onde roda">
+<figcaption>A ferramenta open source no CI olha o diff do PR. O achado volta antes do merge.</figcaption>
+</figure>
 <h4>3.1 Semgrep</h4>
 <p>Tornou-se o padrão moderno por combinar sintaxe simples (YAML mais
 um pattern que lembra o próprio código) com suporte multi-linguagem e
@@ -5399,8 +5455,8 @@ aparece constantemente; regra desatualizada para de pegar o que hoje já
                 ),
                 "body_en": """<h3>1. How SAST works internally</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-sast.jpg" alt="A closed suitcase beside an x-ray that shows a foreign object inside">
-<figcaption>SAST looks at code standing still, without running it. The x-ray sees what the suitcase has not shown in motion yet.</figcaption>
+<img src="/static/img/lessons/d-sast-en.gif" alt="SAST inside">
+<figcaption>SAST reads the code standing still. The rule matches the tree, not the running program.</figcaption>
 </figure>
 <p>Five stages turn source code into a vulnerability finding.
 First, <strong>parsing</strong> turns code text into an AST
@@ -5455,6 +5511,10 @@ includes the <code>cpf</code> variable blocks the merge", a pattern
 no generic tool would know in advance.</p>
 
 <h3>3. Open-source tools</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-sast-ci-en.gif" alt="Where it runs">
+<figcaption>The open-source tool in CI looks at the PR diff. The finding comes back before the merge.</figcaption>
+</figure>
 <h4>3.1 Semgrep</h4>
 <p>It became the modern default by combining simple syntax (YAML plus
 a pattern that looks like the code itself) with multi-language support and
@@ -5867,12 +5927,8 @@ known today.</li>
                 "body": (
                 """<h3>1. SBOM (Software Bill of Materials)</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-sca.jpg" alt="Parts of a device laid out, one of them with a red dot">
-<figcaption>SCA looks at the parts you did not write. The red dot is the dependency with a known flaw.</figcaption>
-</figure>
-<figure class="lesson-figure">
-<img src="/static/img/lessons/c-sca.jpg" alt="Peças de um aparelho alinhadas, uma delas com um ponto vermelho">
-<figcaption>SCA olha as peças que você não escreveu. O ponto vermelho é a dependência com falha conhecida.</figcaption>
+<img src="/static/img/lessons/d-sca.gif" alt="Do que o app é feito">
+<figcaption>SCA não lê a sua lógica. Lê a lista de peças e marca a que tem falha conhecida.</figcaption>
 </figure>
 <p>Um SBOM é a lista de TODAS as dependências — diretas e transitivas —
 com versão e licença de cada uma. É o ingrediente básico sem o qual
@@ -5920,6 +5976,10 @@ com centenas de "7s" tecnicamente altos mas praticamente irrelevantes
 competindo pela mesma atenção.</p>
 
 <h3>3. Ferramentas</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-sca-tool.gif" alt="Ferramenta">
+<figcaption>Sem lockfile a lista muda a cada build. O scanner precisa da versão exata.</figcaption>
+</figure>
 <table>
 <tr><th>Ferramenta</th><th>Pontos fortes</th></tr>
 <tr><td>Trivy</td><td>CLI grátis; escaneia FS, imagens, IaC, K8s. SBOM + CVEs. Bom em CI.</td></tr>
@@ -6103,6 +6163,10 @@ Sigstore) permite gerar atestados verificáveis criptograficamente sobre
 qual nível cada artefato de fato atingiu.</p>"""
                 ),
                 "body_en": """<h3>1. SBOM (Software Bill of Materials)</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-sca-en.gif" alt="What the app is made of">
+<figcaption>SCA does not read your logic. It reads the parts list and marks the one with a known flaw.</figcaption>
+</figure>
 <p>An SBOM is the list of ALL dependencies — direct and transitive —
 with version and license for each. It is the basic ingredient without which
 no dependency security analysis works, because you cannot
@@ -6149,6 +6213,10 @@ high "7s" that are practically irrelevant competing for the same
 attention.</p>
 
 <h3>3. Tools</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-sca-tool-en.gif" alt="Tool">
+<figcaption>Without a lockfile the list changes every build. The scanner needs the exact version.</figcaption>
+</figure>
 <table>
 <tr><th>Tool</th><th>Strengths</th></tr>
 <tr><td>Trivy</td><td>Free CLI; scans FS, images, IaC, K8s. SBOM + CVEs. Good in CI.</td></tr>
@@ -6553,8 +6621,8 @@ about which level each artifact actually reached.</p>""",
                 "body": (
                 """<h3>1. Princípios de PR/MR de qualidade</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-review.jpg" alt="Duas xícaras uma de frente para a outra, com uma folha no meio">
-<figcaption>Code review é essa mesa: duas pessoas, a mesma mudança, antes dela seguir.</figcaption>
+<img src="/static/img/lessons/d-review.gif" alt="Um PR">
+<figcaption>Review é duas pessoas no mesmo diff, com o CI já verde, antes do merge.</figcaption>
 </figure>
 <h4>1.1 Tamanho importa</h4>
 <p>Uma estatística repetidamente confirmada por Google, Microsoft e
@@ -6647,6 +6715,10 @@ funcionando sem quebra, com qualquer migração de banco tendo caminho de
 rollback definido.</p>
 
 <h3>3. CODEOWNERS: quem revisa o quê</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-codeowners.gif" alt="CODEOWNERS">
+<figcaption>O arquivo diz quem é obrigatório. O PR não entra sem o dono daquela pasta.</figcaption>
+</figure>
 <div class="mermaid">
 flowchart LR
     Path["path no CODEOWNERS"] --> Owners["Owners obrigatórios"]
@@ -6779,8 +6851,8 @@ longo tende a gerar mal-entendido que só piora por escrito.</li>
                 ),
                 "body_en": """<h3>1. Principles of quality PRs/MRs</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-review.jpg" alt="Two cups facing each other, one sheet of paper between them">
-<figcaption>Code review is that table: two people, the same change, before it moves on.</figcaption>
+<img src="/static/img/lessons/d-review-en.gif" alt="One PR">
+<figcaption>Review is two people on the same diff, with CI already green, before the merge.</figcaption>
 </figure>
 <h4>1.1 Size matters</h4>
 <p>A statistic repeatedly confirmed by Google, Microsoft, and
@@ -6873,6 +6945,10 @@ works without breakage, with any database migration having a defined
 rollback path.</p>
 
 <h3>3. CODEOWNERS: who reviews what</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-codeowners-en.gif" alt="CODEOWNERS">
+<figcaption>The file says who is required. The PR does not land without the owner of that folder.</figcaption>
+</figure>
 <div class="mermaid">
 flowchart LR
     Path["path in CODEOWNERS"] --> Owners["Required owners"]
@@ -7226,8 +7302,8 @@ tends to create misunderstandings that only get worse in writing.</li>
                 "body": (
                 """<h3>1. Tipos de registries</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-artifacts.jpg" alt="Prateleira de latas iguais, cada uma com uma etiqueta em branco">
-<figcaption>O registry guarda o artefato pronto, versionado, para o deploy pegar a lata certa.</figcaption>
+<img src="/static/img/lessons/d-registry-types.gif" alt="O que o registry guarda">
+<figcaption>O registry não é pasta solta. É o lugar versionado de onde o deploy puxa o artefato.</figcaption>
 </figure>
 <h4>1.1 Container registries</h4>
 <p>Cada nuvem oferece seu registry nativo: <strong>AWS ECR</strong> com
@@ -7349,6 +7425,10 @@ gerar isso automaticamente:</p>
 exatamente ela veio.</p>
 
 <h3>3. RBAC e segregação</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-registry-rbac.gif" alt="Quem empurra e quem puxa">
+<figcaption>Quem publica não é quem roda em produção. O RBAC separa os dois papéis.</figcaption>
+</figure>
 <p>Cinco práticas de controle de acesso separam um registry bem
 governado de um em risco. Escrita (push) deve ficar restrita
 exclusivamente ao CI — nenhum desenvolvedor faz push direto, usando
@@ -7480,8 +7560,8 @@ numa única infraestrutura de build.</p>"""
                 ),
                 "body_en": """<h3>1. Registry types</h3>
 <figure class="lesson-figure">
-<img src="/static/img/lessons/c-artifacts.jpg" alt="A shelf of identical canisters, each with a blank tag">
-<figcaption>A registry stores the finished artifact, versioned, so deploy can pick the right canister.</figcaption>
+<img src="/static/img/lessons/d-registry-types-en.gif" alt="What the registry stores">
+<figcaption>The registry is not a loose folder. It is the versioned place deploy pulls the artifact from.</figcaption>
 </figure>
 <h4>1.1 Container registries</h4>
 <p>Each cloud offers its native registry: <strong>AWS ECR</strong> with
@@ -7603,6 +7683,10 @@ generate this automatically:</p>
 it came from.</p>
 
 <h3>3. RBAC and segregation</h3>
+<figure class="lesson-figure">
+<img src="/static/img/lessons/d-registry-rbac-en.gif" alt="Who pushes and who pulls">
+<figcaption>Whoever publishes is not whoever runs in production. RBAC separates the two roles.</figcaption>
+</figure>
 <p>Five access-control practices separate a well-governed registry
 from one at risk. Write (push) should be restricted
 exclusively to CI — no developer pushes directly, ideally using
